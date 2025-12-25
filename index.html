@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>AI手机</title>
+    
+    <!-- CSS文件引入 -->
+    <link rel="stylesheet" href="css/reset.css">
+    <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/lockscreen.css">
+    <link rel="stylesheet" href="css/desktop.css">
+    <link rel="stylesheet" href="css/page1.css">
+    <link rel="stylesheet" href="css/page2.css">
+    <link rel="stylesheet" href="css/page3.css">
+    <link rel="stylesheet" href="css/animations.css">
+</head>
+<body>
+    
+    <!-- 应用容器 -->
+    <div class="app-container" id="appContainer">
+        
+        <!-- 手机外壳 -->
+        <div class="phone-frame" id="phoneFrame">
+            
+            <!-- 顶部状态栏（所有页面共用） -->
+            <div class="status-bar" id="statusBar">
+                <div class="status-left">
+                    <span class="status-time" id="statusTime">10:30</span>
+                </div>
+                <div class="status-right">
+                    <button class="frame-toggle-btn" id="frameToggleBtn" title="切换边框">⬜</button>
+                    <span class="status-signal" id="statusSignal">📵</span>
+                    <span class="status-battery" id="statusBattery">🔋85%</span>
+                </div>
+            </div>
+
+            <!-- 锁屏界面 -->
+            <div class="lockscreen" id="lockscreen">
+                <div class="lockscreen-content">
+                    <div class="lockscreen-time" id="lockscreenTime">10:30</div>
+                    <div class="lockscreen-date" id="lockscreenDate">12月24日 星期二</div>
+                    <div class="lockscreen-hint">
+                        <span class="swipe-icon">⬆️</span>
+                        <span class="swipe-text">上滑解锁</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 桌面容器 -->
+            <div class="desktop-container" id="desktopContainer">
+                
+                <!-- 桌面页面包装器（用于左右滑动） -->
+                <div class="desktop-pages" id="desktopPages">
+                    
+                    <!-- 桌面第1页 -->
+                    <div class="desktop-page page-1">
+                        <!-- 顶部时间日期 -->
+                        <div class="page1-header">
+                            <div class="page1-time" id="page1Time">10:30</div>
+                            <div class="page1-date" id="page1Date">12月24日 星期二</div>
+                        </div>
+
+                        <!-- 唱片播放器 -->
+                        <div class="music-player">
+                            <div class="music-disc">
+                                <div class="disc-content">🎵</div>
+                            </div>
+                            <div class="music-info">音乐播放器</div>
+                        </div>
+
+                        <!-- APP图标组 -->
+                        <div class="app-grid-1">
+                            <div class="app-icon">
+                                <div class="icon-img">🎨</div>
+                                <div class="icon-label">主题</div>
+                            </div>
+                            <div class="app-icon">
+                                <div class="icon-img">📖</div>
+                                <div class="icon-label">世界书</div>
+                            </div>
+                            <div class="app-icon">
+                                <div class="icon-img">☁️</div>
+                                <div class="icon-label">天气</div>
+                            </div>
+                            <div class="app-icon">
+                                <div class="icon-img">⚙️</div>
+                                <div class="icon-label">设置</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 桌面第2页 -->
+                    <div class="desktop-page page-2">
+                        <!-- 顶部自定义区域 -->
+                        <div class="page2-custom-header">
+                            <!-- 右圆圈 + 左横杠 -->
+                            <div class="custom-row row-1">
+                                <div class="custom-bar bar-left">━━━━━━━━━━━</div>
+                                <div class="custom-circle circle-right">
+                                    <div class="circle-content">📷</div>
+                                </div>
+                            </div>
+                            <!-- 左圆圈 + 右横杠 -->
+                            <div class="custom-row row-2">
+                                <div class="custom-circle circle-left">
+                                    <div class="circle-content">🖼️</div>
+                                </div>
+                                <div class="custom-bar bar-right">━━━━━━━━━━━</div>
+                            </div>
+                        </div>
+
+                        <!-- 波浪分割线 -->
+                        <div class="wave-divider">
+                            <svg viewBox="0 0 1200 20" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M0,10 Q30,0 60,10 T120,10 T180,10 T240,10 T300,10 T360,10 T420,10 T480,10 T540,10 T600,10 T660,10 T720,10 T780,10 T840,10 T900,10 T960,10 T1020,10 T1080,10 T1140,10 T1200,10" 
+                                      fill="none" 
+                                      stroke="rgba(0,0,0,0.1)" 
+                                      stroke-width="2"/>
+                            </svg>
+                        </div>
+
+                        <!-- 主要内容区域 -->
+                        <div class="page2-content">
+                            <!-- 左侧大图片组件 -->
+                            <div class="widget-image large">
+                                <div class="widget-placeholder">🌆</div>
+                            </div>
+
+                            <!-- APP图标组 -->
+                            <div class="app-grid-2">
+                                <div class="app-icon">
+                                    <div class="icon-img">💬</div>
+                                    <div class="icon-label">聊天</div>
+                                </div>
+                                <div class="app-icon">
+                                    <div class="icon-img">📝</div>
+                                    <div class="icon-label">记事录</div>
+                                </div>
+                                <div class="app-icon">
+                                    <div class="icon-img">🎵</div>
+                                    <div class="icon-label">音乐</div>
+                                </div>
+                                <div class="app-icon">
+                                    <div class="icon-img">📧</div>
+                                    <div class="icon-label">短信</div>
+                                </div>
+                            </div>
+
+                            <!-- 右下角图片组件 -->
+                            <div class="widget-image small">
+                                <div class="widget-placeholder">🎑</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 桌面第3页 -->
+                    <div class="desktop-page page-3">
+                        <!-- 纪念日组件容器 -->
+                        <div class="memorial-container">
+                            <!-- 纪念日卡片 -->
+                            <div class="memorial-card">
+                                <div class="memorial-header">
+                                    <div class="memorial-avatar">👤</div>
+                                    <div class="memorial-relation">与TA共度</div>
+                                </div>
+                                <div class="memorial-days">
+                                    <span class="days-number">878</span>
+                                    <span class="days-unit">天</span>
+                                </div>
+                                <div class="memorial-date">始于 2023年1月1日</div>
+                            </div>
+
+                            <!-- 可以添加更多纪念日卡片 -->
+                            <div class="memorial-card">
+                                <div class="memorial-header">
+                                    <div class="memorial-avatar">💕</div>
+                                    <div class="memorial-relation">在一起</div>
+                                </div>
+                                <div class="memorial-days">
+                                    <span class="days-number">365</span>
+                                    <span class="days-unit">天</span>
+                                </div>
+                                <div class="memorial-date">始于 2024年1月1日</div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- 翻页指示点 -->
+                <div class="page-indicators" id="pageIndicators">
+                    <span class="indicator active"></span>
+                    <span class="indicator"></span>
+                    <span class="indicator"></span>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- JavaScript文件引入 -->
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/statusbar.js"></script>
+    <script src="js/lockscreen.js"></script>
+    <script src="js/desktop.js"></script>
+    <script src="js/frame-toggle.js"></script>
+    <script src="js/main.js"></script>
+
+</body>
+</html>
