@@ -1,0 +1,174 @@
+/* Common Styles - 公共样式 */
+
+/* ==================== 应用容器 ==================== */
+.app-container {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    position: relative;
+}
+
+/* ==================== 手机外壳 ==================== */
+.phone-frame {
+    width: var(--phone-width);
+    height: var(--phone-height);
+    background: var(--color-bg);
+    border-radius: var(--frame-radius);
+    border: var(--frame-width) solid var(--frame-color);
+    box-shadow: 
+        var(--shadow-lg),
+        0 0 0 2px rgba(255, 255, 255, 0.1) inset;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    transition: all var(--duration-normal) ease;
+}
+
+/* 无框模式 */
+.phone-frame.frameless {
+    border: none;
+    border-radius: 0;
+    width: 100vw;
+    height: 100vh;
+    max-width: 100vw;
+    max-height: 100vh;
+}
+
+/* ==================== 顶部状态栏 ==================== */
+.status-bar {
+    height: 24px;
+    background: var(--color-statusbar-bg);
+    backdrop-filter: var(--blur-light);
+    -webkit-backdrop-filter: var(--blur-light);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 var(--spacing-md);
+    font-size: var(--font-size-small);
+    color: var(--color-statusbar-text);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    position: relative;
+    z-index: 1000;
+    flex-shrink: 0;
+}
+
+.status-left,
+.status-right {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.status-time {
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.status-signal,
+.status-battery {
+    font-size: 14px;
+}
+
+/* 边框切换按钮 */
+.frame-toggle-btn {
+    font-size: 14px;
+    padding: 2px 4px;
+    opacity: 0.7;
+    transition: opacity var(--duration-fast);
+}
+
+.frame-toggle-btn:hover {
+    opacity: 1;
+}
+
+.frame-toggle-btn:active {
+    transform: scale(0.9);
+}
+
+/* ==================== 翻页指示点 ==================== */
+.page-indicators {
+    position: absolute;
+    bottom: var(--spacing-lg);
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: var(--spacing-sm);
+    z-index: 100;
+}
+
+.indicator {
+    width: 6px;
+    height: 6px;
+    border-radius: var(--radius-circle);
+    background: rgba(0, 0, 0, 0.2);
+    transition: all var(--duration-normal);
+}
+
+.indicator.active {
+    width: 20px;
+    background: rgba(0, 0, 0, 0.6);
+}
+
+/* ==================== APP图标通用样式 ==================== */
+.app-icon {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-xs);
+    cursor: pointer;
+    transition: transform var(--duration-fast);
+}
+
+.app-icon:active {
+    transform: scale(0.9);
+}
+
+.icon-img {
+    width: 60px;
+    height: 60px;
+    border-radius: var(--radius-md);
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: var(--blur-light);
+    -webkit-backdrop-filter: var(--blur-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    box-shadow: var(--shadow-sm);
+    transition: all var(--duration-fast);
+}
+
+.app-icon:hover .icon-img {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.icon-label {
+    font-size: var(--font-size-small);
+    color: var(--color-text-primary);
+    font-weight: 500;
+}
+
+/* ==================== 响应式设计 ==================== */
+@media (max-width: 768px) {
+    .phone-frame {
+        width: 100vw;
+        height: 100vh;
+        border: none;
+        border-radius: 0;
+    }
+    
+    .phone-frame.frameless {
+        /* 已经是全屏 */
+    }
+}
+
+@media (max-height: 667px) {
+    .phone-frame {
+        height: 100vh;
+    }
+}
