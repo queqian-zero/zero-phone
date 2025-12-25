@@ -1,0 +1,79 @@
+/* Lockscreen Styles - 锁屏样式 */
+
+.lockscreen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+    transition: transform var(--duration-slow) cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.lockscreen.unlocked {
+    transform: translateY(-100%);
+}
+
+.lockscreen-content {
+    text-align: center;
+    color: white;
+    user-select: none;
+}
+
+/* 锁屏时间 */
+.lockscreen-time {
+    font-size: var(--font-size-xxlarge);
+    font-weight: 300;
+    letter-spacing: 2px;
+    margin-bottom: var(--spacing-sm);
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* 锁屏日期 */
+.lockscreen-date {
+    font-size: var(--font-size-medium);
+    font-weight: 400;
+    opacity: 0.9;
+    margin-bottom: var(--spacing-xl);
+    letter-spacing: 1px;
+}
+
+/* 上滑提示 */
+.lockscreen-hint {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-sm);
+    opacity: 0.7;
+    animation: swipeHint 2s infinite;
+}
+
+.swipe-icon {
+    font-size: 32px;
+}
+
+.swipe-text {
+    font-size: var(--font-size-small);
+    letter-spacing: 1px;
+}
+
+/* 上滑提示动画 */
+@keyframes swipeHint {
+    0%, 100% {
+        transform: translateY(0);
+        opacity: 0.7;
+    }
+    50% {
+        transform: translateY(-10px);
+        opacity: 1;
+    }
+}
+
+/* 触摸滑动时的效果 */
+.lockscreen.swiping {
+    transition: transform 0.1s linear;
+}
