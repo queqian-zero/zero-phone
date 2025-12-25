@@ -1,0 +1,93 @@
+/* Page 1 Styles - 桌面第1页样式 */
+
+.page-1 {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+}
+
+/* ==================== 顶部时间日期 ==================== */
+.page1-header {
+    text-align: center;
+    padding: var(--spacing-lg) 0;
+}
+
+.page1-time {
+    font-size: var(--font-size-xlarge);
+    font-weight: 300;
+    color: var(--color-text-primary);
+    letter-spacing: 2px;
+    margin-bottom: var(--spacing-xs);
+}
+
+.page1-date {
+    font-size: var(--font-size-normal);
+    color: var(--color-text-secondary);
+    font-weight: 400;
+}
+
+/* ==================== 唱片播放器 ==================== */
+.music-player {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-lg);
+}
+
+.music-disc {
+    width: 160px;
+    height: 160px;
+    border-radius: var(--radius-circle);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-md);
+    position: relative;
+    overflow: hidden;
+    animation: rotate 10s linear infinite paused;
+}
+
+/* 唱片中心圆 */
+.music-disc::before {
+    content: '';
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-circle);
+    background: rgba(255, 255, 255, 0.3);
+    backdrop-filter: var(--blur-light);
+}
+
+.disc-content {
+    font-size: 48px;
+    z-index: 1;
+}
+
+/* 播放时旋转 */
+.music-disc.playing {
+    animation-play-state: running;
+}
+
+@keyframes rotate {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.music-info {
+    font-size: var(--font-size-normal);
+    color: var(--color-text-secondary);
+}
+
+/* ==================== APP图标网格 ==================== */
+.app-grid-1 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-lg);
+    padding: 0 var(--spacing-md);
+}
