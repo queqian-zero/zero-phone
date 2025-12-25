@@ -1,0 +1,59 @@
+/* Desktop Styles - 桌面基础样式 */
+
+.desktop-container {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: var(--color-bg);
+}
+
+/* 桌面页面包装器 */
+.desktop-pages {
+    display: flex;
+    height: 100%;
+    width: 300%; /* 3个页面 */
+    transition: transform var(--duration-normal) cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 拖动时取消动画 */
+.desktop-pages.dragging {
+    transition: none;
+}
+
+/* 各个桌面页面 */
+.desktop-page {
+    width: 33.333%; /* 每个页面占1/3 */
+    height: 100%;
+    flex-shrink: 0;
+    padding: var(--spacing-lg);
+    padding-bottom: 60px; /* 为翻页指示点留空间 */
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* 滚动条样式 */
+.desktop-page::-webkit-scrollbar {
+    width: 4px;
+}
+
+.desktop-page::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 2px;
+}
+
+.desktop-page::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* 页面切换状态 */
+.desktop-pages[data-page="0"] {
+    transform: translateX(0%);
+}
+
+.desktop-pages[data-page="1"] {
+    transform: translateX(-33.333%);
+}
+
+.desktop-pages[data-page="2"] {
+    transform: translateX(-66.666%);
+}
