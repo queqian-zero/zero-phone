@@ -4,6 +4,7 @@
     display: flex;
     flex-direction: column;
     gap: var(--spacing-md);
+    padding-top: var(--spacing-lg);
 }
 
 /* ==================== 顶部自定义区域 ==================== */
@@ -77,20 +78,13 @@
         rgba(0, 0, 0, 0.15) 80%,
         transparent 100%
     );
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--color-text-secondary);
-    font-size: var(--font-size-small);
-    letter-spacing: 0.5px;
 }
 
 /* ==================== 波浪分割线 ==================== */
 .wave-divider {
     width: 100%;
     height: 20px;
-    margin: var(--spacing-sm) 0;
+    margin: var(--spacing-md) 0;
 }
 
 .wave-divider svg {
@@ -102,9 +96,10 @@
 .page2-content {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto auto;
+    grid-template-rows: auto auto auto;
     gap: var(--spacing-md);
     flex: 1;
+    margin-top: var(--spacing-lg);
 }
 
 /* 左侧大图片组件 */
@@ -128,16 +123,16 @@
     opacity: 0.5;
 }
 
-/* APP图标网格 */
+/* 右上角APP（聊天、记事录） */
 .app-grid-2 {
     grid-column: 2;
     grid-row: 1;
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: var(--spacing-md);
+    gap: var(--spacing-sm);
 }
 
-/* 右下角小图片组件 */
+/* 右下角图片组件 */
 .widget-image.small {
     grid-column: 2;
     grid-row: 2;
@@ -155,4 +150,13 @@
 
 .widget-image.small .widget-placeholder {
     font-size: 32px;
+}
+
+/* 左下角APP（音乐、短信） */
+.app-grid-2-bottom {
+    grid-column: 1;
+    grid-row: 3;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-sm);
 }
