@@ -69,7 +69,7 @@ class Lockscreen {
             }
         });
         
-        // 触摸结束
+// 触摸结束
         this.lockscreenElement.addEventListener('touchend', (e) => {
             if (!CONFIG.isLocked || !this.isSwiping) return;
             
@@ -78,16 +78,19 @@ class Lockscreen {
             removeClass(this.lockscreenElement, 'swiping');
             this.isSwiping = false;
             
-            // 判断是否解锁（向上滑动超过阈值）
-            if (deltaY < -CONFIG.swipeThreshold) {
+            // 判断是否解锁（向上滑动超过100px）
+            if (Math.abs(deltaY) > 100 && deltaY < 0) {
                 this.unlock();
             } else {
-                // 回弹
-                this.lockscreenElement.style.transform = '';
+                // 平滑回弹
+                this.lockscreenElement.style.transition = 'transform 0.3s ease';
+                this.lockscreenElement.style.transform = 'translateY(0)';
+                setTimeout(() => {
+                    this.lockscreenElement.style.transition = '';
+                }, 300);
             }
         });
     }
-    
     // 解锁
     unlock() {
         if (!CONFIG.isLocked) return;

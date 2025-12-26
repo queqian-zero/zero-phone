@@ -81,7 +81,7 @@ class Desktop {
             }
         });
         
-        // 触摸结束
+           // 触摸结束
         this.pagesElement.addEventListener('touchend', (e) => {
             if (CONFIG.isLocked || !this.isDragging) return;
             
@@ -91,24 +91,17 @@ class Desktop {
             removeClass(this.pagesElement, 'dragging');
             this.isDragging = false;
             
+            // 重置transform，使用CSS过渡
+            this.pagesElement.style.transform = '';
+            
             // 判断滑动方向（水平优先）
-            if (Math.abs(deltaX) > Math.abs(deltaY)) {
-                const direction = detectSwipe(
-                    this.touchStartX, 
-                    this.touchStartY, 
-                    this.touchCurrentX, 
-                    this.touchCurrentY
-                );
-                
-                if (direction === 'left') {
+            if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
+                if (deltaX < 0) {
                     // 向左滑 - 下一页
                     this.nextPage();
-                } else if (direction === 'right') {
+                } else {
                     // 向右滑 - 上一页
                     this.prevPage();
-                } else {
-                    // 回弹到当前页
-                    this.goToPage(CONFIG.currentPage);
                 }
             } else {
                 // 回弹到当前页
