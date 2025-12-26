@@ -1,0 +1,101 @@
+/* Page 3 Styles - 桌面第3页样式 */
+
+.page-3 {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding-top: var(--spacing-xl);
+    padding-bottom: 80px;
+}
+
+/* ==================== 纪念日容器 ==================== */
+.memorial-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+    width: 100%;
+    padding: 0 var(--spacing-md);
+}
+
+/* ==================== 纪念日卡片 ==================== */
+.memorial-card {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.7) 100%);
+    backdrop-filter: var(--blur-medium);
+    -webkit-backdrop-filter: var(--blur-medium);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-xl);
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.1),
+        0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+    transition: transform var(--duration-fast), box-shadow var(--duration-fast);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.memorial-card:active {
+    transform: scale(0.98);
+    box-shadow: 
+        0 4px 16px rgba(0, 0, 0, 0.1),
+        0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+}
+
+/* 卡片头部 */
+.memorial-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.memorial-avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: var(--radius-circle);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.memorial-relation {
+    font-size: var(--font-size-medium);
+    color: var(--color-text-secondary);
+    font-weight: 500;
+    letter-spacing: 0.5px;
+}
+
+/* 天数显示 */
+.memorial-days {
+    text-align: center;
+    padding: var(--spacing-lg) 0;
+    background: linear-gradient(180deg, rgba(102, 126, 234, 0.05) 0%, transparent 100%);
+    border-radius: var(--radius-md);
+}
+
+.days-number {
+    font-size: 64px;
+    font-weight: 200;
+    color: var(--color-text-primary);
+    letter-spacing: 3px;
+    line-height: 1;
+}
+
+.days-unit {
+    font-size: var(--font-size-large);
+    color: var(--color-text-secondary);
+    margin-left: var(--spacing-xs);
+    font-weight: 300;
+}
+
+/* 开始日期 */
+.memorial-date {
+    text-align: center;
+    font-size: var(--font-size-small);
+    color: var(--color-text-secondary);
+    opacity: 0.7;
+    letter-spacing: 0.5px;
+}
