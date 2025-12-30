@@ -3,9 +3,11 @@
 .page-3 {
     display: flex;
     flex-direction: column;
-    justify-content: center;  /* ← 垂直居中 */
+    justify-content: center;
     align-items: center;
     overflow: hidden;  /* ← 禁止滚动 */
+    height: 100%;  /* ← 限制高度 */
+    padding: var(--spacing-lg);
 }
 
 /* ==================== 纪念日容器 ==================== */
@@ -15,7 +17,8 @@
     gap: var(--spacing-lg);
     width: 100%;
     max-width: 100%;
-    padding: 0 var(--spacing-lg);
+    max-height: 100%;  /* ← 限制最大高度 */
+    overflow: hidden;  /* ← 防止溢出 */
 }
 
 /* ==================== 纪念日卡片 ==================== */
@@ -33,6 +36,7 @@
     gap: var(--spacing-lg);
     transition: transform var(--duration-fast), box-shadow var(--duration-fast);
     border: 1px solid rgba(255, 255, 255, 0.3);
+    flex-shrink: 0;  /* ← 防止压缩 */
 }
 
 .memorial-card:active {

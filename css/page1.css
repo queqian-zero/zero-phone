@@ -14,11 +14,11 @@
 }
 
 .page1-time {
-    font-size: 56px;
+    font-size: 80px;  /* ← 从56px改成80px */
     font-weight: 200;
     color: var(--color-text-primary);
-    letter-spacing: 2px;
-    margin-bottom: var(--spacing-xs);
+    letter-spacing: 3px;  /* ← 稍微加大字间距 */
+    margin-bottom: var(--spacing-sm);
 }
 
 .page1-date {
