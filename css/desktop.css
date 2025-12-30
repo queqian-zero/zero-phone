@@ -22,13 +22,14 @@
 
 /* 各个桌面页面 */
 .desktop-page {
-    width: 33.333%; /* 每个页面占1/3 */
+    width: 33.333%;
     height: 100%;
     flex-shrink: 0;
     padding: var(--spacing-lg);
-    padding-bottom: 60px; /* 为翻页指示点留空间 */
-    overflow-y: auto;
-    overflow-x: hidden;
+    padding-bottom: 60px;
+    overflow: hidden;  /* ← 改成 hidden，禁止滚动 */
+    display: flex;
+    flex-direction: column;
 }
 
 /* 滚动条样式 */

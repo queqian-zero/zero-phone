@@ -3,8 +3,9 @@
 .page-2 {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-md);
-    padding-top: var(--spacing-lg);
+    gap: var(--spacing-lg);
+    justify-content: flex-start;
+    padding-top: var(--spacing-xl);
 }
 
 /* ==================== 顶部自定义区域 ==================== */
@@ -12,7 +13,7 @@
     display: flex;
     flex-direction: column;
     gap: var(--spacing-md);
-    margin-bottom: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
 }
 
 .custom-row {
@@ -84,7 +85,7 @@
 .wave-divider {
     width: 100%;
     height: 20px;
-    margin: var(--spacing-md) 0;
+    margin: var(--spacing-sm) 0 var(--spacing-lg) 0;
 }
 
 .wave-divider svg {
@@ -96,17 +97,15 @@
 .page2-content {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto auto auto;
+    grid-template-rows: 150px 150px 80px;  /* ← 固定行高 */
     gap: var(--spacing-md);
-    flex: 1;
-    margin-top: var(--spacing-lg);
+    padding: 0 var(--spacing-sm);
 }
 
 /* 左侧大图片组件 */
 .widget-image.large {
     grid-column: 1;
-    grid-row: 1 / 3;
-    aspect-ratio: 1;
+    grid-row: 1 / 3;  /* 占前两行 */
     background: rgba(255, 255, 255, 0.6);
     backdrop-filter: var(--blur-light);
     -webkit-backdrop-filter: var(--blur-light);
@@ -132,11 +131,10 @@
     gap: var(--spacing-sm);
 }
 
-/* 右下角图片组件 */
+/* 右侧图片组件 */
 .widget-image.small {
     grid-column: 2;
     grid-row: 2;
-    aspect-ratio: 1;
     background: rgba(255, 255, 255, 0.6);
     backdrop-filter: var(--blur-light);
     -webkit-backdrop-filter: var(--blur-light);
@@ -152,11 +150,12 @@
     font-size: 32px;
 }
 
-/* 左下角APP（音乐、短信） */
+/* 左下角APP（音乐、短信）- 放在第3行 */
 .app-grid-2-bottom {
     grid-column: 1;
-    grid-row: 3;
+    grid-row: 3;  /* ← 第3行，在左侧大图下面 */
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: var(--spacing-sm);
+    align-items: start;
 }
