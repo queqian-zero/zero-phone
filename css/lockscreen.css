@@ -8,8 +8,7 @@
     height: 100%;
     z-index: 100;
     transition: transform var(--duration-normal) cubic-bezier(0.4, 0, 0.2, 1);
-    
-    /* 不要在这里设置背景图！ */
+    overflow: hidden;
 }
 
 /* 锁屏内容 */
@@ -23,16 +22,14 @@
     justify-content: center;
     padding: var(--spacing-xl);
     
-    /* 背景图片移到这里 */
+    /* 背景图片 */
     background-image: url('../assets/images/lockscreen-bg.png');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    
-    /* 半透明遮罩（可选，让文字更清晰） */
 }
 
-/* 添加一个伪元素做遮罩 */
+/* 半透明遮罩 */
 .lockscreen-content::before {
     content: '';
     position: absolute;
@@ -46,7 +43,7 @@
         rgba(0, 0, 0, 0.1) 50%,
         rgba(0, 0, 0, 0.3) 100%
     );
-    z-index: -1;  /* ← 遮罩在内容后面 */
+    z-index: 0;
 }
 
 /* 锁屏时间 */
@@ -58,7 +55,7 @@
     text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     margin-bottom: var(--spacing-sm);
     position: relative;
-    z-index: 1;  /* ← 确保文字在最上层 */
+    z-index: 1;
 }
 
 /* 锁屏日期 */
@@ -67,13 +64,13 @@
     color: rgba(255, 255, 255, 0.9);
     font-weight: 400;
     text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
-    margin-bottom: var(--spacing-xxl);
+    margin-bottom: 80px;
     position: relative;
-    z-index: 1;  /* ← 确保文字在最上层 */
+    z-index: 1;
 }
 
-/* 上滑提示 */
-.lockscreen-hint {
+/* 解锁按钮 */
+.unlock-button {
     position: absolute;
     bottom: 80px;
     left: 50%;
@@ -82,26 +79,52 @@
     flex-direction: column;
     align-items: center;
     gap: var(--spacing-xs);
-    color: rgba(255, 255, 255, 0.8);
-    z-index: 1;  /* ← 确保提示在最上层 */
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    padding: 16px 32px;
+    cursor: pointer;
+    transition: all var(--duration-fast) ease;
+    z-index: 1;
 }
 
-.swipe-icon {
+.unlock-button:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
+    transform: translateX(-50%) translateY(-2px);
+}
+
+.unlock-button:active {
+    transform: translateX(-50%) scale(0.95);
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.unlock-icon {
     font-size: 32px;
     animation: bounce 2s ease-in-out infinite;
 }
 
-.swipe-text {
+.unlock-text {
     font-size: var(--font-size-small);
+    color: rgba(255, 255, 255, 0.9);
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-}
-
-/* 滑动状态 */
-.lockscreen.swiping {
-    transition: none;
+    font-weight: 500;
 }
 
 /* 解锁状态 */
 .lockscreen.unlocked {
     transform: translateY(-100%);
+    pointer-events: none;
+}
+
+/* 弹跳动画 */
+@keyframes bounce {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
 }
