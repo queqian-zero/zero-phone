@@ -17,6 +17,8 @@
     <link rel="stylesheet" href="css/page2.css">
     <link rel="stylesheet" href="css/page3.css">
     <link rel="stylesheet" href="css/animations.css">
+    <link rel="stylesheet" href="css/animations.css">
+    <script src="js/language-toggle.js"></script>  <!-- 新增这一行 -->
 </head>
 <body>
     
@@ -61,7 +63,7 @@
     <!-- 顶部时间日期 -->
     <div class="page1-header">
         <div class="page1-time" id="page1Time">10:30</div>
-        <div class="page1-date" id="page1Date">12月24日 星期二</div>
+        <div class="page1-date" id="page1Date">12月31日 星期三</div>
     </div>
 
     <!-- 内容区域 -->
@@ -76,21 +78,44 @@
 
         <!-- APP图标组（右侧） -->
         <div class="app-grid-1">
-            <div class="app-icon">
-                <div class="icon-img">🎨</div>
-                <div class="icon-label">主题</div>
+            <!-- 主题 -->
+            <div class="app-icon" data-en="Shell" data-zh="壳">
+                <div class="icon-img">
+                    <img src="assets/icons/1767251756996.png" alt="主题">
+                </div>
+                <div class="icon-label">
+                    <span class="label-text">Shell</span>
+                </div>
             </div>
-            <div class="app-icon">
-                <div class="icon-img">📖</div>
-                <div class="icon-label">世界书</div>
+            
+            <!-- 世界书 -->
+            <div class="app-icon" data-en="Epoch" data-zh="纪元">
+                <div class="icon-img">
+                    <img src="assets/icons/1767252648051.png" alt="世界书">
+                </div>
+                <div class="icon-label">
+                    <span class="label-text">Epoch</span>
+                </div>
             </div>
-            <div class="app-icon">
-                <div class="icon-img">☁️</div>
-                <div class="icon-label">天气</div>
+            
+            <!-- 天气 -->
+            <div class="app-icon" data-en="Atmosphere" data-zh="气象">
+                <div class="icon-img">
+                    <img src="assets/icons/1767251624535.png" alt="天气">
+                </div>
+                <div class="icon-label">
+                    <span class="label-text">Atmosphere</span>
+                </div>
             </div>
-            <div class="app-icon">
-                <div class="icon-img">⚙️</div>
-                <div class="icon-label">设置</div>
+            
+            <!-- 设置 -->
+            <div class="app-icon" data-en="Core" data-zh="中枢">
+                <div class="icon-img">
+                    <img src="assets/icons/1767252711494.png" alt="设置">
+                </div>
+                <div class="icon-label">
+                    <span class="label-text">Core</span>
+                </div>
             </div>
         </div>
     </div>
@@ -130,36 +155,58 @@
 <div class="page2-content">
     <!-- 左侧竖长图片组件 -->
     <div class="widget-image large">
-        <div class="widget-placeholder">🌆</div>
+        <!-- 背景图在CSS里设置 -->
     </div>
 
     <!-- 右上角APP（聊天、记事录） -->
     <div class="app-grid-2">
-        <div class="app-icon">
-            <div class="icon-img">💬</div>
-            <div class="icon-label">聊天</div>
+        <!-- 聊天 -->
+        <div class="app-icon" data-en="Node" data-zh="节点">
+            <div class="icon-img">
+                <img src="assets/icons/1767251668634.png" alt="聊天">
+            </div>
+            <div class="icon-label">
+                <span class="label-text">Node</span>
+            </div>
         </div>
-        <div class="app-icon">
-            <div class="icon-img">📝</div>
-            <div class="icon-label">记事录</div>
+        
+        <!-- 记事录 -->
+        <div class="app-icon" data-en="Trace" data-zh="刻痕">
+            <div class="icon-img">
+                <img src="assets/icons/1767253673116.png" alt="记事录">
+            </div>
+            <div class="icon-label">
+                <span class="label-text">Trace</span>
+            </div>
         </div>
     </div>
 
     <!-- 右侧APP（音乐、短信）- 在聊天记事录下面 -->
     <div class="app-grid-2-bottom">
-        <div class="app-icon">
-            <div class="icon-img">🎵</div>
-            <div class="icon-label">音乐</div>
+        <!-- 音乐 -->
+        <div class="app-icon" data-en="Frequency" data-zh="频率">
+            <div class="icon-img">
+                <img src="assets/icons/1767250659853.png" alt="音乐">
+            </div>
+            <div class="icon-label">
+                <span class="label-text">Frequency</span>
+            </div>
         </div>
-        <div class="app-icon">
-            <div class="icon-img">📧</div>
-            <div class="icon-label">短信</div>
+        
+        <!-- 短信 -->
+        <div class="app-icon" data-en="Echo" data-zh="回声">
+            <div class="icon-img">
+                <img src="assets/icons/1767250730396.png" alt="短信">
+            </div>
+            <div class="icon-label">
+                <span class="label-text">Echo</span>
+            </div>
         </div>
     </div>
 
     <!-- 底部横向图片组件 -->
     <div class="widget-image small">
-        <div class="widget-placeholder">🎑</div>
+        <!-- 背景图在CSS里设置 -->
     </div>
 </div>
 </div>
