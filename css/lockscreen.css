@@ -9,11 +9,7 @@
     z-index: 100;
     transition: transform var(--duration-normal) cubic-bezier(0.4, 0, 0.2, 1);
     
-    /* 背景图片 */
-    background-image: url('../assets/images/lockscreen-bg.png');
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
+    /* 不要在这里设置背景图！ */
 }
 
 /* 锁屏内容 */
@@ -27,13 +23,30 @@
     justify-content: center;
     padding: var(--spacing-xl);
     
+    /* 背景图片移到这里 */
+    background-image: url('../assets/images/lockscreen-bg.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    
     /* 半透明遮罩（可选，让文字更清晰） */
+}
+
+/* 添加一个伪元素做遮罩 */
+.lockscreen-content::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     background: linear-gradient(
         180deg,
         rgba(0, 0, 0, 0.3) 0%,
         rgba(0, 0, 0, 0.1) 50%,
         rgba(0, 0, 0, 0.3) 100%
     );
+    z-index: -1;  /* ← 遮罩在内容后面 */
 }
 
 /* 锁屏时间 */
@@ -44,6 +57,8 @@
     letter-spacing: 3px;
     text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     margin-bottom: var(--spacing-sm);
+    position: relative;
+    z-index: 1;  /* ← 确保文字在最上层 */
 }
 
 /* 锁屏日期 */
@@ -53,6 +68,8 @@
     font-weight: 400;
     text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
     margin-bottom: var(--spacing-xxl);
+    position: relative;
+    z-index: 1;  /* ← 确保文字在最上层 */
 }
 
 /* 上滑提示 */
@@ -66,6 +83,7 @@
     align-items: center;
     gap: var(--spacing-xs);
     color: rgba(255, 255, 255, 0.8);
+    z-index: 1;  /* ← 确保提示在最上层 */
 }
 
 .swipe-icon {
