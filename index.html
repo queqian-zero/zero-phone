@@ -17,8 +17,6 @@
     <link rel="stylesheet" href="css/page2.css">
     <link rel="stylesheet" href="css/page3.css">
     <link rel="stylesheet" href="css/animations.css">
-    <link rel="stylesheet" href="css/animations.css">
-    <script src="js/language-toggle.js"></script>  <!-- 新增这一行 -->
 </head>
 <body>
     
@@ -44,11 +42,11 @@
             <div class="lockscreen" id="lockscreen">
                 <div class="lockscreen-content">
                     <div class="lockscreen-time" id="lockscreenTime">10:30</div>
-                    <div class="lockscreen-date" id="lockscreenDate">12月24日 星期二</div>
-                    <div class="lockscreen-hint">
-                        <span class="swipe-icon">⬆️</span>
-                        <span class="swipe-text">上滑解锁</span>
-                    </div>
+                    <div class="lockscreen-date" id="lockscreenDate">12月31日 星期三</div>
+                    <button class="unlock-button" id="unlockButton">
+                        <span class="unlock-icon">⬆️</span>
+                        <span class="unlock-text">点击解锁</span>
+                    </button>
                 </div>
             </div>
 
@@ -59,67 +57,67 @@
                 <div class="desktop-pages" id="desktopPages">
                     
                     <!-- 桌面第1页 -->
-<div class="desktop-page page-1">
-    <!-- 顶部时间日期 -->
-    <div class="page1-header">
-        <div class="page1-time" id="page1Time">10:30</div>
-        <div class="page1-date" id="page1Date">12月31日 星期三</div>
-    </div>
+                    <div class="desktop-page page-1">
+                        <!-- 顶部时间日期 -->
+                        <div class="page1-header">
+                            <div class="page1-time" id="page1Time">10:30</div>
+                            <div class="page1-date" id="page1Date">12月31日 星期三</div>
+                        </div>
 
-    <!-- 内容区域 -->
-    <div class="page1-content-area">
-        <!-- 唱片播放器（左侧） -->
-        <div class="music-player">
-            <div class="music-disc">
-                <div class="disc-content">🎵</div>
-            </div>
-            <div class="music-info">音乐播放器</div>
-        </div>
+                        <!-- 内容区域 -->
+                        <div class="page1-content-area">
+                            <!-- 唱片播放器（左侧） -->
+                            <div class="music-player">
+                                <div class="music-disc">
+                                    <div class="disc-content">🎵</div>
+                                </div>
+                                <div class="music-info">音乐播放器</div>
+                            </div>
 
-        <!-- APP图标组（右侧） -->
-        <div class="app-grid-1">
-            <!-- 主题 -->
-            <div class="app-icon" data-en="Shell" data-zh="壳">
-                <div class="icon-img">
-                    <img src="assets/icons/1767251756996.png" alt="主题">
-                </div>
-                <div class="icon-label">
-                    <span class="label-text">Shell</span>
-                </div>
-            </div>
-            
-            <!-- 世界书 -->
-            <div class="app-icon" data-en="Epoch" data-zh="纪元">
-                <div class="icon-img">
-                    <img src="assets/icons/1767252648051.png" alt="世界书">
-                </div>
-                <div class="icon-label">
-                    <span class="label-text">Epoch</span>
-                </div>
-            </div>
-            
-            <!-- 天气 -->
-            <div class="app-icon" data-en="Atmosphere" data-zh="气象">
-                <div class="icon-img">
-                    <img src="assets/icons/1767251624535.png" alt="天气">
-                </div>
-                <div class="icon-label">
-                    <span class="label-text">Atmosphere</span>
-                </div>
-            </div>
-            
-            <!-- 设置 -->
-            <div class="app-icon" data-en="Core" data-zh="中枢">
-                <div class="icon-img">
-                    <img src="assets/icons/1767252711494.png" alt="设置">
-                </div>
-                <div class="icon-label">
-                    <span class="label-text">Core</span>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+                            <!-- APP图标组（右侧） -->
+                            <div class="app-grid-1">
+                                <!-- 主题 -->
+                                <div class="app-icon" data-en="Shell" data-zh="壳">
+                                    <div class="icon-img">
+                                        <img src="assets/icons/1767251756996.png" alt="主题">
+                                    </div>
+                                    <div class="icon-label">
+                                        <span class="label-text">Shell</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- 世界书 -->
+                                <div class="app-icon" data-en="Epoch" data-zh="纪元">
+                                    <div class="icon-img">
+                                        <img src="assets/icons/1767252648051.png" alt="世界书">
+                                    </div>
+                                    <div class="icon-label">
+                                        <span class="label-text">Epoch</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- 天气 -->
+                                <div class="app-icon" data-en="Atmosphere" data-zh="气象">
+                                    <div class="icon-img">
+                                        <img src="assets/icons/1767251624535.png" alt="天气">
+                                    </div>
+                                    <div class="icon-label">
+                                        <span class="label-text">Atmosphere</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- 设置 -->
+                                <div class="app-icon" data-en="Core" data-zh="中枢">
+                                    <div class="icon-img">
+                                        <img src="assets/icons/1767252711494.png" alt="设置">
+                                    </div>
+                                    <div class="icon-label">
+                                        <span class="label-text">Core</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
                     <!-- 桌面第2页 -->
                     <div class="desktop-page page-2">
@@ -152,64 +150,60 @@
                         </div>
 
                         <!-- 主要内容区域 -->
-<div class="page2-content">
-    <!-- 左侧竖长图片组件 -->
-    <div class="widget-image large">
-        <!-- 背景图在CSS里设置 -->
-    </div>
+                        <div class="page2-content">
+                            <!-- 左侧竖长图片组件 -->
+                            <div class="widget-image large"></div>
 
-    <!-- 右上角APP（聊天、记事录） -->
-    <div class="app-grid-2">
-        <!-- 聊天 -->
-        <div class="app-icon" data-en="Node" data-zh="节点">
-            <div class="icon-img">
-                <img src="assets/icons/1767251668634.png" alt="聊天">
-            </div>
-            <div class="icon-label">
-                <span class="label-text">Node</span>
-            </div>
-        </div>
-        
-        <!-- 记事录 -->
-        <div class="app-icon" data-en="Trace" data-zh="刻痕">
-            <div class="icon-img">
-                <img src="assets/icons/1767253673116.png" alt="记事录">
-            </div>
-            <div class="icon-label">
-                <span class="label-text">Trace</span>
-            </div>
-        </div>
-    </div>
+                            <!-- 右上角APP（聊天、记事录） -->
+                            <div class="app-grid-2">
+                                <!-- 聊天 -->
+                                <div class="app-icon" data-en="Node" data-zh="节点">
+                                    <div class="icon-img">
+                                        <img src="assets/icons/1767251668634.png" alt="聊天">
+                                    </div>
+                                    <div class="icon-label">
+                                        <span class="label-text">Node</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- 记事录 -->
+                                <div class="app-icon" data-en="Trace" data-zh="刻痕">
+                                    <div class="icon-img">
+                                        <img src="assets/icons/1767253673116.png" alt="记事录">
+                                    </div>
+                                    <div class="icon-label">
+                                        <span class="label-text">Trace</span>
+                                    </div>
+                                </div>
+                            </div>
 
-    <!-- 右侧APP（音乐、短信）- 在聊天记事录下面 -->
-    <div class="app-grid-2-bottom">
-        <!-- 音乐 -->
-        <div class="app-icon" data-en="Frequency" data-zh="频率">
-            <div class="icon-img">
-                <img src="assets/icons/1767250659853.png" alt="音乐">
-            </div>
-            <div class="icon-label">
-                <span class="label-text">Frequency</span>
-            </div>
-        </div>
-        
-        <!-- 短信 -->
-        <div class="app-icon" data-en="Echo" data-zh="回声">
-            <div class="icon-img">
-                <img src="assets/icons/1767250730396.png" alt="短信">
-            </div>
-            <div class="icon-label">
-                <span class="label-text">Echo</span>
-            </div>
-        </div>
-    </div>
+                            <!-- 右侧APP（音乐、短信）- 在聊天记事录下面 -->
+                            <div class="app-grid-2-bottom">
+                                <!-- 音乐 -->
+                                <div class="app-icon" data-en="Frequency" data-zh="频率">
+                                    <div class="icon-img">
+                                        <img src="assets/icons/1767250659853.png" alt="音乐">
+                                    </div>
+                                    <div class="icon-label">
+                                        <span class="label-text">Frequency</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- 短信 -->
+                                <div class="app-icon" data-en="Echo" data-zh="回声">
+                                    <div class="icon-img">
+                                        <img src="assets/icons/1767250730396.png" alt="短信">
+                                    </div>
+                                    <div class="icon-label">
+                                        <span class="label-text">Echo</span>
+                                    </div>
+                                </div>
+                            </div>
 
-    <!-- 底部横向图片组件 -->
-    <div class="widget-image small">
-        <!-- 背景图在CSS里设置 -->
-    </div>
-</div>
-</div>
+                            <!-- 底部横向图片组件 -->
+                            <div class="widget-image small"></div>
+                        </div>
+                    </div>
 
                     <!-- 桌面第3页 -->
                     <div class="desktop-page page-3">
@@ -258,14 +252,14 @@
 
     </div>
 
-<!-- JavaScript文件引入 -->
+    <!-- JavaScript文件引入 -->
     <script src="js/config.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/statusbar.js"></script>
     <script src="js/lockscreen.js"></script>
     <script src="js/desktop.js"></script>
     <script src="js/frame-toggle.js"></script>
-    <script src="js/language-toggle.js"></script>  <!-- ← 加上这一行！ -->
+    <script src="js/language-toggle.js"></script>
     <script src="js/main.js"></script>
 
 </body>
