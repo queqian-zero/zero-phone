@@ -10,7 +10,7 @@
     transition: transform var(--duration-normal) cubic-bezier(0.4, 0, 0.2, 1);
     
     /* 背景图片 */
-    background-image: url('../assets/images/0_0(17).png');
+    background-image: url('../assets/images/lockscreen-bg.png');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
