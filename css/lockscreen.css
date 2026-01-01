@@ -6,74 +6,84 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+    z-index: 100;
+    transition: transform var(--duration-normal) cubic-bezier(0.4, 0, 0.2, 1);
+    
+    /* 背景图片 */
+    background-image: url('../assets/images/0_0(17).png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+/* 锁屏内容 */
+.lockscreen-content {
+    position: relative;
+    width: 100%;
+    height: 100%;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    z-index: 999;
-    transition: transform var(--duration-slow) cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.lockscreen.unlocked {
-    transform: translateY(-100%);
-}
-
-.lockscreen-content {
-    text-align: center;
-    color: white;
-    user-select: none;
+    padding: var(--spacing-xl);
+    
+    /* 半透明遮罩（可选，让文字更清晰） */
+    background: linear-gradient(
+        180deg,
+        rgba(0, 0, 0, 0.3) 0%,
+        rgba(0, 0, 0, 0.1) 50%,
+        rgba(0, 0, 0, 0.3) 100%
+    );
 }
 
 /* 锁屏时间 */
 .lockscreen-time {
-    font-size: var(--font-size-xxlarge);
-    font-weight: 300;
-    letter-spacing: 2px;
-    margin-bottom: var(--spacing-sm);
+    font-size: 80px;
+    font-weight: 200;
+    color: white;
+    letter-spacing: 3px;
     text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    margin-bottom: var(--spacing-sm);
 }
 
 /* 锁屏日期 */
 .lockscreen-date {
-    font-size: var(--font-size-medium);
+    font-size: var(--font-size-large);
+    color: rgba(255, 255, 255, 0.9);
     font-weight: 400;
-    opacity: 0.9;
-    margin-bottom: var(--spacing-xl);
-    letter-spacing: 1px;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+    margin-bottom: var(--spacing-xxl);
 }
 
 /* 上滑提示 */
 .lockscreen-hint {
+    position: absolute;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: var(--spacing-sm);
-    opacity: 0.7;
-    animation: swipeHint 2s infinite;
+    gap: var(--spacing-xs);
+    color: rgba(255, 255, 255, 0.8);
 }
 
 .swipe-icon {
     font-size: 32px;
+    animation: bounce 2s ease-in-out infinite;
 }
 
 .swipe-text {
     font-size: var(--font-size-small);
-    letter-spacing: 1px;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
-/* 上滑提示动画 */
-@keyframes swipeHint {
-    0%, 100% {
-        transform: translateY(0);
-        opacity: 0.7;
-    }
-    50% {
-        transform: translateY(-10px);
-        opacity: 1;
-    }
-}
-
-/* 触摸滑动时的效果 */
+/* 滑动状态 */
 .lockscreen.swiping {
-    transition: transform 0.1s linear;
+    transition: none;
+}
+
+/* 解锁状态 */
+.lockscreen.unlocked {
+    transform: translateY(-100%);
 }

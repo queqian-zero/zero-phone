@@ -108,14 +108,14 @@
 .widget-image.large {
     grid-column: 1;
     grid-row: 1 / 3;  /* 占第1-2行 */
-    background: rgba(255, 255, 255, 0.6);
+    background-image: url('../assets/images/0_1(14).png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
     backdrop-filter: var(--blur-light);
     -webkit-backdrop-filter: var(--blur-light);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-sm);
-    display: flex;
-    align-items: center;
-    justify-content: center;
     overflow: hidden;
 }
 
@@ -146,14 +146,14 @@
 .widget-image.small {
     grid-column: 1 / 3;  /* ← 横跨两列 */
     grid-row: 3;  /* ← 第3行 */
-    background: rgba(255, 255, 255, 0.6);
+    background-image: url('../assets/images/IMG_20260101_040506.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
     backdrop-filter: var(--blur-light);
     -webkit-backdrop-filter: var(--blur-light);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-sm);
-    display: flex;
-    align-items: center;
-    justify-content: center;
     overflow: hidden;
     height: 60px;  /* ← 扁一点 */
 }
