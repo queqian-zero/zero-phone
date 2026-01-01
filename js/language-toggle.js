@@ -24,7 +24,7 @@ class LanguageToggle {
         // 获取所有APP图标
         this.appIcons = document.querySelectorAll('.app-icon');
         
-        console.log(`🔍 找到 ${this.appIcons.length} 个APP图标`); // 调试信息
+        console.log(`🔍 找到 ${this.appIcons.length} 个APP图标`);
         
         this.appIcons.forEach(icon => {
             const labelText = icon.querySelector('.label-text');
@@ -34,21 +34,27 @@ class LanguageToggle {
             icon.dataset.currentLang = 'en';
             icon.dataset.isLocked = 'false';
             
-            // 点击事件（临时切换）
-            labelText.addEventListener('click', (e) => {
-                e.stopPropagation(); // 阻止冒泡
-                console.log(`🖱️ 点击: ${icon.dataset.en}`); // 调试信息
-                this.handleClick(icon);
-            });
+            // 触摸开始时间
+            let touchStartTime = 0;
             
-            // 长按事件（锁定切换）
+            // 触摸事件
             labelText.addEventListener('touchstart', (e) => {
                 e.preventDefault();
+                touchStartTime = Date.now();
                 this.startLongPress(icon);
             }, { passive: false });
             
             labelText.addEventListener('touchend', (e) => {
                 e.preventDefault();
+                
+                const touchDuration = Date.now() - touchStartTime;
+                
+                // 如果按压时间小于500ms，算作点击
+                if (touchDuration < this.longPressDelay) {
+                    console.log(`🖱️ 短按: ${icon.dataset.en}`);
+                    this.handleClick(icon);
+                }
+                
                 this.endLongPress(icon);
             }, { passive: false });
             
@@ -56,9 +62,9 @@ class LanguageToggle {
                 this.cancelLongPress();
             });
             
-            // PC端长按支持
+            // PC端事件
             labelText.addEventListener('mousedown', (e) => {
-                if (e.button === 0) { // 左键
+                if (e.button === 0) {
                     this.startLongPress(icon);
                 }
             });
@@ -70,6 +76,12 @@ class LanguageToggle {
             labelText.addEventListener('mouseleave', () => {
                 this.cancelLongPress();
             });
+            
+            labelText.addEventListener('click', (e) => {
+                e.stopPropagation();
+                console.log(`🖱️ PC点击: ${icon.dataset.en}`);
+                this.handleClick(icon);
+            });
         });
         
         console.log('✓ Language toggle initialized');
@@ -77,14 +89,14 @@ class LanguageToggle {
     
     // 处理点击（临时切换）
     handleClick(icon) {
-        console.log(`📝 handleClick: ${icon.dataset.en}, locked: ${icon.dataset.isLocked}`); // 调试
+        console.log(`📝 handleClick: ${icon.dataset.en}, locked: ${icon.dataset.isLocked}`);
         
         // 如果已经锁定，点击切换锁定状态的语言
         if (icon.dataset.isLocked === 'true') {
-            this.toggleLanguage(icon, true); // 锁定状态下切换
+            this.toggleLanguage(icon, true);
         } else {
             // 临时切换到中文，3秒后恢复
-            this.showChinese(icon, true); // true = 自动恢复
+            this.showChinese(icon, true);
         }
     }
     
@@ -145,7 +157,7 @@ class LanguageToggle {
     showChinese(icon, autoRevert = false) {
         const currentLang = icon.dataset.currentLang;
         
-        console.log(`🇨🇳 showChinese: ${icon.dataset.en}, current: ${currentLang}`); // 调试
+        console.log(`🇨🇳 showChinese: ${icon.dataset.en}, current: ${currentLang}`);
         
         // 如果已经是中文，不做操作
         if (currentLang === 'zh') return;
@@ -204,7 +216,7 @@ class LanguageToggle {
         // 如果已经是目标语言，不做操作
         if (currentLang === targetLang) return;
         
-        console.log(`🔄 切换: ${enText} (${currentLang} → ${targetLang})`); // 调试
+        console.log(`🔄 切换: ${enText} (${currentLang} → ${targetLang})`);
         
         // 淡出动画
         labelText.classList.add('fade-out');
@@ -234,5 +246,3 @@ function initLanguageToggle() {
     }
     return languageToggleInstance;
 }
-
-// 不要自动初始化！由main.js统一调用！
