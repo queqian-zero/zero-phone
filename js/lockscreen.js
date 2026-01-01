@@ -10,6 +10,13 @@ class Lockscreen {
         this.touchCurrentY = 0;
         this.isSwiping = false;
         
+        // 测试代码
+        if (this.lockscreenElement) {
+            this.lockscreenElement.onclick = () => alert('锁屏可以点击！');
+        } else {
+            alert('找不到锁屏元素！');
+        }
+        
         this.init();
     }
     
