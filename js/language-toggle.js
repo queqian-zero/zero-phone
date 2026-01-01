@@ -24,6 +24,8 @@ class LanguageToggle {
         // 获取所有APP图标
         this.appIcons = document.querySelectorAll('.app-icon');
         
+        console.log(`🔍 找到 ${this.appIcons.length} 个APP图标`); // 调试信息
+        
         this.appIcons.forEach(icon => {
             const labelText = icon.querySelector('.label-text');
             if (!labelText) return;
@@ -35,6 +37,7 @@ class LanguageToggle {
             // 点击事件（临时切换）
             labelText.addEventListener('click', (e) => {
                 e.stopPropagation(); // 阻止冒泡
+                console.log(`🖱️ 点击: ${icon.dataset.en}`); // 调试信息
                 this.handleClick(icon);
             });
             
@@ -42,12 +45,12 @@ class LanguageToggle {
             labelText.addEventListener('touchstart', (e) => {
                 e.preventDefault();
                 this.startLongPress(icon);
-            });
+            }, { passive: false });
             
             labelText.addEventListener('touchend', (e) => {
                 e.preventDefault();
                 this.endLongPress(icon);
-            });
+            }, { passive: false });
             
             labelText.addEventListener('touchcancel', () => {
                 this.cancelLongPress();
@@ -74,6 +77,8 @@ class LanguageToggle {
     
     // 处理点击（临时切换）
     handleClick(icon) {
+        console.log(`📝 handleClick: ${icon.dataset.en}, locked: ${icon.dataset.isLocked}`); // 调试
+        
         // 如果已经锁定，点击切换锁定状态的语言
         if (icon.dataset.isLocked === 'true') {
             this.toggleLanguage(icon, true); // 锁定状态下切换
@@ -140,6 +145,8 @@ class LanguageToggle {
     showChinese(icon, autoRevert = false) {
         const currentLang = icon.dataset.currentLang;
         
+        console.log(`🇨🇳 showChinese: ${icon.dataset.en}, current: ${currentLang}`); // 调试
+        
         // 如果已经是中文，不做操作
         if (currentLang === 'zh') return;
         
@@ -197,6 +204,8 @@ class LanguageToggle {
         // 如果已经是目标语言，不做操作
         if (currentLang === targetLang) return;
         
+        console.log(`🔄 切换: ${enText} (${currentLang} → ${targetLang})`); // 调试
+        
         // 淡出动画
         labelText.classList.add('fade-out');
         
@@ -213,8 +222,6 @@ class LanguageToggle {
                 labelText.classList.remove('fade-in');
             }, 200);
         }, 200);
-        
-        console.log(`🔄 ${enText}: ${currentLang} → ${targetLang}`);
     }
 }
 
@@ -228,5 +235,4 @@ function initLanguageToggle() {
     return languageToggleInstance;
 }
 
-// 自动初始化
-initLanguageToggle();
+// 不要自动初始化！由main.js统一调用！
