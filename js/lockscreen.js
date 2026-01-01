@@ -50,15 +50,17 @@ class Lockscreen {
         this.lockscreenElement.addEventListener('touchstart', (e) => {
             if (!CONFIG.isLocked) return;
             
+            e.preventDefault();
             this.touchStartY = e.touches[0].clientY;
             this.isSwiping = true;
             addClass(this.lockscreenElement, 'swiping');
-        });
+        }, { passive: false });
         
         // 触摸移动
         this.lockscreenElement.addEventListener('touchmove', (e) => {
             if (!CONFIG.isLocked || !this.isSwiping) return;
             
+            e.preventDefault();
             this.touchCurrentY = e.touches[0].clientY;
             const deltaY = this.touchCurrentY - this.touchStartY;
             
@@ -67,12 +69,13 @@ class Lockscreen {
                 const translateY = Math.max(deltaY, -this.lockscreenElement.offsetHeight);
                 this.lockscreenElement.style.transform = `translateY(${translateY}px)`;
             }
-        });
+        }, { passive: false });
         
-// 触摸结束
+        // 触摸结束
         this.lockscreenElement.addEventListener('touchend', (e) => {
             if (!CONFIG.isLocked || !this.isSwiping) return;
             
+            e.preventDefault();
             const deltaY = this.touchCurrentY - this.touchStartY;
             
             removeClass(this.lockscreenElement, 'swiping');
@@ -89,8 +92,9 @@ class Lockscreen {
                     this.lockscreenElement.style.transition = '';
                 }, 300);
             }
-        });
+        }, { passive: false });
     }
+    
     // 解锁
     unlock() {
         if (!CONFIG.isLocked) return;
