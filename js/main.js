@@ -60,6 +60,10 @@ class App {
             this.frameToggle = initFrameToggle();
             console.log('✓ Frame Toggle initialized');
             
+            // 初始化语言切换  ← 新增
+            this.languageToggle = initLanguageToggle();  ← 新增
+            console.log('✓ Language Toggle initialized');  ← 新增
+           
         } catch (error) {
             console.error('❌ Module initialization failed:', error);
         }
