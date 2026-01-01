@@ -6,6 +6,7 @@ class App {
         this.lockscreen = null;
         this.desktop = null;
         this.frameToggle = null;
+        this.languageToggle = null;
         
         this.init();
     }
@@ -60,10 +61,10 @@ class App {
             this.frameToggle = initFrameToggle();
             console.log('✓ Frame Toggle initialized');
             
-            // 初始化语言切换  ← 新增
-            this.languageToggle = initLanguageToggle();  ← 新增
-            console.log('✓ Language Toggle initialized');  ← 新增
-           
+            // 初始化语言切换
+            this.languageToggle = initLanguageToggle();
+            console.log('✓ Language Toggle initialized');
+            
         } catch (error) {
             console.error('❌ Module initialization failed:', error);
         }
@@ -72,16 +73,17 @@ class App {
     // 显示欢迎信息
     showWelcome() {
         console.log('%c━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'color: #667eea');
-        console.log('%c    🤖 AI手机系统 v1.0.0', 'color: #667eea; font-size: 16px; font-weight: bold;');
+        console.log('%c    🤖 AI手机系统 v2.0.0', 'color: #667eea; font-size: 16px; font-weight: bold;');
         console.log('%c    开发者：〇&Claude', 'color: #764ba2; font-size: 12px;');
-        console.log('%c    框架版本 - 所有功能占位', 'color: #999; font-size: 11px;');
+        console.log('%c    点击解锁版 + 美化 + 语言切换', 'color: #999; font-size: 11px;');
         console.log('%c━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'color: #667eea');
         console.log('');
-        console.log('💡 提示：');
-        console.log('  • 上滑解锁锁屏');
+        console.log('💡 功能：');
+        console.log('  • 点击 ⬆️ 按钮解锁');
         console.log('  • 左右滑动切换页面');
         console.log('  • 点击状态栏右上角切换边框');
-        console.log('  • 当前所有APP为占位，点击无功能');
+        console.log('  • 点击APP名字显示中文（3秒后恢复）');
+        console.log('  • 长按APP名字锁定语言');
         console.log('');
     }
 }
