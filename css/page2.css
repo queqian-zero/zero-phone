@@ -13,73 +13,90 @@
 .page2-custom-header {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-xl);  /* ← 加大间距，从md改成xl */
+    gap: var(--spacing-xl);
     margin-bottom: var(--spacing-lg);
+    padding: 0 var(--spacing-md);
 }
 
 .custom-row {
     display: flex;
     align-items: center;
-    gap: var(--spacing-lg);
-    height: 70px;  /* ← 加高 */
-}
-
-/* 第1行：左边横杠 + 右边圆圈 */
-.row-1 {
     justify-content: space-between;
+    gap: var(--spacing-md);
+    height: 80px;
 }
 
-.row-1 .custom-bar {
+/* 文字+横杠容器 */
+.text-with-line {
     flex: 1;
-}
-
-.row-1 .custom-circle {
-    flex-shrink: 0;
-}
-
-/* 第2行：左边圆圈 + 右边横杠 */
-.row-2 {
-    justify-content: space-between;
-}
-
-.row-2 .custom-circle {
-    flex-shrink: 0;
-}
-
-.row-2 .custom-bar {
-    flex: 1;
-}
-
-/* 圆圈样式 */
-.custom-circle {
-    width: 70px;  /* ← 加大 */
-    height: 70px;
-    border-radius: var(--radius-circle);
-    background: rgba(255, 255, 255, 0.6);
-    backdrop-filter: var(--blur-light);
-    -webkit-backdrop-filter: var(--blur-light);
-    border: 2px solid rgba(255, 255, 255, 0.8);
-    box-shadow: var(--shadow-sm);
     display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
+    flex-direction: column;
+    gap: 4px;
 }
 
-.circle-content {
-    font-size: 36px;
+/* 第一行：文字在左 */
+.row-1 .text-with-line {
+    align-items: flex-start;
+}
+
+/* 第二行：文字在右 */
+.row-2 .text-with-line {
+    align-items: flex-end;
+}
+
+/* 文字样式 */
+.custom-text {
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--color-text-primary);
+    letter-spacing: 1px;
+    white-space: nowrap;
 }
 
 /* 横杠样式 */
 .custom-bar {
     height: 2px;
+    width: 120px;
     background: linear-gradient(
         90deg,
-        transparent 0%,
-        rgba(0, 0, 0, 0.15) 20%,
-        rgba(0, 0, 0, 0.15) 80%,
-        transparent 100%
+        rgba(0, 0, 0, 0.3) 0%,
+        rgba(0, 0, 0, 0.15) 50%,
+        rgba(0, 0, 0, 0.3) 100%
     );
+}
+
+/* 圆圈样式 */
+.custom-circle {
+    width: 80px;
+    height: 80px;
+    border-radius: var(--radius-circle);
+    background-color: rgba(255, 255, 255, 0.6);
+    backdrop-filter: var(--blur-light);
+    -webkit-backdrop-filter: var(--blur-light);
+    border: 2px solid rgba(255, 255, 255, 0.8);
+    box-shadow: var(--shadow-sm);
+    flex-shrink: 0;
+    overflow: hidden;
+    
+    /* 图片显示 */
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+/* 左圆圈 - 黑猫 */
+.circle-left {
+    background-image: url('../assets/images/page2-circle-left.png');
+}
+
+/* 右圆圈 - 棕白猫 */
+.circle-right {
+    background-image: url('../assets/images/page2-circle-right.png');
+}
+
+/* 去掉原来的 .circle-content */
+.circle-content {
+    display: none;
 }
 
 /* ==================== 波浪分割线 ==================== */
