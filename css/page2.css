@@ -47,7 +47,7 @@
 
 /* 文字样式 */
 .custom-text {
-    font-size: 22px;
+    font-size: 34px;
     font-weight: 500;
     color: var(--color-text-primary);
     letter-spacing: 1px;
@@ -87,7 +87,7 @@
 /* CSS浅色装饰线（上层） */
 .bar-css {
     position: absolute;
-    top: 2px;
+    top: 6px;
     height: 1.5px;
     background: linear-gradient(
         90deg,
@@ -98,16 +98,16 @@
     z-index: 2;  /* 中间层 */
 }
 
-/* 第一行：CSS线右对齐，稍短 */
+/* 第一行：CSS线右对齐，很长 */
 .row-1 .bar-css {
     right: 0;
-    width: 70%;
+    width: 90%;
 }
 
-/* 第二行：CSS线左对齐，稍短 */
+/* 第二行：CSS线左对齐，很长 */
 .row-2 .bar-css {
     left: 0;
-    width: 70%;
+    width: 90%;
 }
 
 /* 圆圈样式 */
