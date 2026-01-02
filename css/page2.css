@@ -22,7 +22,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--spacing-md);
+    gap: var(--spacing-sm);
     height: 80px;
 }
 
@@ -31,44 +31,83 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 6px;
+    position: relative;
 }
 
-/* 第一行：文字在左 */
+/* 第一行：文字右对齐 */
 .row-1 .text-with-line {
-    align-items: flex-start;
-}
-
-/* 第二行：文字在右 */
-.row-2 .text-with-line {
     align-items: flex-end;
 }
 
-/* 文字样式 */
+/* 第二行：文字左对齐 */
+.row-2 .text-with-line {
+    align-items: flex-start;
+}
+
+/* 文字样式 - 加大 */
 .custom-text {
-    font-size: 18px;
+    font-size: 22px;
     font-weight: 500;
     color: var(--color-text-primary);
     letter-spacing: 1px;
     white-space: nowrap;
+    z-index: 2;
 }
 
-/* 横杠样式 */
+/* 横杠容器 */
 .custom-bar {
-    height: 2px;
-    width: 120px;
+    position: relative;
+    width: 100%;
+    height: 3px;
+}
+
+/* 浅色底层横杠（长） */
+.custom-bar::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 1.5px;
     background: linear-gradient(
         90deg,
-        rgba(0, 0, 0, 0.3) 0%,
-        rgba(0, 0, 0, 0.15) 50%,
-        rgba(0, 0, 0, 0.3) 100%
+        rgba(0, 0, 0, 0.1) 0%,
+        rgba(0, 0, 0, 0.08) 50%,
+        rgba(0, 0, 0, 0.1) 100%
     );
+}
+
+/* 深色上层横杠（短） */
+.custom-bar::after {
+    content: '';
+    position: absolute;
+    top: -1px;
+    height: 2.5px;
+    background: linear-gradient(
+        90deg,
+        rgba(0, 0, 0, 0.4) 0%,
+        rgba(0, 0, 0, 0.25) 50%,
+        rgba(0, 0, 0, 0.4) 100%
+    );
+}
+
+/* 第一行：深色线右对齐，占60% */
+.row-1 .custom-bar::after {
+    right: 0;
+    width: 60%;
+}
+
+/* 第二行：深色线左对齐，占60% */
+.row-2 .custom-bar::after {
+    left: 0;
+    width: 60%;
 }
 
 /* 圆圈样式 */
 .custom-circle {
-    width: 80px;
-    height: 80px;
+    width: 85px;
+    height: 85px;
     border-radius: var(--radius-circle);
     background-color: rgba(255, 255, 255, 0.6);
     backdrop-filter: var(--blur-light);
@@ -94,7 +133,7 @@
     background-image: url('../assets/images/page2-circle-right.png');
 }
 
-/* 去掉原来的 .circle-content */
+/* 隐藏旧的emoji */
 .circle-content {
     display: none;
 }
