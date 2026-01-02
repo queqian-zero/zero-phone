@@ -87,7 +87,7 @@
 /* CSS浅色装饰线（上层） */
 .bar-css {
     position: absolute;
-    top: 6px;
+    top: -5px;
     height: 1.5px;
     background: linear-gradient(
         90deg,
