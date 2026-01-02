@@ -47,7 +47,7 @@
 
 /* 文字样式 */
 .custom-text {
-    font-size: 37px;
+    font-size: 35px;
     font-weight: 500;
     color: var(--color-text-primary);
     letter-spacing: 1px;
