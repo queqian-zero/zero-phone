@@ -65,4 +65,5 @@
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
+    background-attachment: fixed; /* ← 加这一行！背景固定！ */
 }
