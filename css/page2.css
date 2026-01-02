@@ -63,15 +63,15 @@
     height: 6px;
 }
 
-/* HTML黑色横杠（底层） */
+/* HTML黑色横杠（底层） - 上移 */
 .bar-html {
     position: absolute;
-    top: 0;
+    top: -5px;  /* ← 改成-5px，上移到原来灰线的位置 */
     font-size: 14px;
     line-height: 1;
     color: rgba(0, 0, 0, 0.6);
     letter-spacing: -1px;
-    z-index: 1;  /* 最底层 */
+    z-index: 1;
 }
 
 /* 第一行：HTML横杠右对齐 */
@@ -84,18 +84,19 @@
     left: 0;
 }
 
-/* CSS浅色装饰线（上层） */
+/* CSS浅色装饰线（上层） - 跟着上移，保持间距 */
 .bar-css {
     position: absolute;
-    top: -5px;
+    top: -10px;  /* ← 改成-10px（原来-5px，现在再往上5px，保持间距） */
     height: 1.5px;
     background: linear-gradient(
         90deg,
-        rgba(0, 0, 0, 0.15) 0%,
-        rgba(0, 0, 0, 0.08) 50%,
-        rgba(0, 0, 0, 0.15) 100%
+        transparent 0%,              /* ← 左端透明 */
+        rgba(0, 0, 0, 0.15) 15%,     /* ← 淡入 */
+        rgba(0, 0, 0, 0.15) 85%,     /* ← 实线部分 */
+        transparent 100%             /* ← 右端透明 */
     );
-    z-index: 2;  /* 中间层 */
+    z-index: 2;
 }
 
 /* 第一行：CSS线右对齐，很长 */
