@@ -4,7 +4,7 @@
     flex: 1;
     position: relative;
     overflow: hidden;
-    background: var(--color-bg);
+    background: transparent; /* ← 改成透明，让背景图透出来 */
 }
 
 /* 桌面页面包装器 */

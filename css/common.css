@@ -26,6 +26,12 @@
     overflow: hidden;
     position: relative;
     transition: all var(--duration-normal) ease;
+    
+    /* 添加背景图 */
+    background-image: url('../assets/images/desktop-bg.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
 }
 
 /* 无框模式 */
