@@ -31,29 +31,8 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: 5px;  /* ← 保持不变 */
     position: relative;
-}
-
-/* 第一行：文字右对齐 */
-.row-1 .text-with-line {
-    align-items: flex-end;
-}
-
-/* 第二行：文字左对齐 */
-.row-2 .text-with-line {
-    align-items: flex-start;
-}
-
-/* 文字样式 */
-.custom-text {
-    font-size: 34px;
-    font-weight: 500;
-    color: var(--color-text-primary);
-    letter-spacing: 1px;
-    white-space: nowrap;
-    position: relative;
-    z-index: 3;  /* 文字最上层 */
 }
 
 /* 横杠容器 */
@@ -63,10 +42,10 @@
     height: 6px;
 }
 
-/* HTML黑色横杠（底层） - 上移 */
+/* HTML黑色横杠（底层） */
 .bar-html {
     position: absolute;
-    top: -5px;  /* ← 改成-5px，上移到原来灰线的位置 */
+    top: -8px;  /* ← 改成-8px（你说-8或-9，我先试-8） */
     font-size: 14px;
     line-height: 1;
     color: rgba(0, 0, 0, 0.6);
@@ -84,37 +63,37 @@
     left: 0;
 }
 
-/* CSS浅色装饰线（上层） - 跟着上移，保持间距 */
+/* CSS浅色装饰线（上层） */
 .bar-css {
     position: absolute;
-    top: -10px;  /* ← 改成-10px（原来-5px，现在再往上5px，保持间距） */
+    top: -13px;  /* ← 跟着调整（-8 - 5 = -13，保持5px间距） */
     height: 1.5px;
     background: linear-gradient(
         90deg,
-        transparent 0%,              /* ← 左端透明 */
-        rgba(0, 0, 0, 0.15) 15%,     /* ← 淡入 */
-        rgba(0, 0, 0, 0.15) 85%,     /* ← 实线部分 */
-        transparent 100%             /* ← 右端透明 */
+        transparent 0%,
+        rgba(0, 0, 0, 0.15) 10%,     /* ← 从15%改成10%，更早淡入 */
+        rgba(0, 0, 0, 0.15) 90%,     /* ← 从85%改成90%，更晚淡出 */
+        transparent 100%
     );
     z-index: 2;
 }
 
-/* 第一行：CSS线右对齐，很长 */
+/* 第一行：CSS线右对齐，更长更潇洒 */
 .row-1 .bar-css {
     right: 0;
-    width: 90%;
+    width: 95%;  /* ← 从90%改成95%，更长！ */
 }
 
-/* 第二行：CSS线左对齐，很长 */
+/* 第二行：CSS线左对齐，更长更潇洒 */
 .row-2 .bar-css {
     left: 0;
-    width: 90%;
+    width: 95%;  /* ← 从90%改成95%，更长！ */
 }
 
-/* 圆圈样式 */
+/* 圆圈样式 - 缩小两圈 */
 .custom-circle {
-    width: 85px;
-    height: 85px;
+    width: 70px;   /* ← 从85px改成70px */
+    height: 70px;  /* ← 从85px改成70px */
     border-radius: var(--radius-circle);
     background-color: rgba(255, 255, 255, 0.6);
     backdrop-filter: var(--blur-light);
