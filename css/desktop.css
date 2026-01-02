@@ -4,7 +4,7 @@
     flex: 1;
     position: relative;
     overflow: hidden;
-    background: transparent; /* ← 改成透明，让背景图透出来 */
+    background: transparent; /* ← 保持透明 */
 }
 
 /* 桌面页面包装器 */
@@ -57,4 +57,12 @@
 
 .desktop-pages[data-page="2"] {
     transform: translateX(-66.666%);
+}
+
+/* 桌面背景图 */
+.desktop-pages {
+    background-image: url('../assets/images/desktop-bg.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
 }
