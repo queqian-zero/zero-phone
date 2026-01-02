@@ -47,7 +47,7 @@
 
 /* 文字样式 */
 .custom-text {
-    font-size: 34px;
+    font-size: 50px;
     font-weight: 500;
     color: var(--color-text-primary);
     letter-spacing: 1px;
@@ -87,7 +87,7 @@
 /* CSS浅色装饰线（上层） */
 .bar-css {
     position: absolute;
-    top: 6px;
+    top: 10px;
     height: 1.5px;
     background: linear-gradient(
         90deg,
