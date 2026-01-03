@@ -68,6 +68,10 @@ class App {
             // 初始化文字编辑器
         this.textEditor = initTextEditor();
         console.log('✓ Text Editor initialized');
+        
+        // 初始化图片编辑器
+this.imageEditor = initImageEditor();
+console.log('✓ Image Editor initialized');
             
         } catch (error) {
             console.error('❌ Module initialization failed:', error);
