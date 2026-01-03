@@ -60,13 +60,19 @@ class ImageEditor {
         };
         
         Object.keys(images).forEach(key => {
-            const img = images[key];
-            if (img.element) {
-                img.element.addEventListener('click', () => {
-                    this.showSourcePicker(img.element, key, img.default, img.name);
-                });
-            }
+    const img = images[key];
+    if (img.element) {
+        // 短按：选择图片
+        img.element.addEventListener('click', () => {
+            this.showSourcePicker(img.element, key, img.default, img.name);
         });
+        
+        // 长按：恢复默认
+        this.addLongPressListener(img.element, () => {
+            this.confirmReset(img.element, key, img.default, img.name);
+        });
+    }
+});
         
         console.log('✅ 图片元素事件已绑定');
     }
@@ -555,6 +561,77 @@ selectFromAlbum() {
             this.modal.querySelector('.modal-footer').style.display = 'flex';
         }, 300);
     }
+    
+          // 添加长按监听
+addLongPressListener(element, callback) {
+    let pressTimer = null;
+    let isLongPress = false;
+    
+    const startPress = (e) => {
+        isLongPress = false;
+        pressTimer = setTimeout(() => {
+            isLongPress = true;
+            callback();
+        }, 800); // 长按800毫秒触发
+    };
+    
+    const cancelPress = () => {
+        if (pressTimer) {
+            clearTimeout(pressTimer);
+            pressTimer = null;
+        }
+    };
+    
+    const handleClick = (e) => {
+        if (isLongPress) {
+            e.stopPropagation();
+            e.preventDefault();
+            isLongPress = false;
+        }
+    };
+    
+    element.addEventListener('touchstart', startPress);
+    element.addEventListener('touchend', cancelPress);
+    element.addEventListener('touchcancel', cancelPress);
+    element.addEventListener('touchmove', cancelPress);
+    
+    // 防止长按后触发点击
+    element.addEventListener('click', handleClick, true);
+}
+
+// 确认恢复默认图片
+confirmReset(element, key, defaultImage, name) {
+    const confirm = window.confirm(`确定要恢复默认${name}吗？`);
+    
+    if (confirm) {
+        alert('开始恢复默认图片...'); // 调试信息
+        
+        // 恢复DOM
+        element.style.backgroundImage = `url('${defaultImage}')`;
+        
+        // 清除localStorage
+        this.removeFromStorage(key);
+        
+        alert(`✅ 已恢复默认${name}！`);
+        
+        console.log(`✅ 图片已恢复: ${key} = ${defaultImage}`);
+    }
+}
+
+// 从localStorage删除
+removeFromStorage(key) {
+    try {
+        let storage = JSON.parse(localStorage.getItem('page2Data') || '{}');
+        if (storage.images && storage.images[key]) {
+            delete storage.images[key];
+            localStorage.setItem('page2Data', JSON.stringify(storage));
+            alert('已从localStorage删除！'); // 调试信息
+        }
+    } catch (e) {
+        alert('删除失败: ' + e.message);
+        console.error('❌ 删除失败:', e);
+    }
+}
 }
 
 // 初始化

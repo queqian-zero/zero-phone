@@ -52,25 +52,43 @@ class TextEditor {
     }
     
     // 绑定文字元素的点击事件
-    bindTextElements() {
-        // 第2页的两句话
-        const text1 = document.querySelector('.row-1 .custom-text');
-        const text2 = document.querySelector('.row-2 .custom-text');
+bindTextElements() {
+    // 第2页的两句话
+    const text1 = document.querySelector('.row-1 .custom-text');
+    const text2 = document.querySelector('.row-2 .custom-text');
+    
+    // 默认文字
+    const defaultTexts = {
+        'page2Text1': '突破次元遇见你',
+        'page2Text2': '跨越次元爱上你'
+    };
+    
+    if (text1) {
+        // 短按：编辑
+        text1.addEventListener('click', () => {
+            this.openModal(text1, 'page2Text1', '编辑文字');
+        });
         
-        if (text1) {
-            text1.addEventListener('click', () => {
-                this.openModal(text1, 'page2Text1', '编辑文字');
-            });
-        }
-        
-        if (text2) {
-            text2.addEventListener('click', () => {
-                this.openModal(text2, 'page2Text2', '编辑文字');
-            });
-        }
-        
-        console.log('✅ 文字元素事件已绑定');
+        // 长按：恢复默认
+        this.addLongPressListener(text1, () => {
+            this.confirmReset(text1, 'page2Text1', defaultTexts['page2Text1'], '文字');
+        });
     }
+    
+    if (text2) {
+        // 短按：编辑
+        text2.addEventListener('click', () => {
+            this.openModal(text2, 'page2Text2', '编辑文字');
+        });
+        
+        // 长按：恢复默认
+        this.addLongPressListener(text2, () => {
+            this.confirmReset(text2, 'page2Text2', defaultTexts['page2Text2'], '文字');
+        });
+    }
+    
+    console.log('✅ 文字元素事件已绑定');
+}
     
     // 打开弹窗
     openModal(textElement, storageKey, title = '编辑文字') {
@@ -161,6 +179,73 @@ class TextEditor {
             console.error('❌ 加载失败:', e);
         }
     }
+    
+          // 添加长按监听
+addLongPressListener(element, callback) {
+    let pressTimer = null;
+    let isLongPress = false;
+    
+    const startPress = (e) => {
+        isLongPress = false;
+        pressTimer = setTimeout(() => {
+            isLongPress = true;
+            callback();
+        }, 800); // 长按800毫秒触发
+    };
+    
+    const cancelPress = () => {
+        if (pressTimer) {
+            clearTimeout(pressTimer);
+            pressTimer = null;
+        }
+    };
+    
+    const handleClick = (e) => {
+        if (isLongPress) {
+            e.stopPropagation();
+            e.preventDefault();
+            isLongPress = false;
+        }
+    };
+    
+    element.addEventListener('touchstart', startPress);
+    element.addEventListener('touchend', cancelPress);
+    element.addEventListener('touchcancel', cancelPress);
+    element.addEventListener('touchmove', cancelPress);
+    
+    // 防止长按后触发点击
+    element.addEventListener('click', handleClick, true);
+}
+
+// 确认恢复默认
+confirmReset(element, key, defaultValue, type) {
+    const confirm = window.confirm(`确定要恢复默认${type}吗？\n\n默认值：${defaultValue}`);
+    
+    if (confirm) {
+        // 恢复DOM
+        element.textContent = defaultValue;
+        
+        // 清除localStorage
+        this.removeFromStorage(key);
+        
+        alert(`✅ 已恢复默认${type}！`);
+        
+        console.log(`✅ ${type}已恢复: ${key} = ${defaultValue}`);
+    }
+}
+
+// 从localStorage删除
+removeFromStorage(key) {
+    try {
+        let data = JSON.parse(localStorage.getItem('page2Data') || '{}');
+        if (data.texts && data.texts[key]) {
+            delete data.texts[key];
+            localStorage.setItem('page2Data', JSON.stringify(data));
+        }
+    } catch (e) {
+        console.error('❌ 删除失败:', e);
+    }
+}
 }
 
 // 初始化
