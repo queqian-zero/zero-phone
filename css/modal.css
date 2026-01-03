@@ -1,0 +1,142 @@
+/* Modal - 弹窗样式 */
+
+/* 弹窗容器 */
+.edit-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 9999;
+    display: none;  /* 默认隐藏 */
+    align-items: center;
+    justify-content: center;
+}
+
+/* 显示弹窗 */
+.edit-modal.show {
+    display: flex;
+}
+
+/* 背景遮罩 */
+.modal-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+/* 弹窗主体 */
+.modal-content {
+    position: relative;
+    width: 85%;
+    max-width: 320px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 20px;
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.2),
+        0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+    overflow: hidden;
+    animation: modalSlideIn 0.3s ease;
+}
+
+/* 弹窗标题 */
+.modal-header {
+    padding: 20px 20px 16px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.modal-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin: 0;
+    text-align: center;
+}
+
+/* 弹窗内容 */
+.modal-body {
+    padding: 20px;
+}
+
+.modal-input {
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 16px;
+    color: var(--color-text-primary);
+    background: rgba(0, 0, 0, 0.03);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 12px;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.modal-input:focus {
+    background: rgba(0, 0, 0, 0.05);
+    border-color: rgba(102, 126, 234, 0.5);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* 弹窗底部按钮 */
+.modal-footer {
+    display: flex;
+    gap: 12px;
+    padding: 16px 20px 20px;
+}
+
+.modal-btn {
+    flex: 1;
+    padding: 12px;
+    font-size: 16px;
+    font-weight: 500;
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-cancel {
+    background: rgba(0, 0, 0, 0.05);
+    color: var(--color-text-secondary);
+}
+
+.btn-cancel:hover {
+    background: rgba(0, 0, 0, 0.08);
+}
+
+.btn-cancel:active {
+    transform: scale(0.97);
+}
+
+.btn-confirm {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.btn-confirm:hover {
+    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+    transform: translateY(-1px);
+}
+
+.btn-confirm:active {
+    transform: scale(0.97);
+}
+
+/* 弹窗动画 */
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
