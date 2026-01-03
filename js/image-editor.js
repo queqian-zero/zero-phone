@@ -60,19 +60,25 @@ class ImageEditor {
         };
         
         Object.keys(images).forEach(key => {
-    const img = images[key];
-    if (img.element) {
-        // 短按：选择图片
-        img.element.addEventListener('click', () => {
-            this.showSourcePicker(img.element, key, img.default, img.name);
+            const img = images[key];
+            if (img.element) {
+                alert(`绑定图片: ${img.name}`); // 调试：确认绑定
+                
+                // 短按：选择图片
+                img.element.addEventListener('click', (e) => {
+                    alert(`点击了: ${img.name}`); // 调试
+                    this.showSourcePicker(img.element, key, img.default, img.name);
+                });
+                
+                // 长按：恢复默认
+                this.addLongPressListener(img.element, () => {
+                    alert(`长按了: ${img.name}`); // 调试
+                    this.confirmReset(img.element, key, img.default, img.name);
+                });
+            } else {
+                alert(`找不到图片元素: ${img.name}`); // 调试
+            }
         });
-        
-        // 长按：恢复默认
-        this.addLongPressListener(img.element, () => {
-            this.confirmReset(img.element, key, img.default, img.name);
-        });
-    }
-});
         
         console.log('✅ 图片元素事件已绑定');
     }
@@ -214,42 +220,42 @@ class ImageEditor {
     }
     
     // 从相册选择
-selectFromAlbum() {
-    // 先保存当前上下文（重要！）
-    const savedElement = this.currentImageElement;
-    const savedKey = this.currentKey;
-    const savedDefault = this.currentDefaultImage;
-    
-    // 创建隐藏的文件输入框
-    const fileInput = document.createElement('input');
-    fileInput.type = 'file';
-    fileInput.accept = 'image/*';
-    fileInput.style.display = 'none';
-    
-    fileInput.addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            // 恢复上下文（重要！）
-            this.currentImageElement = savedElement;
-            this.currentKey = savedKey;
-            this.currentDefaultImage = savedDefault;
-            
-            this.handleFileSelected(file);
-        }
-    });
-    
-    // 触发文件选择
-    document.body.appendChild(fileInput);
-    fileInput.click();
-    document.body.removeChild(fileInput);
-    
-    // 先关闭弹窗
-    this.closeModal();
-}
+    selectFromAlbum() {
+        // 先保存当前上下文（重要！）
+        const savedElement = this.currentImageElement;
+        const savedKey = this.currentKey;
+        const savedDefault = this.currentDefaultImage;
+        
+        // 创建隐藏的文件输入框
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = 'image/*';
+        fileInput.style.display = 'none';
+        
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                // 恢复上下文（重要！）
+                this.currentImageElement = savedElement;
+                this.currentKey = savedKey;
+                this.currentDefaultImage = savedDefault;
+                
+                this.handleFileSelected(file);
+            }
+        });
+        
+        // 触发文件选择
+        document.body.appendChild(fileInput);
+        fileInput.click();
+        document.body.removeChild(fileInput);
+        
+        // 先关闭弹窗
+        this.closeModal();
+    }
     
     // 处理选中的文件
     handleFileSelected(file) {
-        alert(`文件已选择: ${file.name}, 大小: ${(file.size/1024).toFixed(1)}KB`); // 调试信息
+        alert(`文件已选择: ${file.name}, 大小: ${(file.size/1024).toFixed(1)}KB`);
         
         // 验证文件类型
         if (!file.type.startsWith('image/')) {
@@ -306,12 +312,12 @@ selectFromAlbum() {
         
         // 绑定事件
         document.getElementById('optionCompress').addEventListener('click', () => {
-            alert('开始压缩...'); // 调试信息
+            alert('开始压缩...');
             this.uploadWithCompression();
         });
         
         document.getElementById('optionOriginal').addEventListener('click', () => {
-            alert('开始原图上传...'); // 调试信息
+            alert('开始原图上传...');
             this.uploadOriginal();
         });
         
@@ -332,20 +338,13 @@ selectFromAlbum() {
         }
         
         try {
-            // 显示加载提示
             this.showLoading('正在压缩...');
             
-            // 压缩图片
             this.compressImage(this.currentFile, (compressedBase64) => {
-                alert('压缩完成！准备应用...'); // 调试信息
-                
-                // 应用图片
+                alert('压缩完成！准备应用...');
                 this.applyImage(compressedBase64, 'base64');
                 this.currentFile = null;
-                
-                alert('应用完成！准备关闭...'); // 调试信息
-                
-                // 强制关闭弹窗
+                alert('应用完成！准备关闭...');
                 this.modal.classList.remove('show');
             });
         } catch (e) {
@@ -362,23 +361,15 @@ selectFromAlbum() {
         }
         
         try {
-            // 显示加载提示
             this.showLoading('正在处理...');
             
-            // 转换为base64
             const reader = new FileReader();
             reader.onload = (e) => {
-                alert('读取完成！准备应用...'); // 调试信息
-                
+                alert('读取完成！准备应用...');
                 const base64 = e.target.result;
-                
-                // 应用图片
                 this.applyImage(base64, 'base64');
                 this.currentFile = null;
-                
-                alert('应用完成！准备关闭...'); // 调试信息
-                
-                // 强制关闭弹窗
+                alert('应用完成！准备关闭...');
                 this.modal.classList.remove('show');
             };
             
@@ -404,10 +395,8 @@ selectFromAlbum() {
                 
                 img.onload = () => {
                     try {
-                        // 根据图片类型设置不同的压缩参数
                         let maxWidth, maxHeight, quality;
                         
-                        // 判断是头像还是大图
                         if (this.currentKey.includes('circle')) {
                             maxWidth = 300;
                             maxHeight = 300;
@@ -422,7 +411,6 @@ selectFromAlbum() {
                             quality = 0.80;
                         }
                         
-                        // 计算压缩后的尺寸
                         let width = img.width;
                         let height = img.height;
                         
@@ -432,9 +420,8 @@ selectFromAlbum() {
                             height = Math.round(height * ratio);
                         }
                         
-                        alert(`压缩尺寸: ${width}x${height}`); // 调试信息
+                        alert(`压缩尺寸: ${width}x${height}`);
                         
-                        // 创建Canvas压缩
                         const canvas = document.createElement('canvas');
                         canvas.width = width;
                         canvas.height = height;
@@ -442,10 +429,9 @@ selectFromAlbum() {
                         const ctx = canvas.getContext('2d');
                         ctx.drawImage(img, 0, 0, width, height);
                         
-                        // 转换为base64
                         const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
                         
-                        alert('base64生成成功！'); // 调试信息
+                        alert('base64生成成功！');
                         
                         callback(compressedBase64);
                     } catch (e) {
@@ -489,15 +475,13 @@ selectFromAlbum() {
     // 应用图片
     applyImage(imageData, type) {
         try {
-            alert(`应用图片: ${type}, 数据长度: ${imageData.length}`); // 调试信息
+            alert(`应用图片: ${type}, 数据长度: ${imageData.length}`);
             
-            // 更新DOM
             this.currentImageElement.style.backgroundImage = `url('${imageData}')`;
             
-            // 保存到 localStorage
             this.saveToStorage(this.currentKey, imageData, type);
             
-            alert('图片已应用！'); // 调试信息
+            alert('图片已应用！');
         } catch (e) {
             alert('应用图片失败: ' + e.message);
         }
@@ -515,7 +499,7 @@ selectFromAlbum() {
             };
             
             localStorage.setItem('page2Data', JSON.stringify(storage));
-            alert('已保存到localStorage！'); // 调试信息
+            alert('已保存到localStorage！');
         } catch (e) {
             alert('存储失败: ' + e.message);
         }
@@ -556,82 +540,78 @@ selectFromAlbum() {
         this.currentKey = null;
         this.currentDefaultImage = null;
         
-        // 恢复底部按钮显示
         setTimeout(() => {
             this.modal.querySelector('.modal-footer').style.display = 'flex';
         }, 300);
     }
     
-          // 添加长按监听
-addLongPressListener(element, callback) {
-    let pressTimer = null;
-    let isLongPress = false;
-    
-    const startPress = (e) => {
-        isLongPress = false;
-        pressTimer = setTimeout(() => {
-            isLongPress = true;
-            callback();
-        }, 800); // 长按800毫秒触发
-    };
-    
-    const cancelPress = () => {
-        if (pressTimer) {
-            clearTimeout(pressTimer);
-            pressTimer = null;
-        }
-    };
-    
-    const handleClick = (e) => {
-        if (isLongPress) {
-            e.stopPropagation();
-            e.preventDefault();
+    // 添加长按监听
+    addLongPressListener(element, callback) {
+        let pressTimer = null;
+        let isLongPress = false;
+        
+        const startPress = (e) => {
             isLongPress = false;
-        }
-    };
-    
-    element.addEventListener('touchstart', startPress);
-    element.addEventListener('touchend', cancelPress);
-    element.addEventListener('touchcancel', cancelPress);
-    element.addEventListener('touchmove', cancelPress);
-    
-    // 防止长按后触发点击
-    element.addEventListener('click', handleClick, true);
-}
-
-// 确认恢复默认图片
-confirmReset(element, key, defaultImage, name) {
-    const confirm = window.confirm(`确定要恢复默认${name}吗？`);
-    
-    if (confirm) {
-        alert('开始恢复默认图片...'); // 调试信息
+            pressTimer = setTimeout(() => {
+                isLongPress = true;
+                callback();
+            }, 800);
+        };
         
-        // 恢复DOM
-        element.style.backgroundImage = `url('${defaultImage}')`;
+        const cancelPress = () => {
+            if (pressTimer) {
+                clearTimeout(pressTimer);
+                pressTimer = null;
+            }
+        };
         
-        // 清除localStorage
-        this.removeFromStorage(key);
+        const handleClick = (e) => {
+            if (isLongPress) {
+                e.stopPropagation();
+                e.preventDefault();
+                isLongPress = false;
+            }
+        };
         
-        alert(`✅ 已恢复默认${name}！`);
+        element.addEventListener('touchstart', startPress);
+        element.addEventListener('touchend', cancelPress);
+        element.addEventListener('touchcancel', cancelPress);
+        element.addEventListener('touchmove', cancelPress);
         
-        console.log(`✅ 图片已恢复: ${key} = ${defaultImage}`);
+        element.addEventListener('click', handleClick, true);
     }
-}
-
-// 从localStorage删除
-removeFromStorage(key) {
-    try {
-        let storage = JSON.parse(localStorage.getItem('page2Data') || '{}');
-        if (storage.images && storage.images[key]) {
-            delete storage.images[key];
-            localStorage.setItem('page2Data', JSON.stringify(storage));
-            alert('已从localStorage删除！'); // 调试信息
+    
+    // 确认恢复默认图片
+    confirmReset(element, key, defaultImage, name) {
+        const confirm = window.confirm(`确定要恢复默认${name}吗？`);
+        
+        if (confirm) {
+            alert('开始恢复默认图片...');
+            
+            element.style.backgroundImage = `url('${defaultImage}')`;
+            
+            this.removeFromStorage(key);
+            
+            alert(`✅ 已恢复默认${name}！`);
+            
+            console.log(`✅ 图片已恢复: ${key} = ${defaultImage}`);
         }
-    } catch (e) {
-        alert('删除失败: ' + e.message);
-        console.error('❌ 删除失败:', e);
     }
-}
+    
+    // 从localStorage删除
+    removeFromStorage(key) {
+        try {
+            let storage = JSON.parse(localStorage.getItem('page2Data') || '{}');
+            if (storage.images && storage.images[key]) {
+                delete storage.images[key];
+                localStorage.setItem('page2Data', JSON.stringify(storage));
+                alert('已从localStorage删除！');
+            }
+        } catch (e) {
+            alert('删除失败: ' + e.message);
+            console.error('❌ 删除失败:', e);
+        }
+    }
 }
 
 // 初始化
@@ -640,7 +620,6 @@ let imageEditorInstance = null;
 function initImageEditor() {
     if (!imageEditorInstance) {
         imageEditorInstance = new ImageEditor();
-        // 页面加载时恢复数据
         setTimeout(() => {
             imageEditorInstance.loadFromStorage();
         }, 500);
