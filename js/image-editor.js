@@ -233,6 +233,8 @@ class ImageEditor {
     
     // 处理选中的文件
     handleFileSelected(file) {
+        alert(`文件已选择: ${file.name}, 大小: ${(file.size/1024).toFixed(1)}KB`); // 调试信息
+        
         // 验证文件类型
         if (!file.type.startsWith('image/')) {
             alert('请选择图片文件！');
@@ -288,10 +290,12 @@ class ImageEditor {
         
         // 绑定事件
         document.getElementById('optionCompress').addEventListener('click', () => {
+            alert('开始压缩...'); // 调试信息
             this.uploadWithCompression();
         });
         
         document.getElementById('optionOriginal').addEventListener('click', () => {
+            alert('开始原图上传...'); // 调试信息
             this.uploadOriginal();
         });
         
@@ -306,120 +310,148 @@ class ImageEditor {
     
     // 压缩后上传
     uploadWithCompression() {
-        if (!this.currentFile) return;
+        if (!this.currentFile) {
+            alert('没有文件！');
+            return;
+        }
         
-        // 显示加载提示
-        this.showLoading('正在压缩...');
-        
-        // 压缩图片
-        this.compressImage(this.currentFile, (compressedBase64) => {
-            // 应用图片
-            this.applyImage(compressedBase64, 'base64');
-            this.currentFile = null;
+        try {
+            // 显示加载提示
+            this.showLoading('正在压缩...');
+            
+            // 压缩图片
+            this.compressImage(this.currentFile, (compressedBase64) => {
+                alert('压缩完成！准备应用...'); // 调试信息
+                
+                // 应用图片
+                this.applyImage(compressedBase64, 'base64');
+                this.currentFile = null;
+                
+                alert('应用完成！准备关闭...'); // 调试信息
+                
+                // 强制关闭弹窗
+                this.modal.classList.remove('show');
+            });
+        } catch (e) {
+            alert('压缩失败: ' + e.message);
             this.closeModal();
-        });
+        }
     }
     
     // 原图上传
     uploadOriginal() {
-        if (!this.currentFile) return;
+        if (!this.currentFile) {
+            alert('没有文件！');
+            return;
+        }
         
-        // 显示加载提示
-        this.showLoading('正在处理...');
-        
-        // 转换为base64
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const base64 = e.target.result;
+        try {
+            // 显示加载提示
+            this.showLoading('正在处理...');
             
-            // 应用图片
-            this.applyImage(base64, 'base64');
-            this.currentFile = null;
+            // 转换为base64
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                alert('读取完成！准备应用...'); // 调试信息
+                
+                const base64 = e.target.result;
+                
+                // 应用图片
+                this.applyImage(base64, 'base64');
+                this.currentFile = null;
+                
+                alert('应用完成！准备关闭...'); // 调试信息
+                
+                // 强制关闭弹窗
+                this.modal.classList.remove('show');
+            };
+            
+            reader.onerror = (e) => {
+                alert('图片读取失败: ' + e);
+                this.closeModal();
+            };
+            
+            reader.readAsDataURL(this.currentFile);
+        } catch (e) {
+            alert('处理失败: ' + e.message);
             this.closeModal();
-        };
-        
-        reader.onerror = () => {
-            alert('图片读取失败！');
-            this.closeModal();
-        };
-        
-        reader.readAsDataURL(this.currentFile);
+        }
     }
     
     // 压缩图片
     compressImage(file, callback) {
-        const reader = new FileReader();
-        
-        reader.onload = (e) => {
-            const img = new Image();
+        try {
+            const reader = new FileReader();
             
-            img.onload = () => {
-                // 根据图片类型设置不同的压缩参数
-                let maxWidth, maxHeight, quality;
+            reader.onload = (e) => {
+                const img = new Image();
                 
-                // 判断是头像还是大图
-                if (this.currentKey.includes('circle')) {
-                    // 头像：压缩到300x300
-                    maxWidth = 300;
-                    maxHeight = 300;
-                    quality = 0.85;
-                } else if (this.currentKey === 'imageLarge') {
-                    // 竖长图：压缩到500x1000
-                    maxWidth = 500;
-                    maxHeight = 1000;
-                    quality = 0.80;
-                } else {
-                    // 横长图：压缩到1000x300
-                    maxWidth = 1000;
-                    maxHeight = 300;
-                    quality = 0.80;
-                }
+                img.onload = () => {
+                    try {
+                        // 根据图片类型设置不同的压缩参数
+                        let maxWidth, maxHeight, quality;
+                        
+                        // 判断是头像还是大图
+                        if (this.currentKey.includes('circle')) {
+                            maxWidth = 300;
+                            maxHeight = 300;
+                            quality = 0.85;
+                        } else if (this.currentKey === 'imageLarge') {
+                            maxWidth = 500;
+                            maxHeight = 1000;
+                            quality = 0.80;
+                        } else {
+                            maxWidth = 1000;
+                            maxHeight = 300;
+                            quality = 0.80;
+                        }
+                        
+                        // 计算压缩后的尺寸
+                        let width = img.width;
+                        let height = img.height;
+                        
+                        if (width > maxWidth || height > maxHeight) {
+                            const ratio = Math.min(maxWidth / width, maxHeight / height);
+                            width = Math.round(width * ratio);
+                            height = Math.round(height * ratio);
+                        }
+                        
+                        alert(`压缩尺寸: ${width}x${height}`); // 调试信息
+                        
+                        // 创建Canvas压缩
+                        const canvas = document.createElement('canvas');
+                        canvas.width = width;
+                        canvas.height = height;
+                        
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        
+                        // 转换为base64
+                        const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+                        
+                        alert('base64生成成功！'); // 调试信息
+                        
+                        callback(compressedBase64);
+                    } catch (e) {
+                        alert('Canvas处理失败: ' + e.message);
+                    }
+                };
                 
-                // 计算压缩后的尺寸
-                let width = img.width;
-                let height = img.height;
+                img.onerror = (e) => {
+                    alert('图片加载失败！');
+                };
                 
-                if (width > maxWidth || height > maxHeight) {
-                    const ratio = Math.min(maxWidth / width, maxHeight / height);
-                    width = Math.round(width * ratio);
-                    height = Math.round(height * ratio);
-                }
-                
-                // 创建Canvas压缩
-                const canvas = document.createElement('canvas');
-                canvas.width = width;
-                canvas.height = height;
-                
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, width, height);
-                
-                // 转换为base64
-                const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
-                
-                // 计算压缩率
-                const originalSize = e.target.result.length;
-                const compressedSize = compressedBase64.length;
-                const ratio = ((1 - compressedSize / originalSize) * 100).toFixed(1);
-                
-                console.log(`✅ 图片已压缩: ${ratio}% (${width}x${height})`);
-                
-                callback(compressedBase64);
+                img.src = e.target.result;
             };
             
-            img.onerror = () => {
-                alert('图片加载失败！');
-                this.closeModal();
+            reader.onerror = (e) => {
+                alert('文件读取失败！');
             };
             
-            img.src = e.target.result;
-        };
-        
-        reader.onerror = () => {
-            alert('文件读取失败！');
-            this.closeModal();
-        };
-        
-        reader.readAsDataURL(file);
+            reader.readAsDataURL(file);
+        } catch (e) {
+            alert('压缩过程失败: ' + e.message);
+        }
     }
     
     // 显示加载提示
@@ -440,13 +472,19 @@ class ImageEditor {
     
     // 应用图片
     applyImage(imageData, type) {
-        // 更新DOM
-        this.currentImageElement.style.backgroundImage = `url('${imageData}')`;
-        
-        // 保存到 localStorage
-        this.saveToStorage(this.currentKey, imageData, type);
-        
-        console.log(`✅ 图片已更新: ${this.currentKey}`);
+        try {
+            alert(`应用图片: ${type}, 数据长度: ${imageData.length}`); // 调试信息
+            
+            // 更新DOM
+            this.currentImageElement.style.backgroundImage = `url('${imageData}')`;
+            
+            // 保存到 localStorage
+            this.saveToStorage(this.currentKey, imageData, type);
+            
+            alert('图片已应用！'); // 调试信息
+        } catch (e) {
+            alert('应用图片失败: ' + e.message);
+        }
     }
     
     // 保存到 localStorage
@@ -456,14 +494,14 @@ class ImageEditor {
             if (!storage.images) storage.images = {};
             
             storage.images[key] = {
-                type: type,  // 'url' 或 'base64'
+                type: type,
                 data: data
             };
             
             localStorage.setItem('page2Data', JSON.stringify(storage));
+            alert('已保存到localStorage！'); // 调试信息
         } catch (e) {
-            console.error('❌ 保存失败:', e);
-            alert('存储空间不足！请选择压缩上传或使用URL。');
+            alert('存储失败: ' + e.message);
         }
     }
     
