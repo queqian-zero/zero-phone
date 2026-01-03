@@ -64,6 +64,10 @@ class App {
             // 初始化语言切换
             this.languageToggle = initLanguageToggle();
             console.log('✓ Language Toggle initialized');
+           
+            // 初始化文字编辑器
+        this.textEditor = initTextEditor();
+        console.log('✓ Text Editor initialized');
             
         } catch (error) {
             console.error('❌ Module initialization failed:', error);
