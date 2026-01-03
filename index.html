@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="css/reset.css">
     <link rel="stylesheet" href="css/variables.css">
     <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/modal.css">
     <link rel="stylesheet" href="css/lockscreen.css">
     <link rel="stylesheet" href="css/desktop.css">
     <link rel="stylesheet" href="css/page1.css">
@@ -262,6 +263,23 @@
 
         </div>
 
+    </div>
+
+<!-- 编辑弹窗 -->
+    <div class="edit-modal" id="editModal">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle">编辑文字</h3>
+            </div>
+            <div class="modal-body">
+                <input type="text" class="modal-input" id="modalInput" placeholder="请输入内容">
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn btn-cancel" id="modalCancel">取消</button>
+                <button class="modal-btn btn-confirm" id="modalConfirm">确定</button>
+            </div>
+        </div>
     </div>
 
     <!-- JavaScript文件引入 -->
