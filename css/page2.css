@@ -32,7 +32,7 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 8px;  /* ← 从5px改成8px，字和CSS线加点间距 */
+    gap: 8px;
     position: relative;
 }
 
@@ -41,9 +41,11 @@
     align-items: flex-end;
 }
 
-/* 第二行：文字左对齐 */
+/* 第二行：文字左对齐 + 整体上移 */
 .row-2 .text-with-line {
     align-items: flex-start;
+    position: relative;
+    top: -17px;  /* ← 整体上移半个字 */
 }
 
 /* 文字样式 */
@@ -76,14 +78,14 @@
 
 /* 第一行：HTML横杠【左对齐】 */
 .row-1 .bar-html {
-    left: 0;  /* ← 改成左对齐 */
+    left: 0;
     top: -8px;
 }
 
-/* 第二行：HTML横杠【右对齐 + 往上半个字】 */
+/* 第二行：HTML横杠【右对齐】 */
 .row-2 .bar-html {
-    right: 0;  /* ← 改成右对齐 */
-    top: -25px;  /* ← 往上移（-8 - 17 = -25，半个字≈17px） */
+    right: 0;
+    top: -8px;  /* ← 在下层 */
 }
 
 /* CSS浅色装饰线（上层） */
@@ -100,18 +102,18 @@
     z-index: 2;
 }
 
-/* 第一行：CSS线【右对齐】，距离猫猫半个字 */
+/* 第一行：CSS线【右对齐】 */
 .row-1 .bar-css {
-    right: -20px;  /* ← 右对齐，往右伸出去一点（半个字+一点） */
+    right: -20px;
     top: -13px;
-    width: calc(100% + 20px);  /* ← 加长，伸向猫猫 */
+    width: calc(100% + 20px);
 }
 
-/* 第二行：CSS线【左对齐】，距离猫猫半个字到一个字 */
+/* 第二行：CSS线【左对齐 + 在上层】 */
 .row-2 .bar-css {
-    left: -25px;  /* ← 左对齐，往左伸出去一点 */
-    top: -13px;
-    width: calc(100% + 25px);  /* ← 加长，伸向猫猫 */
+    left: -25px;
+    top: -21px;  /* ← 在上层（比HTML的-8px更上） */
+    width: calc(100% + 25px);
 }
 
 /* 圆圈样式 */
