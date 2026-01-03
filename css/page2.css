@@ -112,7 +112,7 @@
 /* 第二行：CSS线【左对齐 + 在上层】 */
 .row-2 .bar-css {
     left: -25px;
-    top: -21px;  /* ← 在上层（比HTML的-8px更上） */
+    top: -13px;  /* ← 在上层（比HTML的-8px更上） */
     width: calc(100% + 25px);
 }
 
