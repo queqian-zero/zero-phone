@@ -24,6 +24,7 @@
     justify-content: space-between;
     gap: var(--spacing-sm);
     height: 80px;
+    position: relative;  /* ← 加这个，方便调整圆圈位置 */
 }
 
 /* 文字+横杠容器 */
@@ -31,7 +32,7 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: 8px;  /* ← 从5px改成8px，字和CSS线加点间距 */
     position: relative;
 }
 
@@ -66,7 +67,6 @@
 /* HTML黑色横杠（底层） */
 .bar-html {
     position: absolute;
-    top: -8px;
     font-size: 14px;
     line-height: 1;
     color: rgba(0, 0, 0, 0.6);
@@ -74,20 +74,21 @@
     z-index: 1;
 }
 
-/* 第一行：HTML横杠右对齐 */
+/* 第一行：HTML横杠【左对齐】 */
 .row-1 .bar-html {
-    right: 0;
+    left: 0;  /* ← 改成左对齐 */
+    top: -8px;
 }
 
-/* 第二行：HTML横杠左对齐 */
+/* 第二行：HTML横杠【右对齐 + 往上半个字】 */
 .row-2 .bar-html {
-    left: 0;
+    right: 0;  /* ← 改成右对齐 */
+    top: -25px;  /* ← 往上移（-8 - 17 = -25，半个字≈17px） */
 }
 
 /* CSS浅色装饰线（上层） */
 .bar-css {
     position: absolute;
-    top: -13px;
     height: 1.5px;
     background: linear-gradient(
         90deg,
@@ -99,16 +100,18 @@
     z-index: 2;
 }
 
-/* 第一行：CSS线右对齐，更长更潇洒 */
+/* 第一行：CSS线【右对齐】，距离猫猫半个字 */
 .row-1 .bar-css {
-    right: 0;
-    width: 95%;
+    right: -20px;  /* ← 右对齐，往右伸出去一点（半个字+一点） */
+    top: -13px;
+    width: calc(100% + 20px);  /* ← 加长，伸向猫猫 */
 }
 
-/* 第二行：CSS线左对齐，更长更潇洒 */
+/* 第二行：CSS线【左对齐】，距离猫猫半个字到一个字 */
 .row-2 .bar-css {
-    left: 0;
-    width: 95%;
+    left: -25px;  /* ← 左对齐，往左伸出去一点 */
+    top: -13px;
+    width: calc(100% + 25px);  /* ← 加长，伸向猫猫 */
 }
 
 /* 圆圈样式 */
@@ -128,12 +131,15 @@
     background-repeat: no-repeat;
 }
 
-/* 左圆圈 - 黑猫 */
+/* 左圆圈 - 黑猫（第2行）- 往上半个字 + 往左半个字 */
 .circle-left {
     background-image: url('../assets/images/page2-circle-left.png');
+    position: relative;
+    top: -17px;   /* ← 往上半个字 */
+    left: -17px;  /* ← 往左半个字 */
 }
 
-/* 右圆圈 - 棕白猫 */
+/* 右圆圈 - 白头猫（第1行）- 不动 */
 .circle-right {
     background-image: url('../assets/images/page2-circle-right.png');
 }
