@@ -6,6 +6,7 @@ class ImageEditor {
         this.currentImageElement = null;
         this.currentKey = null;
         this.currentDefaultImage = null;
+        this.currentFile = null;
         
         this.init();
     }
@@ -206,10 +207,235 @@ class ImageEditor {
         testImg.src = url;
     }
     
-    // 从相册选择（下一阶段实现）
+    // 从相册选择
     selectFromAlbum() {
-        alert('相册选择功能将在下一阶段实现！');
+        // 创建隐藏的文件输入框
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = 'image/*';
+        fileInput.style.display = 'none';
+        
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                this.handleFileSelected(file);
+            }
+        });
+        
+        // 触发文件选择
+        document.body.appendChild(fileInput);
+        fileInput.click();
+        document.body.removeChild(fileInput);
+        
+        // 先关闭弹窗
         this.closeModal();
+    }
+    
+    // 处理选中的文件
+    handleFileSelected(file) {
+        // 验证文件类型
+        if (!file.type.startsWith('image/')) {
+            alert('请选择图片文件！');
+            return;
+        }
+        
+        // 验证文件大小（最大10MB）
+        if (file.size > 10 * 1024 * 1024) {
+            alert('图片太大了！最大支持10MB');
+            return;
+        }
+        
+        // 保存文件引用
+        this.currentFile = file;
+        
+        // 显示压缩选项弹窗
+        this.showCompressionOptions();
+    }
+    
+    // 显示压缩选项弹窗
+    showCompressionOptions() {
+        const modalTitle = this.modal.querySelector('.modal-title');
+        const modalBody = this.modal.querySelector('.modal-body');
+        const modalFooter = this.modal.querySelector('.modal-footer');
+        
+        modalTitle.textContent = '图片上传选项';
+        
+        // 创建选项列表
+        modalBody.innerHTML = `
+            <div class="modal-options">
+                <button class="option-btn" id="optionCompress">
+                    <span class="option-icon">⚡</span>
+                    <div class="option-text">
+                        <div class="option-title">压缩后上传</div>
+                        <div class="option-desc">推荐，节省空间，加载更快</div>
+                    </div>
+                </button>
+                
+                <button class="option-btn" id="optionOriginal">
+                    <span class="option-icon">📦</span>
+                    <div class="option-text">
+                        <div class="option-title">原图上传</div>
+                        <div class="option-desc">保持原始质量，可能占用较多空间</div>
+                    </div>
+                </button>
+                
+                <button class="modal-cancel-btn" id="optionCancel2">取消</button>
+            </div>
+        `;
+        
+        // 隐藏底部按钮
+        modalFooter.style.display = 'none';
+        
+        // 绑定事件
+        document.getElementById('optionCompress').addEventListener('click', () => {
+            this.uploadWithCompression();
+        });
+        
+        document.getElementById('optionOriginal').addEventListener('click', () => {
+            this.uploadOriginal();
+        });
+        
+        document.getElementById('optionCancel2').addEventListener('click', () => {
+            this.currentFile = null;
+            this.closeModal();
+        });
+        
+        // 显示弹窗
+        this.modal.classList.add('show');
+    }
+    
+    // 压缩后上传
+    uploadWithCompression() {
+        if (!this.currentFile) return;
+        
+        // 显示加载提示
+        this.showLoading('正在压缩...');
+        
+        // 压缩图片
+        this.compressImage(this.currentFile, (compressedBase64) => {
+            // 应用图片
+            this.applyImage(compressedBase64, 'base64');
+            this.currentFile = null;
+            this.closeModal();
+        });
+    }
+    
+    // 原图上传
+    uploadOriginal() {
+        if (!this.currentFile) return;
+        
+        // 显示加载提示
+        this.showLoading('正在处理...');
+        
+        // 转换为base64
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const base64 = e.target.result;
+            
+            // 应用图片
+            this.applyImage(base64, 'base64');
+            this.currentFile = null;
+            this.closeModal();
+        };
+        
+        reader.onerror = () => {
+            alert('图片读取失败！');
+            this.closeModal();
+        };
+        
+        reader.readAsDataURL(this.currentFile);
+    }
+    
+    // 压缩图片
+    compressImage(file, callback) {
+        const reader = new FileReader();
+        
+        reader.onload = (e) => {
+            const img = new Image();
+            
+            img.onload = () => {
+                // 根据图片类型设置不同的压缩参数
+                let maxWidth, maxHeight, quality;
+                
+                // 判断是头像还是大图
+                if (this.currentKey.includes('circle')) {
+                    // 头像：压缩到300x300
+                    maxWidth = 300;
+                    maxHeight = 300;
+                    quality = 0.85;
+                } else if (this.currentKey === 'imageLarge') {
+                    // 竖长图：压缩到500x1000
+                    maxWidth = 500;
+                    maxHeight = 1000;
+                    quality = 0.80;
+                } else {
+                    // 横长图：压缩到1000x300
+                    maxWidth = 1000;
+                    maxHeight = 300;
+                    quality = 0.80;
+                }
+                
+                // 计算压缩后的尺寸
+                let width = img.width;
+                let height = img.height;
+                
+                if (width > maxWidth || height > maxHeight) {
+                    const ratio = Math.min(maxWidth / width, maxHeight / height);
+                    width = Math.round(width * ratio);
+                    height = Math.round(height * ratio);
+                }
+                
+                // 创建Canvas压缩
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                // 转换为base64
+                const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+                
+                // 计算压缩率
+                const originalSize = e.target.result.length;
+                const compressedSize = compressedBase64.length;
+                const ratio = ((1 - compressedSize / originalSize) * 100).toFixed(1);
+                
+                console.log(`✅ 图片已压缩: ${ratio}% (${width}x${height})`);
+                
+                callback(compressedBase64);
+            };
+            
+            img.onerror = () => {
+                alert('图片加载失败！');
+                this.closeModal();
+            };
+            
+            img.src = e.target.result;
+        };
+        
+        reader.onerror = () => {
+            alert('文件读取失败！');
+            this.closeModal();
+        };
+        
+        reader.readAsDataURL(file);
+    }
+    
+    // 显示加载提示
+    showLoading(message) {
+        const modalTitle = this.modal.querySelector('.modal-title');
+        const modalBody = this.modal.querySelector('.modal-body');
+        const modalFooter = this.modal.querySelector('.modal-footer');
+        
+        modalTitle.textContent = message;
+        modalBody.innerHTML = `
+            <div style="text-align: center; padding: 40px 20px;">
+                <div style="font-size: 48px; margin-bottom: 16px;">⏳</div>
+                <div style="color: var(--color-text-secondary);">请稍候...</div>
+            </div>
+        `;
+        modalFooter.style.display = 'none';
     }
     
     // 应用图片
@@ -237,6 +463,7 @@ class ImageEditor {
             localStorage.setItem('page2Data', JSON.stringify(storage));
         } catch (e) {
             console.error('❌ 保存失败:', e);
+            alert('存储空间不足！请选择压缩上传或使用URL。');
         }
     }
     
