@@ -208,28 +208,38 @@ class ImageEditor {
     }
     
     // 从相册选择
-    selectFromAlbum() {
-        // 创建隐藏的文件输入框
-        const fileInput = document.createElement('input');
-        fileInput.type = 'file';
-        fileInput.accept = 'image/*';
-        fileInput.style.display = 'none';
-        
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                this.handleFileSelected(file);
-            }
-        });
-        
-        // 触发文件选择
-        document.body.appendChild(fileInput);
-        fileInput.click();
-        document.body.removeChild(fileInput);
-        
-        // 先关闭弹窗
-        this.closeModal();
-    }
+selectFromAlbum() {
+    // 先保存当前上下文（重要！）
+    const savedElement = this.currentImageElement;
+    const savedKey = this.currentKey;
+    const savedDefault = this.currentDefaultImage;
+    
+    // 创建隐藏的文件输入框
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*';
+    fileInput.style.display = 'none';
+    
+    fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            // 恢复上下文（重要！）
+            this.currentImageElement = savedElement;
+            this.currentKey = savedKey;
+            this.currentDefaultImage = savedDefault;
+            
+            this.handleFileSelected(file);
+        }
+    });
+    
+    // 触发文件选择
+    document.body.appendChild(fileInput);
+    fileInput.click();
+    document.body.removeChild(fileInput);
+    
+    // 先关闭弹窗
+    this.closeModal();
+}
     
     // 处理选中的文件
     handleFileSelected(file) {
