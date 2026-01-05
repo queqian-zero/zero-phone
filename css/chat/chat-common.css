@@ -4,19 +4,22 @@
 .chat-app-container {
     width: 100%;
     height: 100vh;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #1a1a1a;  /* 深灰色背景 */
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    position: fixed;
+    top: 0;
+    left: 0;
 }
 
 /* 顶部导航栏 */
 .top-bar {
     height: 60px;
-    background: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.08);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -24,13 +27,15 @@
     flex-shrink: 0;
 }
 
-.back-btn,
-.search-btn {
+.back-btn {
     width: 40px;
     height: 40px;
     border: none;
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     border-radius: 12px;
+    color: white;
     font-size: 20px;
     cursor: pointer;
     display: flex;
@@ -39,14 +44,12 @@
     transition: all 0.2s ease;
 }
 
-.back-btn:hover,
-.search-btn:hover {
-    background: rgba(255, 255, 255, 0.3);
+.back-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
     transform: scale(1.05);
 }
 
-.back-btn:active,
-.search-btn:active {
+.back-btn:active {
     transform: scale(0.95);
 }
 
@@ -55,6 +58,41 @@
     font-weight: 600;
     color: white;
     margin: 0;
+}
+
+/* 右侧按钮组 */
+.top-right-btns {
+    display: flex;
+    gap: 8px;
+}
+
+.search-btn,
+.add-chat-btn {
+    width: 40px;
+    height: 40px;
+    border: none;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 12px;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.search-btn:hover,
+.add-chat-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: scale(1.05);
+}
+
+.search-btn:active,
+.add-chat-btn:active {
+    transform: scale(0.95);
 }
 
 /* 页面容器 */
@@ -85,6 +123,7 @@
     height: 100%;
     overflow-y: auto;
     padding: 16px;
+    background: rgba(0, 0, 0, 0.2);
 }
 
 /* 空状态占位 */
@@ -94,30 +133,34 @@
     align-items: center;
     justify-content: center;
     height: 100%;
-    color: rgba(255, 255, 255, 0.6);
+    color: rgba(255, 255, 255, 0.4);
 }
 
 .empty-icon {
     font-size: 64px;
     margin-bottom: 16px;
+    opacity: 0.5;
 }
 
 .empty-text {
     font-size: 16px;
+    opacity: 0.6;
 }
 
 /* 底部导航栏 */
 .bottom-nav {
-    height: 70px;
-    background: rgba(255, 255, 255, 0.15);
+    height: 80px;  /* 增加高度 */
+    background: rgba(255, 255, 255, 0.08);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
     display: flex;
     align-items: center;
     justify-content: space-around;
     padding: 8px 0;
     flex-shrink: 0;
+    position: relative;
+    z-index: 100;
 }
 
 .nav-btn {
@@ -130,23 +173,22 @@
     gap: 4px;
     cursor: pointer;
     transition: all 0.2s ease;
+    padding: 8px 0;
 }
 
 .nav-icon {
-    font-size: 24px;
-    filter: grayscale(100%);
-    opacity: 0.6;
+    font-size: 26px;
+    opacity: 0.5;
     transition: all 0.2s ease;
 }
 
 .nav-label {
     font-size: 12px;
-    color: rgba(255, 255, 255, 0.6);
+    color: rgba(255, 255, 255, 0.5);
     transition: all 0.2s ease;
 }
 
 .nav-btn.active .nav-icon {
-    filter: grayscale(0%);
     opacity: 1;
     transform: scale(1.1);
 }
