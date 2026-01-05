@@ -60,14 +60,29 @@
     </div>
     
     <!-- 好友列表页 -->
-    <div class="chat-page" id="friendListPage">
-        <div class="page-content">
-            <div class="empty-placeholder">
-                <div class="empty-icon">👥</div>
-                <div class="empty-text">暂无好友</div>
+<div class="chat-page" id="friendListPage">
+    <div class="page-content friend-list-content">
+        
+        <!-- 好友分组列表 -->
+        <div class="friend-groups" id="friendGroups">
+            
+            <!-- 默认分组 -->
+            <div class="friend-group">
+                <div class="group-header" onclick="toggleGroup(this)">
+                    <span class="group-arrow">▶</span>
+                    <span class="group-name">我的好友</span>
+                    <span class="group-count">(0)</span>
+                </div>
+                <div class="group-members">
+                    <!-- 好友列表会动态插入这里 -->
+                    <div class="empty-group">暂无好友</div>
+                </div>
             </div>
+            
         </div>
+        
     </div>
+</div>
     
     <!-- 发现页 -->
     <div class="chat-page" id="discoverPage">
