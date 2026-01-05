@@ -106,6 +106,134 @@
     
 </div>
 
+<!-- 添加好友页面 -->
+<div class="sub-page" id="addFriendPage">
+    <div class="top-bar">
+        <button class="back-btn" onclick="closeAddFriend()">
+            <img src="assets/icons/chat/back.png" alt="返回">
+        </button>
+        <h1 class="page-title">添加好友</h1>
+        <div class="top-right-btns"></div>
+    </div>
+    
+    <div class="page-content">
+        <!-- 添加方式选择 -->
+        <div class="add-method-cards">
+            
+            <!-- 通过编码添加 -->
+            <div class="method-card" onclick="showAddByCode()">
+                <div class="method-icon">🔢</div>
+                <div class="method-info">
+                    <div class="method-title">通过编码添加</div>
+                    <div class="method-desc">输入好友编码，恢复已有角色</div>
+                </div>
+                <div class="method-arrow">→</div>
+            </div>
+            
+            <!-- 自定义人设 -->
+            <div class="method-card" onclick="showCustomPersona()">
+                <div class="method-icon">✨</div>
+                <div class="method-info">
+                    <div class="method-title">自定义人设</div>
+                    <div class="method-desc">创建新角色，自动生成编码</div>
+                </div>
+                <div class="method-arrow">→</div>
+            </div>
+            
+        </div>
+    </div>
+</div>
+
+<!-- 通过编码添加页面 -->
+<div class="sub-page" id="addByCodePage">
+    <div class="top-bar">
+        <button class="back-btn" onclick="backToAddFriend()">
+            <img src="assets/icons/chat/back.png" alt="返回">
+        </button>
+        <h1 class="page-title">通过编码添加</h1>
+        <div class="top-right-btns"></div>
+    </div>
+    
+    <div class="page-content">
+        <div class="input-section">
+            <label class="input-label">好友编码</label>
+            <input type="text" 
+                   class="text-input" 
+                   id="friendCodeInput" 
+                   placeholder="请输入好友编码">
+            <div class="input-hint">格式：AI开头 + 数字和字母</div>
+        </div>
+        
+        <button class="primary-btn" onclick="addFriendByCode()">
+            添加好友
+        </button>
+    </div>
+</div>
+
+<!-- 自定义人设页面 -->
+<div class="sub-page" id="customPersonaPage">
+    <div class="top-bar">
+        <button class="back-btn" onclick="backToAddFriend()">
+            <img src="assets/icons/chat/back.png" alt="返回">
+        </button>
+        <h1 class="page-title">自定义人设</h1>
+        <div class="top-right-btns"></div>
+    </div>
+    
+    <div class="page-content">
+        
+        <!-- 头像 -->
+        <div class="avatar-section">
+            <div class="avatar-upload" id="avatarPreview" onclick="selectAvatar()">
+                <span class="avatar-placeholder">📷</span>
+                <span class="avatar-hint">点击上传头像</span>
+            </div>
+        </div>
+        
+        <!-- 基本信息 -->
+        <div class="input-section">
+            <label class="input-label">网名 *</label>
+            <input type="text" 
+                   class="text-input" 
+                   id="nicknameInput" 
+                   placeholder="给TA起个名字"
+                   maxlength="20">
+        </div>
+        
+        <div class="input-section">
+            <label class="input-label">个性签名</label>
+            <input type="text" 
+                   class="text-input" 
+                   id="signatureInput" 
+                   placeholder="一句话介绍（选填）"
+                   maxlength="50">
+        </div>
+        
+        <!-- 人设 -->
+        <div class="input-section">
+            <label class="input-label">人设 *</label>
+            <textarea class="text-area" 
+                      id="personaInput" 
+                      placeholder="描述角色的性格、背景、说话方式等..."
+                      rows="8"></textarea>
+            <div class="input-hint">至少20个字</div>
+        </div>
+        
+        <!-- 分组 -->
+        <div class="input-section">
+            <label class="input-label">分组</label>
+            <select class="select-input" id="groupInput">
+                <option value="我的好友">我的好友</option>
+            </select>
+        </div>
+        
+        <button class="primary-btn" onclick="createCustomFriend()">
+            创建好友
+        </button>
+        
+    </div>
+</div>
+
 <!-- 底部导航栏 -->
 <div class="bottom-nav">
     <button class="nav-btn active" data-page="chatListPage">
