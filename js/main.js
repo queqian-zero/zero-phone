@@ -111,3 +111,8 @@ window.addEventListener('unhandledrejection', (e) => {
 // 调试用：全局访问
 window.APP = app;
 window.CONFIG = CONFIG;
+
+// 打开聊天APP（不刷新页面）
+function openChatApp() {
+    window.location.href = 'chat-app.html';
+}
