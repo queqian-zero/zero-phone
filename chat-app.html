@@ -25,9 +25,14 @@
 <div class="top-bar">
     <button class="back-btn" id="backBtn">←</button>
     <h1 class="page-title" id="pageTitle">聊天</h1>
-    <div class="top-right-btns">
-        <button class="search-btn" id="searchBtn">🔍</button>
-        <button class="add-chat-btn" id="addChatBtn">➕</button>
+    <div class="top-right-btns" id="topRightBtns">
+        <!-- 聊天列表的按钮（默认显示） -->
+        <button class="search-btn page-btn chat-list-btn" id="searchChatBtn" title="搜索聊天记录">🔍</button>
+        <button class="add-chat-btn page-btn chat-list-btn" id="addChatBtn" title="创建聊天框">➕</button>
+        
+        <!-- 好友列表的按钮（默认隐藏） -->
+        <button class="manage-group-btn page-btn friend-list-btn" id="manageGroupBtn" title="管理分组" style="display: none;">📁</button>
+        <button class="add-friend-btn page-btn friend-list-btn" id="addFriendBtn" title="添加好友" style="display: none;">➕</button>
     </div>
 </div>
         
