@@ -62,6 +62,11 @@ class ChatApp {
         // 更新标题和右侧按钮
         this.updateTopBar(pageId);
         
+        // 🆕 如果切换到好友列表，刷新列表（加这3行）
+    if (pageId === 'friendListPage') {
+        loadFriendList();
+    }
+        
         this.currentPage = pageId;
     }
     
@@ -312,10 +317,14 @@ function addFriendByCode() {
 
 // 创建自定义好友
 function createCustomFriend() {
+    console.log('🔍 开始创建好友...');
+    
     const nickname = document.getElementById('nicknameInput').value.trim();
     const signature = document.getElementById('signatureInput').value.trim();
     const persona = document.getElementById('personaInput').value.trim();
     const group = document.getElementById('groupInput').value;
+    
+    console.log('📝 输入信息:', { nickname, signature, persona, group });
     
     // 验证
     if (!nickname) {
@@ -323,37 +332,48 @@ function createCustomFriend() {
         return;
     }
     
-    if (!persona || persona.length < 20) {
-        alert('人设至少20个字！');
+    if (!persona) {
+        alert('请输入人设！');
         return;
     }
     
+    if (persona.length < 20) {
+        alert(`人设至少20个字！\n当前：${persona.length}个字`);
+        return;
+    }
+    
+    console.log('✅ 验证通过，开始生成编码...');
+    
     // 生成好友编码
     const friendCode = generateFriendCode();
+    console.log('🔑 好友编码:', friendCode);
     
     // 创建好友对象
     const newFriend = {
         friendCode: friendCode,
-        avatar: currentAvatarBase64,
+        avatar: currentAvatarBase64 || '',
         nickname: nickname,
         remark: '',
-        signature: signature,
+        signature: signature || '',
         persona: persona,
         group: group,
         addTime: Date.now()
     };
     
+    console.log('👤 新好友对象:', newFriend);
+    
     // 保存到好友列表
     const friends = JSON.parse(localStorage.getItem('friends') || '[]');
     friends.push(newFriend);
     localStorage.setItem('friends', JSON.stringify(friends));
+    console.log('💾 已保存到好友列表');
     
     // 保存到编码库
     const codeLibrary = JSON.parse(localStorage.getItem('friendCodeLibrary') || '{}');
     codeLibrary[friendCode] = {
-        avatar: currentAvatarBase64,
+        avatar: currentAvatarBase64 || '',
         nickname: nickname,
-        signature: signature,
+        signature: signature || '',
         persona: persona,
         createTime: Date.now(),
         memories: {
@@ -363,6 +383,7 @@ function createCustomFriend() {
         }
     };
     localStorage.setItem('friendCodeLibrary', JSON.stringify(codeLibrary));
+    console.log('💾 已保存到编码库');
     
     alert(`✅ ${nickname} 已创建！\n\n好友编码：${friendCode}`);
     
@@ -370,15 +391,24 @@ function createCustomFriend() {
     document.getElementById('nicknameInput').value = '';
     document.getElementById('signatureInput').value = '';
     document.getElementById('personaInput').value = '';
-    document.getElementById('avatarPreview').innerHTML = `
+    
+    // 重置头像
+    const avatarPreview = document.getElementById('avatarPreview');
+    avatarPreview.innerHTML = `
         <span class="avatar-placeholder">📷</span>
         <span class="avatar-hint">点击上传头像</span>
     `;
-    document.getElementById('avatarPreview').classList.remove('has-image');
+    avatarPreview.classList.remove('has-image');
     currentAvatarBase64 = '';
+    
+    console.log('✅ 表单已清空');
     
     // 关闭页面并刷新列表
     document.getElementById('customPersonaPage').classList.remove('show');
     document.getElementById('addFriendPage').classList.remove('show');
+    
+    console.log('🔄 刷新好友列表...');
     loadFriendList();
+    
+    console.log('✅ 好友创建完成！');
 }
