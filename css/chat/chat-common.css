@@ -5,7 +5,7 @@
     width: 100%;
     height: 100dvh;
     min-height: -webkit-fill-available;
-    background: #1a1a1a;  /* 深黑背景 */
+    background: #1a1a1a;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -24,7 +24,7 @@
 /* 顶部导航栏 - 磨砂白 */
 .top-bar {
     height: 60px;
-    background: rgba(255, 255, 255, 0.95);  /* 磨砂白 */
+    background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border-bottom: 1px solid rgba(0, 0, 0, 0.1);
@@ -46,8 +46,6 @@
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     border-radius: 12px;
-    color: #000;
-    font-size: 20px;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -90,8 +88,6 @@
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     border-radius: 12px;
-    color: #000;
-    font-size: 20px;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -112,6 +108,26 @@
 .manage-group-btn:active,
 .add-friend-btn:active {
     transform: scale(0.95);
+}
+
+/* 顶部按钮图标 */
+.back-btn img,
+.search-btn img,
+.add-chat-btn img,
+.manage-group-btn img,
+.add-friend-btn img {
+    width: 24px;
+    height: 24px;
+    opacity: 0.8;
+    transition: opacity 0.2s ease;
+}
+
+.back-btn:hover img,
+.search-btn:hover img,
+.add-chat-btn:hover img,
+.manage-group-btn:hover img,
+.add-friend-btn:hover img {
+    opacity: 1;
 }
 
 /* 页面容器 */
@@ -170,7 +186,7 @@
 /* 底部导航栏 - 磨砂白 */
 .bottom-nav {
     height: 80px;
-    background: rgba(255, 255, 255, 0.95);  /* 磨砂白 */
+    background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border-top: 1px solid rgba(0, 0, 0, 0.1);
@@ -198,14 +214,20 @@
     padding: 8px 0;
 }
 
-/* 底部导航图标 */
-.nav-icon {
-    font-size: 26px;
-    color: #000;
-    opacity: 0.4;  /* 未选中：浅灰 */
+/* 底部导航图标（图片） */
+.nav-icon-img {
+    width: 28px;
+    height: 28px;
+    opacity: 0.4;
     transition: all 0.2s ease;
 }
 
+.nav-btn.active .nav-icon-img {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+/* 底部导航文字 */
 .nav-label {
     font-size: 12px;
     color: #000;
@@ -213,17 +235,16 @@
     transition: all 0.2s ease;
 }
 
-/* 选中状态 */
-.nav-btn.active .nav-icon {
-    opacity: 1.0;  /* 选中：纯黑 */
-    transform: scale(1.1);
-}
-
 .nav-btn.active .nav-label {
-    opacity: 1.0;
+    opacity: 1;
     font-weight: 600;
 }
 
 .nav-btn:active {
     transform: scale(0.95);
+}
+
+/* 隐藏旧的emoji图标 */
+.nav-icon {
+    display: none;
 }
