@@ -105,3 +105,83 @@ class ChatApp {
 
 // 初始化
 const chatApp = new ChatApp();
+
+// ===== 好友列表功能 =====
+
+// 切换分组展开/折叠
+function toggleGroup(groupHeader) {
+    const group = groupHeader.parentElement;
+    group.classList.toggle('expanded');
+}
+
+// 加载好友列表
+function loadFriendList() {
+    const friends = JSON.parse(localStorage.getItem('friends') || '[]');
+    
+    if (friends.length === 0) {
+        return; // 保持默认的"暂无好友"提示
+    }
+    
+    // 按分组整理好友
+    const groups = {};
+    friends.forEach(friend => {
+        const groupName = friend.group || '我的好友';
+        if (!groups[groupName]) {
+            groups[groupName] = [];
+        }
+        groups[groupName].push(friend);
+    });
+    
+    // 渲染分组和好友
+    const container = document.getElementById('friendGroups');
+    container.innerHTML = '';
+    
+    Object.keys(groups).forEach(groupName => {
+        const groupFriends = groups[groupName];
+        const groupHtml = createGroupHtml(groupName, groupFriends);
+        container.innerHTML += groupHtml;
+    });
+    
+    // 默认展开所有分组
+    document.querySelectorAll('.friend-group').forEach(group => {
+        group.classList.add('expanded');
+    });
+}
+
+// 创建分组HTML
+function createGroupHtml(groupName, friends) {
+    const membersHtml = friends.map(friend => `
+        <div class="friend-card" onclick="openFriendProfile('${friend.friendCode}')">
+            <div class="friend-avatar">
+                ${friend.avatar ? `<img src="${friend.avatar}" alt="${friend.nickname}">` : '👤'}
+            </div>
+            <div class="friend-info">
+                <div class="friend-name">${friend.remark || friend.nickname}</div>
+                <div class="friend-signature">${friend.signature || '这个人很懒，什么都没写...'}</div>
+            </div>
+        </div>
+    `).join('');
+    
+    return `
+        <div class="friend-group">
+            <div class="group-header" onclick="toggleGroup(this)">
+                <span class="group-arrow">▶</span>
+                <span class="group-name">${groupName}</span>
+                <span class="group-count">(${friends.length})</span>
+            </div>
+            <div class="group-members">
+                ${membersHtml}
+            </div>
+        </div>
+    `;
+}
+
+// 打开好友资料页面
+function openFriendProfile(friendCode) {
+    alert(`打开好友资料：${friendCode}\n\n（人设编辑页面开发中...）`);
+}
+
+// 页面加载时初始化
+document.addEventListener('DOMContentLoaded', () => {
+    loadFriendList();
+});
