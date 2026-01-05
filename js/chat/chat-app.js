@@ -12,14 +12,22 @@ class ChatApp {
             this.goBack();
         });
         
-        // 绑定搜索按钮
-        document.getElementById('searchBtn').addEventListener('click', () => {
-            alert('搜索功能开发中...');
+        // ===== 聊天列表按钮 =====
+        document.getElementById('searchChatBtn').addEventListener('click', () => {
+            alert('搜索聊天记录功能开发中...');
         });
         
-        // 绑定新建聊天按钮
         document.getElementById('addChatBtn').addEventListener('click', () => {
-            alert('新建聊天功能开发中...');
+            alert('创建聊天框功能开发中...');
+        });
+        
+        // ===== 好友列表按钮 =====
+        document.getElementById('manageGroupBtn').addEventListener('click', () => {
+            alert('管理分组功能开发中...');
+        });
+        
+        document.getElementById('addFriendBtn').addEventListener('click', () => {
+            alert('添加好友功能开发中...');
         });
         
         // 绑定底部导航
@@ -51,21 +59,46 @@ class ChatApp {
             }
         });
         
-        // 更新标题
+        // 更新标题和右侧按钮
+        this.updateTopBar(pageId);
+        
+        this.currentPage = pageId;
+    }
+    
+    // 更新顶部导航栏
+    updateTopBar(pageId) {
         const titles = {
             'chatListPage': '聊天',
             'friendListPage': '好友',
             'discoverPage': '发现',
             'profilePage': '我'
         };
+        
+        // 更新标题
         document.getElementById('pageTitle').textContent = titles[pageId];
         
-        this.currentPage = pageId;
+        // 隐藏所有按钮
+        document.querySelectorAll('.page-btn').forEach(btn => {
+            btn.style.display = 'none';
+        });
+        
+        // 根据页面显示对应按钮
+        if (pageId === 'chatListPage') {
+            // 聊天列表：显示搜索和创建聊天
+            document.querySelectorAll('.chat-list-btn').forEach(btn => {
+                btn.style.display = 'flex';
+            });
+        } else if (pageId === 'friendListPage') {
+            // 好友列表：显示管理分组和添加好友
+            document.querySelectorAll('.friend-list-btn').forEach(btn => {
+                btn.style.display = 'flex';
+            });
+        }
+        // 发现页和个人设置：不显示右侧按钮
     }
     
-    // 返回桌面（不触发锁屏）
+    // 返回桌面
     goBack() {
-        // 直接跳转回主页面，不刷新
         window.history.back();
     }
 }
