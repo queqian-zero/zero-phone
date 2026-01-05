@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>聊天</title>
+    
+    <!-- CSS文件引入 -->
+    <link rel="stylesheet" href="css/reset.css">
+    <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/chat/chat-common.css">
+    <link rel="stylesheet" href="css/chat/chat-list.css">
+    <link rel="stylesheet" href="css/chat/friend-list.css">
+    <link rel="stylesheet" href="css/chat/discover.css">
+    <link rel="stylesheet" href="css/chat/profile.css">
+</head>
+<body>
+    
+    <!-- 聊天APP容器 -->
+    <div class="chat-app-container">
+        
+        <!-- 顶部导航栏 -->
+        <div class="top-bar">
+            <button class="back-btn" id="backBtn">←</button>
+            <h1 class="page-title" id="pageTitle">聊天</h1>
+            <button class="search-btn" id="searchBtn">🔍</button>
+        </div>
+        
+        <!-- 页面容器 -->
+        <div class="pages-container">
+            
+            <!-- 聊天列表页 -->
+            <div class="chat-page active" id="chatListPage">
+                <div class="page-content">
+                    <div class="empty-placeholder">
+                        <div class="empty-icon">💬</div>
+                        <div class="empty-text">暂无聊天</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 好友列表页 -->
+            <div class="chat-page" id="friendListPage">
+                <div class="page-content">
+                    <div class="empty-placeholder">
+                        <div class="empty-icon">👥</div>
+                        <div class="empty-text">暂无好友</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 发现页 -->
+            <div class="chat-page" id="discoverPage">
+                <div class="page-content">
+                    <div class="empty-placeholder">
+                        <div class="empty-icon">🔍</div>
+                        <div class="empty-text">发现更多</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 个人设置页 -->
+            <div class="chat-page" id="profilePage">
+                <div class="page-content">
+                    <div class="empty-placeholder">
+                        <div class="empty-icon">⚙️</div>
+                        <div class="empty-text">个人设置</div>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+        
+        <!-- 底部导航栏 -->
+        <div class="bottom-nav">
+            <button class="nav-btn active" data-page="chatListPage">
+                <div class="nav-icon">💬</div>
+                <div class="nav-label">聊天</div>
+            </button>
+            <button class="nav-btn" data-page="friendListPage">
+                <div class="nav-icon">👥</div>
+                <div class="nav-label">好友</div>
+            </button>
+            <button class="nav-btn" data-page="discoverPage">
+                <div class="nav-icon">🔍</div>
+                <div class="nav-label">发现</div>
+            </button>
+            <button class="nav-btn" data-page="profilePage">
+                <div class="nav-icon">⚙️</div>
+                <div class="nav-label">我</div>
+            </button>
+        </div>
+        
+    </div>
+    
+    <!-- JavaScript文件引入 -->
+    <script src="js/chat/chat-app.js"></script>
+    
+</body>
+</html>
