@@ -412,3 +412,233 @@ function createCustomFriend() {
     
     console.log('✅ 好友创建完成！');
 }
+
+// ===== 人设编辑功能 =====
+
+let currentEditingFriend = null;
+let isEditMode = false;
+
+// 打开好友资料页面
+function openFriendProfile(friendCode) {
+    const friends = JSON.parse(localStorage.getItem('friends') || '[]');
+    const friend = friends.find(f => f.friendCode === friendCode);
+    
+    if (!friend) {
+        alert('找不到该好友！');
+        return;
+    }
+    
+    currentEditingFriend = friend;
+    isEditMode = false;
+    
+    // 填充数据
+    loadFriendProfile(friend);
+    
+    // 显示页面
+    document.getElementById('friendProfilePage').classList.add('show');
+}
+
+// 加载好友资料
+function loadFriendProfile(friend) {
+    // 头像
+    const avatarImg = document.getElementById('profileAvatarImg');
+    if (friend.avatar) {
+        avatarImg.src = friend.avatar;
+        avatarImg.style.display = 'block';
+    } else {
+        avatarImg.style.display = 'none';
+    }
+    
+    // 头像识别开关
+    const avatarSwitch = document.getElementById('avatarRecognitionSwitch');
+    avatarSwitch.checked = friend.avatarRecognition !== false; // 默认开启
+    
+    // 好友编码
+    document.getElementById('codeText').textContent = friend.friendCode;
+    
+    // 基本信息
+    document.getElementById('profileNickname').value = friend.nickname || '';
+    document.getElementById('profileRemark').value = friend.remark || '';
+    document.getElementById('profileRealName').value = friend.realName || '';
+    document.getElementById('profileSignature').value = friend.signature || '';
+    document.getElementById('profilePoke').value = friend.poke || '';
+    document.getElementById('profilePersona').value = friend.persona || '';
+    document.getElementById('profileGroup').value = friend.group || '我的好友';
+    
+    // 重置编辑按钮
+    const editBtn = document.getElementById('editProfileBtn');
+    editBtn.textContent = '编辑';
+    editBtn.classList.remove('editing');
+    
+    // 禁用所有输入
+    setInputsDisabled(true);
+}
+
+// 关闭好友资料页面
+function closeFriendProfile() {
+    // 如果正在编辑，询问是否保存
+    if (isEditMode) {
+        const confirm = window.confirm('有未保存的修改，确定要退出吗？');
+        if (!confirm) return;
+    }
+    
+    document.getElementById('friendProfilePage').classList.remove('show');
+    currentEditingFriend = null;
+    isEditMode = false;
+}
+
+// 切换编辑模式
+function toggleEdit() {
+    isEditMode = !isEditMode;
+    const editBtn = document.getElementById('editProfileBtn');
+    
+    if (isEditMode) {
+        // 进入编辑模式
+        editBtn.textContent = '保存';
+        editBtn.classList.add('editing');
+        setInputsDisabled(false);
+    } else {
+        // 保存并退出编辑模式
+        saveFriendProfile();
+        editBtn.textContent = '编辑';
+        editBtn.classList.remove('editing');
+        setInputsDisabled(true);
+    }
+}
+
+// 设置输入框禁用状态
+function setInputsDisabled(disabled) {
+    document.getElementById('profileRemark').disabled = disabled;
+    document.getElementById('profileRealName').disabled = disabled;
+    document.getElementById('profileSignature').disabled = disabled;
+    document.getElementById('profilePoke').disabled = disabled;
+    document.getElementById('profilePersona').disabled = disabled;
+    document.getElementById('profileGroup').disabled = disabled;
+    document.getElementById('avatarRecognitionSwitch').disabled = disabled;
+}
+
+// 保存好友资料
+function saveFriendProfile() {
+    if (!currentEditingFriend) return;
+    
+    // 获取输入值
+    const remark = document.getElementById('profileRemark').value.trim();
+    const realName = document.getElementById('profileRealName').value.trim();
+    const signature = document.getElementById('profileSignature').value.trim();
+    const poke = document.getElementById('profilePoke').value.trim();
+    const persona = document.getElementById('profilePersona').value.trim();
+    const group = document.getElementById('profileGroup').value;
+    const avatarRecognition = document.getElementById('avatarRecognitionSwitch').checked;
+    
+    // 验证人设
+    if (!persona || persona.length < 20) {
+        alert('人设至少20个字！');
+        return;
+    }
+    
+    // 更新好友列表
+    let friends = JSON.parse(localStorage.getItem('friends') || '[]');
+    const friendIndex = friends.findIndex(f => f.friendCode === currentEditingFriend.friendCode);
+    
+    if (friendIndex !== -1) {
+        friends[friendIndex].remark = remark;
+        friends[friendIndex].realName = realName;
+        friends[friendIndex].signature = signature;
+        friends[friendIndex].poke = poke;
+        friends[friendIndex].persona = persona;
+        friends[friendIndex].group = group;
+        friends[friendIndex].avatarRecognition = avatarRecognition;
+        
+        localStorage.setItem('friends', JSON.stringify(friends));
+        
+        // 更新编码库
+        let codeLibrary = JSON.parse(localStorage.getItem('friendCodeLibrary') || '{}');
+        if (codeLibrary[currentEditingFriend.friendCode]) {
+            codeLibrary[currentEditingFriend.friendCode].signature = signature;
+            codeLibrary[currentEditingFriend.friendCode].persona = persona;
+            localStorage.setItem('friendCodeLibrary', JSON.stringify(codeLibrary));
+        }
+        
+        // 更新当前对象
+        currentEditingFriend = friends[friendIndex];
+        
+        alert('✅ 保存成功！');
+        
+        // 刷新好友列表
+        loadFriendList();
+    }
+}
+
+// 复制好友编码
+function copyCode() {
+    const code = document.getElementById('codeText').textContent;
+    
+    // 创建临时输入框
+    const tempInput = document.createElement('input');
+    tempInput.value = code;
+    document.body.appendChild(tempInput);
+    tempInput.select();
+    
+    try {
+        document.execCommand('copy');
+        alert('✅ 编码已复制！');
+    } catch (err) {
+        alert('❌ 复制失败，请手动复制');
+    }
+    
+    document.body.removeChild(tempInput);
+}
+
+// 删除好友
+function deleteFriend() {
+    if (!currentEditingFriend) return;
+    
+    const friendName = currentEditingFriend.remark || currentEditingFriend.nickname;
+    
+    // 倒计时确认
+    let countdown = 3;
+    const confirmMsg = `确定要删除好友 "${friendName}" 吗？\n\n删除后聊天记录将被清空，但人设和记忆库会保留。\n如需彻底删除，请在"好友编码库"中操作。\n\n`;
+    
+    const result = window.confirm(confirmMsg + `(${countdown}秒后可确认)`);
+    
+    if (!result) return;
+    
+    // 二次确认
+    setTimeout(() => {
+        const finalConfirm = window.confirm(`确定删除 "${friendName}" ？`);
+        
+        if (finalConfirm) {
+            // 从好友列表删除
+            let friends = JSON.parse(localStorage.getItem('friends') || '[]');
+            friends = friends.filter(f => f.friendCode !== currentEditingFriend.friendCode);
+            localStorage.setItem('friends', JSON.stringify(friends));
+            
+            // 清空聊天记录
+            localStorage.removeItem(`chatHistory_${currentEditingFriend.friendCode}`);
+            
+            // 在记忆库添加"被删除"记录
+            let codeLibrary = JSON.parse(localStorage.getItem('friendCodeLibrary') || '{}');
+            if (codeLibrary[currentEditingFriend.friendCode]) {
+                const now = new Date().toISOString().split('T')[0];
+                if (!codeLibrary[currentEditingFriend.friendCode].memories) {
+                    codeLibrary[currentEditingFriend.friendCode].memories = {
+                        chatSummary: [],
+                        diary: [],
+                        coreMemory: []
+                    };
+                }
+                codeLibrary[currentEditingFriend.friendCode].memories.diary.push(
+                    `${now}: 被主人从好友列表移除了...`
+                );
+                localStorage.setItem('friendCodeLibrary', JSON.stringify(codeLibrary));
+            }
+            
+            alert(`✅ ${friendName} 已删除`);
+            
+            // 关闭页面并刷新列表
+            document.getElementById('friendProfilePage').classList.remove('show');
+            currentEditingFriend = null;
+            loadFriendList();
+        }
+    }, 100);
+}
