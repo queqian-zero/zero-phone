@@ -79,3 +79,75 @@
     overflow: hidden;
     text-overflow: ellipsis;
 }
+
+/* 选择好友列表 */
+.select-friend-list {
+    padding: 8px 0;
+}
+
+.select-friend-item {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 12px;
+    margin: 8px 16px;
+    padding: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.select-friend-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateX(4px);
+}
+
+.select-friend-item:active {
+    transform: scale(0.98);
+}
+
+/* 左滑功能 */
+.chat-item-wrapper {
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.3s ease;
+}
+
+.chat-item-wrapper.pinned {
+    order: -1;
+}
+
+.chat-actions {
+    position: absolute;
+    right: 0;
+    top: 0;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0;
+}
+
+.chat-action-btn {
+    height: 100%;
+    padding: 0 24px;
+    border: none;
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.pin-btn {
+    background: #667eea;
+}
+
+.delete-btn {
+    background: #ff3b30;
+}
+
+.chat-action-btn:active {
+    opacity: 0.8;
+}
