@@ -60,14 +60,46 @@
     </div>
     
     <!-- 好友列表页 -->
-    <div class="chat-page" id="friendListPage">
-        <div class="page-content">
-            <div class="empty-placeholder">
-                <div class="empty-icon">👥</div>
-                <div class="empty-text">暂无好友</div>
+<div class="chat-page" id="friendListPage">
+    <div class="page-content friend-list-content">
+        
+        <!-- 测试：静态好友列表 -->
+        <div class="friend-groups" id="friendGroups">
+            
+            <!-- 测试分组 -->
+            <div class="friend-group expanded">
+                <div class="group-header">
+                    <span class="group-arrow">▼</span>
+                    <span class="group-name">我的好友</span>
+                    <span class="group-count">(2)</span>
+                </div>
+                <div class="group-members">
+                    
+                    <!-- 测试好友1 -->
+                    <div class="friend-card">
+                        <div class="friend-avatar">👤</div>
+                        <div class="friend-info">
+                            <div class="friend-name">测试好友1</div>
+                            <div class="friend-signature">这是测试签名</div>
+                        </div>
+                    </div>
+                    
+                    <!-- 测试好友2 -->
+                    <div class="friend-card">
+                        <div class="friend-avatar">👤</div>
+                        <div class="friend-info">
+                            <div class="friend-name">测试好友2</div>
+                            <div class="friend-signature">另一个测试签名</div>
+                        </div>
+                    </div>
+                    
+                </div>
             </div>
+            
         </div>
+        
     </div>
+</div>
     
     <!-- 发现页 -->
     <div class="chat-page" id="discoverPage">
