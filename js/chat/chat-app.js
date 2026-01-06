@@ -909,10 +909,15 @@ function openChatInterface(chat) {
 
 // 加载聊天列表
 function loadChatList() {
+    console.log('🔄 开始加载聊天列表...');
+    
     const chats = JSON.parse(localStorage.getItem('chats') || '[]');
+    console.log('📋 聊天数据:', chats);
+    
     const container = document.querySelector('#chatListPage .page-content');
     
     if (chats.length === 0) {
+        console.log('⚠️ 暂无聊天');
         container.innerHTML = `
             <div class="empty-placeholder">
                 <div class="empty-icon">💬</div>
@@ -924,51 +929,41 @@ function loadChatList() {
     
     // 渲染聊天列表
     const chatsHtml = chats.map(chat => {
-    const timeStr = formatChatTime(chat.lastMessageTime);
-    const pinnedClass = chat.pinned ? 'pinned' : '';
-    
-    return `
-        <div class="chat-item-wrapper ${pinnedClass}">
-            <div class="chat-item" 
-                 onclick="openChatById('${chat.chatId}')"
-                 ontouchstart="handleChatSwipeStart(event, '${chat.chatId}')"
-                 ontouchmove="handleChatSwipeMove(event)"
-                 ontouchend="handleChatSwipeEnd(event, '${chat.chatId}')">
-                <div class="chat-avatar">
-                    ${chat.friendAvatar ? `<img src="${chat.friendAvatar}" alt="${chat.friendNickname}">` : '👤'}
-                </div>
-                <div class="chat-info">
-                    <div class="chat-header">
-                        <div class="chat-name">${chat.friendNickname}</div>
-                        <div class="chat-time">${timeStr}</div>
+        const timeStr = formatChatTime(chat.lastMessageTime);
+        const pinnedClass = chat.pinned ? 'pinned' : '';
+        
+        return `
+            <div class="chat-item-wrapper ${pinnedClass}">
+                <div class="chat-item" 
+                     onclick="openChatById('${chat.chatId}')"
+                     ontouchstart="handleChatSwipeStart(event, '${chat.chatId}')"
+                     ontouchmove="handleChatSwipeMove(event)"
+                     ontouchend="handleChatSwipeEnd(event, '${chat.chatId}')">
+                    <div class="chat-avatar">
+                        ${chat.friendAvatar ? `<img src="${chat.friendAvatar}" alt="${chat.friendNickname}">` : '👤'}
                     </div>
-                    <div class="chat-preview">${chat.lastMessage || '开始聊天吧~'}</div>
-                </div>
-            </div>
-            <div class="chat-actions">
-                <button class="chat-action-btn pin-btn" onclick="togglePinChat('${chat.chatId}')">
-                    ${chat.pinned ? '取消置顶' : '置顶'}
-                </button>
-                <button class="chat-action-btn delete-btn" onclick="deleteChat('${chat.chatId}')">
-                    删除
-                </button>
-            </div>
-        </div>
-                <div class="chat-avatar">
-                    ${chat.friendAvatar ? `<img src="${chat.friendAvatar}" alt="${chat.friendNickname}">` : '👤'}
-                </div>
-                <div class="chat-info">
-                    <div class="chat-header">
-                        <div class="chat-name">${chat.friendNickname}</div>
-                        <div class="chat-time">${timeStr}</div>
+                    <div class="chat-info">
+                        <div class="chat-header">
+                            <div class="chat-name">${chat.friendNickname}</div>
+                            <div class="chat-time">${timeStr}</div>
+                        </div>
+                        <div class="chat-preview">${chat.lastMessage || '开始聊天吧~'}</div>
                     </div>
-                    <div class="chat-preview">${chat.lastMessage || '开始聊天吧~'}</div>
+                </div>
+                <div class="chat-actions">
+                    <button class="chat-action-btn pin-btn" onclick="event.stopPropagation(); togglePinChat('${chat.chatId}')">
+                        ${chat.pinned ? '取消置顶' : '置顶'}
+                    </button>
+                    <button class="chat-action-btn delete-btn" onclick="event.stopPropagation(); deleteChat('${chat.chatId}')">
+                        删除
+                    </button>
                 </div>
             </div>
         `;
     }).join('');
     
     container.innerHTML = chatsHtml;
+    console.log('✅ 聊天列表渲染完成');
 }
 
 // 通过chatId打开聊天
