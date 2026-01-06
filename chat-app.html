@@ -335,6 +335,60 @@
     </div>
 </div>
 
+<!-- 创建聊天选择页面 -->
+<div class="sub-page" id="createChatPage">
+    <div class="top-bar">
+        <button class="back-btn" onclick="closeCreateChat()">
+            <img src="assets/icons/chat/back.png" alt="返回">
+        </button>
+        <h1 class="page-title">创建聊天</h1>
+        <div class="top-right-btns"></div>
+    </div>
+    
+    <div class="page-content">
+        <div class="add-method-cards">
+            
+            <!-- 添加联系人 -->
+            <div class="method-card" onclick="showSelectFriend()">
+                <div class="method-icon">👤</div>
+                <div class="method-info">
+                    <div class="method-title">添加联系人</div>
+                    <div class="method-desc">从好友列表选择</div>
+                </div>
+                <div class="method-arrow">→</div>
+            </div>
+            
+            <!-- 创建群聊 -->
+            <div class="method-card" onclick="showCreateGroup()">
+                <div class="method-icon">👥</div>
+                <div class="method-info">
+                    <div class="method-title">创建群聊</div>
+                    <div class="method-desc">多人聊天（开发中）</div>
+                </div>
+                <div class="method-arrow">→</div>
+            </div>
+            
+        </div>
+    </div>
+</div>
+
+<!-- 选择好友页面 -->
+<div class="sub-page" id="selectFriendPage">
+    <div class="top-bar">
+        <button class="back-btn" onclick="closeSelectFriend()">
+            <img src="assets/icons/chat/back.png" alt="返回">
+        </button>
+        <h1 class="page-title">选择好友</h1>
+        <div class="top-right-btns"></div>
+    </div>
+    
+    <div class="page-content">
+        <div id="selectFriendList" class="select-friend-list">
+            <!-- 好友列表会动态插入这里 -->
+        </div>
+    </div>
+</div>
+
 <!-- 底部导航栏 -->
 <div class="bottom-nav">
     <button class="nav-btn active" data-page="chatListPage">
