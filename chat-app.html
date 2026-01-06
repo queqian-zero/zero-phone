@@ -144,6 +144,104 @@
     </div>
 </div>
 
+<!-- 人设编辑页面 -->
+<div class="sub-page" id="friendProfilePage">
+    <div class="top-bar">
+        <button class="back-btn" onclick="closeFriendProfile()">
+            <img src="assets/icons/chat/back.png" alt="返回">
+        </button>
+        <h1 class="page-title">好友资料</h1>
+        <div class="top-right-btns">
+            <button class="edit-btn" id="editProfileBtn" onclick="toggleEdit()">
+                编辑
+            </button>
+        </div>
+    </div>
+    
+    <div class="page-content profile-content">
+        
+        <!-- 头像区域 -->
+        <div class="profile-avatar-section">
+            <div class="profile-avatar" id="profileAvatar">
+                <img src="" alt="头像" id="profileAvatarImg">
+            </div>
+            <div class="avatar-switch-row">
+                <span class="switch-label">头像识别</span>
+                <label class="switch">
+                    <input type="checkbox" id="avatarRecognitionSwitch" disabled>
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+        
+        <!-- 信息区域 -->
+        <div class="profile-info-section">
+            
+            <!-- 好友编码 -->
+            <div class="profile-row">
+                <label class="profile-label">好友编码</label>
+                <div class="profile-value code-value" id="profileCode" onclick="copyCode()">
+                    <span id="codeText">AI123456789</span>
+                    <span class="copy-icon">📋</span>
+                </div>
+            </div>
+            
+            <!-- 网名 -->
+            <div class="profile-row">
+                <label class="profile-label">网名</label>
+                <input type="text" class="profile-input" id="profileNickname" disabled>
+            </div>
+            
+            <!-- 备注 -->
+            <div class="profile-row">
+                <label class="profile-label">备注</label>
+                <input type="text" class="profile-input" id="profileRemark" placeholder="未设置" disabled>
+            </div>
+            
+            <!-- 真实姓名 -->
+            <div class="profile-row">
+                <label class="profile-label">真实姓名</label>
+                <input type="text" class="profile-input" id="profileRealName" placeholder="未设置" disabled>
+            </div>
+            
+            <!-- 个性签名 -->
+            <div class="profile-row">
+                <label class="profile-label">个性签名</label>
+                <input type="text" class="profile-input" id="profileSignature" placeholder="未设置" disabled>
+            </div>
+            
+            <!-- 拍一拍 -->
+            <div class="profile-row">
+                <label class="profile-label">拍一拍</label>
+                <input type="text" class="profile-input" id="profilePoke" placeholder="拍了拍" disabled>
+            </div>
+            
+            <!-- 人设 -->
+            <div class="profile-row full">
+                <label class="profile-label">人设</label>
+                <textarea class="profile-textarea" id="profilePersona" rows="8" disabled></textarea>
+            </div>
+            
+            <!-- 分组 -->
+            <div class="profile-row">
+                <label class="profile-label">分组</label>
+                <select class="profile-select" id="profileGroup" disabled>
+                    <option value="我的好友">我的好友</option>
+                </select>
+            </div>
+            
+        </div>
+        
+        <!-- 危险操作 -->
+        <div class="danger-section">
+            <button class="danger-btn" onclick="deleteFriend()">
+                删除好友
+            </button>
+        </div>
+        
+    </div>
+</div>
+
 <!-- 通过编码添加页面 -->
 <div class="sub-page" id="addByCodePage">
     <div class="top-bar">
