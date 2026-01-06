@@ -18,8 +18,8 @@ class ChatApp {
         });
         
         document.getElementById('addChatBtn').addEventListener('click', () => {
-            alert('创建聊天框功能开发中...');
-        });
+    openCreateChat();
+});
         
         // ===== 好友列表按钮 =====
         document.getElementById('manageGroupBtn').addEventListener('click', () => {
@@ -879,6 +879,7 @@ function createOrOpenChat(friend) {
             lastMessage: '',
             lastMessageTime: Date.now(),
             unreadCount: 0,
+            pinned: false,  // 是否置顶
             createTime: Date.now()
         };
         
@@ -888,11 +889,16 @@ function createOrOpenChat(friend) {
         console.log('✅ 创建新聊天:', chat);
     }
     
-    // 跳转到聊天界面
-    openChatInterface(chat);
+    // 🆕 跳转到聊天列表页
+    chatApp.switchPage('chatListPage');
     
     // 刷新聊天列表
     loadChatList();
+    
+    // 延迟一下再打开聊天界面（让用户看到列表变化）
+    setTimeout(() => {
+        openChatInterface(chat);
+    }, 300);
 }
 
 // 打开聊天界面
@@ -918,10 +924,36 @@ function loadChatList() {
     
     // 渲染聊天列表
     const chatsHtml = chats.map(chat => {
-        const timeStr = formatChatTime(chat.lastMessageTime);
-        
-        return `
-            <div class="chat-item" onclick="openChatById('${chat.chatId}')">
+    const timeStr = formatChatTime(chat.lastMessageTime);
+    const pinnedClass = chat.pinned ? 'pinned' : '';
+    
+    return `
+        <div class="chat-item-wrapper ${pinnedClass}">
+            <div class="chat-item" 
+                 onclick="openChatById('${chat.chatId}')"
+                 ontouchstart="handleChatSwipeStart(event, '${chat.chatId}')"
+                 ontouchmove="handleChatSwipeMove(event)"
+                 ontouchend="handleChatSwipeEnd(event, '${chat.chatId}')">
+                <div class="chat-avatar">
+                    ${chat.friendAvatar ? `<img src="${chat.friendAvatar}" alt="${chat.friendNickname}">` : '👤'}
+                </div>
+                <div class="chat-info">
+                    <div class="chat-header">
+                        <div class="chat-name">${chat.friendNickname}</div>
+                        <div class="chat-time">${timeStr}</div>
+                    </div>
+                    <div class="chat-preview">${chat.lastMessage || '开始聊天吧~'}</div>
+                </div>
+            </div>
+            <div class="chat-actions">
+                <button class="chat-action-btn pin-btn" onclick="togglePinChat('${chat.chatId}')">
+                    ${chat.pinned ? '取消置顶' : '置顶'}
+                </button>
+                <button class="chat-action-btn delete-btn" onclick="deleteChat('${chat.chatId}')">
+                    删除
+                </button>
+            </div>
+        </div>
                 <div class="chat-avatar">
                     ${chat.friendAvatar ? `<img src="${chat.friendAvatar}" alt="${chat.friendNickname}">` : '👤'}
                 </div>
@@ -993,3 +1025,180 @@ function formatChatTime(timestamp) {
 document.addEventListener('DOMContentLoaded', () => {
     loadChatList();
 });
+
+// ===== 创建聊天功能 =====
+
+// 打开创建聊天页面
+function openCreateChat() {
+    document.getElementById('createChatPage').classList.add('show');
+}
+
+// 关闭创建聊天页面
+function closeCreateChat() {
+    document.getElementById('createChatPage').classList.remove('show');
+}
+
+// 显示选择好友
+function showSelectFriend() {
+    // 加载好友列表
+    const friends = JSON.parse(localStorage.getItem('friends') || '[]');
+    
+    if (friends.length === 0) {
+        alert('还没有好友哦~\n请先添加好友！');
+        return;
+    }
+    
+    // 渲染好友列表
+    const container = document.getElementById('selectFriendList');
+    const friendsHtml = friends.map(friend => `
+        <div class="select-friend-item" onclick="selectFriendToChat('${friend.friendCode}')">
+            <div class="friend-avatar">
+                ${friend.avatar ? `<img src="${friend.avatar}" alt="${friend.nickname}">` : '👤'}
+            </div>
+            <div class="friend-info">
+                <div class="friend-name">${friend.remark || friend.nickname}</div>
+                <div class="friend-signature">${friend.signature || '这个人很懒，什么都没写...'}</div>
+            </div>
+        </div>
+    `).join('');
+    
+    container.innerHTML = friendsHtml;
+    
+    // 显示选择好友页面
+    document.getElementById('selectFriendPage').classList.add('show');
+}
+
+// 关闭选择好友页面
+function closeSelectFriend() {
+    document.getElementById('selectFriendPage').classList.remove('show');
+}
+
+// 选择好友创建聊天
+function selectFriendToChat(friendCode) {
+    const friends = JSON.parse(localStorage.getItem('friends') || '[]');
+    const friend = friends.find(f => f.friendCode === friendCode);
+    
+    if (!friend) {
+        alert('找不到该好友！');
+        return;
+    }
+    
+    // 关闭所有弹窗
+    document.getElementById('selectFriendPage').classList.remove('show');
+    document.getElementById('createChatPage').classList.remove('show');
+    
+    // 创建或打开聊天
+    createOrOpenChat(friend);
+}
+
+// 显示创建群聊
+function showCreateGroup() {
+    alert('群聊功能开发中...\n\n敬请期待！');
+}
+
+// ===== 聊天列表左滑功能 =====
+
+let swipeStartX = 0;
+let swipeStartY = 0;
+let currentSwipeElement = null;
+let isSwipingChat = false;
+
+// 处理滑动开始
+function handleChatSwipeStart(event, chatId) {
+    const touch = event.touches[0];
+    swipeStartX = touch.clientX;
+    swipeStartY = touch.clientY;
+    currentSwipeElement = event.currentTarget.parentElement;
+    isSwipingChat = false;
+}
+
+// 处理滑动移动
+function handleChatSwipeMove(event) {
+    if (!currentSwipeElement) return;
+    
+    const touch = event.touches[0];
+    const deltaX = touch.clientX - swipeStartX;
+    const deltaY = touch.clientY - swipeStartY;
+    
+    // 判断是否是横向滑动
+    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
+        isSwipingChat = true;
+        event.preventDefault();
+        
+        // 只允许向左滑
+        if (deltaX < 0) {
+            const offset = Math.max(deltaX, -140); // 最多滑出140px
+            currentSwipeElement.style.transform = `translateX(${offset}px)`;
+        }
+    }
+}
+
+// 处理滑动结束
+function handleChatSwipeEnd(event, chatId) {
+    if (!currentSwipeElement) return;
+    
+    const touch = event.changedTouches[0];
+    const deltaX = touch.clientX - swipeStartX;
+    
+    // 如果滑动超过70px，显示操作按钮
+    if (deltaX < -70) {
+        currentSwipeElement.style.transform = 'translateX(-140px)';
+        currentSwipeElement.classList.add('swiped');
+    } else {
+        currentSwipeElement.style.transform = 'translateX(0)';
+        currentSwipeElement.classList.remove('swiped');
+    }
+    
+    // 如果是滑动，阻止点击事件
+    if (isSwipingChat && Math.abs(deltaX) > 10) {
+        setTimeout(() => {
+            isSwipingChat = false;
+        }, 100);
+    }
+    
+    currentSwipeElement = null;
+}
+
+// 置顶/取消置顶聊天
+function togglePinChat(chatId) {
+    let chats = JSON.parse(localStorage.getItem('chats') || '[]');
+    const chatIndex = chats.findIndex(c => c.chatId === chatId);
+    
+    if (chatIndex !== -1) {
+        chats[chatIndex].pinned = !chats[chatIndex].pinned;
+        
+        // 重新排序：置顶的在前面
+        chats.sort((a, b) => {
+            if (a.pinned && !b.pinned) return -1;
+            if (!a.pinned && b.pinned) return 1;
+            return b.lastMessageTime - a.lastMessageTime;
+        });
+        
+        localStorage.setItem('chats', JSON.stringify(chats));
+        loadChatList();
+        
+        alert(chats[chatIndex].pinned ? '✅ 已置顶' : '✅ 已取消置顶');
+    }
+}
+
+// 删除聊天
+function deleteChat(chatId) {
+    const chats = JSON.parse(localStorage.getItem('chats') || '[]');
+    const chat = chats.find(c => c.chatId === chatId);
+    
+    if (!chat) return;
+    
+    const confirm = window.confirm(`确定要删除与 ${chat.friendNickname} 的聊天吗？\n\n聊天记录将被清空！`);
+    
+    if (confirm) {
+        // 删除聊天
+        const newChats = chats.filter(c => c.chatId !== chatId);
+        localStorage.setItem('chats', JSON.stringify(newChats));
+        
+        // 删除聊天记录
+        localStorage.removeItem(`chatHistory_${chat.friendCode}`);
+        
+        loadChatList();
+        alert('✅ 已删除');
+    }
+}
