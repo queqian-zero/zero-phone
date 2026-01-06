@@ -105,3 +105,21 @@ class ChatApp {
 
 // 初始化
 const chatApp = new ChatApp();
+
+// ===== 好友列表功能 =====
+
+// 切换分组展开/折叠
+function toggleGroup(groupHeader) {
+    const group = groupHeader.parentElement;
+    group.classList.toggle('expanded');
+}
+
+// 页面加载时初始化
+document.addEventListener('DOMContentLoaded', () => {
+    // 绑定分组点击事件
+    document.querySelectorAll('.group-header').forEach(header => {
+        header.addEventListener('click', () => {
+            toggleGroup(header);
+        });
+    });
+});
