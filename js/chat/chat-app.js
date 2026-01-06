@@ -27,8 +27,8 @@ class ChatApp {
         });
         
         document.getElementById('addFriendBtn').addEventListener('click', () => {
-    openAddFriend();
-});
+            openAddFriend();
+        });
         
         // 绑定底部导航
         document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -62,10 +62,10 @@ class ChatApp {
         // 更新标题和右侧按钮
         this.updateTopBar(pageId);
         
-        // 🆕 如果切换到好友列表，刷新列表（加这3行）
-    if (pageId === 'friendListPage') {
-        loadFriendList();
-    }
+        // 如果切换到好友列表，刷新列表
+        if (pageId === 'friendListPage') {
+            loadFriendList();
+        }
         
         this.currentPage = pageId;
     }
@@ -99,7 +99,6 @@ class ChatApp {
                 btn.style.display = 'flex';
             });
         }
-        // 发现页和个人设置：不显示右侧按钮
     }
     
     // 返回桌面
@@ -124,7 +123,7 @@ function loadFriendList() {
     const friends = JSON.parse(localStorage.getItem('friends') || '[]');
     
     if (friends.length === 0) {
-        return; // 保持默认的"暂无好友"提示
+        return;
     }
     
     // 按分组整理好友
@@ -181,11 +180,6 @@ function createGroupHtml(groupName, friends) {
     `;
 }
 
-// 打开好友资料页面
-function openFriendProfile(friendCode) {
-    alert(`打开好友资料：${friendCode}\n\n（人设编辑页面开发中...）`);
-}
-
 // 页面加载时初始化
 document.addEventListener('DOMContentLoaded', () => {
     loadFriendList();
@@ -222,8 +216,22 @@ function backToAddFriend() {
     document.getElementById('customPersonaPage').classList.remove('show');
 }
 
-// 选择头像
+// ===== 创建好友时选择头像 =====
+
+// 选择头像（创建好友时）
 function selectAvatar() {
+    // 显示选择方式
+    const choice = window.confirm('选择头像来源：\n\n点击"确定"从相册选择\n点击"取消"输入URL');
+    
+    if (choice) {
+        selectAvatarFromAlbum();
+    } else {
+        selectAvatarFromURL();
+    }
+}
+
+// 从相册选择头像
+function selectAvatarFromAlbum() {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
@@ -232,26 +240,94 @@ function selectAvatar() {
         const file = e.target.files[0];
         if (!file) return;
         
-        // 验证文件大小
-        if (file.size > 5 * 1024 * 1024) {
-            alert('图片太大了！最大支持5MB');
+        if (file.size > 10 * 1024 * 1024) {
+            alert('图片太大了！最大支持10MB');
             return;
         }
         
-        // 转换为base64
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            currentAvatarBase64 = e.target.result;
-            
-            // 显示预览
-            const preview = document.getElementById('avatarPreview');
-            preview.innerHTML = `<img src="${currentAvatarBase64}" alt="头像">`;
-            preview.classList.add('has-image');
-        };
-        reader.readAsDataURL(file);
+        // 询问是否压缩
+        const compress = window.confirm('是否压缩图片？\n\n点击"确定"压缩后上传（推荐）\n点击"取消"使用原图');
+        
+        if (compress) {
+            compressAvatarImage(file, (base64) => {
+                applyCreateAvatar(base64);
+            });
+        } else {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                applyCreateAvatar(e.target.result);  // 这是Base64
+            };
+            reader.readAsDataURL(file);  // 转Base64
+        }
     };
     
     input.click();
+}
+
+// 从URL选择头像
+function selectAvatarFromURL() {
+    const url = prompt('请输入图片URL：');
+    if (!url) return;
+    
+    try {
+        new URL(url);
+    } catch (e) {
+        alert('URL格式不正确！');
+        return;
+    }
+    
+    const testImg = new Image();
+    testImg.onload = () => {
+        applyCreateAvatar(url);
+    };
+    testImg.onerror = () => {
+        alert('图片加载失败！请检查URL');
+    };
+    testImg.src = url;
+}
+
+// 压缩头像图片
+function compressAvatarImage(file, callback) {
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+        const img = new Image();
+        
+        img.onload = () => {
+            const maxSize = 300;
+            let width = img.width;
+            let height = img.height;
+            
+            if (width > maxSize || height > maxSize) {
+                const ratio = Math.min(maxSize / width, maxSize / height);
+                width = Math.round(width * ratio);
+                height = Math.round(height * ratio);
+            }
+            
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            const compressed = canvas.toDataURL('image/jpeg', 0.85);  // 转Base64
+            callback(compressed);
+        };
+        
+        img.src = e.target.result;
+    };
+    
+    reader.readAsDataURL(file);
+}
+
+// 应用创建头像
+function applyCreateAvatar(base64) {
+    currentAvatarBase64 = base64;
+    
+    const preview = document.getElementById('avatarPreview');
+    preview.innerHTML = `<img src="${base64}" alt="头像">`;
+    preview.classList.add('has-image');
 }
 
 // 生成好友编码
@@ -270,13 +346,11 @@ function addFriendByCode() {
         return;
     }
     
-    // 检查编码格式
     if (!code.startsWith('AI')) {
         alert('编码格式错误！应以AI开头');
         return;
     }
     
-    // 检查编码库
     const codeLibrary = JSON.parse(localStorage.getItem('friendCodeLibrary') || '{}');
     
     if (!codeLibrary[code]) {
@@ -284,14 +358,12 @@ function addFriendByCode() {
         return;
     }
     
-    // 检查是否已在好友列表
     const friends = JSON.parse(localStorage.getItem('friends') || '[]');
     if (friends.some(f => f.friendCode === code)) {
         alert('⚠️ 该好友已在列表中！');
         return;
     }
     
-    // 从编码库恢复好友
     const friendData = codeLibrary[code];
     const newFriend = {
         friendCode: code,
@@ -309,7 +381,6 @@ function addFriendByCode() {
     
     alert(`✅ ${friendData.nickname} 已添加！`);
     
-    // 关闭页面并刷新列表
     document.getElementById('addByCodePage').classList.remove('show');
     document.getElementById('addFriendPage').classList.remove('show');
     loadFriendList();
@@ -324,31 +395,18 @@ function createCustomFriend() {
     const persona = document.getElementById('personaInput').value.trim();
     const group = document.getElementById('groupInput').value;
     
-    console.log('📝 输入信息:', { nickname, signature, persona, group });
-    
-    // 验证
     if (!nickname) {
         alert('请输入网名！');
         return;
     }
     
-    if (!persona) {
-        alert('请输入人设！');
-        return;
-    }
-    
-    if (persona.length < 20) {
+    if (!persona || persona.length < 20) {
         alert(`人设至少20个字！\n当前：${persona.length}个字`);
         return;
     }
     
-    console.log('✅ 验证通过，开始生成编码...');
-    
-    // 生成好友编码
     const friendCode = generateFriendCode();
-    console.log('🔑 好友编码:', friendCode);
     
-    // 创建好友对象
     const newFriend = {
         friendCode: friendCode,
         avatar: currentAvatarBase64 || '',
@@ -360,15 +418,10 @@ function createCustomFriend() {
         addTime: Date.now()
     };
     
-    console.log('👤 新好友对象:', newFriend);
-    
-    // 保存到好友列表
     const friends = JSON.parse(localStorage.getItem('friends') || '[]');
     friends.push(newFriend);
     localStorage.setItem('friends', JSON.stringify(friends));
-    console.log('💾 已保存到好友列表');
     
-    // 保存到编码库
     const codeLibrary = JSON.parse(localStorage.getItem('friendCodeLibrary') || '{}');
     codeLibrary[friendCode] = {
         avatar: currentAvatarBase64 || '',
@@ -383,7 +436,6 @@ function createCustomFriend() {
         }
     };
     localStorage.setItem('friendCodeLibrary', JSON.stringify(codeLibrary));
-    console.log('💾 已保存到编码库');
     
     alert(`✅ ${nickname} 已创建！\n\n好友编码：${friendCode}`);
     
@@ -391,23 +443,15 @@ function createCustomFriend() {
     document.getElementById('nicknameInput').value = '';
     document.getElementById('signatureInput').value = '';
     document.getElementById('personaInput').value = '';
-    
-    // 重置头像
-    const avatarPreview = document.getElementById('avatarPreview');
-    avatarPreview.innerHTML = `
+    document.getElementById('avatarPreview').innerHTML = `
         <span class="avatar-placeholder">📷</span>
         <span class="avatar-hint">点击上传头像</span>
     `;
-    avatarPreview.classList.remove('has-image');
+    document.getElementById('avatarPreview').classList.remove('has-image');
     currentAvatarBase64 = '';
     
-    console.log('✅ 表单已清空');
-    
-    // 关闭页面并刷新列表
     document.getElementById('customPersonaPage').classList.remove('show');
     document.getElementById('addFriendPage').classList.remove('show');
-    
-    console.log('🔄 刷新好友列表...');
     loadFriendList();
     
     console.log('✅ 好友创建完成！');
@@ -431,16 +475,12 @@ function openFriendProfile(friendCode) {
     currentEditingFriend = friend;
     isEditMode = false;
     
-    // 填充数据
     loadFriendProfile(friend);
-    
-    // 显示页面
     document.getElementById('friendProfilePage').classList.add('show');
 }
 
 // 加载好友资料
 function loadFriendProfile(friend) {
-    // 头像
     const avatarImg = document.getElementById('profileAvatarImg');
     if (friend.avatar) {
         avatarImg.src = friend.avatar;
@@ -449,14 +489,10 @@ function loadFriendProfile(friend) {
         avatarImg.style.display = 'none';
     }
     
-    // 头像识别开关
     const avatarSwitch = document.getElementById('avatarRecognitionSwitch');
-    avatarSwitch.checked = friend.avatarRecognition !== false; // 默认开启
+    avatarSwitch.checked = friend.avatarRecognition !== false;
     
-    // 好友编码
     document.getElementById('codeText').textContent = friend.friendCode;
-    
-    // 基本信息
     document.getElementById('profileNickname').value = friend.nickname || '';
     document.getElementById('profileRemark').value = friend.remark || '';
     document.getElementById('profileRealName').value = friend.realName || '';
@@ -465,18 +501,15 @@ function loadFriendProfile(friend) {
     document.getElementById('profilePersona').value = friend.persona || '';
     document.getElementById('profileGroup').value = friend.group || '我的好友';
     
-    // 重置编辑按钮
     const editBtn = document.getElementById('editProfileBtn');
     editBtn.textContent = '编辑';
     editBtn.classList.remove('editing');
     
-    // 禁用所有输入
     setInputsDisabled(true);
 }
 
 // 关闭好友资料页面
 function closeFriendProfile() {
-    // 如果正在编辑，询问是否保存
     if (isEditMode) {
         const confirm = window.confirm('有未保存的修改，确定要退出吗？');
         if (!confirm) return;
@@ -493,12 +526,10 @@ function toggleEdit() {
     const editBtn = document.getElementById('editProfileBtn');
     
     if (isEditMode) {
-        // 进入编辑模式
         editBtn.textContent = '保存';
         editBtn.classList.add('editing');
         setInputsDisabled(false);
     } else {
-        // 保存并退出编辑模式
         saveFriendProfile();
         editBtn.textContent = '编辑';
         editBtn.classList.remove('editing');
@@ -508,6 +539,7 @@ function toggleEdit() {
 
 // 设置输入框禁用状态
 function setInputsDisabled(disabled) {
+    document.getElementById('profileNickname').disabled = disabled;
     document.getElementById('profileRemark').disabled = disabled;
     document.getElementById('profileRealName').disabled = disabled;
     document.getElementById('profileSignature').disabled = disabled;
@@ -515,13 +547,20 @@ function setInputsDisabled(disabled) {
     document.getElementById('profilePersona').disabled = disabled;
     document.getElementById('profileGroup').disabled = disabled;
     document.getElementById('avatarRecognitionSwitch').disabled = disabled;
+    
+    const avatarHint = document.getElementById('avatarEditHint');
+    if (disabled) {
+        avatarHint.style.display = 'none';
+    } else {
+        avatarHint.style.display = 'block';
+    }
 }
 
 // 保存好友资料
 function saveFriendProfile() {
     if (!currentEditingFriend) return;
     
-    // 获取输入值
+    const nickname = document.getElementById('profileNickname').value.trim();
     const remark = document.getElementById('profileRemark').value.trim();
     const realName = document.getElementById('profileRealName').value.trim();
     const signature = document.getElementById('profileSignature').value.trim();
@@ -530,17 +569,22 @@ function saveFriendProfile() {
     const group = document.getElementById('profileGroup').value;
     const avatarRecognition = document.getElementById('avatarRecognitionSwitch').checked;
     
-    // 验证人设
+    if (!nickname) {
+        alert('网名不能为空！');
+        return;
+    }
+    
     if (!persona || persona.length < 20) {
         alert('人设至少20个字！');
         return;
     }
     
-    // 更新好友列表
     let friends = JSON.parse(localStorage.getItem('friends') || '[]');
     const friendIndex = friends.findIndex(f => f.friendCode === currentEditingFriend.friendCode);
     
     if (friendIndex !== -1) {
+        friends[friendIndex].nickname = nickname;
+        friends[friendIndex].avatar = currentEditingFriend.avatar;
         friends[friendIndex].remark = remark;
         friends[friendIndex].realName = realName;
         friends[friendIndex].signature = signature;
@@ -551,20 +595,18 @@ function saveFriendProfile() {
         
         localStorage.setItem('friends', JSON.stringify(friends));
         
-        // 更新编码库
         let codeLibrary = JSON.parse(localStorage.getItem('friendCodeLibrary') || '{}');
         if (codeLibrary[currentEditingFriend.friendCode]) {
+            codeLibrary[currentEditingFriend.friendCode].nickname = nickname;
+            codeLibrary[currentEditingFriend.friendCode].avatar = currentEditingFriend.avatar;
             codeLibrary[currentEditingFriend.friendCode].signature = signature;
             codeLibrary[currentEditingFriend.friendCode].persona = persona;
             localStorage.setItem('friendCodeLibrary', JSON.stringify(codeLibrary));
         }
         
-        // 更新当前对象
         currentEditingFriend = friends[friendIndex];
         
         alert('✅ 保存成功！');
-        
-        // 刷新好友列表
         loadFriendList();
     }
 }
@@ -573,7 +615,6 @@ function saveFriendProfile() {
 function copyCode() {
     const code = document.getElementById('codeText').textContent;
     
-    // 创建临时输入框
     const tempInput = document.createElement('input');
     tempInput.value = code;
     document.body.appendChild(tempInput);
@@ -594,51 +635,157 @@ function deleteFriend() {
     if (!currentEditingFriend) return;
     
     const friendName = currentEditingFriend.remark || currentEditingFriend.nickname;
+    const confirmMsg = `确定要删除好友 "${friendName}" 吗？\n\n删除后聊天记录将被清空，但人设和记忆库会保留。`;
     
-    // 倒计时确认
-    let countdown = 3;
-    const confirmMsg = `确定要删除好友 "${friendName}" 吗？\n\n删除后聊天记录将被清空，但人设和记忆库会保留。\n如需彻底删除，请在"好友编码库"中操作。\n\n`;
-    
-    const result = window.confirm(confirmMsg + `(${countdown}秒后可确认)`);
-    
+    const result = window.confirm(confirmMsg);
     if (!result) return;
     
-    // 二次确认
-    setTimeout(() => {
-        const finalConfirm = window.confirm(`确定删除 "${friendName}" ？`);
+    const finalConfirm = window.confirm(`确定删除 "${friendName}" ？`);
+    if (!finalConfirm) return;
+    
+    let friends = JSON.parse(localStorage.getItem('friends') || '[]');
+    friends = friends.filter(f => f.friendCode !== currentEditingFriend.friendCode);
+    localStorage.setItem('friends', JSON.stringify(friends));
+    
+    localStorage.removeItem(`chatHistory_${currentEditingFriend.friendCode}`);
+    
+    let codeLibrary = JSON.parse(localStorage.getItem('friendCodeLibrary') || '{}');
+    if (codeLibrary[currentEditingFriend.friendCode]) {
+        const now = new Date().toISOString().split('T')[0];
+        if (!codeLibrary[currentEditingFriend.friendCode].memories) {
+            codeLibrary[currentEditingFriend.friendCode].memories = {
+                chatSummary: [],
+                diary: [],
+                coreMemory: []
+            };
+        }
+        codeLibrary[currentEditingFriend.friendCode].memories.diary.push(
+            `${now}: 被主人从好友列表移除了...`
+        );
+        localStorage.setItem('friendCodeLibrary', JSON.stringify(codeLibrary));
+    }
+    
+    alert(`✅ ${friendName} 已删除`);
+    
+    document.getElementById('friendProfilePage').classList.remove('show');
+    currentEditingFriend = null;
+    loadFriendList();
+}
+
+// ===== 编辑好友时更换头像 =====
+
+// 更换资料头像
+function changeProfileAvatar() {
+    if (!isEditMode) return;
+    
+    const choice = window.confirm('选择头像来源：\n\n点击"确定"从相册选择\n点击"取消"输入URL');
+    
+    if (choice) {
+        selectProfileAvatarFromAlbum();
+    } else {
+        selectProfileAvatarFromURL();
+    }
+}
+
+// 从相册选择头像
+function selectProfileAvatarFromAlbum() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    
+    input.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
         
-        if (finalConfirm) {
-            // 从好友列表删除
-            let friends = JSON.parse(localStorage.getItem('friends') || '[]');
-            friends = friends.filter(f => f.friendCode !== currentEditingFriend.friendCode);
-            localStorage.setItem('friends', JSON.stringify(friends));
+        if (file.size > 10 * 1024 * 1024) {
+            alert('图片太大了！最大支持10MB');
+            return;
+        }
+        
+        const compress = window.confirm('是否压缩图片？\n\n点击"确定"压缩后上传（推荐）\n点击"取消"使用原图');
+        
+        if (compress) {
+            compressProfileAvatar(file, (base64) => {
+                applyProfileAvatar(base64);
+            });
+        } else {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                applyProfileAvatar(e.target.result);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+    
+    input.click();
+}
+
+// 从URL选择头像
+function selectProfileAvatarFromURL() {
+    const url = prompt('请输入图片URL：');
+    if (!url) return;
+    
+    try {
+        new URL(url);
+    } catch (e) {
+        alert('URL格式不正确！');
+        return;
+    }
+    
+    const testImg = new Image();
+    testImg.onload = () => {
+        applyProfileAvatar(url);
+    };
+    testImg.onerror = () => {
+        alert('图片加载失败！请检查URL');
+    };
+    testImg.src = url;
+}
+
+// 压缩头像
+function compressProfileAvatar(file, callback) {
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+        const img = new Image();
+        
+        img.onload = () => {
+            const maxSize = 300;
+            let width = img.width;
+            let height = img.height;
             
-            // 清空聊天记录
-            localStorage.removeItem(`chatHistory_${currentEditingFriend.friendCode}`);
-            
-            // 在记忆库添加"被删除"记录
-            let codeLibrary = JSON.parse(localStorage.getItem('friendCodeLibrary') || '{}');
-            if (codeLibrary[currentEditingFriend.friendCode]) {
-                const now = new Date().toISOString().split('T')[0];
-                if (!codeLibrary[currentEditingFriend.friendCode].memories) {
-                    codeLibrary[currentEditingFriend.friendCode].memories = {
-                        chatSummary: [],
-                        diary: [],
-                        coreMemory: []
-                    };
-                }
-                codeLibrary[currentEditingFriend.friendCode].memories.diary.push(
-                    `${now}: 被主人从好友列表移除了...`
-                );
-                localStorage.setItem('friendCodeLibrary', JSON.stringify(codeLibrary));
+            if (width > maxSize || height > maxSize) {
+                const ratio = Math.min(maxSize / width, maxSize / height);
+                width = Math.round(width * ratio);
+                height = Math.round(height * ratio);
             }
             
-            alert(`✅ ${friendName} 已删除`);
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
             
-            // 关闭页面并刷新列表
-            document.getElementById('friendProfilePage').classList.remove('show');
-            currentEditingFriend = null;
-            loadFriendList();
-        }
-    }, 100);
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            const compressed = canvas.toDataURL('image/jpeg', 0.85);
+            callback(compressed);
+        };
+        
+        img.src = e.target.result;
+    };
+    
+    reader.readAsDataURL(file);
+}
+
+// 应用头像
+function applyProfileAvatar(base64) {
+    const avatarImg = document.getElementById('profileAvatarImg');
+    avatarImg.src = base64;
+    avatarImg.style.display = 'block';
+    
+    if (currentEditingFriend) {
+        currentEditingFriend.avatar = base64;
+    }
+    
+    console.log('✅ 头像已更新（保存时生效）');
 }
