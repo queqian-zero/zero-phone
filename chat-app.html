@@ -161,9 +161,12 @@
     <div class="page-content profile-content">
         
         <!-- 头像区域 -->
-        <div class="profile-avatar-section">
-            <div class="profile-avatar" id="profileAvatar">
-                <img src="" alt="头像" id="profileAvatarImg">
+<div class="profile-avatar-section">
+    <div class="profile-avatar" id="profileAvatar" onclick="changeProfileAvatar()">
+        <img src="" alt="头像" id="profileAvatarImg">
+        <div class="avatar-edit-hint" id="avatarEditHint" style="display: none;">
+            点击更换
+        </div>
             </div>
             <div class="avatar-switch-row">
                 <span class="switch-label">头像识别</span>
