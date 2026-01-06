@@ -67,6 +67,11 @@ class ChatApp {
             loadFriendList();
         }
         
+        // 如果切换到聊天列表，刷新列表
+if (pageId === 'chatListPage') {
+    loadChatList();
+}
+        
         this.currentPage = pageId;
     }
     
@@ -154,8 +159,14 @@ function loadFriendList() {
 
 // 创建分组HTML
 function createGroupHtml(groupName, friends) {
-    const membersHtml = friends.map(friend => `
-        <div class="friend-card" onclick="openFriendProfile('${friend.friendCode}')">
+    const membersHtml = friends.map(friend => {
+        const friendCode = friend.friendCode;
+        return `
+        <div class="friend-card" 
+             onclick="openChatWithFriend('${friendCode}')"
+             oncontextmenu="openFriendProfileFromList('${friendCode}'); return false;"
+             ontouchstart="handleFriendTouchStart(event, '${friendCode}')"
+             ontouchend="handleFriendTouchEnd()">
             <div class="friend-avatar">
                 ${friend.avatar ? `<img src="${friend.avatar}" alt="${friend.nickname}">` : '👤'}
             </div>
@@ -164,7 +175,8 @@ function createGroupHtml(groupName, friends) {
                 <div class="friend-signature">${friend.signature || '这个人很懒，什么都没写...'}</div>
             </div>
         </div>
-    `).join('');
+        `;
+    }).join('');
     
     return `
         <div class="friend-group">
@@ -789,3 +801,195 @@ function applyProfileAvatar(base64) {
     
     console.log('✅ 头像已更新（保存时生效）');
 }
+
+// ===== 聊天功能 =====
+
+let friendLongPressTimer = null;
+let friendLongPressTriggered = false;
+
+// 处理好友卡片触摸开始
+function handleFriendTouchStart(event, friendCode) {
+    friendLongPressTriggered = false;
+    
+    // 长按0.5秒触发人设编辑
+    friendLongPressTimer = setTimeout(() => {
+        friendLongPressTriggered = true;
+        navigator.vibrate && navigator.vibrate(50); // 震动反馈
+        openFriendProfileFromList(friendCode);
+    }, 500);
+}
+
+// 处理好友卡片触摸结束
+function handleFriendTouchEnd() {
+    if (friendLongPressTimer) {
+        clearTimeout(friendLongPressTimer);
+        friendLongPressTimer = null;
+    }
+}
+
+// 从好友列表打开人设编辑
+function openFriendProfileFromList(friendCode) {
+    // 阻止触发聊天
+    if (friendLongPressTimer) {
+        clearTimeout(friendLongPressTimer);
+    }
+    
+    // 打开人设编辑
+    openFriendProfile(friendCode);
+}
+
+// 打开与好友的聊天
+function openChatWithFriend(friendCode) {
+    // 如果是长按触发的，不打开聊天
+    if (friendLongPressTriggered) {
+        friendLongPressTriggered = false;
+        return;
+    }
+    
+    console.log(`打开与好友 ${friendCode} 的聊天`);
+    
+    // 检查好友是否存在
+    const friends = JSON.parse(localStorage.getItem('friends') || '[]');
+    const friend = friends.find(f => f.friendCode === friendCode);
+    
+    if (!friend) {
+        alert('找不到该好友！');
+        return;
+    }
+    
+    // 创建或打开聊天
+    createOrOpenChat(friend);
+}
+
+// 创建或打开聊天
+function createOrOpenChat(friend) {
+    // 获取所有聊天
+    let chats = JSON.parse(localStorage.getItem('chats') || '[]');
+    
+    // 检查是否已有聊天
+    let chat = chats.find(c => c.friendCode === friend.friendCode);
+    
+    if (!chat) {
+        // 创建新聊天
+        chat = {
+            chatId: `chat_${Date.now()}`,
+            friendCode: friend.friendCode,
+            friendNickname: friend.nickname,
+            friendAvatar: friend.avatar || '',
+            lastMessage: '',
+            lastMessageTime: Date.now(),
+            unreadCount: 0,
+            createTime: Date.now()
+        };
+        
+        chats.unshift(chat); // 添加到开头
+        localStorage.setItem('chats', JSON.stringify(chats));
+        
+        console.log('✅ 创建新聊天:', chat);
+    }
+    
+    // 跳转到聊天界面
+    openChatInterface(chat);
+    
+    // 刷新聊天列表
+    loadChatList();
+}
+
+// 打开聊天界面
+function openChatInterface(chat) {
+    alert(`打开聊天界面：${chat.friendNickname}\n\n（聊天界面开发中...）`);
+    // TODO: 后面会实现真正的聊天界面
+}
+
+// 加载聊天列表
+function loadChatList() {
+    const chats = JSON.parse(localStorage.getItem('chats') || '[]');
+    const container = document.querySelector('#chatListPage .page-content');
+    
+    if (chats.length === 0) {
+        container.innerHTML = `
+            <div class="empty-placeholder">
+                <div class="empty-icon">💬</div>
+                <div class="empty-text">暂无聊天</div>
+            </div>
+        `;
+        return;
+    }
+    
+    // 渲染聊天列表
+    const chatsHtml = chats.map(chat => {
+        const timeStr = formatChatTime(chat.lastMessageTime);
+        
+        return `
+            <div class="chat-item" onclick="openChatById('${chat.chatId}')">
+                <div class="chat-avatar">
+                    ${chat.friendAvatar ? `<img src="${chat.friendAvatar}" alt="${chat.friendNickname}">` : '👤'}
+                </div>
+                <div class="chat-info">
+                    <div class="chat-header">
+                        <div class="chat-name">${chat.friendNickname}</div>
+                        <div class="chat-time">${timeStr}</div>
+                    </div>
+                    <div class="chat-preview">${chat.lastMessage || '开始聊天吧~'}</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    container.innerHTML = chatsHtml;
+}
+
+// 通过chatId打开聊天
+function openChatById(chatId) {
+    const chats = JSON.parse(localStorage.getItem('chats') || '[]');
+    const chat = chats.find(c => c.chatId === chatId);
+    
+    if (chat) {
+        openChatInterface(chat);
+    }
+}
+
+// 格式化聊天时间
+function formatChatTime(timestamp) {
+    const now = Date.now();
+    const diff = now - timestamp;
+    const date = new Date(timestamp);
+    
+    // 1分钟内
+    if (diff < 60 * 1000) {
+        return '刚刚';
+    }
+    
+    // 1小时内
+    if (diff < 60 * 60 * 1000) {
+        const minutes = Math.floor(diff / (60 * 1000));
+        return `${minutes}分钟前`;
+    }
+    
+    // 今天
+    const today = new Date();
+    if (date.toDateString() === today.toDateString()) {
+        return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+    }
+    
+    // 昨天
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    if (date.toDateString() === yesterday.toDateString()) {
+        return '昨天';
+    }
+    
+    // 一周内
+    if (diff < 7 * 24 * 60 * 60 * 1000) {
+        const days = ['日', '一', '二', '三', '四', '五', '六'];
+        return `星期${days[date.getDay()]}`;
+    }
+    
+    // 更早
+    return `${date.getMonth() + 1}/${date.getDate()}`;
+}
+
+// 页面切换时加载聊天列表
+document.addEventListener('DOMContentLoaded', () => {
+    loadChatList();
+});
