@@ -307,3 +307,14 @@
 .page-indicators {
     will-change: auto;
 }
+
+/* ==================== 恢复内容区域的文本选择 ==================== */
+/* 允许用户复制聊天消息等内容 */
+.page-content,
+.chat-message,
+.lockscreen-time,
+.lockscreen-date,
+.page-title {
+    user-select: text !important;
+    -webkit-user-select: text !important;
+}
