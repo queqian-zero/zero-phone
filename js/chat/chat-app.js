@@ -22,13 +22,14 @@ class ChatApp {
         });
         
         // ===== 好友列表按钮 =====
-        document.getElementById('manageGroupBtn').addEventListener('click', () => {
-            alert('管理分组功能开发中...');
-        });
+        // 注释掉这两个alert，因为friend-list.js会自动处理
+        // document.getElementById('manageGroupBtn').addEventListener('click', () => {
+        //     alert('管理分组功能开发中...');
+        // });
         
-        document.getElementById('addFriendBtn').addEventListener('click', () => {
-            alert('添加好友功能开发中...');
-        });
+        // document.getElementById('addFriendBtn').addEventListener('click', () => {
+        //     alert('添加好友功能开发中...');
+        // });
         
         // 绑定底部导航
         document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -61,6 +62,13 @@ class ChatApp {
         
         // 更新标题和右侧按钮
         this.updateTopBar(pageId);
+        
+        // ⭐ 新增：切换到好友列表时初始化
+        if (pageId === 'friendListPage') {
+            if (typeof initFriendList === 'function' && !window.friendList) {
+                initFriendList();
+            }
+        }
         
         this.currentPage = pageId;
     }
