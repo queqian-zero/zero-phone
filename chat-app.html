@@ -61,11 +61,10 @@
     
     <!-- 好友列表页 -->
     <div class="chat-page" id="friendListPage">
-        <div class="page-content">
-            <div class="empty-placeholder">
-                <div class="empty-icon">👥</div>
-                <div class="empty-text">暂无好友</div>
-            </div>
+    <div class="page-content" id="friendListContainer">
+        <!-- 好友列表会渲染在这里 -->
+    </div>
+</div>
         </div>
     </div>
     
@@ -115,6 +114,8 @@
     
     <!-- JavaScript文件引入 -->
     <script src="js/chat/chat-app.js"></script>
+    <script src="js/storage-manager.js"></script>
+<script src="js/chat/friend-list.js"></script>
     
 </body>
 </html>
