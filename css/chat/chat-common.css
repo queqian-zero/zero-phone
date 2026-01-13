@@ -1,10 +1,9 @@
-/* Chat Common - 聊天APP通用样式（增强版） */
+/* Chat Common - 聊天APP通用样式 */
 
-/* ==================== 容器 ==================== */
+/* 容器 */
 .chat-app-container {
     width: 100%;
-    height: 100vh;
-    height: 100dvh; /* 动态视口高度 */
+    height: 100dvh;
     min-height: -webkit-fill-available;
     background: #1a1a1a;
     display: flex;
@@ -13,12 +12,6 @@
     position: fixed;
     top: 0;
     left: 0;
-    right: 0;
-    bottom: 0;
-    
-    /* 触摸优化 */
-    -webkit-tap-highlight-color: transparent;
-    touch-action: pan-y; /* 只允许垂直滑动 */
 }
 
 /* iOS Safari特殊处理 */
@@ -28,31 +21,20 @@
     }
 }
 
-/* ==================== 顶部导航栏 ==================== */
+/* 顶部导航栏 - 磨砂白 */
 .top-bar {
     height: 60px;
-    min-height: 60px; /* 确保最小高度 */
     background: rgba(255, 255, 255, 0.95);
-    
-    /* 浏览器兼容的backdrop-filter */
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    
     border-bottom: 1px solid rgba(0, 0, 0, 0.1);
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 0 16px;
-    
-    /* 安全区域适配 */
-    padding-top: max(0px, env(safe-area-inset-top, 0px));
-    padding-left: max(16px, calc(16px + env(safe-area-inset-left, 0px)));
-    padding-right: max(16px, calc(16px + env(safe-area-inset-right, 0px)));
-    
+    padding-top: env(safe-area-inset-top);
     flex-shrink: 0;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-    position: relative;
-    z-index: 100;
 }
 
 /* 返回按钮 */
@@ -61,21 +43,14 @@
     height: 40px;
     border: none;
     background: rgba(0, 0, 0, 0.05);
-    
-    /* 浏览器兼容的backdrop-filter */
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-    
     border-radius: 12px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.2s ease;
-    
-    /* 触摸优化 */
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
 }
 
 .back-btn:hover {
@@ -93,15 +68,12 @@
     font-weight: 600;
     color: #000;
     margin: 0;
-    flex: 1;
-    text-align: center;
 }
 
 /* 右侧按钮组 */
 .top-right-btns {
     display: flex;
     gap: 8px;
-    align-items: center;
 }
 
 /* 顶部所有按钮 */
@@ -111,24 +83,16 @@
 .add-friend-btn {
     width: 40px;
     height: 40px;
-    min-width: 40px; /* 防止压缩 */
     border: none;
     background: rgba(0, 0, 0, 0.05);
-    
-    /* 浏览器兼容的backdrop-filter */
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-    
     border-radius: 12px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.2s ease;
-    
-    /* 触摸优化 */
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
 }
 
 .search-btn:hover,
@@ -156,10 +120,6 @@
     height: 24px;
     opacity: 0.8;
     transition: opacity 0.2s ease;
-    
-    /* 图片渲染优化 */
-    image-rendering: -webkit-optimize-contrast;
-    image-rendering: crisp-edges;
 }
 
 .back-btn:hover img,
@@ -170,13 +130,12 @@
     opacity: 1;
 }
 
-/* ==================== 页面容器 ==================== */
+/* 页面容器 */
 .pages-container {
     flex: 1;
     position: relative;
     overflow: hidden;
     background: #1a1a1a;
-    min-height: 0; /* 修复flex子元素溢出问题 */
 }
 
 .chat-page {
@@ -199,12 +158,8 @@
     width: 100%;
     height: 100%;
     overflow-y: auto;
-    overflow-x: hidden;
-    -webkit-overflow-scrolling: touch; /* iOS平滑滚动 */
     padding: 16px;
-    
-    /* 适配底部导航栏高度 */
-    padding-bottom: calc(16px + 80px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(16px + 80px);
 }
 
 /* 空状态占位 */
@@ -213,7 +168,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-height: calc(100vh - 140px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    min-height: calc(100vh - 140px);
     color: rgba(255, 255, 255, 0.5);
 }
 
@@ -228,31 +183,18 @@
     opacity: 0.5;
 }
 
-/* ==================== 底部导航栏 ==================== */
+/* 底部导航栏 - 磨砂白 */
 .bottom-nav {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
     height: 80px;
-    min-height: 80px; /* 确保最小高度 */
     background: rgba(255, 255, 255, 0.95);
-    
-    /* 浏览器兼容的backdrop-filter */
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    
     border-top: 1px solid rgba(0, 0, 0, 0.1);
     display: flex;
     align-items: center;
     justify-content: space-around;
     padding: 8px 0;
-    
-    /* 安全区域适配 - 关键！ */
-    padding-bottom: max(8px, calc(8px + env(safe-area-inset-bottom, 0px)));
-    padding-left: max(0px, env(safe-area-inset-left, 0px));
-    padding-right: max(0px, env(safe-area-inset-right, 0px));
-    
+    padding-bottom: calc(8px + env(safe-area-inset-bottom));
     flex-shrink: 0;
     position: relative;
     z-index: 100;
@@ -270,12 +212,6 @@
     cursor: pointer;
     transition: all 0.2s ease;
     padding: 8px 0;
-    
-    /* 触摸优化 */
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
-    user-select: none;
-    -webkit-user-select: none;
 }
 
 /* 底部导航图标（图片） */
@@ -284,10 +220,6 @@
     height: 28px;
     opacity: 0.4;
     transition: all 0.2s ease;
-    
-    /* 图片渲染优化 */
-    image-rendering: -webkit-optimize-contrast;
-    image-rendering: crisp-edges;
 }
 
 .nav-btn.active .nav-icon-img {
@@ -301,7 +233,6 @@
     color: #000;
     opacity: 0.4;
     transition: all 0.2s ease;
-    white-space: nowrap; /* 防止换行 */
 }
 
 .nav-btn.active .nav-label {
@@ -316,68 +247,4 @@
 /* 隐藏旧的emoji图标 */
 .nav-icon {
     display: none;
-}
-
-/* ==================== 响应式适配 ==================== */
-/* 小屏幕优化 */
-@media (max-height: 667px) {
-    .top-bar {
-        height: 50px;
-        min-height: 50px;
-    }
-    
-    .bottom-nav {
-        height: 70px;
-        min-height: 70px;
-    }
-    
-    .page-content {
-        padding-bottom: calc(16px + 70px + env(safe-area-inset-bottom, 0px));
-    }
-}
-
-/* 横屏模式 */
-@media (orientation: landscape) and (max-height: 500px) {
-    .top-bar {
-        height: 44px;
-        min-height: 44px;
-        padding: 0 12px;
-    }
-    
-    .bottom-nav {
-        height: 60px;
-        min-height: 60px;
-        padding: 4px 0;
-    }
-    
-    .nav-icon-img {
-        width: 24px;
-        height: 24px;
-    }
-    
-    .nav-label {
-        font-size: 11px;
-    }
-}
-
-/* ==================== 性能优化 ==================== */
-/* 使用GPU加速 */
-.top-bar,
-.bottom-nav,
-.chat-page {
-    transform: translateZ(0);
-    -webkit-transform: translateZ(0);
-}
-
-/* 滚动性能优化 */
-.page-content {
-    will-change: scroll-position;
-}
-
-/* 减少重绘 */
-.nav-btn,
-.back-btn,
-.search-btn,
-.add-chat-btn {
-    will-change: transform;
 }
