@@ -230,6 +230,10 @@
 
 /* ==================== 底部导航栏 ==================== */
 .bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
     height: 80px;
     min-height: 80px; /* 确保最小高度 */
     background: rgba(255, 255, 255, 0.95);
