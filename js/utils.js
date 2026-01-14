@@ -202,3 +202,126 @@ function waitForTransition(element) {
         element.addEventListener('transitionend', resolve, { once: true });
     });
 }
+
+// ==================== Toast 提示组件 ====================
+/**
+ * Toast提示 - 自动消失的小弹窗
+ * 使用方法: showToast('✅ 操作成功', 'success')
+ */
+
+class Toast {
+    constructor() {
+        this.container = null;
+        this.init();
+    }
+
+    init() {
+        // 创建Toast容器
+        this.container = document.createElement('div');
+        this.container.id = 'toast-container';
+        this.container.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 9999;
+            pointer-events: none;
+        `;
+        document.body.appendChild(this.container);
+    }
+
+    show(message, type = 'info', duration = 2000) {
+        // 创建Toast元素
+        const toast = document.createElement('div');
+        toast.className = 'toast-item';
+        
+        // 根据类型设置图标
+        const icons = {
+            success: '✅',
+            error: '❌',
+            warning: '⚠️',
+            info: 'ℹ️'
+        };
+        
+        const icon = icons[type] || icons.info;
+        
+        toast.innerHTML = `
+            <span class="toast-icon">${icon}</span>
+            <span class="toast-message">${message}</span>
+        `;
+        
+        // 设置样式
+        toast.style.cssText = `
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+            animation: toast-fade-in 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            max-width: 80vw;
+            word-break: break-word;
+        `;
+        
+        // 添加到容器
+        this.container.appendChild(toast);
+        
+        // 自动消失
+        setTimeout(() => {
+            toast.style.animation = 'toast-fade-out 0.3s ease';
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, 300);
+        }, duration);
+    }
+}
+
+// 创建全局Toast实例
+const toastInstance = new Toast();
+
+// 全局方法
+function showToast(message, type = 'info', duration = 2000) {
+    toastInstance.show(message, type, duration);
+}
+
+// 添加Toast动画样式
+const toastStyles = document.createElement('style');
+toastStyles.textContent = `
+    @keyframes toast-fade-in {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    @keyframes toast-fade-out {
+        from {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        to {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+    }
+    
+    .toast-icon {
+        font-size: 18px;
+        flex-shrink: 0;
+    }
+    
+    .toast-message {
+        flex: 1;
+    }
+`;
+document.head.appendChild(toastStyles);
