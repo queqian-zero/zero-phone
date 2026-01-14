@@ -422,5 +422,8 @@ class FriendListUI {
     }
 }
 
+// 暴露到window
+window.FriendListUI = FriendListUI;
+
 // 全局实例（会在chat-app.js中创建）
 let friendListUI = null;

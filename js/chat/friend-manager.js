@@ -303,3 +303,5 @@ class FriendManager {
 
 // 创建全局实例
 const friendManager = new FriendManager(storageManager);
+window.FriendManager = FriendManager;
+window.friendManager = friendManager;

@@ -386,3 +386,5 @@ class StorageManager {
 
 // 创建全局实例
 const storageManager = new StorageManager();
+window.StorageManager = StorageManager;
+window.storageManager = storageManager;
