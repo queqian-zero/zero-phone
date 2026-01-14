@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="css/reset.css">
     <link rel="stylesheet" href="css/variables.css">
     <link rel="stylesheet" href="css/chat/chat-common.css">
+    <link rel="stylesheet" href="css/chat/modal.css">  <!-- ← 新增这行 -->
     <link rel="stylesheet" href="css/chat/chat-list.css">
     <link rel="stylesheet" href="css/chat/friend-list.css">
     <link rel="stylesheet" href="css/chat/discover.css">
@@ -115,6 +116,83 @@
     </button>
 </div>
         
+    </div>
+        <!-- ==================== 人设编辑弹窗 ==================== -->
+    <div class="modal-overlay" id="editFriendModal" style="display: none;">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2 class="modal-title">编辑好友</h2>
+                <button class="modal-close-btn" id="closeEditModal">×</button>
+            </div>
+            
+            <div class="modal-content">
+                <!-- 头像区域 -->
+                <div class="edit-section">
+                    <label class="edit-label">头像</label>
+                    <div class="avatar-upload-area" id="avatarUploadArea">
+                        <div class="avatar-preview" id="avatarPreview">
+                            <span id="avatarPlaceholder">测</span>
+                        </div>
+                        <div class="avatar-upload-hint">点击上传头像</div>
+                    </div>
+                    <input type="file" id="avatarInput" accept="image/*" style="display: none;">
+                </div>
+                
+                <!-- 头像识别开关 -->
+                <div class="edit-section switch-section">
+                    <label class="edit-label">头像识别</label>
+                    <label class="switch">
+                        <input type="checkbox" id="avatarRecognitionSwitch" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                
+                <!-- 真实姓名 -->
+                <div class="edit-section">
+                    <label class="edit-label">真实姓名</label>
+                    <input type="text" class="edit-input" id="editRealName" placeholder="选填">
+                </div>
+                
+                <!-- 网名 -->
+                <div class="edit-section">
+                    <label class="edit-label">网名 *</label>
+                    <input type="text" class="edit-input" id="editName" placeholder="必填" required>
+                </div>
+                
+                <!-- 备注 -->
+                <div class="edit-section">
+                    <label class="edit-label">备注</label>
+                    <input type="text" class="edit-input" id="editNickname" placeholder="选填">
+                </div>
+                
+                <!-- 个性签名 -->
+                <div class="edit-section">
+                    <label class="edit-label">个性签名</label>
+                    <input type="text" class="edit-input" id="editSignature" placeholder="选填">
+                </div>
+                
+                <!-- 人设 -->
+                <div class="edit-section">
+                    <label class="edit-label">人设（Persona）</label>
+                    <textarea class="edit-textarea" id="editPersona" rows="8" placeholder="在这里随意编写角色人设...&#10;&#10;你可以写：&#10;- 简单的一句话&#10;- 或者详细的性格、背景、关系等&#10;&#10;参考SillyTavern的人设框"></textarea>
+                </div>
+                
+                <!-- 拍一拍 -->
+                <div class="edit-section">
+                    <label class="edit-label">拍一拍</label>
+                    <input type="text" class="edit-input" id="editPoke" placeholder="例如：戳了戳你的头">
+                </div>
+                
+                <!-- 保存按钮 -->
+                <button class="save-btn" id="saveFriendBtn">保存</button>
+                
+                <!-- 危险操作区 -->
+                <div class="danger-zone">
+                    <div class="danger-zone-title">危险操作</div>
+                    <button class="delete-btn" id="deleteFriendBtn">删除好友</button>
+                </div>
+            </div>
+        </div>
     </div>
     
     <!-- JavaScript文件引入 -->
