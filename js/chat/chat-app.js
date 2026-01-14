@@ -210,9 +210,9 @@ class ChatApp {
     }
     
     // 长按好友卡片
-onFriendLongPress(code) {
-    this.openEditModal(code);
-}
+    onFriendLongPress(code) {
+        this.openEditModal(code);
+    }
     
     // 返回桌面
     goBack() {
@@ -264,8 +264,8 @@ onFriendLongPress(code) {
             alert('❌ 添加失败！');
         }
     }
-}
-// ==================== 人设编辑相关 ====================
+    
+    // ==================== 人设编辑相关 ====================
     
     // 打开编辑弹窗
     openEditModal(code) {
