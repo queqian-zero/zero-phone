@@ -169,7 +169,10 @@ function checkDependencies() {
     
     if (missing.length > 0) {
         console.error('❌ 缺少依赖:', missing.map(d => d.name).join(', '));
-        alert('⚠️ 部分模块未加载，请检查文件引入顺序');
+        
+        // 详细显示哪个缺失
+        const missingNames = missing.map(d => d.name).join('\n');
+        alert('⚠️ 缺少以下模块:\n\n' + missingNames + '\n\n请检查文件引入顺序');
         return false;
     }
     
