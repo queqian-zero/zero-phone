@@ -210,11 +210,9 @@ class ChatApp {
     }
     
     // 长按好友卡片
-    onFriendLongPress(code) {
-        const friend = this.storage.getFriendByCode(code);
-        alert(`长按好友：${friend.name}\n\n准备进入人设编辑界面...`);
-        // TODO: 打开人设编辑弹窗
-    }
+onFriendLongPress(code) {
+    this.openEditModal(code);
+}
     
     // 返回桌面
     goBack() {
@@ -265,6 +263,209 @@ class ChatApp {
         } else {
             alert('❌ 添加失败！');
         }
+    }
+}
+// ==================== 人设编辑相关 ====================
+    
+    // 打开编辑弹窗
+    openEditModal(code) {
+        const friend = this.storage.getFriendByCode(code);
+        if (!friend) {
+            alert('❌ 找不到好友数据');
+            return;
+        }
+        
+        // 保存当前编辑的好友编码
+        this.currentEditingCode = code;
+        
+        // 填充表单数据
+        document.getElementById('editRealName').value = friend.realName || '';
+        document.getElementById('editName').value = friend.name || '';
+        document.getElementById('editNickname').value = friend.nickname || '';
+        document.getElementById('editSignature').value = friend.signature || '';
+        document.getElementById('editPersona').value = friend.persona || '';
+        document.getElementById('editPoke').value = friend.poke || '';
+        document.getElementById('avatarRecognitionSwitch').checked = friend.enableAvatarRecognition !== false;
+        
+        // 设置头像预览
+        const avatarPreview = document.getElementById('avatarPreview');
+        if (friend.avatar) {
+            avatarPreview.innerHTML = `<img src="${friend.avatar}" alt="头像">`;
+        } else {
+            avatarPreview.innerHTML = `<span id="avatarPlaceholder">${friend.name.charAt(0)}</span>`;
+        }
+        
+        // 显示弹窗
+        document.getElementById('editFriendModal').style.display = 'flex';
+        
+        // 绑定事件（只绑定一次）
+        if (!this.editModalBound) {
+            this.bindEditModalEvents();
+            this.editModalBound = true;
+        }
+    }
+    
+    // 绑定编辑弹窗事件
+    bindEditModalEvents() {
+        // 关闭按钮
+        document.getElementById('closeEditModal').addEventListener('click', () => {
+            this.closeEditModal();
+        });
+        
+        // 点击遮罩关闭
+        document.getElementById('editFriendModal').addEventListener('click', (e) => {
+            if (e.target.id === 'editFriendModal') {
+                this.closeEditModal();
+            }
+        });
+        
+        // 头像上传
+        document.getElementById('avatarUploadArea').addEventListener('click', () => {
+            document.getElementById('avatarInput').click();
+        });
+        
+        document.getElementById('avatarInput').addEventListener('change', (e) => {
+            this.handleAvatarUpload(e);
+        });
+        
+        // 保存按钮
+        document.getElementById('saveFriendBtn').addEventListener('click', () => {
+            this.saveFriendEdit();
+        });
+        
+        // 删除按钮
+        document.getElementById('deleteFriendBtn').addEventListener('click', () => {
+            this.handleDeleteFriend();
+        });
+    }
+    
+    // 关闭编辑弹窗
+    closeEditModal() {
+        document.getElementById('editFriendModal').style.display = 'none';
+        this.currentEditingCode = null;
+    }
+    
+    // 处理头像上传
+    handleAvatarUpload(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        // 检查文件类型
+        if (!file.type.startsWith('image/')) {
+            alert('❌ 请选择图片文件');
+            return;
+        }
+        
+        // 检查文件大小（限制5MB）
+        if (file.size > 5 * 1024 * 1024) {
+            alert('❌ 图片大小不能超过5MB');
+            return;
+        }
+        
+        // 读取文件为Base64
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const base64 = e.target.result;
+            
+            // 更新预览
+            const avatarPreview = document.getElementById('avatarPreview');
+            avatarPreview.innerHTML = `<img src="${base64}" alt="头像">`;
+            
+            // 保存到临时变量
+            this.tempAvatar = base64;
+        };
+        reader.readAsDataURL(file);
+    }
+    
+    // 保存编辑
+    saveFriendEdit() {
+        // 获取表单数据
+        const name = document.getElementById('editName').value.trim();
+        
+        // 验证必填项
+        if (!name) {
+            alert('❌ 网名不能为空');
+            return;
+        }
+        
+        // 构建更新数据
+        const updates = {
+            realName: document.getElementById('editRealName').value.trim(),
+            name: name,
+            nickname: document.getElementById('editNickname').value.trim(),
+            signature: document.getElementById('editSignature').value.trim(),
+            persona: document.getElementById('editPersona').value.trim(),
+            poke: document.getElementById('editPoke').value.trim(),
+            enableAvatarRecognition: document.getElementById('avatarRecognitionSwitch').checked
+        };
+        
+        // 如果有新头像
+        if (this.tempAvatar) {
+            updates.avatar = this.tempAvatar;
+            this.tempAvatar = null;
+        }
+        
+        // 保存到存储
+        const success = this.storage.updateFriend(this.currentEditingCode, updates);
+        
+        if (success) {
+            // 关闭弹窗
+            this.closeEditModal();
+            
+            // 刷新好友列表
+            this.renderFriendList();
+            
+            alert('✅ 保存成功！');
+        } else {
+            alert('❌ 保存失败！');
+        }
+    }
+    
+    // 处理删除好友
+    handleDeleteFriend() {
+        const btn = document.getElementById('deleteFriendBtn');
+        
+        // 如果正在倒计时，直接返回
+        if (btn.classList.contains('counting')) {
+            return;
+        }
+        
+        // 开始倒计时
+        let countdown = 3;
+        btn.classList.add('counting');
+        btn.textContent = `确认删除 (${countdown}s)`;
+        
+        const timer = setInterval(() => {
+            countdown--;
+            if (countdown > 0) {
+                btn.textContent = `确认删除 (${countdown}s)`;
+            } else {
+                clearInterval(timer);
+                this.deleteFriend();
+            }
+        }, 1000);
+    }
+    
+    // 删除好友
+    deleteFriend() {
+        const success = this.storage.deleteFriend(this.currentEditingCode);
+        
+        if (success) {
+            // 关闭弹窗
+            this.closeEditModal();
+            
+            // 刷新好友列表
+            this.renderFriendList();
+            
+            alert('✅ 已删除好友');
+        } else {
+            alert('❌ 删除失败！');
+        }
+        
+        // 重置删除按钮
+        const btn = document.getElementById('deleteFriendBtn');
+        btn.classList.remove('counting');
+        btn.textContent = '删除好友';
     }
 }
 
