@@ -60,14 +60,18 @@
     </div>
     
     <!-- 好友列表页 -->
-    <div class="chat-page" id="friendListPage">
-        <div class="page-content">
-            <div class="empty-placeholder">
-                <div class="empty-icon">👥</div>
-                <div class="empty-text">暂无好友</div>
-            </div>
+<div class="chat-page" id="friendListPage">
+    <div class="page-content">
+        <!-- 好友列表容器 -->
+        <div id="friendListContainer"></div>
+        
+        <!-- 空状态占位（默认隐藏） -->
+        <div class="empty-placeholder" id="friendEmptyPlaceholder" style="display: none;">
+            <div class="empty-icon">👥</div>
+            <div class="empty-text">暂无好友</div>
         </div>
     </div>
+</div>
     
     <!-- 发现页 -->
     <div class="chat-page" id="discoverPage">
