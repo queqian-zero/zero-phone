@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="css/reset.css">
     <link rel="stylesheet" href="css/variables.css">
     <link rel="stylesheet" href="css/chat/chat-common.css">
-    <link rel="stylesheet" href="css/chat/modal.css">  <!-- ← 新增这行 -->
+    <link rel="stylesheet" href="css/chat/modal.css">
     <link rel="stylesheet" href="css/chat/chat-list.css">
     <link rel="stylesheet" href="css/chat/friend-list.css">
     <link rel="stylesheet" href="css/chat/discover.css">
@@ -23,101 +23,103 @@
     <div class="chat-app-container">
         
         <!-- 顶部导航栏 -->
-<div class="top-bar">
-    <button class="back-btn" id="backBtn">
-        <img src="assets/icons/chat/back.png" alt="返回">
-    </button>
-    <h1 class="page-title" id="pageTitle">聊天</h1>
-    <div class="top-right-btns" id="topRightBtns">
-        <!-- 聊天列表的按钮（默认显示） -->
-        <button class="search-btn page-btn chat-list-btn" id="searchChatBtn" title="搜索聊天记录">
-            <img src="assets/icons/chat/search-chat.png" alt="搜索">
-        </button>
-        <button class="add-chat-btn page-btn chat-list-btn" id="addChatBtn" title="创建聊天框">
-            <img src="assets/icons/chat/add-chat.png" alt="创建聊天">
-        </button>
-        
-        <!-- 好友列表的按钮（默认隐藏） -->
-        <button class="manage-group-btn page-btn friend-list-btn" id="manageGroupBtn" title="管理分组" style="display: none;">
-            <img src="assets/icons/chat/manage-group.png" alt="管理分组">
-        </button>
-        <button class="add-friend-btn page-btn friend-list-btn" id="addFriendBtn" title="添加好友" style="display: none;">
-            <img src="assets/icons/chat/add-friend.png" alt="添加好友">
-        </button>
-    </div>
-</div>
+        <div class="top-bar">
+            <button class="back-btn" id="backBtn">
+                <img src="assets/icons/chat/back.png" alt="返回">
+            </button>
+            <h1 class="page-title" id="pageTitle">聊天</h1>
+            <div class="top-right-btns" id="topRightBtns">
+                <!-- 聊天列表的按钮（默认显示） -->
+                <button class="search-btn page-btn chat-list-btn" id="searchChatBtn" title="搜索聊天记录">
+                    <img src="assets/icons/chat/search-chat.png" alt="搜索">
+                </button>
+                <button class="add-chat-btn page-btn chat-list-btn" id="addChatBtn" title="创建聊天框">
+                    <img src="assets/icons/chat/add-chat.png" alt="创建聊天">
+                </button>
+                
+                <!-- 好友列表的按钮（默认隐藏） -->
+                <button class="manage-group-btn page-btn friend-list-btn" id="manageGroupBtn" title="管理分组" style="display: none;">
+                    <img src="assets/icons/chat/manage-group.png" alt="管理分组">
+                </button>
+                <button class="add-friend-btn page-btn friend-list-btn" id="addFriendBtn" title="添加好友" style="display: none;">
+                    <img src="assets/icons/chat/add-friend.png" alt="添加好友">
+                </button>
+            </div>
+        </div>
 
-<!-- 页面容器 -->
-<div class="pages-container">
-    
-    <!-- 聊天列表页 -->
-    <div class="chat-page active" id="chatListPage">
-        <div class="page-content">
-            <div class="empty-placeholder">
-                <div class="empty-icon">💬</div>
-                <div class="empty-text">暂无聊天</div>
+        <!-- 页面容器 -->
+        <div class="pages-container">
+            
+            <!-- 聊天列表页 -->
+            <div class="chat-page active" id="chatListPage">
+                <div class="page-content">
+                    <div class="empty-placeholder">
+                        <div class="empty-icon">💬</div>
+                        <div class="empty-text">暂无聊天</div>
+                    </div>
+                </div>
             </div>
-        </div>
-    </div>
-    
-    <!-- 好友列表页 -->
-<div class="chat-page" id="friendListPage">
-    <div class="page-content">
-        <!-- 好友列表容器 -->
-        <div id="friendListContainer"></div>
-        
-        <!-- 空状态占位（默认隐藏） -->
-        <div class="empty-placeholder" id="friendEmptyPlaceholder" style="display: none;">
-            <div class="empty-icon">👥</div>
-            <div class="empty-text">暂无好友</div>
-        </div>
-    </div>
-</div>
-    
-    <!-- 发现页 -->
-    <div class="chat-page" id="discoverPage">
-        <div class="page-content">
-            <div class="empty-placeholder">
-                <div class="empty-icon">🔍</div>
-                <div class="empty-text">发现更多</div>
+            
+            <!-- 好友列表页 -->
+            <div class="chat-page" id="friendListPage">
+                <div class="page-content">
+                    <!-- 好友列表容器 -->
+                    <div id="friendListContainer"></div>
+                    
+                    <!-- 空状态占位（默认隐藏） -->
+                    <div class="empty-placeholder" id="friendEmptyPlaceholder" style="display: none;">
+                        <div class="empty-icon">👥</div>
+                        <div class="empty-text">暂无好友</div>
+                    </div>
+                </div>
             </div>
-        </div>
-    </div>
-    
-    <!-- 个人设置页 -->
-    <div class="chat-page" id="profilePage">
-        <div class="page-content">
-            <div class="empty-placeholder">
-                <div class="empty-icon">⚙️</div>
-                <div class="empty-text">个人设置</div>
+            
+            <!-- 发现页 -->
+            <div class="chat-page" id="discoverPage">
+                <div class="page-content">
+                    <div class="empty-placeholder">
+                        <div class="empty-icon">🔍</div>
+                        <div class="empty-text">发现更多</div>
+                    </div>
+                </div>
             </div>
+            
+            <!-- 个人设置页 -->
+            <div class="chat-page" id="profilePage">
+                <div class="page-content">
+                    <div class="empty-placeholder">
+                        <div class="empty-icon">⚙️</div>
+                        <div class="empty-text">个人设置</div>
+                    </div>
+                </div>
+            </div>
+            
         </div>
-    </div>
-    
-</div>
 
-<!-- 底部导航栏 -->
-<div class="bottom-nav">
-    <button class="nav-btn active" data-page="chatListPage">
-        <img src="assets/icons/chat/nav-chat.png" alt="聊天" class="nav-icon-img">
-        <div class="nav-label">聊天</div>
-    </button>
-    <button class="nav-btn" data-page="friendListPage">
-        <img src="assets/icons/chat/nav-friend.png" alt="好友" class="nav-icon-img">
-        <div class="nav-label">好友</div>
-    </button>
-    <button class="nav-btn" data-page="discoverPage">
-        <img src="assets/icons/chat/nav-discover.png" alt="发现" class="nav-icon-img">
-        <div class="nav-label">发现</div>
-    </button>
-    <button class="nav-btn" data-page="profilePage">
-        <img src="assets/icons/chat/nav-profile.png" alt="我" class="nav-icon-img">
-        <div class="nav-label">我</div>
-    </button>
-</div>
+        <!-- 底部导航栏 -->
+        <div class="bottom-nav">
+            <button class="nav-btn active" data-page="chatListPage">
+                <img src="assets/icons/chat/nav-chat.png" alt="聊天" class="nav-icon-img">
+                <div class="nav-label">聊天</div>
+            </button>
+            <button class="nav-btn" data-page="friendListPage">
+                <img src="assets/icons/chat/nav-friend.png" alt="好友" class="nav-icon-img">
+                <div class="nav-label">好友</div>
+            </button>
+            <button class="nav-btn" data-page="discoverPage">
+                <img src="assets/icons/chat/nav-discover.png" alt="发现" class="nav-icon-img">
+                <div class="nav-label">发现</div>
+            </button>
+            <button class="nav-btn" data-page="profilePage">
+                <img src="assets/icons/chat/nav-profile.png" alt="我" class="nav-icon-img">
+                <div class="nav-label">我</div>
+            </button>
+        </div>
         
     </div>
-        <!-- ==================== 人设编辑弹窗 ==================== -->
+    <!-- ← 聊天APP容器到这里结束 -->
+    
+    <!-- ==================== 人设编辑弹窗 ==================== -->
     <div class="modal-overlay" id="editFriendModal" style="display: none;">
         <div class="modal-container">
             <div class="modal-header">
@@ -196,7 +198,7 @@
     </div>
     
     <!-- JavaScript文件引入 -->
-    <script src="js/chat/storage.js"></script>  <!-- ← 新增这行 -->
+    <script src="js/chat/storage.js"></script>
     <script src="js/chat/chat-app.js"></script>
     
 </body>
