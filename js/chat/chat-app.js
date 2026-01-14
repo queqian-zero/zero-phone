@@ -3,7 +3,9 @@
 class ChatApp {
     constructor() {
         this.currentPage = 'chatListPage';
-        this.storage = new StorageManager();  // ← 新增这行
+        this.storage = new StorageManager();
+        this.longPressTimer = null;
+        this.longPressTriggered = false;
         this.init();
     }
     
@@ -28,8 +30,8 @@ class ChatApp {
         });
         
         document.getElementById('addFriendBtn').addEventListener('click', () => {
-    this.testAddFriend();  // ← 改成调用测试方法
-});
+            this.testAddFriend();
+        });
         
         // 绑定底部导航
         document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -63,6 +65,11 @@ class ChatApp {
         // 更新标题和右侧按钮
         this.updateTopBar(pageId);
         
+        // 如果切换到好友页，渲染好友列表
+        if (pageId === 'friendListPage') {
+            this.renderFriendList();
+        }
+        
         this.currentPage = pageId;
     }
     
@@ -85,23 +92,135 @@ class ChatApp {
         
         // 根据页面显示对应按钮
         if (pageId === 'chatListPage') {
-            // 聊天列表：显示搜索和创建聊天
             document.querySelectorAll('.chat-list-btn').forEach(btn => {
                 btn.style.display = 'flex';
             });
         } else if (pageId === 'friendListPage') {
-            // 好友列表：显示管理分组和添加好友
             document.querySelectorAll('.friend-list-btn').forEach(btn => {
                 btn.style.display = 'flex';
             });
         }
-        // 发现页和个人设置：不显示右侧按钮
+    }
+    
+    // ==================== 好友列表相关 ====================
+    
+    // 渲染好友列表
+    renderFriendList() {
+        const container = document.getElementById('friendListContainer');
+        const emptyPlaceholder = document.getElementById('friendEmptyPlaceholder');
+        
+        // 获取所有好友
+        const friends = this.storage.getAllFriends();
+        
+        // 如果没有好友，显示空状态
+        if (friends.length === 0) {
+            container.innerHTML = '';
+            emptyPlaceholder.style.display = 'flex';
+            return;
+        }
+        
+        // 隐藏空状态
+        emptyPlaceholder.style.display = 'none';
+        
+        // 生成好友卡片HTML
+        container.innerHTML = friends.map(friend => this.createFriendCard(friend)).join('');
+        
+        // 绑定事件
+        this.bindFriendCardEvents();
+    }
+    
+    // 创建好友卡片HTML
+    createFriendCard(friend) {
+        // 显示的名字（优先备注，其次网名）
+        const displayName = friend.nickname || friend.name;
+        
+        // 头像（如果没有就显示首字母）
+        const avatarContent = friend.avatar 
+            ? `<img src="${friend.avatar}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">` 
+            : friend.name.charAt(0);
+        
+        return `
+            <div class="friend-item" data-code="${friend.code}">
+                <div class="friend-avatar">${avatarContent}</div>
+                <div class="friend-info">
+                    <div class="friend-name-row">
+                        <span class="friend-name">${displayName}</span>
+                        ${friend.nickname ? `<span class="friend-nickname">(${friend.name})</span>` : ''}
+                    </div>
+                    <div class="friend-signature">${friend.signature || '这个人很懒，什么都没留下...'}</div>
+                </div>
+                <span class="friend-code">${friend.code}</span>
+            </div>
+        `;
+    }
+    
+    // 绑定好友卡片事件
+    bindFriendCardEvents() {
+        const friendItems = document.querySelectorAll('.friend-item');
+        
+        friendItems.forEach(item => {
+            const code = item.getAttribute('data-code');
+            
+            // 触摸开始
+            item.addEventListener('touchstart', (e) => {
+                this.longPressTriggered = false;
+                
+                // 添加长按效果
+                item.classList.add('long-pressing');
+                
+                // 设置长按定时器（500ms）
+                this.longPressTimer = setTimeout(() => {
+                    this.longPressTriggered = true;
+                    this.onFriendLongPress(code);
+                    
+                    // 震动反馈
+                    if (navigator.vibrate) {
+                        navigator.vibrate(50);
+                    }
+                }, 500);
+            });
+            
+            // 触摸结束
+            item.addEventListener('touchend', (e) => {
+                // 移除长按效果
+                item.classList.remove('long-pressing');
+                
+                // 清除定时器
+                clearTimeout(this.longPressTimer);
+                
+                // 如果没有触发长按，就是普通点击
+                if (!this.longPressTriggered) {
+                    this.onFriendClick(code);
+                }
+            });
+            
+            // 触摸取消（比如滑动离开）
+            item.addEventListener('touchcancel', (e) => {
+                item.classList.remove('long-pressing');
+                clearTimeout(this.longPressTimer);
+            });
+        });
+    }
+    
+    // 点击好友卡片
+    onFriendClick(code) {
+        const friend = this.storage.getFriendByCode(code);
+        alert(`点击好友：${friend.name}\n\n准备跳转到聊天界面...`);
+        // TODO: 跳转到聊天界面
+    }
+    
+    // 长按好友卡片
+    onFriendLongPress(code) {
+        const friend = this.storage.getFriendByCode(code);
+        alert(`长按好友：${friend.name}\n\n准备进入人设编辑界面...`);
+        // TODO: 打开人设编辑弹窗
     }
     
     // 返回桌面
     goBack() {
         window.history.back();
     }
+    
     // ===== 测试方法（临时） =====
     testAddFriend() {
         // 生成测试好友
@@ -130,6 +249,9 @@ class ChatApp {
         const success = this.storage.addFriend(testFriend);
         
         if (success) {
+            // 重新渲染好友列表
+            this.renderFriendList();
+            
             // 获取所有好友
             const allFriends = this.storage.getAllFriends();
             
@@ -138,11 +260,8 @@ class ChatApp {
                 '✅ 添加成功！\n\n' +
                 '编码: ' + testFriend.code + '\n' +
                 '名字: ' + testFriend.name + '\n\n' +
-                '当前好友总数: ' + allFriends.length + '\n\n' +
-                '刷新页面再点一次，看看数据还在不在！'
+                '当前好友总数: ' + allFriends.length
             );
-            
-            console.log('所有好友:', allFriends);
         } else {
             alert('❌ 添加失败！');
         }
