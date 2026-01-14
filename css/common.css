@@ -1,17 +1,14 @@
-/* Common Styles - 公共样式（增强版） */
+/* Common Styles - 公共样式 */
 
 /* ==================== 应用容器 ==================== */
 .app-container {
     width: 100vw;
-    width: 100dvw; /* 动态视口高度，避免移动端地址栏影响 */
     height: 100vh;
-    height: 100dvh; /* 动态视口高度 */
     display: flex;
     justify-content: center;
     align-items: center;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     position: relative;
-    overflow: hidden; /* 防止内容溢出 */
 }
 
 /* ==================== 手机外壳 ==================== */
@@ -29,10 +26,7 @@
     overflow: hidden;
     position: relative;
     transition: all var(--duration-normal) ease;
-    
-    /* 触摸优化 */
-    -webkit-tap-highlight-color: transparent;
-    touch-action: pan-y; /* 只允许垂直滑动 */
+    /* 不要在这里加背景图！ */
 }
 
 /* 无框模式 */
@@ -40,34 +34,21 @@
     border: none;
     border-radius: 0;
     width: 100vw;
-    width: 100dvw;
     height: 100vh;
-    height: 100dvh;
     max-width: 100vw;
     max-height: 100vh;
-    max-height: 100dvh;
 }
 
 /* ==================== 顶部状态栏 ==================== */
 .status-bar {
-    /* 使用CSS变量动态计算高度 */
-    height: var(--status-bar-height);
-    min-height: 24px; /* 最小高度保证 */
-    
-    /* 安全区域适配 */
-    padding-top: var(--safe-area-inset-top);
-    padding-left: max(var(--spacing-md), var(--safe-area-inset-left));
-    padding-right: max(var(--spacing-md), var(--safe-area-inset-right));
-    
+    height: 24px;
     background: var(--color-statusbar-bg);
-    
-    /* 浏览器兼容的backdrop-filter */
     backdrop-filter: var(--blur-light);
     -webkit-backdrop-filter: var(--blur-light);
-    
     display: flex;
     justify-content: space-between;
     align-items: center;
+    padding: 0 var(--spacing-md);
     font-size: var(--font-size-small);
     color: var(--color-statusbar-text);
     border-bottom: 1px solid rgba(0, 0, 0, 0.05);
@@ -99,13 +80,6 @@
     padding: 2px 4px;
     opacity: 0.7;
     transition: opacity var(--duration-fast);
-    border: none;
-    background: transparent;
-    cursor: pointer;
-    
-    /* 触摸优化 */
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
 }
 
 .frame-toggle-btn:hover {
@@ -119,8 +93,7 @@
 /* ==================== 翻页指示点 ==================== */
 .page-indicators {
     position: absolute;
-    /* 适配底部安全区域 */
-    bottom: max(var(--spacing-lg), calc(var(--safe-area-inset-bottom) + var(--spacing-md)));
+    bottom: var(--spacing-lg);
     left: 50%;
     transform: translateX(-50%);
     display: flex;
@@ -150,13 +123,7 @@
     cursor: pointer;
     user-select: none;
     -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
     transition: transform var(--duration-fast) ease;
-    
-    /* 触摸优化 */
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
 }
 
 .app-icon:active {
@@ -168,11 +135,8 @@
     width: 64px;
     height: 64px;
     background: rgba(255, 255, 255, 0.9);
-    
-    /* 浏览器兼容的backdrop-filter */
     backdrop-filter: var(--blur-light);
     -webkit-backdrop-filter: var(--blur-light);
-    
     border-radius: var(--radius-lg);
     box-shadow: 
         0 4px 12px rgba(0, 0, 0, 0.1),
@@ -183,32 +147,23 @@
     overflow: hidden;
     transition: all var(--duration-fast) ease;
     padding: 12px;
-    
-    /* 硬件加速 */
-    transform: translateZ(0);
-    -webkit-transform: translateZ(0);
-    will-change: transform;
 }
 
 .icon-img img {
     width: 100%;
     height: 100%;
     object-fit: contain;
-    
-    /* 图片渲染优化 */
-    image-rendering: -webkit-optimize-contrast;
-    image-rendering: crisp-edges;
 }
 
 .app-icon:hover .icon-img {
-    transform: translateY(-2px) translateZ(0);
+    transform: translateY(-2px);
     box-shadow: 
         0 6px 16px rgba(0, 0, 0, 0.15),
         0 0 0 1px rgba(255, 255, 255, 0.6) inset;
 }
 
 .app-icon:active .icon-img {
-    transform: scale(0.95) translateZ(0);
+    transform: scale(0.95);
     box-shadow: 
         0 2px 8px rgba(0, 0, 0, 0.1),
         0 0 0 1px rgba(255, 255, 255, 0.5) inset;
@@ -249,13 +204,10 @@
 }
 
 /* ==================== 响应式设计 ==================== */
-/* 移动设备 */
 @media (max-width: 768px) {
     .phone-frame {
         width: 100vw;
-        width: 100dvw;
         height: 100vh;
-        height: 100dvh;
         border: none;
         border-radius: 0;
     }
@@ -263,58 +215,10 @@
     .phone-frame.frameless {
         /* 已经是全屏 */
     }
-    
-    /* 移动设备优化 */
-    .app-icon {
-        -webkit-touch-callout: none;
-    }
 }
 
-/* 小屏设备 */
 @media (max-height: 667px) {
     .phone-frame {
         height: 100vh;
-        height: 100dvh;
     }
-}
-
-/* 横屏模式 */
-@media (orientation: landscape) and (max-height: 500px) {
-    .page-indicators {
-        bottom: max(var(--spacing-sm), calc(var(--safe-area-inset-bottom) + var(--spacing-xs)));
-    }
-}
-
-/* ==================== iOS设备特殊适配 ==================== */
-/* iPhone X及以上的刘海屏适配 */
-@supports (padding: max(0px)) {
-    .status-bar {
-        padding-top: max(0px, env(safe-area-inset-top, 0px));
-    }
-}
-
-/* ==================== 性能优化 ==================== */
-/* 使用GPU加速的元素 */
-.phone-frame,
-.app-icon,
-.icon-img {
-    transform: translateZ(0);
-    -webkit-transform: translateZ(0);
-}
-
-/* 减少重绘 */
-.status-bar,
-.page-indicators {
-    will-change: auto;
-}
-
-/* ==================== 恢复内容区域的文本选择 ==================== */
-/* 允许用户复制聊天消息等内容 */
-.page-content,
-.chat-message,
-.lockscreen-time,
-.lockscreen-date,
-.page-title {
-    user-select: text !important;
-    -webkit-user-select: text !important;
 }

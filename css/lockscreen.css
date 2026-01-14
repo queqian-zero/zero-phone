@@ -1,4 +1,4 @@
-/* Lockscreen Styles - 锁屏样式（增强版） */
+/* Lockscreen Styles - 锁屏样式 */
 
 .lockscreen {
     position: absolute;
@@ -9,11 +9,6 @@
     z-index: 100;
     transition: transform var(--duration-normal) cubic-bezier(0.4, 0, 0.2, 1);
     overflow: hidden;
-    
-    /* 性能优化 */
-    transform: translateZ(0);
-    -webkit-transform: translateZ(0);
-    will-change: transform;
 }
 
 /* 锁屏内容 */
@@ -27,22 +22,11 @@
     justify-content: center;
     padding: var(--spacing-xl);
     
-    /* 安全区域适配 */
-    padding-top: max(var(--spacing-xl), calc(var(--spacing-xl) + env(safe-area-inset-top, 0px)));
-    padding-bottom: max(var(--spacing-xl), calc(var(--spacing-xl) + env(safe-area-inset-bottom, 0px)));
-    padding-left: max(var(--spacing-xl), calc(var(--spacing-xl) + env(safe-area-inset-left, 0px)));
-    padding-right: max(var(--spacing-xl), calc(var(--spacing-xl) + env(safe-area-inset-right, 0px)));
-    
     /* 背景图片 */
     background-image: url('../assets/images/lockscreen-bg.png');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    
-    /* 触摸优化 */
-    -webkit-tap-highlight-color: transparent;
-    user-select: none;
-    -webkit-user-select: none;
 }
 
 /* 半透明遮罩 */
@@ -60,7 +44,6 @@
         rgba(0, 0, 0, 0.3) 100%
     );
     z-index: 0;
-    pointer-events: none; /* 确保不阻挡交互 */
 }
 
 /* 锁屏时间 */
@@ -73,10 +56,6 @@
     margin-bottom: var(--spacing-sm);
     position: relative;
     z-index: 1;
-    
-    /* 性能优化 */
-    transform: translateZ(0);
-    -webkit-transform: translateZ(0);
 }
 
 /* 锁屏日期 */
@@ -88,17 +67,12 @@
     margin-bottom: 80px;
     position: relative;
     z-index: 1;
-    
-    /* 性能优化 */
-    transform: translateZ(0);
-    -webkit-transform: translateZ(0);
 }
 
 /* 解锁按钮 */
 .unlock-button {
     position: absolute;
-    /* 适配底部安全区域 */
-    bottom: max(80px, calc(80px + env(safe-area-inset-bottom, 0px)));
+    bottom: 80px;
     left: 50%;
     transform: translateX(-50%);
     display: flex;
@@ -106,51 +80,30 @@
     align-items: center;
     gap: var(--spacing-xs);
     background: rgba(255, 255, 255, 0.1);
-    
-    /* 浏览器兼容的backdrop-filter */
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-    
     border: 2px solid rgba(255, 255, 255, 0.2);
     border-radius: 20px;
     padding: 16px 32px;
     cursor: pointer;
     transition: all var(--duration-fast) ease;
     z-index: 1;
-    
-    /* 触摸优化 */
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
-    user-select: none;
-    -webkit-user-select: none;
-    
-    /* 性能优化 */
-    transform: translateX(-50%) translateZ(0);
-    -webkit-transform: translateX(-50%) translateZ(0);
-    will-change: transform;
-    
-    /* 确保按钮可见 */
-    min-width: 120px;
-    min-height: 60px;
 }
 
 .unlock-button:hover {
     background: rgba(255, 255, 255, 0.15);
     border-color: rgba(255, 255, 255, 0.3);
-    transform: translateX(-50%) translateY(-2px) translateZ(0);
+    transform: translateX(-50%) translateY(-2px);
 }
 
 .unlock-button:active {
-    transform: translateX(-50%) scale(0.95) translateZ(0);
+    transform: translateX(-50%) scale(0.95);
     background: rgba(255, 255, 255, 0.2);
 }
 
 .unlock-icon {
     font-size: 32px;
     animation: bounce 2s ease-in-out infinite;
-    
-    /* 性能优化 */
-    will-change: transform;
 }
 
 .unlock-text {
@@ -158,76 +111,20 @@
     color: rgba(255, 255, 255, 0.9);
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
     font-weight: 500;
-    white-space: nowrap; /* 防止换行 */
 }
 
 /* 解锁状态 */
 .lockscreen.unlocked {
-    transform: translateY(-100%) translateZ(0);
+    transform: translateY(-100%);
     pointer-events: none;
 }
 
-/* 弹跳动画（优化版） */
+/* 弹跳动画 */
 @keyframes bounce {
     0%, 100% {
-        transform: translateY(0) translateZ(0);
+        transform: translateY(0);
     }
     50% {
-        transform: translateY(-10px) translateZ(0);
-    }
-}
-
-/* ==================== 响应式适配 ==================== */
-/* 小屏幕优化 */
-@media (max-height: 667px) {
-    .lockscreen-time {
-        font-size: 64px;
-    }
-    
-    .lockscreen-date {
-        font-size: 18px;
-        margin-bottom: 60px;
-    }
-    
-    .unlock-button {
-        bottom: max(60px, calc(60px + env(safe-area-inset-bottom, 0px)));
-        padding: 12px 24px;
-    }
-}
-
-/* 横屏模式 */
-@media (orientation: landscape) and (max-height: 500px) {
-    .lockscreen-time {
-        font-size: 48px;
-    }
-    
-    .lockscreen-date {
-        font-size: 16px;
-        margin-bottom: 40px;
-    }
-    
-    .unlock-button {
-        bottom: max(40px, calc(40px + env(safe-area-inset-bottom, 0px)));
-        padding: 10px 20px;
-    }
-    
-    .unlock-icon {
-        font-size: 24px;
-    }
-}
-
-/* 超小屏幕 */
-@media (max-height: 568px) {
-    .lockscreen-content {
-        padding: var(--spacing-md);
-        padding-bottom: max(var(--spacing-md), calc(var(--spacing-md) + env(safe-area-inset-bottom, 0px)));
-    }
-}
-
-/* ==================== iOS特殊适配 ==================== */
-@supports (-webkit-touch-callout: none) {
-    .unlock-button {
-        /* iOS设备额外调整 */
-        bottom: max(80px, calc(80px + env(safe-area-inset-bottom, 20px)));
+        transform: translateY(-10px);
     }
 }
