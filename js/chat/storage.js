@@ -82,10 +82,22 @@ class StorageManager {
     
     // ==================== 好友相关 ====================
     
-    // 获取所有好友
-    getAllFriends() {
-        return this.getData(this.KEYS.FRIENDS) || [];
-    }
+    // 获取所有好友（只返回未删除的）
+getAllFriends() {
+    const allFriends = this.getData(this.KEYS.FRIENDS) || [];
+    return allFriends.filter(f => !f.isDeleted);
+}
+
+// 获取所有好友（包括已删除的）
+getAllFriendsIncludingDeleted() {
+    return this.getData(this.KEYS.FRIENDS) || [];
+}
+
+// 获取已删除的好友列表
+getDeletedFriends() {
+    const allFriends = this.getData(this.KEYS.FRIENDS) || [];
+    return allFriends.filter(f => f.isDeleted);
+}
     
     // 根据编码获取好友
     getFriendByCode(code) {
@@ -94,23 +106,29 @@ class StorageManager {
     }
     
     // 添加好友
-    addFriend(friendData) {
-        try {
-            const friends = this.getAllFriends();
-            
-            // 检查编码是否重复
-            if (friends.some(f => f.code === friendData.code)) {
-                console.error('❌ 好友编码重复');
-                return false;
-            }
-            
-            friends.push(friendData);
-            return this.saveData(this.KEYS.FRIENDS, friends);
-        } catch (e) {
-            console.error('❌ 添加好友失败:', e);
+addFriend(friendData) {
+    try {
+        const friends = this.getAllFriends();
+        
+        // 检查编码是否重复（包括已删除的）
+        const existing = friends.find(f => f.code === friendData.code);
+        
+        if (existing) {
+            console.error('❌ 好友编码重复');
             return false;
         }
+        
+        // 添加软删除标记
+        friendData.isDeleted = false;
+        friendData.deletedAt = null;
+        
+        friends.push(friendData);
+        return this.saveData(this.KEYS.FRIENDS, friends);
+    } catch (e) {
+        console.error('❌ 添加好友失败:', e);
+        return false;
     }
+}
     
     // 更新好友
     updateFriend(code, updates) {
@@ -132,17 +150,53 @@ class StorageManager {
         }
     }
     
-    // 删除好友
-    deleteFriend(code) {
-        try {
-            const friends = this.getAllFriends();
-            const filtered = friends.filter(f => f.code !== code);
-            return this.saveData(this.KEYS.FRIENDS, filtered);
-        } catch (e) {
-            console.error('❌ 删除好友失败:', e);
+    // 删除好友（软删除）
+deleteFriend(code) {
+    try {
+        const allFriends = this.getAllFriendsIncludingDeleted();
+        const friend = allFriends.find(f => f.code === code);
+        
+        if (!friend) {
+            console.error('❌ 找不到好友');
             return false;
         }
+        
+        // 软删除
+        friend.isDeleted = true;
+        friend.deletedAt = new Date().toISOString();
+        
+        return this.saveData(this.KEYS.FRIENDS, allFriends);
+    } catch (e) {
+        console.error('❌ 删除好友失败:', e);
+        return false;
     }
+    
+    // 恢复好友
+restoreFriend(code) {
+    try {
+        const allFriends = this.getAllFriendsIncludingDeleted();
+        const friend = allFriends.find(f => f.code === code);
+        
+        if (!friend) {
+            console.error('❌ 找不到好友');
+            return false;
+        }
+        
+        if (!friend.isDeleted) {
+            console.error('❌ 好友未被删除');
+            return false;
+        }
+        
+        // 恢复好友
+        friend.isDeleted = false;
+        friend.deletedAt = null;
+        
+        return this.saveData(this.KEYS.FRIENDS, allFriends);
+    } catch (e) {
+        console.error('❌ 恢复好友失败:', e);
+        return false;
+    }
+}
     
     // ==================== 聊天记录相关 ====================
     

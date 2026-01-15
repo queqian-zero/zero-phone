@@ -669,27 +669,43 @@ class ChatApp {
     }
     
     // 通过编码添加好友
-    addFriendByCode() {
-        const code = document.getElementById('friendCodeInput').value.trim();
+addFriendByCode() {
+    const code = document.getElementById('friendCodeInput').value.trim();
+    
+    // 验证编码格式
+    if (!code) {
+        alert('❌ 请输入好友编码');
+        return;
+    }
+    
+    // 检查好友是否存在（包括已删除的）
+    const allFriends = this.storage.getAllFriendsIncludingDeleted();
+    const friend = allFriends.find(f => f.code === code);
+    
+    if (!friend) {
+        alert('❌ 无效的好友编码\n\n未找到该编码对应的好友。');
+        return;
+    }
+    
+    // 检查好友是否已删除
+    if (!friend.isDeleted) {
+        alert('❌ 该好友已存在！\n\n网名：' + friend.name);
+        return;
+    }
+    
+    // 恢复好友
+    const success = this.storage.restoreFriend(code);
+    
+    if (success) {
+        // 关闭弹窗
+        this.closeAddByCodeModal();
         
-        // 验证编码格式
-        if (!code) {
-            alert('❌ 请输入好友编码');
-            return;
-        }
+        // 刷新好友列表
+        this.renderFriendList();
         
-        // 检查编码是否已存在
-        const existingFriend = this.storage.getFriendByCode(code);
-        
-        if (existingFriend) {
-            alert('❌ 该好友已存在！\n\n网名：' + existingFriend.name);
-            return;
-        }
-        
-        // 暂时提示：功能开发中
-        alert('❌ 无效的好友编码\n\n目前只能添加已删除的好友。\n当你删除一个好友后，可以通过编码恢复TA。');
-        
-        // TODO: 实现从"已删除好友"中恢复
+        alert(`✅ 恢复成功！\n\n好友「${friend.name}」已苏醒。\n\n聊天记录、记忆总结都已恢复。`);
+    } else {
+        alert('❌ 恢复失败！');
     }
 }
 
