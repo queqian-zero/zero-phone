@@ -708,6 +708,6 @@ addFriendByCode() {
         alert('❌ 恢复失败！');
     }
 }
-
+}
 // 初始化
 const chatApp = new ChatApp();
