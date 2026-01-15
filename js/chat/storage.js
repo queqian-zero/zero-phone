@@ -151,52 +151,53 @@ addFriend(friendData) {
     }
     
     // 删除好友（软删除）
-deleteFriend(code) {
-    try {
-        const allFriends = this.getAllFriendsIncludingDeleted();
-        const friend = allFriends.find(f => f.code === code);
-        
-        if (!friend) {
-            console.error('❌ 找不到好友');
+    deleteFriend(code) {
+        try {
+            const allFriends = this.getAllFriendsIncludingDeleted();
+            const friend = allFriends.find(f => f.code === code);
+            
+            if (!friend) {
+                console.error('❌ 找不到好友');
+                return false;
+            }
+            
+            // 软删除
+            friend.isDeleted = true;
+            friend.deletedAt = new Date().toISOString();
+            
+            return this.saveData(this.KEYS.FRIENDS, allFriends);
+        } catch (e) {
+            console.error('❌ 删除好友失败:', e);
             return false;
         }
-        
-        // 软删除
-        friend.isDeleted = true;
-        friend.deletedAt = new Date().toISOString();
-        
-        return this.saveData(this.KEYS.FRIENDS, allFriends);
-    } catch (e) {
-        console.error('❌ 删除好友失败:', e);
-        return false;
     }
     
     // 恢复好友
-restoreFriend(code) {
-    try {
-        const allFriends = this.getAllFriendsIncludingDeleted();
-        const friend = allFriends.find(f => f.code === code);
-        
-        if (!friend) {
-            console.error('❌ 找不到好友');
+    restoreFriend(code) {
+        try {
+            const allFriends = this.getAllFriendsIncludingDeleted();
+            const friend = allFriends.find(f => f.code === code);
+            
+            if (!friend) {
+                console.error('❌ 找不到好友');
+                return false;
+            }
+            
+            if (!friend.isDeleted) {
+                console.error('❌ 好友未被删除');
+                return false;
+            }
+            
+            // 恢复好友
+            friend.isDeleted = false;
+            friend.deletedAt = null;
+            
+            return this.saveData(this.KEYS.FRIENDS, allFriends);
+        } catch (e) {
+            console.error('❌ 恢复好友失败:', e);
             return false;
         }
-        
-        if (!friend.isDeleted) {
-            console.error('❌ 好友未被删除');
-            return false;
-        }
-        
-        // 恢复好友
-        friend.isDeleted = false;
-        friend.deletedAt = null;
-        
-        return this.saveData(this.KEYS.FRIENDS, allFriends);
-    } catch (e) {
-        console.error('❌ 恢复好友失败:', e);
-        return false;
     }
-}
     
     // ==================== 聊天记录相关 ====================
     
