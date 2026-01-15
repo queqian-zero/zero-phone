@@ -197,6 +197,94 @@
         </div>
     </div>
     
+       <!-- ==================== 添加好友选择弹窗 ==================== -->
+    <div class="modal-overlay" id="addFriendChoiceModal" style="display: none;">
+        <div class="modal-container small">
+            <div class="modal-header">
+                <h2 class="modal-title">添加好友</h2>
+                <button class="modal-close-btn" id="closeAddChoiceModal">×</button>
+            </div>
+            
+            <div class="modal-content">
+                <button class="choice-btn" id="newFriendBtn">
+                    <span class="choice-icon">📝</span>
+                    <span class="choice-text">新建好友</span>
+                </button>
+                
+                <button class="choice-btn" id="addByCodeBtn">
+                    <span class="choice-icon">🔢</span>
+                    <span class="choice-text">通过编码添加</span>
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- ==================== 新建好友弹窗 ==================== -->
+    <div class="modal-overlay" id="newFriendModal" style="display: none;">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2 class="modal-title">新建好友</h2>
+                <button class="modal-close-btn" id="closeNewFriendModal">×</button>
+            </div>
+            
+            <div class="modal-content">
+                <!-- 网名 -->
+                <div class="edit-section">
+                    <label class="edit-label">网名 *</label>
+                    <input type="text" class="edit-input" id="newFriendName" placeholder="必填" required>
+                </div>
+                
+                <!-- 备注 -->
+                <div class="edit-section">
+                    <label class="edit-label">备注</label>
+                    <input type="text" class="edit-input" id="newFriendNickname" placeholder="选填">
+                </div>
+                
+                <!-- 个性签名 -->
+                <div class="edit-section">
+                    <label class="edit-label">个性签名</label>
+                    <input type="text" class="edit-input" id="newFriendSignature" placeholder="选填">
+                </div>
+                
+                <!-- 人设 -->
+                <div class="edit-section">
+                    <label class="edit-label">人设（Persona）</label>
+                    <textarea class="edit-textarea" id="newFriendPersona" rows="6" placeholder="在这里随意编写角色人设..."></textarea>
+                </div>
+                
+                <!-- 拍一拍 -->
+                <div class="edit-section">
+                    <label class="edit-label">拍一拍</label>
+                    <input type="text" class="edit-input" id="newFriendPoke" placeholder="例如：戳了戳你的头">
+                </div>
+                
+                <!-- 创建按钮 -->
+                <button class="save-btn" id="createFriendBtn">创建</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- ==================== 通过编码添加弹窗 ==================== -->
+    <div class="modal-overlay" id="addByCodeModal" style="display: none;">
+        <div class="modal-container small">
+            <div class="modal-header">
+                <h2 class="modal-title">通过编码添加</h2>
+                <button class="modal-close-btn" id="closeAddByCodeModal">×</button>
+            </div>
+            
+            <div class="modal-content">
+                <div class="edit-section">
+                    <label class="edit-label">输入好友编码</label>
+                    <input type="text" class="edit-input" id="friendCodeInput" placeholder="例如：TEST_2k25_ABC#">
+                    <div class="code-hint">编码格式：XXX_年份_随机#</div>
+                </div>
+                
+                <!-- 添加按钮 -->
+                <button class="save-btn" id="addByCodeConfirmBtn">添加</button>
+            </div>
+        </div>
+    </div>
+    
     <!-- JavaScript文件引入 -->
     <script src="js/chat/storage.js"></script>
     <script src="js/chat/chat-app.js"></script>
