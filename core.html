@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>中枢 - Zero Phone</title>
+    <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/core.css">
+</head>
+<body>
+    <!-- 顶部状态栏 -->
+    <div class="status-bar">
+        <span class="time" id="statusTime">00:00</span>
+        <div class="status-icons">
+            <span class="signal">📶</span>
+            <span class="battery">🔋</span>
+        </div>
+    </div>
+
+    <!-- Core APP 主界面 -->
+    <div class="core-container">
+        <!-- 顶部导航 -->
+        <div class="core-header">
+            <button class="back-btn" id="backBtn">←</button>
+            <h1 class="core-title">中枢</h1>
+        </div>
+
+        <!-- 滚动内容 -->
+        <div class="core-content" id="coreContent">
+            
+            <!-- API配置区域 -->
+            <div class="core-section">
+                <h2 class="section-title">当前API配置</h2>
+                
+                <!-- 供应商选择 -->
+                <div class="form-group">
+                    <label>供应商</label>
+                    <div class="radio-group" id="providerGroup">
+                        <label class="radio-item">
+                            <input type="radio" name="provider" value="google" checked>
+                            <span>Google Gemini</span>
+                        </label>
+                        <label class="radio-item">
+                            <input type="radio" name="provider" value="openai">
+                            <span>OpenAI</span>
+                        </label>
+                        <label class="radio-item">
+                            <input type="radio" name="provider" value="anthropic">
+                            <span>Anthropic</span>
+                        </label>
+                        <label class="radio-item">
+                            <input type="radio" name="provider" value="siliconflow">
+                            <span>SiliconFlow</span>
+                        </label>
+                        <label class="radio-item">
+                            <input type="radio" name="provider" value="custom">
+                            <span>自定义</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 接口地址 -->
+                <div class="form-group">
+                    <label for="apiEndpoint">接口地址</label>
+                    <input type="text" id="apiEndpoint" class="input-field" placeholder="https://api.example.com/v1">
+                </div>
+
+                <!-- API密钥 -->
+                <div class="form-group">
+                    <label for="apiKey">API密钥</label>
+                    <input type="password" id="apiKey" class="input-field" placeholder="sk-...">
+                </div>
+
+                <!-- 拉取模型按钮 -->
+                <button class="btn btn-secondary" id="fetchModelsBtn">拉取模型</button>
+
+                <!-- 模型选择 -->
+                <div class="form-group" id="modelSelectGroup" style="display: none;">
+                    <label for="modelSelect">模型选择</label>
+                    <select id="modelSelect" class="select-field">
+                        <option value="">请先拉取模型</option>
+                    </select>
+                </div>
+
+                <!-- 最大Token数 -->
+                <div class="form-group">
+                    <label for="maxTokens">最大Token数</label>
+                    <input type="number" id="maxTokens" class="input-field" value="4096" min="1" max="200000">
+                </div>
+
+                <!-- 温度调节 -->
+                <div class="form-group">
+                    <label for="temperature">温度 <span id="tempValue">0.7</span></label>
+                    <input type="range" id="temperature" class="slider" min="0" max="2" step="0.1" value="0.7">
+                    <div class="slider-labels">
+                        <span>0</span>
+                        <span>1</span>
+                        <span>2</span>
+                    </div>
+                </div>
+
+                <!-- 操作按钮 -->
+                <div class="button-group">
+                    <button class="btn btn-primary" id="saveConfigBtn">保存当前配置</button>
+                    <button class="btn btn-secondary" id="saveAsPresetBtn">保存为预设...</button>
+                </div>
+            </div>
+
+            <!-- 预设管理 -->
+            <div class="core-section">
+                <h2 class="section-title">已保存预设</h2>
+                <div id="presetList" class="preset-list">
+                    <div class="empty-placeholder">暂无预设</div>
+                </div>
+            </div>
+
+            <!-- Minimax语音 -->
+            <div class="core-section">
+                <h2 class="section-title">Minimax语音</h2>
+                
+                <div class="form-group">
+                    <label for="minimaxGroupId">Group ID</label>
+                    <input type="text" id="minimaxGroupId" class="input-field" placeholder="输入Group ID">
+                </div>
+
+                <div class="form-group">
+                    <label for="minimaxApiKey">API Key</label>
+                    <input type="password" id="minimaxApiKey" class="input-field" placeholder="输入API Key">
+                </div>
+
+                <div class="form-group">
+                    <label for="voiceModel">语音音色</label>
+                    <select id="voiceModel" class="select-field">
+                        <option value="male-qn-qingse">青涩青年音色</option>
+                        <option value="male-qn-jingying">精英青年音色</option>
+                        <option value="female-shaonv">少女音色</option>
+                        <option value="female-yujie">御姐音色</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="voiceLanguage">语言类别</label>
+                    <select id="voiceLanguage" class="select-field">
+                        <option value="zh">中文</option>
+                        <option value="en">英文</option>
+                    </select>
+                </div>
+
+                <button class="btn btn-secondary" id="testVoiceBtn">测试语音</button>
+            </div>
+
+            <!-- 数据管理 -->
+            <div class="core-section">
+                <h2 class="section-title">数据管理</h2>
+                
+                <div class="data-management">
+                    <h3>导出数据</h3>
+                    <button class="btn btn-secondary" id="exportFullBtn">完整导出</button>
+                    <button class="btn btn-secondary" id="exportStreamBtn">流式导出</button>
+                    <button class="btn btn-secondary" id="exportPartialBtn">部分导出</button>
+                    
+                    <h3>导入数据</h3>
+                    <button class="btn btn-secondary" id="importFullBtn">完整导入</button>
+                    <button class="btn btn-secondary" id="importStreamBtn">流式导入</button>
+                    <button class="btn btn-secondary" id="importPartialBtn">部分导入</button>
+                </div>
+            </div>
+
+            <!-- 危险操作 -->
+            <div class="core-section danger-section">
+                <h2 class="section-title">危险操作</h2>
+                <button class="btn btn-danger" id="resetFactoryBtn">恢复出厂设置</button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- 保存预设弹窗 -->
+    <div class="modal" id="savePresetModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>保存为预设</h2>
+                <button class="close-btn" id="closeSavePresetModal">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="presetName">预设名称</label>
+                    <input type="text" id="presetName" class="input-field" placeholder="输入预设名称">
+                </div>
+                <div class="preset-info">
+                    <p>将保存以下配置：</p>
+                    <ul id="presetConfigPreview"></ul>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" id="confirmSavePresetBtn">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 导出格式选择弹窗 -->
+    <div class="modal" id="exportModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="exportModalTitle">导出数据</h2>
+                <button class="close-btn" id="closeExportModal">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>选择导出格式</label>
+                    <div class="radio-group">
+                        <label class="radio-item">
+                            <input type="radio" name="exportFormat" value="json" checked>
+                            <span>JSON格式</span>
+                        </label>
+                        <label class="radio-item">
+                            <input type="radio" name="exportFormat" value="txt">
+                            <span>TXT格式</span>
+                        </label>
+                    </div>
+                </div>
+                <div id="exportOptionsContainer"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" id="confirmExportBtn">开始导出</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 部分导出选择弹窗 -->
+    <div class="modal" id="partialExportModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>选择导出内容</h2>
+                <button class="close-btn" id="closePartialExportModal">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="checkbox-group">
+                    <label class="checkbox-item">
+                        <input type="checkbox" value="worldbook" checked>
+                        <span>世界书</span>
+                    </label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" value="friends" checked>
+                        <span>好友（角色卡）</span>
+                    </label>
+                    <div class="sub-options" id="friendsSubOptions">
+                        <label class="checkbox-item">
+                            <input type="checkbox" value="persona" checked>
+                            <span>人物设定</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" value="chats" checked>
+                            <span>聊天记录</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" value="worldbooks" checked>
+                            <span>挂载的世界书</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" value="memories" checked>
+                            <span>记忆库</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>选择导出格式</label>
+                    <div class="radio-group">
+                        <label class="radio-item">
+                            <input type="radio" name="partialExportFormat" value="json" checked>
+                            <span>JSON格式</span>
+                        </label>
+                        <label class="radio-item">
+                            <input type="radio" name="partialExportFormat" value="txt">
+                            <span>TXT格式</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" id="confirmPartialExportBtn">开始导出</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/chat/storage.js"></script>
+    <script src="js/core/api-manager.js"></script>
+    <script src="js/core/export-manager.js"></script>
+    <script src="js/core/import-manager.js"></script>
+    <script src="js/core/core-app.js"></script>
+</body>
+</html>
