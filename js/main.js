@@ -112,7 +112,12 @@ window.addEventListener('unhandledrejection', (e) => {
 window.APP = app;
 window.CONFIG = CONFIG;
 
-// 打开聊天APP（不刷新页面）
+// 打开聊天APP
 function openChatApp() {
     window.location.href = 'chat-app.html';
+}
+
+// 打开Core APP
+function openCoreApp() {
+    window.location.href = 'core.html';
 }
