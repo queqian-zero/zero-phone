@@ -16,6 +16,7 @@
     <link rel="stylesheet" href="css/chat/friend-list.css">
     <link rel="stylesheet" href="css/chat/discover.css">
     <link rel="stylesheet" href="css/chat/profile.css">
+    <link rel="stylesheet" href="css/chat/chat-interface.css">  <!-- ← 加这行 -->
 </head>
 <body>
     
@@ -94,7 +95,155 @@
                 </div>
             </div>
             
+            <!-- ==================== 聊天界面页 ==================== -->
+            <div class="chat-page" id="chatInterfacePage">
+                <!-- 聊天界面题头 -->
+                <div class="chat-interface-header">
+                    <button class="chat-back-btn" id="chatBackBtn">←</button>
+                    <div class="chat-friend-name" id="chatFriendName">
+                        <span>加载中...</span>
+                    </div>
+                    <button class="offline-toggle" id="offlineToggle" title="线下模式">🔴</button>
+                    <button class="chat-settings-btn" id="chatSettingsBtn" title="聊天设置">⚙️</button>
+                </div>
+
+                <!-- Token统计 -->
+                <div class="token-stats" id="tokenStats">
+                    <div class="token-display" id="tokenDisplay">
+                        <span>Token: 0</span>
+                        <span class="expand-icon">▼</span>
+                    </div>
+                    <div class="token-details" id="tokenDetails" style="display: none;">
+                        <div class="token-item">
+                            <span>世界书:</span>
+                            <span id="tokenWorldbook">0</span>
+                        </div>
+                        <div class="token-item">
+                            <span>人设:</span>
+                            <span id="tokenPersona">0</span>
+                        </div>
+                        <div class="token-item">
+                            <span>输入:</span>
+                            <span id="tokenInput">0</span>
+                        </div>
+                        <div class="token-item">
+                            <span>输出:</span>
+                            <span id="tokenOutput">0</span>
+                        </div>
+                        <div class="token-divider"></div>
+                        <div class="token-item token-total">
+                            <span>实际消耗:</span>
+                            <span id="tokenTotal">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 消息区域 -->
+                <div class="messages-container" id="messagesContainer">
+                    <!-- AI正在输入提示 -->
+                    <div class="typing-indicator" id="typingIndicator" style="display: none;">
+                        突破次元遇见你…
+                    </div>
+                    
+                    <!-- 消息列表 -->
+                    <div class="messages-list" id="messagesList">
+                        <!-- 消息会动态生成 -->
+                    </div>
+                </div>
+
+                <!-- 底部输入栏 -->
+                <div class="input-bar" id="inputBar">
+                    <!-- 菜单按钮 -->
+                    <button class="menu-btn" id="menuBtn">☰</button>
+                    
+                    <!-- 输入框 -->
+                    <div class="input-wrapper" id="inputWrapper">
+                        <textarea 
+                            class="input-field" 
+                            id="inputField" 
+                            rows="1" 
+                            placeholder="请停留于我手心…"
+                        ></textarea>
+                        <button class="expand-btn" id="expandBtn" title="展开">⬆</button>
+                    </div>
+                    
+                    <!-- AI发送按钮 -->
+                    <button class="ai-send-btn" id="aiSendBtn" title="AI发送">🤖</button>
+                    
+                    <!-- 用户发送按钮 -->
+                    <button class="user-send-btn" id="userSendBtn" title="发送">📤</button>
+                </div>
+
+                <!-- 菜单面板（展开） -->
+                <div class="menu-panel" id="menuPanel" style="display: none;">
+                    <div class="menu-row">
+                        <!-- 真实功能 -->
+                        <button class="menu-item" id="menuResay" title="重说">
+                            <span class="menu-icon">🔄</span>
+                            <span class="menu-label">重说</span>
+                        </button>
+                        <button class="menu-item" id="menuEmoji" title="表情">
+                            <span class="menu-icon">😊</span>
+                            <span class="menu-label">表情</span>
+                        </button>
+                        <button class="menu-item" id="menuImage" title="图片">
+                            <span class="menu-icon">📷</span>
+                            <span class="menu-label">图片</span>
+                        </button>
+                        <button class="menu-item" id="menuVideo" title="视频">
+                            <span class="menu-icon">🎥</span>
+                            <span class="menu-label">视频</span>
+                        </button>
+                    </div>
+                    <div class="menu-row">
+                        <button class="menu-item" id="menuVoice" title="语音">
+                            <span class="menu-icon">🎤</span>
+                            <span class="menu-label">语音</span>
+                        </button>
+                        <button class="menu-item" id="menuFile" title="文件">
+                            <span class="menu-icon">📁</span>
+                            <span class="menu-label">文件</span>
+                        </button>
+                        <!-- 占位符 -->
+                        <button class="menu-item menu-placeholder" id="menuListenTogether" title="一起听（开发中）">
+                            <span class="menu-icon">🎧</span>
+                            <span class="menu-label">一起听</span>
+                        </button>
+                        <button class="menu-item menu-placeholder" id="menuWatchTogether" title="一起看（开发中）">
+                            <span class="menu-icon">📺</span>
+                            <span class="menu-label">一起看</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 状态弹窗（点击备注名） -->
+                <div class="status-modal" id="statusModal" style="display: none;">
+                    <div class="status-content">
+                        <div class="status-item">
+                            <span class="status-label">装扮:</span>
+                            <span class="status-value" id="statusOutfit">加载中...</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">动作:</span>
+                            <span class="status-value" id="statusAction">加载中...</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">心声:</span>
+                            <span class="status-value" id="statusMood">加载中...</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">位置:</span>
+                            <span class="status-value" id="statusLocation">加载中...</span>
+                        </div>
+                        <div class="status-divider"></div>
+                        <button class="status-detail-btn" id="statusDetailBtn">查看详细资料</button>
+                    </div>
+                </div>
+            </div>
+            <!-- ==================== 聊天界面页结束 ==================== -->
+            
         </div>
+        <!-- ← pages-container 结束 -->
 
         <!-- 底部导航栏 -->
         <div class="bottom-nav">
