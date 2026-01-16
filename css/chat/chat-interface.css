@@ -301,6 +301,8 @@
     align-items: flex-end;
     gap: 8px;
     flex-shrink: 0;
+    position: relative;
+    z-index: 10;
 }
 
 .menu-btn {
@@ -334,43 +336,18 @@
 }
 
 .input-wrapper.expanded {
-    position: fixed;
-    bottom: 16px;  /* ← 改这里！从 calc(70px + ...) 改成 16px */
-    left: 16px;
-    right: 16px;
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    right: 0;
     height: 50vh;
+    margin-bottom: 8px;
     border-radius: 16px;
-    z-index: 200;  /* ← 改这里！提高z-index，遮住底部导航 */
+    z-index: 50;
     background: rgba(245, 245, 245, 0.95);
     backdrop-filter: blur(30px);
     -webkit-backdrop-filter: blur(30px);
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
-    padding: 12px;  /* ← 加这行！给内部留空间 */
-    display: flex;  /* ← 加这行！ */
-    flex-direction: column;  /* ← 加这行！ */
-}
-
-/* 展开模式：按钮在输入框内部 */
-.input-wrapper.expanded ~ .ai-send-btn,
-.input-wrapper.expanded ~ .user-send-btn,
-.input-wrapper.expanded ~ .menu-btn {
-    position: fixed;
-    z-index: 201;
-}
-
-.input-wrapper.expanded ~ .ai-send-btn {
-    bottom: 24px;
-    right: 72px;
-}
-
-.input-wrapper.expanded ~ .user-send-btn {
-    bottom: 24px;
-    right: 24px;
-}
-
-.input-wrapper.expanded ~ .menu-btn {
-    bottom: 24px;
-    left: 24px;
 }
 
 .input-field {
@@ -446,16 +423,18 @@
 
 .menu-panel {
     position: absolute;
-    bottom: 100%;
+    bottom: calc(100% + 8px);
     left: 0;
     right: 0;
     background: rgba(245, 245, 245, 0.75);
     backdrop-filter: blur(30px);
     -webkit-backdrop-filter: blur(30px);
     border-top: 0.5px solid rgba(0, 0, 0, 0.08);
+    border-bottom: 0.5px solid rgba(0, 0, 0, 0.08);
     padding: 16px;
     animation: menuSlideUp 0.3s ease-out;
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.05);
+    z-index: 60;
 }
 
 @keyframes menuSlideUp {
