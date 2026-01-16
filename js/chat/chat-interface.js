@@ -92,7 +92,7 @@ class ChatInterface {
             });
         }
         
-        // 输入框自动调整高度
+        // 展开输入框自动调整高度和事件
         const inputField = document.getElementById('inputField');
         if (inputField) {
             inputField.addEventListener('input', () => {
@@ -111,6 +111,26 @@ class ChatInterface {
                         console.log('⏎ 按下Enter键发送');
                         this.sendUserMessage();
                     }
+                }
+            });
+        }
+        
+        // 底部行输入框双击展开和事件
+        const inputFieldInline = document.getElementById('inputFieldInline');
+        if (inputFieldInline) {
+            inputFieldInline.addEventListener('dblclick', () => {
+                console.log('👆 双击输入框展开');
+                if (!this.isExpanded) {
+                    this.toggleExpand();
+                }
+            });
+            
+            // Enter键发送
+            inputFieldInline.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    console.log('⏎ 按下Enter键发送');
+                    this.sendUserMessage();
                 }
             });
         }
@@ -257,8 +277,12 @@ class ChatInterface {
         
         // 清空输入框
         const inputField = document.getElementById('inputField');
+        const inputFieldInline = document.getElementById('inputFieldInline');
         if (inputField) {
             inputField.value = '';
+        }
+        if (inputFieldInline) {
+            inputFieldInline.value = '';
         }
         
         // 重置状态
@@ -389,20 +413,31 @@ class ChatInterface {
     // ==================== 输入框 ====================
     
     toggleExpand() {
-    const inputBar = document.getElementById('inputBar');
-    
-    if (!inputBar) return;
-    
-    if (this.isExpanded) {
-        inputBar.classList.remove('expanded');
-        this.isExpanded = false;
-        console.log('⬇ 收起输入框');
-    } else {
-        inputBar.classList.add('expanded');
-        this.isExpanded = true;
-        console.log('⬆ 展开输入框');
+        const inputBar = document.getElementById('inputBar');
+        const inputField = document.getElementById('inputField');
+        const inputFieldInline = document.getElementById('inputFieldInline');
+        
+        if (!inputBar) return;
+        
+        if (this.isExpanded) {
+            // 收起：将展开输入框的内容复制到底部行输入框
+            if (inputField && inputFieldInline) {
+                inputFieldInline.value = inputField.value;
+            }
+            inputBar.classList.remove('expanded');
+            this.isExpanded = false;
+            console.log('⬇ 收起输入框');
+        } else {
+            // 展开：将底部行输入框的内容复制到展开输入框
+            if (inputField && inputFieldInline) {
+                inputField.value = inputFieldInline.value;
+                inputField.focus();
+            }
+            inputBar.classList.add('expanded');
+            this.isExpanded = true;
+            console.log('⬆ 展开输入框');
+        }
     }
-}
     
     autoResizeInput(textarea) {
         if (!this.isExpanded) {
@@ -416,13 +451,19 @@ class ChatInterface {
     sendUserMessage() {
         console.log('📤 sendUserMessage() 被调用');
         
+        // 获取当前激活的输入框
         const inputField = document.getElementById('inputField');
-        if (!inputField) {
-            console.error('❌ 找不到输入框');
-            return;
+        const inputFieldInline = document.getElementById('inputFieldInline');
+        
+        let text = '';
+        
+        // 如果是展开状态，从展开输入框取值；否则从底部行输入框取值
+        if (this.isExpanded && inputField) {
+            text = inputField.value.trim();
+        } else if (inputFieldInline) {
+            text = inputFieldInline.value.trim();
         }
         
-        const text = inputField.value.trim();
         console.log('📝 输入内容:', text);
         
         if (!text) {
@@ -446,10 +487,20 @@ class ChatInterface {
             timestamp: new Date().toISOString()
         });
         
-        // 清空输入框
-        inputField.value = '';
-        inputField.style.height = 'auto';
+        // 清空两个输入框
+        if (inputField) {
+            inputField.value = '';
+            inputField.style.height = 'auto';
+        }
+        if (inputFieldInline) {
+            inputFieldInline.value = '';
+        }
         console.log('🧹 清空输入框');
+        
+        // 收起展开的输入框
+        if (this.isExpanded) {
+            this.toggleExpand();
+        }
         
         // 关闭菜单
         this.closeMenu();
