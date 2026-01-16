@@ -153,26 +153,25 @@
 
                 <!-- 底部输入栏 -->
 <div class="input-bar" id="inputBar">
-    <!-- 主行容器（合上时可见，展开时作为底部按钮行） -->
-    <div class="input-bar-main" id="inputBarMain">
-        <!-- 菜单按钮 -->
+    <!-- 展开状态的输入框（默认隐藏） -->
+    <div class="input-wrapper" id="inputWrapper">
+        <textarea 
+            class="input-field" 
+            id="inputField" 
+            placeholder="请停留于我手心…"
+        ></textarea>
+        <button class="expand-btn" id="expandBtn" title="收起">⬆</button>
+    </div>
+    
+    <!-- 底部按钮行 -->
+    <div class="input-bar-bottom">
         <button class="menu-btn" id="menuBtn">☰</button>
-        
-        <!-- 输入框区域 -->
-        <div class="input-wrapper" id="inputWrapper">
-            <textarea 
-                class="input-field" 
-                id="inputField" 
-                rows="1" 
-                placeholder="请停留于我手心…"
-            ></textarea>
-            <button class="expand-btn" id="expandBtn" title="展开">⬆</button>
-        </div>
-        
-        <!-- AI发送按钮 -->
+        <textarea 
+            id="inputFieldInline" 
+            rows="1" 
+            placeholder="请停留于我手心…"
+        ></textarea>
         <button class="ai-send-btn" id="aiSendBtn" title="AI发送">🤖</button>
-        
-        <!-- 用户发送按钮 -->
         <button class="user-send-btn" id="userSendBtn" title="发送">📤</button>
     </div>
 </div>
