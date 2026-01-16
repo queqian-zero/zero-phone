@@ -335,16 +335,42 @@
 
 .input-wrapper.expanded {
     position: fixed;
-    bottom: calc(70px + env(safe-area-inset-bottom));
+    bottom: 16px;  /* ← 改这里！从 calc(70px + ...) 改成 16px */
     left: 16px;
     right: 16px;
     height: 50vh;
     border-radius: 16px;
-    z-index: 100;
+    z-index: 200;  /* ← 改这里！提高z-index，遮住底部导航 */
     background: rgba(245, 245, 245, 0.95);
     backdrop-filter: blur(30px);
     -webkit-backdrop-filter: blur(30px);
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+    padding: 12px;  /* ← 加这行！给内部留空间 */
+    display: flex;  /* ← 加这行！ */
+    flex-direction: column;  /* ← 加这行！ */
+}
+
+/* 展开模式：按钮在输入框内部 */
+.input-wrapper.expanded ~ .ai-send-btn,
+.input-wrapper.expanded ~ .user-send-btn,
+.input-wrapper.expanded ~ .menu-btn {
+    position: fixed;
+    z-index: 201;
+}
+
+.input-wrapper.expanded ~ .ai-send-btn {
+    bottom: 24px;
+    right: 72px;
+}
+
+.input-wrapper.expanded ~ .user-send-btn {
+    bottom: 24px;
+    right: 24px;
+}
+
+.input-wrapper.expanded ~ .menu-btn {
+    bottom: 24px;
+    left: 24px;
 }
 
 .input-field {
