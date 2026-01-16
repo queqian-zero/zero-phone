@@ -171,6 +171,7 @@
     flex: 1;
     overflow-y: auto;
     padding: 16px;
+    padding-bottom: 140px; /* 为固定底部留出空间 */
     background: #000;
     position: relative;
 }
@@ -291,68 +292,35 @@
 /* ==================== 底部输入栏 ==================== */
 
 .input-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
     background: rgba(245, 245, 245, 0.75);
     backdrop-filter: blur(30px);
     -webkit-backdrop-filter: blur(30px);
     border-top: 0.5px solid rgba(0, 0, 0, 0.08);
-    padding: 12px 16px;
-    padding-bottom: calc(12px + env(safe-area-inset-bottom));
-    flex-shrink: 0;
-    position: relative;
     z-index: 10;
-    transition: all 0.3s ease;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
 }
 
-/* 展开状态：底色变高 */
-.input-bar.expanded {
-    height: calc(50vh + 60px);
-    padding-top: 16px;
-}
-
-/* 底部工具栏（按钮行） */
-.input-bar-bottom {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
-}
-
-.menu-btn {
-    width: 36px;
-    height: 36px;
-    border: none;
-    background: rgba(0, 0, 0, 0.04);
-    border-radius: 8px;
-    color: #000;
-    font-size: 20px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
-    flex-shrink: 0;
-}
-
-.menu-btn:active {
-    transform: scale(0.9);
-    background: rgba(0, 0, 0, 0.08);
-}
-
+/* 输入框容器 */
 .input-wrapper {
-    flex: 1;
     position: relative;
     background: rgba(0, 0, 0, 0.04);
     border-radius: 18px;
     padding: 8px 40px 8px 12px;
-    transition: all 0.3s;
+    margin: 12px 16px 8px 16px;
+    transition: all 0.3s ease;
+    max-height: 100px;
+    overflow: hidden;
 }
 
-/* 展开状态：输入框变大 */
+/* 展开状态：输入框向上扩展 */
 .input-bar.expanded .input-wrapper {
-    flex: 1;
+    max-height: 50vh;
     border-radius: 16px;
     display: flex;
     flex-direction: column;
@@ -366,13 +334,14 @@
     font-size: 15px;
     resize: none;
     outline: none;
-    max-height: 100px;
+    max-height: 84px;
     overflow-y: auto;
 }
 
 .input-bar.expanded .input-field {
     flex: 1;
     max-height: none;
+    min-height: 200px;
 }
 
 .input-field::placeholder {
@@ -395,6 +364,7 @@
     align-items: center;
     justify-content: center;
     transition: all 0.2s;
+    z-index: 1;
 }
 
 .expand-btn:active {
@@ -403,6 +373,36 @@
 
 .input-bar.expanded .expand-btn {
     transform: rotate(180deg);
+}
+
+/* 底部工具栏（按钮行） - 固定在底部 */
+.input-bar-bottom {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 16px;
+    flex-shrink: 0;
+}
+
+.menu-btn {
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: rgba(0, 0, 0, 0.04);
+    border-radius: 8px;
+    color: #000;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.menu-btn:active {
+    transform: scale(0.9);
+    background: rgba(0, 0, 0, 0.08);
 }
 
 .ai-send-btn,
