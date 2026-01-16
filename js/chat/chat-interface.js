@@ -389,19 +389,20 @@ class ChatInterface {
     // ==================== 输入框 ====================
     
     toggleExpand() {
-        const wrapper = document.getElementById('inputWrapper');
-        if (!wrapper) return;
-        
-        if (this.isExpanded) {
-            wrapper.classList.remove('expanded');
-            this.isExpanded = false;
-            console.log('⬇ 收起输入框');
-        } else {
-            wrapper.classList.add('expanded');
-            this.isExpanded = true;
-            console.log('⬆ 展开输入框');
-        }
+    const inputBar = document.getElementById('inputBar');
+    
+    if (!inputBar) return;
+    
+    if (this.isExpanded) {
+        inputBar.classList.remove('expanded');
+        this.isExpanded = false;
+        console.log('⬇ 收起输入框');
+    } else {
+        inputBar.classList.add('expanded');
+        this.isExpanded = true;
+        console.log('⬆ 展开输入框');
     }
+}
     
     autoResizeInput(textarea) {
         if (!this.isExpanded) {
