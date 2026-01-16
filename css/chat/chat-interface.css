@@ -360,7 +360,7 @@
     top: 16px;
     left: 16px;
     right: 16px;
-    bottom: 68px;  /* 留出底部按钮的空间 */
+    bottom: 68px;
     border-radius: 16px;
     display: flex;
     flex-direction: column;
@@ -382,7 +382,7 @@
 .input-bar.expanded .input-field {
     flex: 1;
     max-height: none;
-    padding-right: 36px;  /* 为展开按钮留空间 */
+    padding-right: 36px;
 }
 
 .input-field::placeholder {
@@ -408,32 +408,6 @@
 }
 
 .expand-btn:active {
-    transform: scale(0.9);
-}
-
-.input-bar.expanded .expand-btn {
-    transform: rotate(180deg);
-}
-
-.ai-send-btn,
-.user-send-btn {
-    width: 36px;
-    height: 36px;
-    border: none;
-    background: rgba(0, 0, 0, 0.8);
-    border-radius: 8px;
-    color: #fff;
-    font-size: 18px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
-    flex-shrink: 0;
-}
-
-.ai-send-btn:active,
-.user-send-btn:active {
     transform: scale(0.9);
 }
 
