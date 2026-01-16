@@ -407,14 +407,14 @@
     height: 36px;
     overflow: hidden;
     font-family: inherit;
-     /* 给右边的按钮留出空间 */
+     padding-right: 140px; /* 给右边3个按钮留空间：36*3 + 8*2 + 一点余量 */
 }
 
 .input-bar-bottom textarea::placeholder {
     color: rgba(0, 0, 0, 0.3);
 }
 
-/* 展开按钮 - 在输入框右边 */
+/* 展开按钮 - 固定在右下角 */
 .inline-expand-btn {
     width: 36px;
     height: 36px;
@@ -429,7 +429,10 @@
     justify-content: center;
     transition: all 0.2s;
     flex-shrink: 0;
-    margin-right: 8px;
+    position: fixed;
+    bottom: calc(12px + env(safe-area-inset-bottom));
+    right: calc(16px + 36px + 8px + 36px + 8px); /* 右边距 + 两个按钮 + 两个间隙 */
+    z-index: 20;
 }
 
 .inline-expand-btn:active {
