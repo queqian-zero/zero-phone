@@ -407,7 +407,7 @@
     height: 36px;
     overflow: hidden;
     font-family: inherit;
-    margin-right: 96px; /* 给右边的按钮留出空间 */
+     /* 给右边的按钮留出空间 */
 }
 
 .input-bar-bottom textarea::placeholder {
