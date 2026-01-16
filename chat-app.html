@@ -153,7 +153,10 @@
 
                 <!-- 底部输入栏 -->
 <div class="input-bar" id="inputBar">
-    <!-- 输入框区域 -->
+    <!-- 菜单按钮 - 始终显示 -->
+    <button class="menu-btn" id="menuBtn">☰</button>
+    
+    <!-- 输入框区域 - 始终显示 -->
     <div class="input-wrapper" id="inputWrapper">
         <textarea 
             class="input-field" 
@@ -164,12 +167,15 @@
         <button class="expand-btn" id="expandBtn" title="展开">⬆</button>
     </div>
     
-    <!-- 底部工具栏 -->
+    <!-- AI发送按钮 - 始终显示 -->
+    <button class="ai-send-btn" id="aiSendBtn" title="AI发送">🤖</button>
+    
+    <!-- 用户发送按钮 - 始终显示 -->
+    <button class="user-send-btn" id="userSendBtn" title="发送">📤</button>
+    
+    <!-- 底部工具栏 - 只在展开时显示（作为占位） -->
     <div class="input-bar-bottom">
-        <button class="menu-btn" id="menuBtn">☰</button>
-        <div style="flex: 1;"></div>
-        <button class="ai-send-btn" id="aiSendBtn" title="AI发送">🤖</button>
-        <button class="user-send-btn" id="userSendBtn" title="发送">📤</button>
+        <!-- 展开时的额外空间 -->
     </div>
 </div>
 
