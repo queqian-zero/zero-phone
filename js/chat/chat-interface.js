@@ -92,6 +92,15 @@ class ChatInterface {
             });
         }
         
+        // 底部行的展开按钮
+const inlineExpandBtn = document.getElementById('inlineExpandBtn');
+if (inlineExpandBtn) {
+    inlineExpandBtn.addEventListener('click', () => {
+        console.log('⬆ 点击底部行展开按钮');
+        this.toggleExpand();
+    });
+}
+
         // 展开输入框自动调整高度和事件
         const inputField = document.getElementById('inputField');
         if (inputField) {
@@ -115,25 +124,18 @@ class ChatInterface {
             });
         }
         
-        // 底部行输入框双击展开和事件
-        const inputFieldInline = document.getElementById('inputFieldInline');
-        if (inputFieldInline) {
-            inputFieldInline.addEventListener('dblclick', () => {
-                console.log('👆 双击输入框展开');
-                if (!this.isExpanded) {
-                    this.toggleExpand();
-                }
-            });
-            
-            // Enter键发送
-            inputFieldInline.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    console.log('⏎ 按下Enter键发送');
-                    this.sendUserMessage();
-                }
-            });
+        // 底部行输入框事件（去掉双击）
+const inputFieldInline = document.getElementById('inputFieldInline');
+if (inputFieldInline) {
+    // Enter键发送
+    inputFieldInline.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            console.log('⏎ 按下Enter键发送');
+            this.sendUserMessage();
         }
+    });
+}
         
         // 发送按钮
         const userSendBtn = document.getElementById('userSendBtn');
