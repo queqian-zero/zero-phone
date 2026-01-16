@@ -153,73 +153,70 @@
 
                 <!-- 底部输入栏 -->
 <div class="input-bar" id="inputBar">
-    <!-- 菜单按钮 - 始终显示 -->
-    <button class="menu-btn" id="menuBtn">☰</button>
-    
-    <!-- 输入框区域 - 始终显示 -->
-    <div class="input-wrapper" id="inputWrapper">
-        <textarea 
-            class="input-field" 
-            id="inputField" 
-            rows="1" 
-            placeholder="请停留于我手心…"
-        ></textarea>
-        <button class="expand-btn" id="expandBtn" title="展开">⬆</button>
-    </div>
-    
-    <!-- AI发送按钮 - 始终显示 -->
-    <button class="ai-send-btn" id="aiSendBtn" title="AI发送">🤖</button>
-    
-    <!-- 用户发送按钮 - 始终显示 -->
-    <button class="user-send-btn" id="userSendBtn" title="发送">📤</button>
-    
-    <!-- 底部工具栏 - 只在展开时显示（作为占位） -->
-    <div class="input-bar-bottom">
-        <!-- 展开时的额外空间 -->
+    <!-- 主行容器（合上时可见，展开时作为底部按钮行） -->
+    <div class="input-bar-main" id="inputBarMain">
+        <!-- 菜单按钮 -->
+        <button class="menu-btn" id="menuBtn">☰</button>
+        
+        <!-- 输入框区域 -->
+        <div class="input-wrapper" id="inputWrapper">
+            <textarea 
+                class="input-field" 
+                id="inputField" 
+                rows="1" 
+                placeholder="请停留于我手心…"
+            ></textarea>
+            <button class="expand-btn" id="expandBtn" title="展开">⬆</button>
+        </div>
+        
+        <!-- AI发送按钮 -->
+        <button class="ai-send-btn" id="aiSendBtn" title="AI发送">🤖</button>
+        
+        <!-- 用户发送按钮 -->
+        <button class="user-send-btn" id="userSendBtn" title="发送">📤</button>
     </div>
 </div>
 
-                <!-- 菜单面板（展开） -->
-                <div class="menu-panel" id="menuPanel" style="display: none;">
-                    <div class="menu-row">
-                        <!-- 真实功能 -->
-                        <button class="menu-item" id="menuResay" title="重说">
-                            <span class="menu-icon">🔄</span>
-                            <span class="menu-label">重说</span>
-                        </button>
-                        <button class="menu-item" id="menuEmoji" title="表情">
-                            <span class="menu-icon">😊</span>
-                            <span class="menu-label">表情</span>
-                        </button>
-                        <button class="menu-item" id="menuImage" title="图片">
-                            <span class="menu-icon">📷</span>
-                            <span class="menu-label">图片</span>
-                        </button>
-                        <button class="menu-item" id="menuVideo" title="视频">
-                            <span class="menu-icon">🎥</span>
-                            <span class="menu-label">视频</span>
-                        </button>
-                    </div>
-                    <div class="menu-row">
-                        <button class="menu-item" id="menuVoice" title="语音">
-                            <span class="menu-icon">🎤</span>
-                            <span class="menu-label">语音</span>
-                        </button>
-                        <button class="menu-item" id="menuFile" title="文件">
-                            <span class="menu-icon">📁</span>
-                            <span class="menu-label">文件</span>
-                        </button>
-                        <!-- 占位符 -->
-                        <button class="menu-item menu-placeholder" id="menuListenTogether" title="一起听（开发中）">
-                            <span class="menu-icon">🎧</span>
-                            <span class="menu-label">一起听</span>
-                        </button>
-                        <button class="menu-item menu-placeholder" id="menuWatchTogether" title="一起看（开发中）">
-                            <span class="menu-icon">📺</span>
-                            <span class="menu-label">一起看</span>
-                        </button>
-                    </div>
-                </div>
+<!-- 菜单面板（展开） -->
+<div class="menu-panel" id="menuPanel" style="display: none;">
+    <!-- 菜单内容不变 -->
+    <div class="menu-row">
+        <button class="menu-item" id="menuResay" title="重说">
+            <span class="menu-icon">🔄</span>
+            <span class="menu-label">重说</span>
+        </button>
+        <button class="menu-item" id="menuEmoji" title="表情">
+            <span class="menu-icon">😊</span>
+            <span class="menu-label">表情</span>
+        </button>
+        <button class="menu-item" id="menuImage" title="图片">
+            <span class="menu-icon">📷</span>
+            <span class="menu-label">图片</span>
+        </button>
+        <button class="menu-item" id="menuVideo" title="视频">
+            <span class="menu-icon">🎥</span>
+            <span class="menu-label">视频</span>
+        </button>
+    </div>
+    <div class="menu-row">
+        <button class="menu-item" id="menuVoice" title="语音">
+            <span class="menu-icon">🎤</span>
+            <span class="menu-label">语音</span>
+        </button>
+        <button class="menu-item" id="menuFile" title="文件">
+            <span class="menu-icon">📁</span>
+            <span class="menu-label">文件</span>
+        </button>
+        <button class="menu-item menu-placeholder" id="menuListenTogether" title="一起听（开发中）">
+            <span class="menu-icon">🎧</span>
+            <span class="menu-label">一起听</span>
+        </button>
+        <button class="menu-item menu-placeholder" id="menuWatchTogether" title="一起看（开发中）">
+            <span class="menu-icon">📺</span>
+            <span class="menu-label">一起看</span>
+        </button>
+    </div>
+</div>
 
                 <!-- 状态弹窗（点击备注名） -->
                 <div class="status-modal" id="statusModal" style="display: none;">
