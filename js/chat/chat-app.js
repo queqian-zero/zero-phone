@@ -205,8 +205,28 @@ class ChatApp {
     // 点击好友卡片
     onFriendClick(code) {
         const friend = this.storage.getFriendByCode(code);
-        alert(`点击好友：${friend.name}\n\n准备跳转到聊天界面...`);
-        // TODO: 跳转到聊天界面
+        
+        // 跳转到聊天界面
+        this.openChatInterface(code);
+    }
+    
+    // 打开聊天界面
+    openChatInterface(friendCode) {
+        // 隐藏底部导航
+        document.querySelector('.bottom-nav').style.display = 'none';
+        
+        // 隐藏顶部导航
+        document.querySelector('.top-bar').style.display = 'none';
+        
+        // 切换到聊天界面页
+        this.switchPage('chatInterfacePage');
+        
+        // 初始化聊天界面
+        if (!window.chatInterface) {
+            window.chatInterface = new ChatInterface(this);
+        }
+        
+        window.chatInterface.loadChat(friendCode);
     }
     
     // 长按好友卡片
