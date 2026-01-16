@@ -9,6 +9,7 @@ class ChatInterface {
         this.isExpanded = false;
         this.isMenuOpen = false;
         this.eventsBound = false;
+        this.originalFriendName = null;
         this.init();
     }
     
@@ -83,24 +84,24 @@ class ChatInterface {
             });
         }
         
-        // 输入框展开
+        // 输入框展开（展开输入框内的按钮）
         const expandBtn = document.getElementById('expandBtn');
         if (expandBtn) {
             expandBtn.addEventListener('click', () => {
-                console.log('⬆ 点击展开按钮');
+                console.log('⬇ 点击收起按钮');
                 this.toggleExpand();
             });
         }
         
         // 底部行的展开按钮
-const inlineExpandBtn = document.getElementById('inlineExpandBtn');
-if (inlineExpandBtn) {
-    inlineExpandBtn.addEventListener('click', () => {
-        console.log('⬆ 点击底部行展开按钮');
-        this.toggleExpand();
-    });
-}
-
+        const inlineExpandBtn = document.getElementById('inlineExpandBtn');
+        if (inlineExpandBtn) {
+            inlineExpandBtn.addEventListener('click', () => {
+                console.log('⬆ 点击底部行展开按钮');
+                this.toggleExpand();
+            });
+        }
+        
         // 展开输入框自动调整高度和事件
         const inputField = document.getElementById('inputField');
         if (inputField) {
@@ -124,18 +125,18 @@ if (inlineExpandBtn) {
             });
         }
         
-        // 底部行输入框事件（去掉双击）
-const inputFieldInline = document.getElementById('inputFieldInline');
-if (inputFieldInline) {
-    // Enter键发送
-    inputFieldInline.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            console.log('⏎ 按下Enter键发送');
-            this.sendUserMessage();
+        // 底部行输入框事件
+        const inputFieldInline = document.getElementById('inputFieldInline');
+        if (inputFieldInline) {
+            // Enter键发送
+            inputFieldInline.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    console.log('⏎ 按下Enter键发送');
+                    this.sendUserMessage();
+                }
+            });
         }
-    });
-}
         
         // 发送按钮
         const userSendBtn = document.getElementById('userSendBtn');
@@ -214,6 +215,7 @@ if (inputFieldInline) {
         const nameEl = document.querySelector('#chatFriendName span');
         if (nameEl) {
             nameEl.textContent = displayName;
+            this.originalFriendName = displayName;
             console.log('✅ 设置好友名称:', displayName);
         }
         
@@ -290,6 +292,7 @@ if (inputFieldInline) {
         // 重置状态
         this.currentFriendCode = null;
         this.messages = [];
+        this.originalFriendName = null;
         
         const messagesList = document.getElementById('messagesList');
         if (messagesList) {
@@ -541,18 +544,22 @@ if (inputFieldInline) {
     }
     
     showTypingIndicator() {
-        const indicator = document.getElementById('typingIndicator');
-        if (indicator) {
-            indicator.style.display = 'block';
+        const nameEl = document.querySelector('#chatFriendName span');
+        if (nameEl) {
+            // 保存原始名称
+            if (!this.originalFriendName) {
+                this.originalFriendName = nameEl.textContent;
+            }
+            nameEl.textContent = '突破次元遇见你…';
             console.log('💬 显示正在输入提示');
         }
     }
     
     hideTypingIndicator() {
-        const indicator = document.getElementById('typingIndicator');
-        if (indicator) {
-            indicator.style.display = 'none';
-            console.log('💬 隐藏正在输入提示');
+        const nameEl = document.querySelector('#chatFriendName span');
+        if (nameEl && this.originalFriendName) {
+            nameEl.textContent = this.originalFriendName;
+            console.log('💬 恢复好友名称');
         }
     }
     
