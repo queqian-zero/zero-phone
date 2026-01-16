@@ -303,10 +303,17 @@
     transition: all 0.3s ease;
 }
 
-/* 展开状态：底色变高 */
+/* 展开状态：变成浮动面板 */
 .input-bar.expanded {
-    height: calc(50vh + 60px);
-    padding-top: 16px;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: auto;
+    background: transparent;
+    border-top: none;
+    padding: 0;
+    z-index: 100;
 }
 
 /* 主行容器 */
@@ -316,12 +323,10 @@
     gap: 8px;
 }
 
-/* 展开时：主行变成绝对定位，固定在底部 */
+/* 展开时：主行固定在底部 */
 .input-bar.expanded .input-bar-main {
-    position: absolute;
-    bottom: 12px;
-    left: 16px;
-    right: 16px;
+    padding: 12px 16px;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
 }
 
 .menu-btn {
@@ -348,23 +353,28 @@
 .input-wrapper {
     flex: 1;
     position: relative;
-    background: rgba(0, 0, 0, 0.04);
+    background: #FFFFFF; /* 改成白色 */
     border-radius: 18px;
     padding: 8px 40px 8px 12px;
     transition: all 0.3s;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); /* 加个淡阴影 */
 }
 
-/* 展开状态：输入框变大，并占据上部空间 */
+/* 展开状态：变成大的浮动面板 */
 .input-bar.expanded .input-wrapper {
-    position: absolute;
-    top: 16px;
+    position: fixed;
+    top: auto;
+    bottom: 68px; /* 留出底部按钮行的空间 */
     left: 16px;
     right: 16px;
-    bottom: 68px;
+    height: 50vh; /* 占半屏 */
     border-radius: 16px;
     display: flex;
     flex-direction: column;
-    padding: 12px;
+    padding: 16px;
+    background: #FFFFFF;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15); /* 加深阴影 */
+    z-index: 90;
 }
 
 .input-field {
