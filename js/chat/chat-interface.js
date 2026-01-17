@@ -4,6 +4,7 @@ class ChatInterface {
     constructor(chatApp) {
         this.chatApp = chatApp;
         this.storage = chatApp.storage;
+        this.apiManager = new APIManager(); // ← 新增：API管理器
         this.currentFriendCode = null;
         this.currentFriend = null;
         this.messages = [];
@@ -12,7 +13,7 @@ class ChatInterface {
         this.eventsBound = false;
         this.originalFriendName = null;
         
-        // ← 新增：设置相关
+        // 设置相关
         this.settings = {
             aiRecognizeImage: true,
             chatPin: false,
@@ -66,12 +67,12 @@ class ChatInterface {
             });
         }
         
-        // 聊天设置 ← 修改这里
+        // 聊天设置
         const chatSettingsBtn = document.getElementById('chatSettingsBtn');
         if (chatSettingsBtn) {
             chatSettingsBtn.addEventListener('click', () => {
                 console.log('⚙️ 点击聊天设置');
-                this.openChatSettings(); // ← 改成这行
+                this.openChatSettings();
             });
         }
         
@@ -255,7 +256,7 @@ class ChatInterface {
         setTimeout(() => this.scrollToBottom(), 100);
     }
 
-// 添加欢迎消息
+    // 添加欢迎消息
     addWelcomeMessage(friend) {
         console.log('👋 添加欢迎消息');
         this.addMessage({
@@ -365,30 +366,37 @@ class ChatInterface {
         }
     }
     
-    updateTokenStats() {
-        // 模拟Token统计（临时用，后面会被真实数据替代）
-        const total = this.messages.length * 100;
+    // 更新Token统计（从API返回的tokens）
+    updateTokenStatsFromAPI(tokens) {
+        console.log('📊 从API更新Token统计:', tokens);
         
-        const elements = {
-            'tokenTotal': total,
-            'tokenWorldbook': Math.floor(total * 0.1),
-            'tokenPersona': Math.floor(total * 0.3),
-            'tokenInput': Math.floor(total * 0.4),
-            'tokenOutput': Math.floor(total * 0.2)
+        // 获取当前聊天的tokenStats
+        const chat = this.storage.getChatByFriendCode(this.currentFriendCode);
+        const currentStats = chat?.tokenStats || {
+            worldBook: 0,
+            persona: 0,
+            chatHistory: 0,
+            input: 0,
+            output: 0,
+            total: 0
         };
         
-        Object.keys(elements).forEach(id => {
-            const el = document.getElementById(id);
-            if (el) {
-                el.textContent = elements[id];
-            }
-        });
+        // 累加新的token
+        const updatedStats = {
+            worldBook: currentStats.worldBook, // 暂时不变
+            persona: currentStats.persona, // 暂时不变
+            chatHistory: currentStats.chatHistory, // 暂时不变
+            input: currentStats.input + (tokens.input || 0),
+            output: currentStats.output + (tokens.output || 0),
+            total: currentStats.total + (tokens.total || 0),
+            lastUpdate: new Date().toISOString()
+        };
         
-        // 更新显示
-        const displayEl = document.querySelector('#tokenDisplay span');
-        if (displayEl) {
-            displayEl.textContent = `Token: ${total}`;
-        }
+        // 保存到storage
+        this.storage.updateTokenStats(this.currentFriendCode, updatedStats);
+        
+        // 更新UI
+        this.updateTokenStatsFromStorage(updatedStats);
     }
     
     // ==================== 状态弹窗 ====================
@@ -560,33 +568,81 @@ class ChatInterface {
         this.scrollToBottom();
     }
     
-    sendAIMessage() {
+    // ← 修改：发送AI消息（真实API调用）
+    async sendAIMessage() {
         console.log('🤖 sendAIMessage() 被调用');
         
         // 显示正在输入
         this.showTypingIndicator();
         
-        // 模拟AI回复（后面会接API）
-        setTimeout(() => {
+        try {
+            // 1. 准备消息历史（只取最近的N条消息，避免Token过多）
+            const maxMessages = 20; // 可以后续改成可配置的
+            const recentMessages = this.messages.slice(-maxMessages);
+            
+            console.log('📜 准备发送的消息历史:', recentMessages.length, '条');
+            
+            // 2. 获取人设
+            const systemPrompt = this.currentFriend?.persona || '';
+            console.log('👤 人设:', systemPrompt.substring(0, 50), '...');
+            
+            // 3. 调用API
+            console.log('🌐 开始调用API...');
+            const result = await this.apiManager.callAI(recentMessages, systemPrompt);
+            
+            // 4. 隐藏正在输入
             this.hideTypingIndicator();
             
-            console.log('➕ 添加AI消息到列表');
+            // 5. 检查结果
+            if (!result.success) {
+                // 调用失败：显示错误
+                console.error('❌ API调用失败:', result.error);
+                this.showErrorAlert(result.error);
+                return;
+            }
+            
+            console.log('✅ API调用成功');
+            console.log('💬 AI回复:', result.text.substring(0, 50), '...');
+            console.log('📊 Token统计:', result.tokens);
+            
+            // 6. 添加AI消息到界面
             this.addMessage({
                 type: 'ai',
-                text: '这是AI的回复示例。后面会接入真实的API。',
+                text: result.text,
                 timestamp: new Date().toISOString()
             });
             
-            // 保存到存储
-            console.log('💾 保存AI消息到存储');
+            // 7. 保存到storage
             this.storage.addMessage(this.currentFriendCode, {
                 type: 'ai',
-                text: '这是AI的回复示例。后面会接入真实的API。',
+                text: result.text,
                 timestamp: new Date().toISOString()
             });
             
+            // 8. 更新Token统计
+            if (result.tokens) {
+                this.updateTokenStatsFromAPI(result.tokens);
+            }
+            
+            // 9. 滚动到底部
             this.scrollToBottom();
-        }, 1500);
+            
+        } catch (e) {
+            // 异常捕获
+            console.error('❌ 发送AI消息时出错:', e);
+            this.hideTypingIndicator();
+            this.showErrorAlert('发送失败\n\n' + e.message);
+        }
+    }
+    
+    // ← 新增：显示错误提示（系统弹窗）
+    showErrorAlert(errorMessage) {
+        console.log('⚠️ 显示错误提示:', errorMessage);
+        
+        // 使用系统alert（简单直接）
+        alert('❌ AI调用失败\n\n' + errorMessage);
+        
+        // TODO: 后续可以改成自定义弹窗，更美观
     }
     
     showTypingIndicator() {
@@ -626,9 +682,6 @@ class ChatInterface {
         
         // 保存到消息列表
         this.messages.push(message);
-        
-        // 更新Token统计
-        this.updateTokenStats();
     }
     
     createMessageElement(message) {
