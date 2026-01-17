@@ -5,12 +5,20 @@ class ChatInterface {
         this.chatApp = chatApp;
         this.storage = chatApp.storage;
         this.currentFriendCode = null;
-        this.currentFriend = null; // ← 新增：保存当前好友完整信息
+        this.currentFriend = null;
         this.messages = [];
         this.isExpanded = false;
         this.isMenuOpen = false;
         this.eventsBound = false;
         this.originalFriendName = null;
+        
+        // ← 新增：设置相关
+        this.settings = {
+            aiRecognizeImage: true,
+            chatPin: false,
+            hideToken: false
+        };
+        
         this.init();
     }
     
@@ -58,12 +66,12 @@ class ChatInterface {
             });
         }
         
-        // 聊天设置
+        // 聊天设置 ← 修改这里
         const chatSettingsBtn = document.getElementById('chatSettingsBtn');
         if (chatSettingsBtn) {
             chatSettingsBtn.addEventListener('click', () => {
                 console.log('⚙️ 点击聊天设置');
-                alert('聊天设置功能开发中...');
+                this.openChatSettings(); // ← 改成这行
             });
         }
         
@@ -209,7 +217,7 @@ class ChatInterface {
             return;
         }
         
-        // ← 保存好友完整信息
+        // 保存好友完整信息
         this.currentFriend = friend;
         console.log('👤 好友完整信息:', friend);
         
@@ -230,7 +238,7 @@ class ChatInterface {
             this.messages = chat.messages;
             this.renderMessages();
             
-            // ← 更新Token统计（使用真实数据）
+            // 更新Token统计（使用真实数据）
             if (chat.tokenStats) {
                 this.updateTokenStatsFromStorage(chat.tokenStats);
             }
@@ -240,11 +248,14 @@ class ChatInterface {
             this.addWelcomeMessage(friend);
         }
         
+        // 加载设置
+        this.loadSettings();
+        
         // 滚动到底部
         setTimeout(() => this.scrollToBottom(), 100);
     }
-    
-    // 添加欢迎消息
+
+// 添加欢迎消息
     addWelcomeMessage(friend) {
         console.log('👋 添加欢迎消息');
         this.addMessage({
@@ -299,7 +310,7 @@ class ChatInterface {
         
         // 重置状态
         this.currentFriendCode = null;
-        this.currentFriend = null; // ← 清空好友信息
+        this.currentFriend = null;
         this.messages = [];
         this.originalFriendName = null;
         
@@ -328,7 +339,7 @@ class ChatInterface {
         }
     }
     
-    // ← 新增：从storage更新Token统计
+    // 从storage更新Token统计
     updateTokenStatsFromStorage(tokenStats) {
         console.log('📊 从storage更新Token统计:', tokenStats);
         
@@ -399,7 +410,7 @@ class ChatInterface {
         
         modal.style.display = 'block';
         
-        // ← 使用真实数据（如果有的话）
+        // 使用真实数据（如果有的话）
         const data = {
             'statusOutfit': this.currentFriend?.currentOutfit || '休闲装',
             'statusAction': this.currentFriend?.currentAction || '正在看书',
@@ -620,50 +631,49 @@ class ChatInterface {
         this.updateTokenStats();
     }
     
-    // ← 修改：显示真实头像和优化时间
     createMessageElement(message) {
-    const div = document.createElement('div');
-    div.className = `message message-${message.type}`;
-    
-    // 使用智能时间格式化
-    const time = this.formatTimeAdvanced(new Date(message.timestamp));
-    
-    // 头像HTML - 更安全的获取方式
-    let avatarHTML = '';
-    if (message.type === 'ai') {
-        // 先尝试用 this.currentFriend，如果没有就从storage重新获取
-        const friend = this.currentFriend || this.storage.getFriendByCode(this.currentFriendCode);
+        const div = document.createElement('div');
+        div.className = `message message-${message.type}`;
         
-        if (friend && friend.avatar) {
-            avatarHTML = `<img src="${friend.avatar}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" alt="头像">`;
-        } else if (friend) {
-            // 没有头像就显示首字母
-            avatarHTML = `<div class="avatar-placeholder">${friend.name.charAt(0)}</div>`;
+        // 使用智能时间格式化
+        const time = this.formatTimeAdvanced(new Date(message.timestamp));
+        
+        // 头像HTML - 更安全的获取方式
+        let avatarHTML = '';
+        if (message.type === 'ai') {
+            // 先尝试用 this.currentFriend，如果没有就从storage重新获取
+            const friend = this.currentFriend || this.storage.getFriendByCode(this.currentFriendCode);
+            
+            if (friend && friend.avatar) {
+                avatarHTML = `<img src="${friend.avatar}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" alt="头像">`;
+            } else if (friend) {
+                // 没有头像就显示首字母
+                avatarHTML = `<div class="avatar-placeholder">${friend.name.charAt(0)}</div>`;
+            } else {
+                avatarHTML = `<div class="avatar-placeholder">AI</div>`;
+            }
         } else {
-            avatarHTML = `<div class="avatar-placeholder">AI</div>`;
+            // 用户消息：显示"我"
+            avatarHTML = `<div class="avatar-placeholder">我</div>`;
         }
-    } else {
-        // 用户消息：显示"我"
-        avatarHTML = `<div class="avatar-placeholder">我</div>`;
+        
+        div.innerHTML = `
+            <div class="message-avatar">
+                ${avatarHTML}
+            </div>
+            <div class="message-content">
+                <div class="message-bubble">
+                    <div class="message-text">${this.escapeHtml(message.text)}</div>
+                </div>
+                <div class="message-time">${time}</div>
+            </div>
+        `;
+        
+        console.log('🎨 创建消息元素:', message.type);
+        return div;
     }
     
-    div.innerHTML = `
-        <div class="message-avatar">
-            ${avatarHTML}
-        </div>
-        <div class="message-content">
-            <div class="message-bubble">
-                <div class="message-text">${this.escapeHtml(message.text)}</div>
-            </div>
-            <div class="message-time">${time}</div>
-        </div>
-    `;
-    
-    console.log('🎨 创建消息元素:', message.type);
-    return div;
-}
-    
-    // ← 原有的时间格式化（保留作为备用）
+    // 原有的时间格式化（保留作为备用）
     formatTime(date) {
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -675,41 +685,41 @@ class ChatInterface {
         return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
     }
     
-    // ← 修改：智能时间格式化（精确到秒）
-formatTimeAdvanced(date) {
-    const now = new Date();
-    const diff = now - date; // 时间差（毫秒）
-    
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    const seconds = String(date.getSeconds()).padStart(2, '0'); // ← 加上秒
-    const timeStr = `${hours}:${minutes}:${seconds}`; // ← 改成包含秒
-    
-    // 今天：只显示时间（精确到秒）
-    if (this.isToday(date)) {
-        return timeStr;
-    }
-    
-    // 昨天
-    if (this.isYesterday(date)) {
-        return `昨天 ${timeStr}`;
-    }
-    
-    // 今年：显示 月-日 时:分:秒
-    if (date.getFullYear() === now.getFullYear()) {
+    // 智能时间格式化（精确到秒）
+    formatTimeAdvanced(date) {
+        const now = new Date();
+        const diff = now - date; // 时间差（毫秒）
+        
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
+        const timeStr = `${hours}:${minutes}:${seconds}`;
+        
+        // 今天：只显示时间（精确到秒）
+        if (this.isToday(date)) {
+            return timeStr;
+        }
+        
+        // 昨天
+        if (this.isYesterday(date)) {
+            return `昨天 ${timeStr}`;
+        }
+        
+        // 今年：显示 月-日 时:分:秒
+        if (date.getFullYear() === now.getFullYear()) {
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${month}-${day} ${timeStr}`;
+        }
+        
+        // 更早：显示 年-月-日 时:分:秒
+        const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
-        return `${month}-${day} ${timeStr}`;
+        return `${year}-${month}-${day} ${timeStr}`;
     }
     
-    // 更早：显示 年-月-日 时:分:秒
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day} ${timeStr}`;
-}
-    
-    // ← 新增：判断是否是今天
+    // 判断是否是今天
     isToday(date) {
         const now = new Date();
         return date.getDate() === now.getDate() &&
@@ -717,7 +727,7 @@ formatTimeAdvanced(date) {
                date.getFullYear() === now.getFullYear();
     }
     
-    // ← 新增：判断是否是昨天
+    // 判断是否是昨天
     isYesterday(date) {
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
@@ -739,6 +749,216 @@ formatTimeAdvanced(date) {
                 container.scrollTop = container.scrollHeight;
                 console.log('📜 滚动到底部');
             }, 100);
+        }
+    }
+    
+    // ==================== 聊天设置相关 ====================
+    
+    // 打开聊天设置页面
+    openChatSettings() {
+        console.log('⚙️ 打开聊天设置');
+        
+        // 显示设置页面
+        const settingsPage = document.getElementById('chatSettingsPage');
+        if (settingsPage) {
+            settingsPage.style.display = 'flex';
+        }
+        
+        // 加载当前设置
+        this.loadSettings();
+        
+        // 绑定设置页面事件（只绑定一次）
+        if (!this.settingsEventsBound) {
+            this.bindSettingsEvents();
+            this.settingsEventsBound = true;
+        }
+    }
+    
+    // 关闭聊天设置页面
+    closeChatSettings() {
+        console.log('⚙️ 关闭聊天设置');
+        
+        const settingsPage = document.getElementById('chatSettingsPage');
+        if (settingsPage) {
+            settingsPage.style.display = 'none';
+        }
+        
+        // 保存设置
+        this.saveSettings();
+    }
+    
+    // 绑定设置页面事件
+    bindSettingsEvents() {
+        console.log('🔗 绑定设置页面事件');
+        
+        // 返回按钮
+        const settingsBackBtn = document.getElementById('settingsBackBtn');
+        if (settingsBackBtn) {
+            settingsBackBtn.addEventListener('click', () => {
+                this.closeChatSettings();
+            });
+        }
+        
+        // 完成按钮
+        const settingsDoneBtn = document.getElementById('settingsDoneBtn');
+        if (settingsDoneBtn) {
+            settingsDoneBtn.addEventListener('click', () => {
+                this.closeChatSettings();
+            });
+        }
+        
+        // ===== 基础设置 =====
+        
+        // AI识别图片
+        const aiRecognizeSwitch = document.getElementById('settingAiRecognizeImage');
+        if (aiRecognizeSwitch) {
+            aiRecognizeSwitch.addEventListener('change', (e) => {
+                this.settings.aiRecognizeImage = e.target.checked;
+                console.log('AI识别图片:', this.settings.aiRecognizeImage);
+                // 实时保存
+                this.saveSettings();
+            });
+        }
+        
+        // 搜索聊天记录
+        const searchChatBtn = document.getElementById('settingSearchChat');
+        if (searchChatBtn) {
+            searchChatBtn.addEventListener('click', () => {
+                alert('搜索聊天记录功能开发中...');
+            });
+        }
+        
+        // 聊天置顶
+        const chatPinSwitch = document.getElementById('settingChatPin');
+        if (chatPinSwitch) {
+            chatPinSwitch.addEventListener('change', (e) => {
+                this.settings.chatPin = e.target.checked;
+                console.log('聊天置顶:', this.settings.chatPin);
+                // 实时保存
+                this.saveSettings();
+                // TODO: 更新聊天列表的置顶状态
+            });
+        }
+        
+        // ===== 进阶设置 =====
+        
+        // 隐藏Token统计
+        const hideTokenSwitch = document.getElementById('settingHideToken');
+        if (hideTokenSwitch) {
+            hideTokenSwitch.addEventListener('change', (e) => {
+                this.settings.hideToken = e.target.checked;
+                console.log('隐藏Token统计:', this.settings.hideToken);
+                // 实时生效
+                this.toggleTokenDisplay();
+                // 实时保存
+                this.saveSettings();
+            });
+        }
+        
+        // ===== 数据管理 =====
+        
+        // 导入数据
+        const importDataBtn = document.getElementById('settingImportData');
+        if (importDataBtn) {
+            importDataBtn.addEventListener('click', () => {
+                alert('导入数据功能开发中...');
+            });
+        }
+        
+        // 导出数据
+        const exportDataBtn = document.getElementById('settingExportData');
+        if (exportDataBtn) {
+            exportDataBtn.addEventListener('click', () => {
+                alert('导出数据功能开发中...');
+            });
+        }
+    }
+    
+    // 加载设置
+    loadSettings() {
+        console.log('📥 加载聊天设置');
+        
+        if (!this.currentFriendCode) {
+            console.warn('⚠️ 没有当前好友编码');
+            return;
+        }
+        
+        // 从storage读取设置
+        const savedSettings = this.storage.getChatSettings(this.currentFriendCode);
+        
+        if (savedSettings) {
+            this.settings = { ...this.settings, ...savedSettings };
+            console.log('✅ 加载的设置:', this.settings);
+        } else {
+            console.log('ℹ️ 使用默认设置');
+        }
+        
+        // 应用设置到UI
+        this.applySettingsToUI();
+    }
+    
+    // 保存设置
+    saveSettings() {
+        console.log('💾 保存聊天设置');
+        
+        if (!this.currentFriendCode) {
+            console.warn('⚠️ 没有当前好友编码');
+            return;
+        }
+        
+        // 保存到storage
+        const success = this.storage.saveChatSettings(this.currentFriendCode, this.settings);
+        
+        if (success) {
+            console.log('✅ 设置保存成功:', this.settings);
+        } else {
+            console.error('❌ 设置保存失败');
+        }
+    }
+    
+    // 应用设置到UI
+    applySettingsToUI() {
+        console.log('🎨 应用设置到UI');
+        
+        // AI识别图片
+        const aiRecognizeSwitch = document.getElementById('settingAiRecognizeImage');
+        if (aiRecognizeSwitch) {
+            aiRecognizeSwitch.checked = this.settings.aiRecognizeImage;
+        }
+        
+        // 聊天置顶
+        const chatPinSwitch = document.getElementById('settingChatPin');
+        if (chatPinSwitch) {
+            chatPinSwitch.checked = this.settings.chatPin;
+        }
+        
+        // 隐藏Token统计
+        const hideTokenSwitch = document.getElementById('settingHideToken');
+        if (hideTokenSwitch) {
+            hideTokenSwitch.checked = this.settings.hideToken;
+        }
+        
+        // 拍一拍
+        const pokeValue = document.getElementById('settingPokeValue');
+        if (pokeValue && this.currentFriend) {
+            pokeValue.textContent = this.currentFriend.poke || '戳了戳你';
+        }
+        
+        // 应用Token显示设置
+        this.toggleTokenDisplay();
+    }
+    
+    // 切换Token显示
+    toggleTokenDisplay() {
+        const tokenStats = document.getElementById('tokenStats');
+        if (tokenStats) {
+            if (this.settings.hideToken) {
+                tokenStats.style.display = 'none';
+                console.log('🙈 隐藏Token统计');
+            } else {
+                tokenStats.style.display = 'block';
+                console.log('👁️ 显示Token统计');
+            }
         }
     }
 }
