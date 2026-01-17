@@ -5,6 +5,7 @@ class ChatInterface {
         this.chatApp = chatApp;
         this.storage = chatApp.storage;
         this.currentFriendCode = null;
+        this.currentFriend = null; // ← 新增：保存当前好友完整信息
         this.messages = [];
         this.isExpanded = false;
         this.isMenuOpen = false;
@@ -198,7 +199,7 @@ class ChatInterface {
         console.log('📖 加载聊天:', friendCode);
         this.currentFriendCode = friendCode;
         
-        // 获取好友信息
+        // 获取好友完整信息
         const friend = this.storage.getFriendByCode(friendCode);
         
         if (!friend) {
@@ -208,7 +209,9 @@ class ChatInterface {
             return;
         }
         
-        console.log('👤 好友信息:', friend);
+        // ← 保存好友完整信息
+        this.currentFriend = friend;
+        console.log('👤 好友完整信息:', friend);
         
         // 设置好友名称
         const displayName = friend.nickname || friend.name;
@@ -226,6 +229,11 @@ class ChatInterface {
             console.log('📜 加载历史消息:', chat.messages.length, '条');
             this.messages = chat.messages;
             this.renderMessages();
+            
+            // ← 更新Token统计（使用真实数据）
+            if (chat.tokenStats) {
+                this.updateTokenStatsFromStorage(chat.tokenStats);
+            }
         } else {
             console.log('🆕 新聊天，添加欢迎消息');
             this.messages = [];
@@ -291,6 +299,7 @@ class ChatInterface {
         
         // 重置状态
         this.currentFriendCode = null;
+        this.currentFriend = null; // ← 清空好友信息
         this.messages = [];
         this.originalFriendName = null;
         
@@ -319,8 +328,34 @@ class ChatInterface {
         }
     }
     
+    // ← 新增：从storage更新Token统计
+    updateTokenStatsFromStorage(tokenStats) {
+        console.log('📊 从storage更新Token统计:', tokenStats);
+        
+        const elements = {
+            'tokenTotal': tokenStats.total || 0,
+            'tokenWorldbook': tokenStats.worldBook || 0,
+            'tokenPersona': tokenStats.persona || 0,
+            'tokenInput': tokenStats.input || 0,
+            'tokenOutput': tokenStats.output || 0
+        };
+        
+        Object.keys(elements).forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.textContent = elements[id];
+            }
+        });
+        
+        // 更新显示
+        const displayEl = document.querySelector('#tokenDisplay span');
+        if (displayEl) {
+            displayEl.textContent = `Token: ${tokenStats.total || 0}`;
+        }
+    }
+    
     updateTokenStats() {
-        // 模拟Token统计
+        // 模拟Token统计（临时用，后面会被真实数据替代）
         const total = this.messages.length * 100;
         
         const elements = {
@@ -364,12 +399,12 @@ class ChatInterface {
         
         modal.style.display = 'block';
         
-        // 加载示例数据
+        // ← 使用真实数据（如果有的话）
         const data = {
-            'statusOutfit': '休闲装',
-            'statusAction': '正在看书',
-            'statusMood': '心情不错',
-            'statusLocation': '家里的书房'
+            'statusOutfit': this.currentFriend?.currentOutfit || '休闲装',
+            'statusAction': this.currentFriend?.currentAction || '正在看书',
+            'statusMood': this.currentFriend?.currentMood || '心情不错',
+            'statusLocation': this.currentFriend?.currentLocation || '家里的书房'
         };
         
         Object.keys(data).forEach(id => {
@@ -585,15 +620,34 @@ class ChatInterface {
         this.updateTokenStats();
     }
     
+    // ← 修改：显示真实头像和优化时间
     createMessageElement(message) {
         const div = document.createElement('div');
         div.className = `message message-${message.type}`;
         
-        const time = this.formatTime(new Date(message.timestamp));
+        // 使用智能时间格式化
+        const time = this.formatTimeAdvanced(new Date(message.timestamp));
+        
+        // 头像HTML
+        let avatarHTML = '';
+        if (message.type === 'ai') {
+            // AI消息：显示好友头像
+            if (this.currentFriend && this.currentFriend.avatar) {
+                avatarHTML = `<img src="${this.currentFriend.avatar}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" alt="头像">`;
+            } else if (this.currentFriend) {
+                // 没有头像就显示首字母
+                avatarHTML = `<div class="avatar-placeholder">${this.currentFriend.name.charAt(0)}</div>`;
+            } else {
+                avatarHTML = `<div class="avatar-placeholder">AI</div>`;
+            }
+        } else {
+            // 用户消息：显示"我"（后面可以改成用户自己的头像）
+            avatarHTML = `<div class="avatar-placeholder">我</div>`;
+        }
         
         div.innerHTML = `
             <div class="message-avatar">
-                <div class="avatar-placeholder">${message.type === 'ai' ? 'AI' : '我'}</div>
+                ${avatarHTML}
             </div>
             <div class="message-content">
                 <div class="message-bubble">
@@ -607,6 +661,7 @@ class ChatInterface {
         return div;
     }
     
+    // ← 原有的时间格式化（保留作为备用）
     formatTime(date) {
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -616,6 +671,56 @@ class ChatInterface {
         const seconds = String(date.getSeconds()).padStart(2, '0');
         
         return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    }
+    
+    // ← 新增：智能时间格式化
+    formatTimeAdvanced(date) {
+        const now = new Date();
+        const diff = now - date; // 时间差（毫秒）
+        
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const timeStr = `${hours}:${minutes}`;
+        
+        // 今天：只显示时间
+        if (this.isToday(date)) {
+            return timeStr;
+        }
+        
+        // 昨天
+        if (this.isYesterday(date)) {
+            return `昨天 ${timeStr}`;
+        }
+        
+        // 今年：显示 月-日 时:分
+        if (date.getFullYear() === now.getFullYear()) {
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${month}-${day} ${timeStr}`;
+        }
+        
+        // 更早：显示 年-月-日 时:分
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day} ${timeStr}`;
+    }
+    
+    // ← 新增：判断是否是今天
+    isToday(date) {
+        const now = new Date();
+        return date.getDate() === now.getDate() &&
+               date.getMonth() === now.getMonth() &&
+               date.getFullYear() === now.getFullYear();
+    }
+    
+    // ← 新增：判断是否是昨天
+    isYesterday(date) {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        return date.getDate() === yesterday.getDate() &&
+               date.getMonth() === yesterday.getMonth() &&
+               date.getFullYear() === yesterday.getFullYear();
     }
     
     escapeHtml(text) {
