@@ -893,6 +893,15 @@ class ChatInterface {
             });
         }
         
+        // ===== 拍一拍编辑 =====
+const pokeItem = document.querySelector('.setting-item:has(#settingPokeValue)');
+if (pokeItem) {
+    pokeItem.style.cursor = 'pointer';
+    pokeItem.addEventListener('click', () => {
+        this.editPoke();
+    });
+}
+
         // ===== 进阶设置 =====
         
         // 隐藏Token统计
@@ -1013,6 +1022,49 @@ class ChatInterface {
                 console.log('👁️ 显示Token统计');
             }
         }
+    }
+    
+    // ==================== 拍一拍编辑 ====================
+
+editPoke() {
+    if (!this.currentFriend) {
+        console.error('❌ 没有当前好友');
+        return;
+    }
+    
+    console.log('✏️ 编辑拍一拍');
+    
+    // 获取当前值
+    const currentPoke = this.currentFriend.poke || '戳了戳你';
+    
+    // 弹出输入框
+    const newPoke = prompt('修改拍一拍动作：', currentPoke);
+    
+    // 如果用户取消或输入为空，不做任何操作
+    if (newPoke === null || newPoke.trim() === '') {
+        console.log('⚠️ 用户取消或输入为空');
+        return;
+    }
+    
+    // 保存到好友数据
+    const success = this.storage.updateFriend(this.currentFriendCode, {
+        poke: newPoke.trim()
+    });
+    
+    if (success) {
+        console.log('✅ 拍一拍保存成功:', newPoke.trim());
+        
+        // 更新当前好友对象
+        this.currentFriend.poke = newPoke.trim();
+        
+        // 更新界面显示
+        const pokeValue = document.getElementById('settingPokeValue');
+        if (pokeValue) {
+            pokeValue.textContent = newPoke.trim();
+        }
+    } else {
+        console.error('❌ 拍一拍保存失败');
+        alert('❌ 保存失败！');
     }
 }
 
