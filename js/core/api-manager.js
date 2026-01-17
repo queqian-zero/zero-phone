@@ -247,6 +247,263 @@ class APIManager {
             return false;
         }
     }
+    
+    // ==================== AI调用（新增） ====================
+    
+    /**
+     * 调用AI API
+     * @param {Array} messages - 消息历史 [{role: 'user'/'assistant', content: '...'}]
+     * @param {String} systemPrompt - 系统提示词（人设）
+     * @returns {Object} { success, text, tokens, error }
+     */
+    async callAI(messages, systemPrompt = '') {
+        try {
+            console.log('🤖 开始调用AI API');
+            
+            // 1. 获取配置
+            const config = this.getCurrentConfig();
+            
+            // 验证配置
+            if (!config.endpoint || !config.apiKey) {
+                throw new Error('API配置不完整\n\n请先在中枢APP配置API');
+            }
+            
+            if (!config.model) {
+                throw new Error('未选择模型\n\n请先在中枢APP拉取并选择模型');
+            }
+            
+            console.log('📋 API配置:', {
+                provider: config.provider,
+                endpoint: config.endpoint,
+                model: config.model
+            });
+            
+            // 2. 构建请求体（根据不同provider调整格式）
+            const requestBody = this.buildRequestBody(config, messages, systemPrompt);
+            
+            console.log('📦 请求体:', requestBody);
+            
+            // 3. 调用API
+            const url = this.buildAPIUrl(config);
+            console.log('🌐 API地址:', url);
+            
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${config.apiKey}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestBody)
+            });
+            
+            console.log('📡 响应状态:', response.status, response.statusText);
+            
+            // 4. 检查响应
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(this.parseAPIError(response.status, errorText));
+            }
+            
+            // 5. 解析响应
+            const data = await response.json();
+            console.log('📥 响应数据:', data);
+            
+            const result = this.parseAPIResponse(config.provider, data);
+            
+            console.log('✅ AI调用成功');
+            return {
+                success: true,
+                text: result.text,
+                tokens: result.tokens
+            };
+            
+        } catch (e) {
+            console.error('❌ AI调用失败:', e);
+            return {
+                success: false,
+                error: e.message
+            };
+        }
+    }
+    
+    // 构建请求体
+    buildRequestBody(config, messages, systemPrompt) {
+        const { provider, model, maxTokens, temperature } = config;
+        
+        // 转换消息格式
+        const formattedMessages = messages.map(msg => ({
+            role: msg.type === 'user' ? 'user' : 'assistant',
+            content: msg.text
+        }));
+        
+        // 根据provider构建不同格式
+        switch (provider) {
+            case 'google':
+                // Google Gemini格式
+                return {
+                    contents: formattedMessages.map(msg => ({
+                        role: msg.role === 'assistant' ? 'model' : 'user',
+                        parts: [{ text: msg.content }]
+                    })),
+                    systemInstruction: systemPrompt ? {
+                        parts: [{ text: systemPrompt }]
+                    } : undefined,
+                    generationConfig: {
+                        temperature: temperature,
+                        maxOutputTokens: maxTokens
+                    }
+                };
+                
+            case 'anthropic':
+                // Anthropic Claude格式
+                return {
+                    model: model,
+                    max_tokens: maxTokens,
+                    temperature: temperature,
+                    system: systemPrompt,
+                    messages: formattedMessages
+                };
+                
+            default:
+                // OpenAI / SiliconFlow / 自定义（通用格式）
+                const allMessages = [];
+                if (systemPrompt) {
+                    allMessages.push({
+                        role: 'system',
+                        content: systemPrompt
+                    });
+                }
+                allMessages.push(...formattedMessages);
+                
+                return {
+                    model: model,
+                    messages: allMessages,
+                    max_tokens: maxTokens,
+                    temperature: temperature
+                };
+        }
+    }
+    
+    // 构建API URL
+    buildAPIUrl(config) {
+        const { provider, endpoint, model } = config;
+        
+        // 移除末尾斜杠
+        let baseUrl = endpoint.replace(/\/$/, '');
+        
+        switch (provider) {
+            case 'google':
+                // Google Gemini: endpoint/{model}:generateContent
+                return `${baseUrl}/${model}:generateContent`;
+                
+            case 'anthropic':
+                // Anthropic: endpoint/v1/messages
+                if (!baseUrl.endsWith('/v1/messages')) {
+                    baseUrl += '/v1/messages';
+                }
+                return baseUrl;
+                
+            default:
+                // OpenAI / SiliconFlow / 自定义: endpoint/v1/chat/completions
+                if (!baseUrl.endsWith('/chat/completions')) {
+                    if (!baseUrl.endsWith('/v1')) {
+                        baseUrl += '/v1';
+                    }
+                    baseUrl += '/chat/completions';
+                }
+                return baseUrl;
+        }
+    }
+    
+    // 解析API响应
+    parseAPIResponse(provider, data) {
+        switch (provider) {
+            case 'google':
+                // Google Gemini响应格式
+                const candidate = data.candidates?.[0];
+                if (!candidate) {
+                    throw new Error('API返回格式错误：找不到candidates');
+                }
+                
+                return {
+                    text: candidate.content?.parts?.[0]?.text || '',
+                    tokens: {
+                        input: data.usageMetadata?.promptTokenCount || 0,
+                        output: data.usageMetadata?.candidatesTokenCount || 0,
+                        total: data.usageMetadata?.totalTokenCount || 0
+                    }
+                };
+                
+            case 'anthropic':
+                // Anthropic Claude响应格式
+                if (!data.content?.[0]) {
+                    throw new Error('API返回格式错误：找不到content');
+                }
+                
+                return {
+                    text: data.content[0].text || '',
+                    tokens: {
+                        input: data.usage?.input_tokens || 0,
+                        output: data.usage?.output_tokens || 0,
+                        total: (data.usage?.input_tokens || 0) + (data.usage?.output_tokens || 0)
+                    }
+                };
+                
+            default:
+                // OpenAI / SiliconFlow / 自定义（通用格式）
+                if (!data.choices?.[0]) {
+                    throw new Error('API返回格式错误：找不到choices');
+                }
+                
+                return {
+                    text: data.choices[0].message?.content || '',
+                    tokens: {
+                        input: data.usage?.prompt_tokens || 0,
+                        output: data.usage?.completion_tokens || 0,
+                        total: data.usage?.total_tokens || 0
+                    }
+                };
+        }
+    }
+    
+    // 解析API错误
+    parseAPIError(status, errorText) {
+        let message = `HTTP ${status} 错误\n\n`;
+        
+        try {
+            const errorData = JSON.parse(errorText);
+            
+            // 不同provider的错误格式
+            if (errorData.error) {
+                if (typeof errorData.error === 'string') {
+                    message += errorData.error;
+                } else if (errorData.error.message) {
+                    message += errorData.error.message;
+                } else {
+                    message += JSON.stringify(errorData.error);
+                }
+            } else {
+                message += errorText;
+            }
+        } catch (e) {
+            message += errorText;
+        }
+        
+        // 常见错误提示
+        if (status === 401) {
+            message += '\n\n💡 可能是API Key无效或已过期';
+        } else if (status === 429) {
+            message += '\n\n💡 请求过于频繁，请稍后再试';
+        } else if (status === 402 || errorText.includes('insufficient')) {
+            message += '\n\n💡 余额不足，请充值';
+        } else if (status === 404) {
+            message += '\n\n💡 模型不存在或API地址错误';
+        } else if (status === 500 || status === 502 || status === 503) {
+            message += '\n\n💡 服务器错误，请稍后再试';
+        }
+        
+        return message;
+    }
 }
 
 // 导出
