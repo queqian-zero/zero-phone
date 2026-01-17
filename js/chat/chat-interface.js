@@ -894,7 +894,7 @@ class ChatInterface {
         }
         
         // ===== 拍一拍编辑 =====
-const pokeItem = document.querySelector('.setting-item:has(#settingPokeValue)');
+    const pokeItem = document.querySelector('.setting-item:has(#settingPokeValue)');
 if (pokeItem) {
     pokeItem.style.cursor = 'pointer';
     pokeItem.addEventListener('click', () => {
@@ -1026,7 +1026,7 @@ if (pokeItem) {
     
     // ==================== 拍一拍编辑 ====================
 
-editPoke() {
+    editPoke() {
     if (!this.currentFriend) {
         console.error('❌ 没有当前好友');
         return;
