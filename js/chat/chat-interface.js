@@ -673,38 +673,39 @@ class ChatInterface {
         return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
     }
     
-    // ← 新增：智能时间格式化
-    formatTimeAdvanced(date) {
-        const now = new Date();
-        const diff = now - date; // 时间差（毫秒）
-        
-        const hours = String(date.getHours()).padStart(2, '0');
-        const minutes = String(date.getMinutes()).padStart(2, '0');
-        const timeStr = `${hours}:${minutes}`;
-        
-        // 今天：只显示时间
-        if (this.isToday(date)) {
-            return timeStr;
-        }
-        
-        // 昨天
-        if (this.isYesterday(date)) {
-            return `昨天 ${timeStr}`;
-        }
-        
-        // 今年：显示 月-日 时:分
-        if (date.getFullYear() === now.getFullYear()) {
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            return `${month}-${day} ${timeStr}`;
-        }
-        
-        // 更早：显示 年-月-日 时:分
-        const year = date.getFullYear();
+    // ← 修改：智能时间格式化（精确到秒）
+formatTimeAdvanced(date) {
+    const now = new Date();
+    const diff = now - date; // 时间差（毫秒）
+    
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0'); // ← 加上秒
+    const timeStr = `${hours}:${minutes}:${seconds}`; // ← 改成包含秒
+    
+    // 今天：只显示时间（精确到秒）
+    if (this.isToday(date)) {
+        return timeStr;
+    }
+    
+    // 昨天
+    if (this.isYesterday(date)) {
+        return `昨天 ${timeStr}`;
+    }
+    
+    // 今年：显示 月-日 时:分:秒
+    if (date.getFullYear() === now.getFullYear()) {
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day} ${timeStr}`;
+        return `${month}-${day} ${timeStr}`;
     }
+    
+    // 更早：显示 年-月-日 时:分:秒
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day} ${timeStr}`;
+}
     
     // ← 新增：判断是否是今天
     isToday(date) {
