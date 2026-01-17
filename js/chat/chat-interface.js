@@ -622,41 +622,51 @@ class ChatInterface {
     }
     
     createMessageElement(message) {
-        const div = document.createElement('div');
-        div.className = `message message-${message.type}`;
+    const div = document.createElement('div');
+    div.className = `message message-${message.type}`;
+    
+    const time = this.formatTimeAdvanced(new Date(message.timestamp));
+    
+    let avatarHTML = '';
+    if (message.type === 'ai') {
+        const friend = this.currentFriend || this.storage.getFriendByCode(this.currentFriendCode);
         
-        const time = this.formatTimeAdvanced(new Date(message.timestamp));
-        
-        let avatarHTML = '';
-        if (message.type === 'ai') {
-            const friend = this.currentFriend || this.storage.getFriendByCode(this.currentFriendCode);
-            
-            if (friend && friend.avatar) {
-                avatarHTML = `<img src="${friend.avatar}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" alt="头像">`;
-            } else if (friend) {
-                avatarHTML = `<div class="avatar-placeholder">${friend.name.charAt(0)}</div>`;
-            } else {
-                avatarHTML = `<div class="avatar-placeholder">AI</div>`;
-            }
+        if (friend && friend.avatar) {
+            avatarHTML = `<img src="${friend.avatar}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" alt="头像">`;
+        } else if (friend) {
+            avatarHTML = `<div class="avatar-placeholder">${friend.name.charAt(0)}</div>`;
         } else {
-            avatarHTML = `<div class="avatar-placeholder">我</div>`;
+            avatarHTML = `<div class="avatar-placeholder">AI</div>`;
         }
-        
-        div.innerHTML = `
-            <div class="message-avatar">
-                ${avatarHTML}
-            </div>
-            <div class="message-content">
-                <div class="message-bubble">
-                    <div class="message-text">${this.escapeHtml(message.text)}</div>
-                </div>
-                <div class="message-time">${time}</div>
-            </div>
-        `;
-        
-        console.log('🎨 创建消息元素:', message.type);
-        return div;
+    } else {
+        avatarHTML = `<div class="avatar-placeholder">我</div>`;
     }
+    
+    div.innerHTML = `
+        <div class="message-avatar">
+            ${avatarHTML}
+        </div>
+        <div class="message-content">
+            <div class="message-bubble">
+                <div class="message-text">${this.escapeHtml(message.text)}</div>
+            </div>
+            <div class="message-time">${time}</div>
+        </div>
+    `;
+    
+    // ===== 新增：给头像添加双击事件 =====
+    const avatarEl = div.querySelector('.message-avatar');
+    if (avatarEl) {
+        avatarEl.addEventListener('dblclick', () => {
+            console.log('👆 双击头像');
+            this.handlePoke(message.type);
+        });
+    }
+    // ===== 新增结束 =====
+    
+    console.log('🎨 创建消息元素:', message.type);
+    return div;
+}
     
     formatTime(date) {
         const year = date.getFullYear();
@@ -941,6 +951,81 @@ class ChatInterface {
         } else {
             console.error('❌ 拍一拍保存失败');
             alert('❌ 保存失败！');
+        }
+    }
+    
+    // ==================== 拍一拍功能 ====================
+    
+    handlePoke(type) {
+        console.log('👋 处理拍一拍:', type);
+        
+        if (!this.currentFriend) {
+            console.error('❌ 没有当前好友');
+            return;
+        }
+        
+        // 震动反馈
+        if (navigator.vibrate) {
+            navigator.vibrate(50);
+        }
+        
+        // 获取拍一拍后缀
+        const pokeSuffix = this.currentFriend.poke || '戳了戳你';
+        const friendName = this.currentFriend.nickname || this.currentFriend.name;
+        
+        let pokeText = '';
+        if (type === 'ai') {
+            // 用户双击AI头像
+            pokeText = `你拍了拍 ${friendName} 的${pokeSuffix}`;
+        } else {
+            // AI双击用户头像（暂时不实现，留空）
+            console.log('⚠️ AI拍一拍功能待开发');
+            return;
+        }
+        
+        // 显示系统提示
+        this.showPokeMessage(pokeText);
+    }
+    
+    showPokeMessage(text) {
+        console.log('💬 显示拍一拍提示:', text);
+        
+        const messagesList = document.getElementById('messagesList');
+        if (!messagesList) {
+            console.error('❌ 找不到 messagesList 元素');
+            return;
+        }
+        
+        // 创建系统提示元素
+        const systemDiv = document.createElement('div');
+        systemDiv.className = 'system-message poke-message';
+        systemDiv.innerHTML = `<span>${this.escapeHtml(text)}</span>`;
+        
+        // 添加到消息列表
+        messagesList.appendChild(systemDiv);
+        
+        // 触发头像震动动画
+        this.triggerAvatarShake();
+        
+        // 滚动到底部
+        this.scrollToBottom();
+    }
+    
+    triggerAvatarShake() {
+        console.log('📳 触发头像震动');
+        
+        // 找到所有AI消息的头像
+        const aiAvatars = document.querySelectorAll('.message-ai .message-avatar');
+        
+        // 给最后一个AI头像添加震动动画
+        if (aiAvatars.length > 0) {
+            const lastAvatar = aiAvatars[aiAvatars.length - 1];
+            lastAvatar.classList.add('shake');
+            
+            // 动画结束后移除class
+            setTimeout(() => {
+                lastAvatar.classList.remove('shake');
+            }, 500);
         }
     }
 }
