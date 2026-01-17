@@ -268,3 +268,18 @@
 .settings-content::-webkit-scrollbar-track {
     background: transparent;
 }
+
+/* ==================== 拍一拍可点击样式 ==================== */
+
+.setting-item:has(#settingPokeValue) {
+    cursor: pointer;
+}
+
+.setting-item:has(#settingPokeValue):hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.setting-item:has(#settingPokeValue):active {
+    transform: scale(0.98);
+    background: rgba(255, 255, 255, 0.1);
+}
