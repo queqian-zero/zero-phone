@@ -16,7 +16,8 @@
     <link rel="stylesheet" href="css/chat/friend-list.css">
     <link rel="stylesheet" href="css/chat/discover.css">
     <link rel="stylesheet" href="css/chat/profile.css">
-    <link rel="stylesheet" href="css/chat/chat-interface.css">  <!-- ← 加这行 -->
+    <link rel="stylesheet" href="css/chat/chat-interface.css">
+    <link rel="stylesheet" href="css/chat/chat-settings.css">  <!-- ← 新增这行 -->
 </head>
 <body>
     
@@ -234,6 +235,264 @@
             <div class="status-divider"></div>
             <button class="status-detail-btn" id="statusDetailBtn">查看详细资料</button>
         </div>
+    </div>
+    
+    <!-- ==================== 聊天设置页面 ==================== -->
+<div class="chat-settings-page" id="chatSettingsPage" style="display: none;">
+    <!-- 设置页面题头 -->
+    <div class="settings-header">
+        <button class="settings-back-btn" id="settingsBackBtn">←</button>
+        <h2 class="settings-title">聊天设置</h2>
+        <button class="settings-done-btn" id="settingsDoneBtn">完成</button>
+    </div>
+
+    <!-- 设置内容区域 -->
+    <div class="settings-content" id="settingsContent">
+        
+        <!-- ========== 基础设置模块 ========== -->
+        <div class="settings-section">
+            <h3 class="section-title">基础设置</h3>
+            
+            <!-- AI识别图片 -->
+            <div class="setting-item">
+                <div class="setting-info">
+                    <span class="setting-label">AI识别图片</span>
+                    <span class="setting-desc">开启后AI可以识别图片内容</span>
+                </div>
+                <label class="setting-switch">
+                    <input type="checkbox" id="settingAiRecognizeImage" checked>
+                    <span class="switch-slider"></span>
+                </label>
+            </div>
+            
+            <!-- 搜索聊天记录 -->
+            <div class="setting-item">
+                <div class="setting-info">
+                    <span class="setting-label">搜索聊天记录</span>
+                </div>
+                <button class="setting-action-btn" id="settingSearchChat">
+                    <span>🔍</span>
+                </button>
+            </div>
+            
+            <!-- 聊天置顶 -->
+            <div class="setting-item">
+                <div class="setting-info">
+                    <span class="setting-label">聊天置顶</span>
+                    <span class="setting-desc">置顶后该聊天将显示在列表顶部</span>
+                </div>
+                <label class="setting-switch">
+                    <input type="checkbox" id="settingChatPin">
+                    <span class="switch-slider"></span>
+                </label>
+            </div>
+            
+            <!-- 拍一拍 -->
+            <div class="setting-item">
+                <div class="setting-info">
+                    <span class="setting-label">拍一拍</span>
+                    <span class="setting-value" id="settingPokeValue">戳了戳你</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ========== 进阶设置模块 ========== -->
+        <div class="settings-section">
+            <h3 class="section-title">进阶设置</h3>
+            
+            <!-- 隐藏Token统计 -->
+            <div class="setting-item">
+                <div class="setting-info">
+                    <span class="setting-label">隐藏Token统计</span>
+                    <span class="setting-desc">关闭聊天界面的Token显示</span>
+                </div>
+                <label class="setting-switch">
+                    <input type="checkbox" id="settingHideToken">
+                    <span class="switch-slider"></span>
+                </label>
+            </div>
+            
+            <!-- 记忆模块 -->
+            <div class="setting-item disabled">
+                <div class="setting-info">
+                    <span class="setting-label">记忆模块</span>
+                    <span class="setting-desc">自动总结、手动总结、聊天记录同步</span>
+                </div>
+                <span class="setting-badge">待开发</span>
+            </div>
+            
+            <!-- 群聊消息同步 -->
+            <div class="setting-item disabled">
+                <div class="setting-info">
+                    <span class="setting-label">群聊消息同步</span>
+                    <span class="setting-desc">让AI感知群聊中的其他消息</span>
+                </div>
+                <label class="setting-switch">
+                    <input type="checkbox" disabled>
+                    <span class="switch-slider"></span>
+                </label>
+                <span class="setting-badge">待开发</span>
+            </div>
+            
+            <!-- AI自动发信息 -->
+            <div class="setting-item disabled">
+                <div class="setting-info">
+                    <span class="setting-label">AI自动发信息</span>
+                    <span class="setting-desc">设置AI主动发消息的频率</span>
+                </div>
+                <span class="setting-badge">待开发</span>
+            </div>
+            
+            <!-- AI主动写日记 -->
+            <div class="setting-item disabled">
+                <div class="setting-info">
+                    <span class="setting-label">AI主动写日记</span>
+                    <span class="setting-desc">每天定时自动写日记</span>
+                </div>
+                <span class="setting-badge">待开发</span>
+            </div>
+            
+            <!-- AI主动发朋友圈 -->
+            <div class="setting-item disabled">
+                <div class="setting-info">
+                    <span class="setting-label">AI主动发朋友圈</span>
+                    <span class="setting-desc">设置发朋友圈的频率</span>
+                </div>
+                <span class="setting-badge">待开发</span>
+            </div>
+            
+            <!-- 可见消息条数 -->
+            <div class="setting-item disabled">
+                <div class="setting-info">
+                    <span class="setting-label">可见消息条数</span>
+                    <span class="setting-desc">AI能看到的上下文消息数量</span>
+                </div>
+                <span class="setting-badge">待开发</span>
+            </div>
+            
+            <!-- 破次元时间感知 -->
+            <div class="setting-item disabled">
+                <div class="setting-info">
+                    <span class="setting-label">破次元时间感知</span>
+                    <span class="setting-desc">让AI感知现实世界的时间</span>
+                </div>
+                <label class="setting-switch">
+                    <input type="checkbox" disabled checked>
+                    <span class="switch-slider"></span>
+                </label>
+                <span class="setting-badge">待开发</span>
+            </div>
+            
+            <!-- 关联世界书 -->
+            <div class="setting-item disabled">
+                <div class="setting-info">
+                    <span class="setting-label">关联世界书</span>
+                    <span class="setting-desc">为角色添加世界观设定</span>
+                </div>
+                <span class="setting-badge">待开发</span>
+            </div>
+        </div>
+        
+        <!-- ========== 美化模块 ========== -->
+        <div class="settings-section">
+            <h3 class="section-title">美化模块</h3>
+            
+            <!-- 聊天气泡CSS -->
+            <div class="setting-item disabled">
+                <div class="setting-info">
+                    <span class="setting-label">聊天气泡美化</span>
+                    <span class="setting-desc">自定义气泡样式、圆角、颜色</span>
+                </div>
+                <span class="setting-badge">待开发</span>
+            </div>
+            
+            <!-- 头像框 -->
+            <div class="setting-item disabled">
+                <div class="setting-info">
+                    <span class="setting-label">头像框</span>
+                    <span class="setting-desc">圆形/方形，自定义头像框</span>
+                </div>
+                <span class="setting-badge">待开发</span>
+            </div>
+            
+            <!-- 聊天壁纸 -->
+            <div class="setting-item disabled">
+                <div class="setting-info">
+                    <span class="setting-label">聊天壁纸</span>
+                    <span class="setting-desc">上传自定义聊天背景</span>
+                </div>
+                <span class="setting-badge">待开发</span>
+            </div>
+        </div>
+        
+        <!-- ========== 亲密关系模块 ========== -->
+        <div class="settings-section">
+            <h3 class="section-title">亲密关系</h3>
+            
+            <!-- 续火花系统 -->
+            <div class="setting-item disabled">
+                <div class="setting-info">
+                    <span class="setting-label">续火花系统</span>
+                    <span class="setting-desc">设置火花开始时间和熄灭时长</span>
+                </div>
+                <span class="setting-badge">待开发</span>
+            </div>
+            
+            <!-- 亲密关系绑定 -->
+            <div class="setting-item disabled">
+                <div class="setting-info">
+                    <span class="setting-label">亲密关系绑定</span>
+                    <span class="setting-desc">情侣、基友等亲密关系</span>
+                </div>
+                <span class="setting-badge">待开发</span>
+            </div>
+            
+            <!-- 语音与视频 -->
+            <div class="setting-item disabled">
+                <div class="setting-info">
+                    <span class="setting-label">语音与视频</span>
+                    <span class="setting-desc">设置AI语音ID</span>
+                </div>
+                <span class="setting-badge">待开发</span>
+            </div>
+            
+            <!-- 消息提醒 -->
+            <div class="setting-item disabled">
+                <div class="setting-info">
+                    <span class="setting-label">消息提醒</span>
+                    <span class="setting-desc">来电铃声、消息提示音</span>
+                </div>
+                <span class="setting-badge">待开发</span>
+            </div>
+        </div>
+        
+        <!-- ========== 数据管理模块 ========== -->
+        <div class="settings-section">
+            <h3 class="section-title">数据管理</h3>
+            
+            <!-- 导入数据 -->
+            <div class="setting-item">
+                <div class="setting-info">
+                    <span class="setting-label">导入数据</span>
+                    <span class="setting-desc">导入聊天记录或完整数据</span>
+                </div>
+                <button class="setting-action-btn" id="settingImportData">
+                    <span>📥</span>
+                </button>
+            </div>
+            
+            <!-- 导出数据 -->
+            <div class="setting-item">
+                <div class="setting-info">
+                    <span class="setting-label">导出数据</span>
+                    <span class="setting-desc">导出聊天记录或完整数据</span>
+                </div>
+                <button class="setting-action-btn" id="settingExportData">
+                    <span>📤</span>
+                </button>
+            </div>
+        </div>
+        
     </div>
 </div>
 <!-- ==================== 聊天界面页结束 ==================== -->
