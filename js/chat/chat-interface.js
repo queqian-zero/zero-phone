@@ -622,44 +622,46 @@ class ChatInterface {
     
     // ← 修改：显示真实头像和优化时间
     createMessageElement(message) {
-        const div = document.createElement('div');
-        div.className = `message message-${message.type}`;
+    const div = document.createElement('div');
+    div.className = `message message-${message.type}`;
+    
+    // 使用智能时间格式化
+    const time = this.formatTimeAdvanced(new Date(message.timestamp));
+    
+    // 头像HTML - 更安全的获取方式
+    let avatarHTML = '';
+    if (message.type === 'ai') {
+        // 先尝试用 this.currentFriend，如果没有就从storage重新获取
+        const friend = this.currentFriend || this.storage.getFriendByCode(this.currentFriendCode);
         
-        // 使用智能时间格式化
-        const time = this.formatTimeAdvanced(new Date(message.timestamp));
-        
-        // 头像HTML
-        let avatarHTML = '';
-        if (message.type === 'ai') {
-            // AI消息：显示好友头像
-            if (this.currentFriend && this.currentFriend.avatar) {
-                avatarHTML = `<img src="${this.currentFriend.avatar}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" alt="头像">`;
-            } else if (this.currentFriend) {
-                // 没有头像就显示首字母
-                avatarHTML = `<div class="avatar-placeholder">${this.currentFriend.name.charAt(0)}</div>`;
-            } else {
-                avatarHTML = `<div class="avatar-placeholder">AI</div>`;
-            }
+        if (friend && friend.avatar) {
+            avatarHTML = `<img src="${friend.avatar}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" alt="头像">`;
+        } else if (friend) {
+            // 没有头像就显示首字母
+            avatarHTML = `<div class="avatar-placeholder">${friend.name.charAt(0)}</div>`;
         } else {
-            // 用户消息：显示"我"（后面可以改成用户自己的头像）
-            avatarHTML = `<div class="avatar-placeholder">我</div>`;
+            avatarHTML = `<div class="avatar-placeholder">AI</div>`;
         }
-        
-        div.innerHTML = `
-            <div class="message-avatar">
-                ${avatarHTML}
-            </div>
-            <div class="message-content">
-                <div class="message-bubble">
-                    <div class="message-text">${this.escapeHtml(message.text)}</div>
-                </div>
-                <div class="message-time">${time}</div>
-            </div>
-        `;
-        
-        console.log('🎨 创建消息元素:', message.type);
-        return div;
+    } else {
+        // 用户消息：显示"我"
+        avatarHTML = `<div class="avatar-placeholder">我</div>`;
     }
+    
+    div.innerHTML = `
+        <div class="message-avatar">
+            ${avatarHTML}
+        </div>
+        <div class="message-content">
+            <div class="message-bubble">
+                <div class="message-text">${this.escapeHtml(message.text)}</div>
+            </div>
+            <div class="message-time">${time}</div>
+        </div>
+    `;
+    
+    console.log('🎨 创建消息元素:', message.type);
+    return div;
+}
     
     // ← 原有的时间格式化（保留作为备用）
     formatTime(date) {
