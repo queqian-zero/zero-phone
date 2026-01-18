@@ -199,7 +199,107 @@ class StorageManager {
         }
     }
     
-    // ==================== 聊天记录相关 ====================
+    // ==================== 聊天总结相关 ====================
+    
+    // 获取聊天总结列表
+    getChatSummaries(friendCode) {
+        const chat = this.getChatByFriendCode(friendCode);
+        return chat?.summaries || [];
+    }
+    
+    // 添加聊天总结
+    addChatSummary(friendCode, summary) {
+        console.log('💾 添加聊天总结:', friendCode);
+        
+        const chats = this.getChats();
+        const chat = chats.find(c => c.friendCode === friendCode);
+        
+        if (!chat) {
+            console.error('❌ 找不到聊天记录');
+            return false;
+        }
+        
+        if (!chat.summaries) {
+            chat.summaries = [];
+        }
+        
+        // 生成总结ID
+        const summaryId = 'summary_' + Date.now();
+        
+        // 添加总结
+        const newSummary = {
+            id: summaryId,
+            date: summary.date,
+            messageCount: summary.messageCount,
+            startTime: summary.startTime,
+            endTime: summary.endTime,
+            content: summary.content,
+            createdAt: new Date().toISOString()
+        };
+        
+        chat.summaries.push(newSummary);
+        
+        // 保存
+        localStorage.setItem('chats', JSON.stringify(chats));
+        console.log('✅ 总结添加成功');
+        
+        return summaryId;
+    }
+    
+    // 更新聊天总结
+    updateChatSummary(friendCode, summaryId, newContent) {
+        console.log('💾 更新聊天总结:', summaryId);
+        
+        const chats = this.getChats();
+        const chat = chats.find(c => c.friendCode === friendCode);
+        
+        if (!chat || !chat.summaries) {
+            console.error('❌ 找不到聊天记录或总结列表');
+            return false;
+        }
+        
+        const summary = chat.summaries.find(s => s.id === summaryId);
+        
+        if (!summary) {
+            console.error('❌ 找不到指定的总结');
+            return false;
+        }
+        
+        summary.content = newContent;
+        summary.updatedAt = new Date().toISOString();
+        
+        localStorage.setItem('chats', JSON.stringify(chats));
+        console.log('✅ 总结更新成功');
+        
+        return true;
+    }
+    
+    // 删除聊天总结
+    deleteChatSummary(friendCode, summaryId) {
+        console.log('💾 删除聊天总结:', summaryId);
+        
+        const chats = this.getChats();
+        const chat = chats.find(c => c.friendCode === friendCode);
+        
+        if (!chat || !chat.summaries) {
+            console.error('❌ 找不到聊天记录或总结列表');
+            return false;
+        }
+        
+        const index = chat.summaries.findIndex(s => s.id === summaryId);
+        
+        if (index === -1) {
+            console.error('❌ 找不到指定的总结');
+            return false;
+        }
+        
+        chat.summaries.splice(index, 1);
+        
+        localStorage.setItem('chats', JSON.stringify(chats));
+        console.log('✅ 总结删除成功');
+        
+        return true;
+    }
     
     // 获取某个好友的聊天记录
     getChatByFriendCode(friendCode) {

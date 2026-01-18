@@ -2,26 +2,28 @@
 
 class ChatInterface {
     constructor(chatApp) {
-        this.chatApp = chatApp;
-        this.storage = chatApp.storage;
-        this.apiManager = new APIManager();
-        this.currentFriendCode = null;
-        this.currentFriend = null;
-        this.messages = [];
-        this.isExpanded = false;
-        this.isMenuOpen = false;
-        this.eventsBound = false;
-        this.originalFriendName = null;
-        
-        // 设置相关
-        this.settings = {
-            aiRecognizeImage: true,
-            chatPin: false,
-            hideToken: false
-        };
-        
-        this.init();
-    }
+    this.chatApp = chatApp;
+    this.storage = chatApp.storage;
+    this.apiManager = new APIManager();
+    this.currentFriendCode = null;
+    this.currentFriend = null;
+    this.messages = [];
+    this.isExpanded = false;
+    this.isMenuOpen = false;
+    this.eventsBound = false;
+    this.originalFriendName = null;
+    
+    // 设置相关
+    this.settings = {
+        aiRecognizeImage: true,
+        chatPin: false,
+        hideToken: false,
+        autoSummary: true,           // ← 新增：自动总结开关
+        summaryInterval: 20          // ← 新增：每20条总结一次
+    };
+    
+    this.init();
+}
     
     init() {
         console.log('🚀 ChatInterface init() 开始');
