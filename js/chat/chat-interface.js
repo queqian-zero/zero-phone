@@ -242,7 +242,11 @@ class ChatInterface {
         this.loadSettings();
         
         setTimeout(() => this.scrollToBottom(), 100);
-    }
+    
+    // ===== 新增：暴露实例到全局 =====
+    window.chatInterface = this;
+    // ===== 新增结束 =====
+}
 
     addWelcomeMessage(friend) {
         console.log('👋 添加欢迎消息');
@@ -608,20 +612,26 @@ class ChatInterface {
     // ==================== 消息渲染 ====================
     
     addMessage(message) {
-        console.log('➕ addMessage() 被调用:', message.type, message.text.substring(0, 20));
-        
-        const messagesList = document.getElementById('messagesList');
-        if (!messagesList) {
-            console.error('❌ 找不到 messagesList 元素');
-            return;
-        }
-        
-        const messageEl = this.createMessageElement(message);
-        messagesList.appendChild(messageEl);
-        console.log('✅ 消息元素已添加到DOM');
-        
-        this.messages.push(message);
+    console.log('➕ addMessage() 被调用:', message.type, message.text.substring(0, 20));
+    
+    const messagesList = document.getElementById('messagesList');
+    if (!messagesList) {
+        console.error('❌ 找不到 messagesList 元素');
+        return;
     }
+    
+    const messageEl = this.createMessageElement(message);
+    messagesList.appendChild(messageEl);
+    console.log('✅ 消息元素已添加到DOM');
+    
+    this.messages.push(message);
+    
+    // ===== 新增：检查是否需要自动总结 =====
+    if (this.settings.autoSummary) {
+        this.checkAutoSummary();
+    }
+    // ===== 新增结束 =====
+}
     
     createMessageElement(message) {
     const div = document.createElement('div');
@@ -1030,7 +1040,385 @@ class ChatInterface {
             }, 500);
         }
     }
+    
+    // ==================== 聊天总结功能 ====================
+    
+    // 检查是否需要自动总结
+    checkAutoSummary() {
+        if (!this.settings.autoSummary) {
+            console.log('ℹ️ 自动总结已关闭');
+            return;
+        }
+        
+        const interval = this.settings.summaryInterval || 20;
+        
+        // 获取当前聊天的所有总结
+        const summaries = this.storage.getChatSummaries(this.currentFriendCode);
+        
+        // 计算已经总结过的消息数量
+        const summarizedCount = summaries.reduce((sum, s) => sum + s.messageCount, 0);
+        
+        // 计算未总结的消息数量
+        const unsummarizedCount = this.messages.length - summarizedCount;
+        
+        console.log(`📊 消息统计: 总${this.messages.length}条, 已总结${summarizedCount}条, 未总结${unsummarizedCount}条`);
+        
+        // 如果未总结的消息达到间隔数量，触发自动总结
+        if (unsummarizedCount >= interval) {
+            console.log('🎯 达到自动总结条件，开始生成总结...');
+            this.generateAutoSummary(summarizedCount, this.messages.length);
+        }
+    }
+    
+    // 生成自动总结
+    async generateAutoSummary(startIndex, endIndex) {
+        console.log(`📝 生成自动总结: 从第${startIndex + 1}条到第${endIndex}条`);
+        
+        // 获取需要总结的消息
+        const messagesToSummarize = this.messages.slice(startIndex, endIndex);
+        
+        if (messagesToSummarize.length === 0) {
+            console.warn('⚠️ 没有需要总结的消息');
+            return;
+        }
+        
+        // 显示生成中的提示
+        this.showSummaryGenerating();
+        
+        try {
+            // 调用AI生成总结
+            const summaryContent = await this.callAIForSummary(messagesToSummarize);
+            
+            // 隐藏生成中的提示
+            this.hideSummaryGenerating();
+            
+            if (!summaryContent) {
+                console.error('❌ 总结生成失败');
+                alert('❌ 总结生成失败，请稍后重试');
+                return;
+            }
+            
+            // 获取时间范围
+            const startTime = new Date(messagesToSummarize[0].timestamp);
+            const endTime = new Date(messagesToSummarize[messagesToSummarize.length - 1].timestamp);
+            
+            // 构造总结数据
+            const summaryData = {
+                date: this.formatDate(startTime),
+                messageCount: messagesToSummarize.length,
+                startTime: startTime.toISOString(),
+                endTime: endTime.toISOString(),
+                content: summaryContent
+            };
+            
+            // 保存总结到storage
+            const summaryId = this.storage.addChatSummary(this.currentFriendCode, summaryData);
+            
+            if (!summaryId) {
+                console.error('❌ 总结保存失败');
+                return;
+            }
+            
+            // 显示总结卡片
+            this.displaySummaryCard({
+                id: summaryId,
+                ...summaryData,
+                createdAt: new Date().toISOString()
+            });
+            
+            console.log('✅ 自动总结生成成功');
+            
+        } catch (error) {
+            console.error('❌ 生成总结时出错:', error);
+            this.hideSummaryGenerating();
+            alert('❌ 总结生成失败：' + error.message);
+        }
+    }
+    
+    // 调用AI生成总结
+    async callAIForSummary(messages) {
+        console.log('🤖 调用AI生成总结...');
+        
+        // 构造总结的系统提示
+        const summaryPrompt = `你是一个专业的对话总结助手。请按照以下格式总结对话内容：
+
+1. 每一条消息都要单独总结
+2. 使用【年月日 时:分:秒】格式标注时间
+3. 使用第三人称客观描述
+4. 保留关键细节（人物、情绪、动作、内容）
+5. 每条总结独立成段
+
+示例格式：
+【2026年1月17日 14:34:42】"我"向沈眠提议去王者荣耀商城购物。
+【2026年1月17日 14:34:55】"我"提示沈眠带上大小号的购物袋，并确认了外出的目的地。
+
+请总结以下对话内容。只输出总结内容，不要有任何其他说明。`;
+        
+        // 构造消息历史（格式化为便于总结的格式）
+        let conversationText = '';
+        messages.forEach(msg => {
+            const time = new Date(msg.timestamp);
+            const timeStr = this.formatTimeForSummary(time);
+            const sender = msg.type === 'user' ? '我' : this.currentFriend.name;
+            conversationText += `[${timeStr}] ${sender}: ${msg.text}\n`;
+        });
+        
+        // 调用API
+        const result = await this.apiManager.callAI(
+            [{ type: 'user', text: conversationText }],
+            summaryPrompt
+        );
+        
+        if (!result.success) {
+            throw new Error(result.error);
+        }
+        
+        return result.text;
+    }
+    
+    // 显示总结卡片
+    displaySummaryCard(summary) {
+        console.log('🎨 显示总结卡片:', summary.id);
+        
+        const messagesList = document.getElementById('messagesList');
+        if (!messagesList) {
+            console.error('❌ 找不到 messagesList 元素');
+            return;
+        }
+        
+        // 获取总结编号
+        const summaries = this.storage.getChatSummaries(this.currentFriendCode);
+        const summaryNumber = summaries.length;
+        
+        // 生成HTML
+        const html = this.createSummaryCardHTML(summary, summaryNumber);
+        
+        // 插入到消息列表
+        messagesList.insertAdjacentHTML('beforeend', html);
+        
+        // 滚动到底部
+        this.scrollToBottom();
+    }
+    
+    // 生成总结卡片HTML
+    createSummaryCardHTML(summary, number) {
+        const startTime = new Date(summary.startTime);
+        const endTime = new Date(summary.endTime);
+        const createdTime = new Date(summary.createdAt);
+        
+        const timeRange = `${this.formatTime2(startTime)} - ${this.formatTime2(endTime)}`;
+        const createdTimeStr = this.formatTime2(createdTime);
+        
+        // 解析总结内容，分成多个条目
+        const entries = this.parseSummaryContent(summary.content);
+        
+        const entriesHTML = entries.map(entry => `
+            <div class="summary-entry">
+                <div class="summary-entry-time">${entry.time}</div>
+                <div class="summary-entry-content">${this.escapeHtml(entry.content)}</div>
+            </div>
+        `).join('');
+        
+        return `
+            <div class="chat-summary-card" data-summary-id="${summary.id}">
+                <div class="summary-header">
+                    <span class="summary-icon">📋</span>
+                    <span class="summary-title">${summary.date} 对话总结</span>
+                    <span class="summary-number">#${number}</span>
+                </div>
+                
+                <div class="summary-info">
+                    <div class="summary-info-item">
+                        <span>📊</span>
+                        <span>总结了 ${summary.messageCount} 条消息</span>
+                    </div>
+                    <div class="summary-info-item">
+                        <span>🕐</span>
+                        <span>生成于 ${createdTimeStr}</span>
+                    </div>
+                    <div class="summary-info-item">
+                        <span>💬</span>
+                        <span>涵盖时间：${timeRange}</span>
+                    </div>
+                </div>
+                
+                <div class="summary-content" data-summary-id="${summary.id}">
+                    ${entriesHTML}
+                </div>
+                
+                <div class="summary-actions">
+                    <button class="summary-btn summary-btn-primary" onclick="window.chatInterface.toggleSummary('${summary.id}')">
+                        <span>👁️</span>
+                        <span>查看详情</span>
+                    </button>
+                    <button class="summary-btn summary-btn-copy" onclick="window.chatInterface.copySummary('${summary.id}')">
+                        <span>📋</span>
+                        <span>复制全部</span>
+                    </button>
+                    <button class="summary-btn" onclick="window.chatInterface.editSummary('${summary.id}')">
+                        <span>⚙️</span>
+                        <span>编辑</span>
+                    </button>
+                    <button class="summary-btn summary-btn-danger" onclick="window.chatInterface.deleteSummary('${summary.id}')">
+                        <span>🗑️</span>
+                        <span>删除</span>
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+    
+    // 解析总结内容
+    parseSummaryContent(content) {
+        const entries = [];
+        const lines = content.split('\n');
+        
+        lines.forEach(line => {
+            line = line.trim();
+            if (!line) return;
+            
+            // 匹配 【时间】内容 格式
+            const match = line.match(/^【(.+?)】(.+)$/);
+            if (match) {
+                entries.push({
+                    time: `【${match[1]}】`,
+                    content: match[2].trim()
+                });
+            }
+        });
+        
+        return entries;
+    }
+    
+    // 展开/折叠总结
+    toggleSummary(summaryId) {
+        console.log('👁️ 切换总结显示:', summaryId);
+        
+        const content = document.querySelector(`.summary-content[data-summary-id="${summaryId}"]`);
+        const btn = event.target.closest('.summary-btn-primary');
+        
+        if (!content || !btn) return;
+        
+        if (content.classList.contains('expanded')) {
+            // 折叠
+            content.classList.remove('expanded');
+            btn.innerHTML = '<span>👁️</span><span>查看详情</span>';
+        } else {
+            // 展开
+            content.classList.add('expanded');
+            btn.innerHTML = '<span>▲</span><span>收起</span>';
+        }
+    }
+    
+    // 复制总结内容
+    copySummary(summaryId) {
+        console.log('📋 复制总结:', summaryId);
+        
+        const content = document.querySelector(`.summary-content[data-summary-id="${summaryId}"]`);
+        if (!content) {
+            console.error('❌ 找不到总结内容');
+            return;
+        }
+        
+        // 获取所有条目
+        const entries = content.querySelectorAll('.summary-entry');
+        let textToCopy = '';
+        
+        entries.forEach(entry => {
+            const time = entry.querySelector('.summary-entry-time').textContent;
+            const text = entry.querySelector('.summary-entry-content').textContent;
+            textToCopy += `${time}${text}\n`;
+        });
+        
+        // 复制到剪贴板
+        navigator.clipboard.writeText(textToCopy).then(() => {
+            console.log('✅ 复制成功');
+            alert('✅ 已复制到剪贴板！');
+        }).catch(err => {
+            console.error('❌ 复制失败:', err);
+            alert('❌ 复制失败，请手动复制');
+        });
+    }
+    
+    // 编辑总结
+    editSummary(summaryId) {
+        console.log('⚙️ 编辑总结:', summaryId);
+        alert('⚙️ 编辑功能开发中...');
+        // TODO: 实现编辑功能
+    }
+    
+    // 删除总结
+    deleteSummary(summaryId) {
+        console.log('🗑️ 删除总结:', summaryId);
+        
+        if (!confirm('确定要删除这条总结吗？')) {
+            return;
+        }
+        
+        const success = this.storage.deleteChatSummary(this.currentFriendCode, summaryId);
+        
+        if (success) {
+            // 从DOM中移除
+            const card = document.querySelector(`.chat-summary-card[data-summary-id="${summaryId}"]`);
+            if (card) {
+                card.remove();
+            }
+            console.log('✅ 总结删除成功');
+        } else {
+            console.error('❌ 总结删除失败');
+            alert('❌ 删除失败！');
+        }
+    }
+    
+    // 显示"生成中"提示
+    showSummaryGenerating() {
+        const nameEl = document.querySelector('#chatFriendName span');
+        if (nameEl) {
+            if (!this.originalFriendName) {
+                this.originalFriendName = nameEl.textContent;
+            }
+            nameEl.textContent = '正在生成总结…';
+            console.log('💬 显示生成中提示');
+        }
+    }
+    
+    // 隐藏"生成中"提示
+    hideSummaryGenerating() {
+        const nameEl = document.querySelector('#chatFriendName span');
+        if (nameEl && this.originalFriendName) {
+            nameEl.textContent = this.originalFriendName;
+            console.log('💬 恢复好友名称');
+        }
+    }
+    
+    // 格式化日期（用于总结标题）
+    formatDate(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}年${month}月${day}日`;
+    }
+    
+    // 格式化时间（用于显示）
+    formatTime2(date) {
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        return `${hours}:${minutes}`;
+    }
+    
+    // 格式化时间（用于总结）
+    formatTimeForSummary(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
+        return `${year}/${month}/${day} ${hours}:${minutes}:${seconds}`;
+    }
 }
 
+// 暴露到全局（供HTML onclick使用）
 window.ChatInterface = ChatInterface;
+window.chatInterface = null;
 console.log('✅ ChatInterface 类已加载');
