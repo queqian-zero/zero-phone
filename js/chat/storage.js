@@ -215,43 +215,44 @@ class StorageManager {
     }
     
     // 添加聊天总结
-    addChatSummary(friendCode, summary) {
-        console.log('💾 添加聊天总结:', friendCode);
-        
-        const chats = this.getChats();
-        const chat = chats.find(c => c.friendCode === friendCode);
-        
-        if (!chat) {
-            console.error('❌ 找不到聊天记录');
-            return false;
-        }
-        
-        if (!chat.summaries) {
-            chat.summaries = [];
-        }
-        
-        // 生成总结ID
-        const summaryId = 'summary_' + Date.now();
-        
-        // 添加总结
-        const newSummary = {
-            id: summaryId,
-            date: summary.date,
-            messageCount: summary.messageCount,
-            startTime: summary.startTime,
-            endTime: summary.endTime,
-            content: summary.content,
-            createdAt: new Date().toISOString()
-        };
-        
-        chat.summaries.push(newSummary);
-        
-        // 保存
-        localStorage.setItem('chats', JSON.stringify(chats));
-        console.log('✅ 总结添加成功');
-        
-        return summaryId;
+addChatSummary(friendCode, summary) {
+    console.log('💾 添加聊天总结:', friendCode);
+    
+    const chats = this.getChats();
+    const chat = chats.find(c => c.friendCode === friendCode);
+    
+    if (!chat) {
+        console.error('❌ 找不到聊天记录');
+        return false;
     }
+    
+    if (!chat.summaries) {
+        chat.summaries = [];
+    }
+    
+    // 生成总结ID
+    const summaryId = 'summary_' + Date.now();
+    
+    // 添加总结
+    const newSummary = {
+        id: summaryId,
+        date: summary.date,
+        messageCount: summary.messageCount,
+        startTime: summary.startTime,
+        endTime: summary.endTime,
+        summary: summary.summary,           // ← 新增：一句话总结
+        content: summary.content,
+        createdAt: new Date().toISOString()
+    };
+    
+    chat.summaries.push(newSummary);
+    
+    // 保存 - 使用正确的key
+    this.saveData(this.KEYS.CHATS, chats);  // ✅ 改成这个！
+    console.log('✅ 总结添加成功');
+    
+    return summaryId;
+}
     
     // 更新聊天总结
     updateChatSummary(friendCode, summaryId, newContent) {
@@ -275,7 +276,7 @@ class StorageManager {
         summary.content = newContent;
         summary.updatedAt = new Date().toISOString();
         
-        localStorage.setItem('chats', JSON.stringify(chats));
+        this.saveData(this.KEYS.CHATS, chats);
         console.log('✅ 总结更新成功');
         
         return true;
@@ -302,7 +303,7 @@ class StorageManager {
         
         chat.summaries.splice(index, 1);
         
-        localStorage.setItem('chats', JSON.stringify(chats));
+        this.saveData(this.KEYS.CHATS, chats);
         console.log('✅ 总结删除成功');
         
         return true;
