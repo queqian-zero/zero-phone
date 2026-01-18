@@ -299,29 +299,63 @@
         </div>
         
         <!-- ========== 进阶设置模块 ========== -->
-        <div class="settings-section">
-            <h3 class="section-title">进阶设置</h3>
-            
-            <!-- 隐藏Token统计 -->
-            <div class="setting-item">
-                <div class="setting-info">
-                    <span class="setting-label">隐藏Token统计</span>
-                    <span class="setting-desc">关闭聊天界面的Token显示</span>
-                </div>
-                <label class="setting-switch">
-                    <input type="checkbox" id="settingHideToken">
-                    <span class="switch-slider"></span>
-                </label>
-            </div>
-            
-            <!-- 记忆模块 -->
-            <div class="setting-item disabled">
-                <div class="setting-info">
-                    <span class="setting-label">记忆模块</span>
-                    <span class="setting-desc">自动总结、手动总结、聊天记录同步</span>
-                </div>
-                <span class="setting-badge">待开发</span>
-            </div>
+<div class="settings-section">
+    <h3 class="section-title">进阶设置</h3>
+    
+    <!-- 隐藏Token统计 -->
+    <div class="setting-item">
+        <div class="setting-info">
+            <span class="setting-label">隐藏Token统计</span>
+            <span class="setting-desc">关闭聊天界面的Token显示</span>
+        </div>
+        <label class="setting-switch">
+            <input type="checkbox" id="settingHideToken">
+            <span class="switch-slider"></span>
+        </label>
+    </div>
+    
+    <!-- 聊天总结 -->
+    <div class="setting-item" id="settingSummaryToggle" style="cursor: pointer;">
+        <div class="setting-info">
+            <span class="setting-label">聊天总结</span>
+            <span class="setting-desc">自动总结对话内容</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <label class="setting-switch">
+                <input type="checkbox" id="settingAutoSummary" checked>
+                <span class="switch-slider"></span>
+            </label>
+            <span id="summaryExpandIcon" style="color: rgba(255,255,255,0.5); font-size: 16px;">▼</span>
+        </div>
+    </div>
+    
+    <!-- 聊天总结详细设置 -->
+    <div id="summaryDetailsPanel" style="display: none; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 8px; margin: 0 16px 12px 16px;">
+        <div style="margin-bottom: 16px;">
+            <div style="font-size: 14px; color: rgba(255,255,255,0.8); margin-bottom: 8px;">总结间隔</div>
+            <select id="settingSummaryInterval" style="width: 100%; padding: 8px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; color: rgba(255,255,255,0.9); font-size: 14px;">
+                <option value="10">每 10 条总结一次</option>
+                <option value="20" selected>每 20 条总结一次</option>
+                <option value="50">每 50 条总结一次</option>
+                <option value="100">每 100 条总结一次</option>
+            </select>
+        </div>
+        <div>
+            <div style="font-size: 14px; color: rgba(255,255,255,0.8); margin-bottom: 8px;">手动总结</div>
+            <button id="settingManualSummary" style="width: 100%; padding: 10px; background: rgba(139,0,0,0.3); border: 1px solid rgba(139,0,0,0.5); border-radius: 6px; color: rgba(255,255,255,0.9); font-size: 14px; cursor: pointer;">
+                立即生成总结
+            </button>
+        </div>
+    </div>
+    
+    <!-- 核心记忆 -->
+    <div class="setting-item disabled" id="settingCoreMemoryBtn">
+        <div class="setting-info">
+            <span class="setting-label">核心记忆</span>
+            <span class="setting-desc">AI自主记录的重要信息</span>
+        </div>
+        <span class="setting-badge">待开发</span>
+    </div>
             
             <!-- 群聊消息同步 -->
             <div class="setting-item disabled">
