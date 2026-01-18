@@ -314,61 +314,27 @@
         </label>
     </div>
     
-    <!-- 聊天总结 -->
-    <div class="setting-item" id="settingSummaryToggle" style="cursor: pointer;">
+    <!-- 记忆模块入口 -->
+    <div class="setting-item" id="settingMemoryModule" style="cursor: pointer;">
         <div class="setting-info">
-            <span class="setting-label">聊天总结</span>
-            <span class="setting-desc">自动总结对话内容</span>
+            <span class="setting-label">记忆模块</span>
+            <span class="setting-desc">自动总结、手动总结、聊天记录同步</span>
         </div>
-        <div style="display: flex; align-items: center; gap: 8px;">
-            <label class="setting-switch">
-                <input type="checkbox" id="settingAutoSummary" checked>
-                <span class="switch-slider"></span>
-            </label>
-            <span id="summaryExpandIcon" style="color: rgba(255,255,255,0.5); font-size: 16px;">▼</span>
-        </div>
+        <span style="color: rgba(255,255,255,0.5); font-size: 16px;">›</span>
     </div>
     
-    <!-- 聊天总结详细设置 -->
-    <div id="summaryDetailsPanel" style="display: none; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 8px; margin: 0 16px 12px 16px;">
-        <div style="margin-bottom: 16px;">
-            <div style="font-size: 14px; color: rgba(255,255,255,0.8); margin-bottom: 8px;">总结间隔</div>
-            <select id="settingSummaryInterval" style="width: 100%; padding: 8px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; color: rgba(255,255,255,0.9); font-size: 14px;">
-                <option value="10">每 10 条总结一次</option>
-                <option value="20" selected>每 20 条总结一次</option>
-                <option value="50">每 50 条总结一次</option>
-                <option value="100">每 100 条总结一次</option>
-            </select>
-        </div>
-        <div>
-            <div style="font-size: 14px; color: rgba(255,255,255,0.8); margin-bottom: 8px;">手动总结</div>
-            <button id="settingManualSummary" style="width: 100%; padding: 10px; background: rgba(139,0,0,0.3); border: 1px solid rgba(139,0,0,0.5); border-radius: 6px; color: rgba(255,255,255,0.9); font-size: 14px; cursor: pointer;">
-                立即生成总结
-            </button>
-        </div>
-    </div>
-    
-    <!-- 核心记忆 -->
-    <div class="setting-item disabled" id="settingCoreMemoryBtn">
+    <!-- 群聊消息同步 -->
+    <div class="setting-item disabled">
         <div class="setting-info">
-            <span class="setting-label">核心记忆</span>
-            <span class="setting-desc">AI自主记录的重要信息</span>
+            <span class="setting-label">群聊消息同步</span>
+            <span class="setting-desc">让AI感知群聊中的其他消息</span>
         </div>
+        <label class="setting-switch">
+            <input type="checkbox" disabled>
+            <span class="switch-slider"></span>
+        </label>
         <span class="setting-badge">待开发</span>
     </div>
-            
-            <!-- 群聊消息同步 -->
-            <div class="setting-item disabled">
-                <div class="setting-info">
-                    <span class="setting-label">群聊消息同步</span>
-                    <span class="setting-desc">让AI感知群聊中的其他消息</span>
-                </div>
-                <label class="setting-switch">
-                    <input type="checkbox" disabled>
-                    <span class="switch-slider"></span>
-                </label>
-                <span class="setting-badge">待开发</span>
-            </div>
             
             <!-- AI自动发信息 -->
             <div class="setting-item disabled">
@@ -532,6 +498,141 @@
     </div>
 </div>
 <!-- ==================== 聊天设置页面结束 ==================== -->
+
+<!-- ==================== 记忆模块页面 ==================== -->
+<div class="memory-module-page" id="memoryModulePage" style="display: none;">
+    <!-- 记忆模块题头 -->
+    <div class="memory-header">
+        <button class="memory-back-btn" id="memoryBackBtn">←</button>
+        <h2 class="memory-title">记忆模块</h2>
+    </div>
+
+    <!-- 记忆模块内容 -->
+    <div class="memory-content">
+        
+        <!-- 自动总结 -->
+        <div class="memory-section">
+            <h3 class="memory-section-title">📋 自动总结</h3>
+            <div class="memory-section-content">
+                <div class="memory-setting-row">
+                    <span>启用自动总结</span>
+                    <label class="setting-switch">
+                        <input type="checkbox" id="memoryAutoSummary" checked>
+                        <span class="switch-slider"></span>
+                    </label>
+                </div>
+                <div class="memory-setting-row">
+                    <span>总结间隔（条消息）</span>
+                    <input type="number" id="memorySummaryInterval" value="20" min="1" max="1000" class="memory-input">
+                </div>
+            </div>
+        </div>
+        
+        <!-- 手动总结 -->
+        <div class="memory-section">
+            <h3 class="memory-section-title">📝 手动总结</h3>
+            <div class="memory-section-content">
+                <button class="memory-action-btn" id="memoryManualSummary">立即生成总结</button>
+            </div>
+        </div>
+        
+        <!-- 查看历史总结 -->
+        <div class="memory-section">
+            <h3 class="memory-section-title">📚 查看历史总结</h3>
+            <div class="memory-section-content">
+                <button class="memory-nav-btn" id="memoryViewHistory">
+                    <span>查看、编辑、删除所有生成的总结</span>
+                    <span>›</span>
+                </button>
+            </div>
+        </div>
+        
+        <!-- 核心记忆 -->
+        <div class="memory-section">
+            <h3 class="memory-section-title">🧠 核心记忆</h3>
+            <div class="memory-section-content">
+                <button class="memory-nav-btn disabled">
+                    <span>AI自主记录的重要信息</span>
+                    <span class="memory-badge">待开发</span>
+                </button>
+            </div>
+        </div>
+        
+    </div>
+</div>
+<!-- ==================== 记忆模块页面结束 ==================== -->
+
+<!-- ==================== 历史总结列表页面 ==================== -->
+<div class="summary-history-page" id="summaryHistoryPage" style="display: none;">
+    <!-- 历史总结题头 -->
+    <div class="summary-history-header">
+        <button class="summary-history-back-btn" id="summaryHistoryBackBtn">←</button>
+        <h2 class="summary-history-title">历史总结</h2>
+    </div>
+
+    <!-- 历史总结列表 -->
+    <div class="summary-history-content" id="summaryHistoryContent">
+        <!-- 总结卡片会动态生成 -->
+    </div>
+</div>
+<!-- ==================== 历史总结列表页面结束 ==================== -->
+
+<!-- ==================== 总结详情页面 ==================== -->
+<div class="summary-detail-page" id="summaryDetailPage" style="display: none;">
+    <!-- 总结详情题头 -->
+    <div class="summary-detail-header">
+        <button class="summary-detail-back-btn" id="summaryDetailBackBtn">←</button>
+        <h2 class="summary-detail-title" id="summaryDetailTitle">对话总结</h2>
+    </div>
+
+    <!-- 总结详情内容 -->
+    <div class="summary-detail-content" id="summaryDetailContent">
+        <!-- 详细内容会动态生成 -->
+    </div>
+</div>
+<!-- ==================== 总结详情页面结束 ==================== -->
+
+<!-- ==================== 手动总结弹窗 ==================== -->
+<div class="manual-summary-modal" id="manualSummaryModal" style="display: none;">
+    <div class="manual-summary-overlay" id="manualSummaryOverlay"></div>
+    <div class="manual-summary-dialog">
+        <div class="manual-summary-header">
+            <h3>手动生成总结</h3>
+            <button class="manual-summary-close" id="manualSummaryClose">×</button>
+        </div>
+        <div class="manual-summary-body">
+            <div class="manual-summary-info">
+                <p>当前共有 <span id="manualTotalMessages">0</span> 条消息</p>
+                <p>已总结 <span id="manualSummarizedMessages">0</span> 条，未总结 <span id="manualUnsummarizedMessages">0</span> 条</p>
+            </div>
+            <div class="manual-summary-options">
+                <label class="manual-summary-option">
+                    <input type="radio" name="summaryRange" value="recent" checked>
+                    <span>最近</span>
+                    <input type="number" id="manualRecentCount" value="50" min="1" class="manual-summary-input">
+                    <span>条消息</span>
+                </label>
+                <label class="manual-summary-option">
+                    <input type="radio" name="summaryRange" value="range">
+                    <span>从第</span>
+                    <input type="number" id="manualRangeStart" value="1" min="1" class="manual-summary-input">
+                    <span>条到第</span>
+                    <input type="number" id="manualRangeEnd" value="20" min="1" class="manual-summary-input">
+                    <span>条</span>
+                </label>
+                <label class="manual-summary-option">
+                    <input type="radio" name="summaryRange" value="unsummarized">
+                    <span>所有未总结的消息（<span id="manualUnsummarizedCount">0</span> 条）</span>
+                </label>
+            </div>
+        </div>
+        <div class="manual-summary-footer">
+            <button class="manual-summary-cancel" id="manualSummaryCancel">取消</button>
+            <button class="manual-summary-confirm" id="manualSummaryConfirm">生成总结</button>
+        </div>
+    </div>
+</div>
+<!-- ==================== 手动总结弹窗结束 ==================== -->
 
         </div>
         <!-- ← pages-container 结束 -->
