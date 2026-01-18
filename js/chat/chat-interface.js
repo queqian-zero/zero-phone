@@ -18,8 +18,8 @@ class ChatInterface {
             aiRecognizeImage: true,
             chatPin: false,
             hideToken: false,
-            autoSummary: true,           // 自动总结开关
-            summaryInterval: 20          // 每20条总结一次
+            autoSummary: true,
+            summaryInterval: 20
         };
         
         this.init();
@@ -243,7 +243,6 @@ class ChatInterface {
         
         setTimeout(() => this.scrollToBottom(), 100);
         
-        // 暴露实例到全局
         window.chatInterface = this;
     }
 
@@ -303,7 +302,7 @@ class ChatInterface {
         }
     }
     
-    // ==================== Token统计 ====================
+   // ==================== Token统计 ====================
     
     toggleTokenDetails() {
         const display = document.getElementById('tokenDisplay');
@@ -607,7 +606,6 @@ class ChatInterface {
             console.log('💬 恢复好友名称');
         }
     }
-    
     // ==================== 消息渲染 ====================
     
     addMessage(message) {
@@ -664,7 +662,6 @@ class ChatInterface {
             </div>
         `;
         
-        // 给头像添加双击事件
         const avatarEl = div.querySelector('.message-avatar');
         if (avatarEl) {
             avatarEl.addEventListener('dblclick', () => {
@@ -850,67 +847,11 @@ class ChatInterface {
             });
         }
         
-        // ===== 记忆模块事件 =====
-        
-        // 聊天总结展开/折叠
-        const summaryToggle = document.getElementById('settingSummaryToggle');
-        const summaryPanel = document.getElementById('summaryDetailsPanel');
-        const summaryExpandIcon = document.getElementById('summaryExpandIcon');
-        
-        if (summaryToggle && summaryPanel) {
-            summaryToggle.addEventListener('click', (e) => {
-                // 如果点击的是开关，不触发展开/折叠
-                if (e.target.closest('.setting-switch')) {
-                    return;
-                }
-                
-                if (summaryPanel.style.display === 'none') {
-                    summaryPanel.style.display = 'block';
-                    if (summaryExpandIcon) {
-                        summaryExpandIcon.textContent = '▲';
-                    }
-                } else {
-                    summaryPanel.style.display = 'none';
-                    if (summaryExpandIcon) {
-                        summaryExpandIcon.textContent = '▼';
-                    }
-                }
-            });
-        }
-        
-        // 自动总结开关
-        const autoSummarySwitch = document.getElementById('settingAutoSummary');
-        if (autoSummarySwitch) {
-            autoSummarySwitch.addEventListener('change', (e) => {
-                this.settings.autoSummary = e.target.checked;
-                console.log('自动总结:', this.settings.autoSummary);
-                this.saveSettings();
-            });
-        }
-        
-        // 总结间隔选择
-        const summaryIntervalSelect = document.getElementById('settingSummaryInterval');
-        if (summaryIntervalSelect) {
-            summaryIntervalSelect.addEventListener('change', (e) => {
-                this.settings.summaryInterval = parseInt(e.target.value);
-                console.log('总结间隔:', this.settings.summaryInterval);
-                this.saveSettings();
-            });
-        }
-        
-        // 手动总结按钮
-        const manualSummaryBtn = document.getElementById('settingManualSummary');
-        if (manualSummaryBtn) {
-            manualSummaryBtn.addEventListener('click', () => {
-                this.triggerManualSummary();
-            });
-        }
-        
-        // 核心记忆按钮
-        const coreMemoryBtn = document.getElementById('settingCoreMemoryBtn');
-        if (coreMemoryBtn) {
-            coreMemoryBtn.addEventListener('click', () => {
-                alert('核心记忆功能开发中...');
+        // 记忆模块入口
+        const memoryModuleBtn = document.getElementById('settingMemoryModule');
+        if (memoryModuleBtn) {
+            memoryModuleBtn.addEventListener('click', () => {
+                this.openMemoryModule();
             });
         }
     }
@@ -975,17 +916,6 @@ class ChatInterface {
             pokeValue.textContent = this.currentFriend.poke || '戳了戳你';
         }
         
-        // 记忆模块UI更新
-        const autoSummarySwitch = document.getElementById('settingAutoSummary');
-        if (autoSummarySwitch) {
-            autoSummarySwitch.checked = this.settings.autoSummary !== false;
-        }
-        
-        const summaryIntervalSelect = document.getElementById('settingSummaryInterval');
-        if (summaryIntervalSelect) {
-            summaryIntervalSelect.value = this.settings.summaryInterval || 20;
-        }
-        
         this.toggleTokenDisplay();
     }
     
@@ -1048,26 +978,21 @@ class ChatInterface {
             return;
         }
         
-        // 震动反馈
         if (navigator.vibrate) {
             navigator.vibrate(50);
         }
         
-        // 获取拍一拍后缀
         const pokeSuffix = this.currentFriend.poke || '戳了戳你';
         const friendName = this.currentFriend.nickname || this.currentFriend.name;
         
         let pokeText = '';
         if (type === 'ai') {
-            // 用户双击AI头像
             pokeText = `你拍了拍 ${friendName} 的${pokeSuffix}`;
         } else {
-            // AI双击用户头像（暂时不实现，留空）
             console.log('⚠️ AI拍一拍功能待开发');
             return;
         }
         
-        // 显示系统提示
         this.showPokeMessage(pokeText);
     }
     
@@ -1080,36 +1005,605 @@ class ChatInterface {
             return;
         }
         
-        // 创建系统提示元素
         const systemDiv = document.createElement('div');
         systemDiv.className = 'system-message poke-message';
         systemDiv.innerHTML = `<span>${this.escapeHtml(text)}</span>`;
         
-        // 添加到消息列表
         messagesList.appendChild(systemDiv);
         
-        // 触发头像震动动画
         this.triggerAvatarShake();
         
-        // 滚动到底部
         this.scrollToBottom();
     }
     
     triggerAvatarShake() {
         console.log('📳 触发头像震动');
         
-        // 找到所有AI消息的头像
         const aiAvatars = document.querySelectorAll('.message-ai .message-avatar');
         
-        // 给最后一个AI头像添加震动动画
         if (aiAvatars.length > 0) {
             const lastAvatar = aiAvatars[aiAvatars.length - 1];
             lastAvatar.classList.add('shake');
             
-            // 动画结束后移除class
             setTimeout(() => {
                 lastAvatar.classList.remove('shake');
             }, 500);
+        }
+    }
+    // ==================== 记忆模块功能 ====================
+    
+    // 打开记忆模块页面
+    openMemoryModule() {
+        console.log('🧠 打开记忆模块');
+        
+        const memoryPage = document.getElementById('memoryModulePage');
+        if (memoryPage) {
+            memoryPage.style.display = 'flex';
+        }
+        
+        // 绑定记忆模块事件
+        if (!this.memoryEventsBound) {
+            this.bindMemoryEvents();
+            this.memoryEventsBound = true;
+        }
+        
+        // 应用设置到记忆模块UI
+        this.applyMemorySettingsToUI();
+    }
+    
+    // 关闭记忆模块页面
+    closeMemoryModule() {
+        console.log('🧠 关闭记忆模块');
+        
+        const memoryPage = document.getElementById('memoryModulePage');
+        if (memoryPage) {
+            memoryPage.style.display = 'none';
+        }
+        
+        // 保存设置
+        this.saveSettings();
+    }
+    
+    // 绑定记忆模块事件
+    bindMemoryEvents() {
+        console.log('🔗 绑定记忆模块事件');
+        
+        // 返回按钮
+        const memoryBackBtn = document.getElementById('memoryBackBtn');
+        if (memoryBackBtn) {
+            memoryBackBtn.addEventListener('click', () => {
+                this.closeMemoryModule();
+            });
+        }
+        
+        // 自动总结开关
+        const autoSummarySwitch = document.getElementById('memoryAutoSummary');
+        if (autoSummarySwitch) {
+            autoSummarySwitch.addEventListener('change', (e) => {
+                this.settings.autoSummary = e.target.checked;
+                console.log('自动总结:', this.settings.autoSummary);
+                this.saveSettings();
+            });
+        }
+        
+        // 总结间隔输入
+        const summaryIntervalInput = document.getElementById('memorySummaryInterval');
+        if (summaryIntervalInput) {
+            summaryIntervalInput.addEventListener('change', (e) => {
+                const value = parseInt(e.target.value);
+                if (value > 0 && value <= 1000) {
+                    this.settings.summaryInterval = value;
+                    console.log('总结间隔:', this.settings.summaryInterval);
+                    this.saveSettings();
+                } else {
+                    alert('请输入1-1000之间的数字');
+                    e.target.value = this.settings.summaryInterval;
+                }
+            });
+        }
+        
+        // 手动总结按钮
+        const manualSummaryBtn = document.getElementById('memoryManualSummary');
+        if (manualSummaryBtn) {
+            manualSummaryBtn.addEventListener('click', () => {
+                this.openManualSummaryModal();
+            });
+        }
+        
+        // 查看历史总结按钮
+        const viewHistoryBtn = document.getElementById('memoryViewHistory');
+        if (viewHistoryBtn) {
+            viewHistoryBtn.addEventListener('click', () => {
+                this.openSummaryHistory();
+            });
+        }
+    }
+    
+    // 应用记忆模块设置到UI
+    applyMemorySettingsToUI() {
+        const autoSummarySwitch = document.getElementById('memoryAutoSummary');
+        if (autoSummarySwitch) {
+            autoSummarySwitch.checked = this.settings.autoSummary !== false;
+        }
+        
+        const summaryIntervalInput = document.getElementById('memorySummaryInterval');
+        if (summaryIntervalInput) {
+            summaryIntervalInput.value = this.settings.summaryInterval || 20;
+        }
+    }
+    
+    // ==================== 手动总结弹窗 ====================
+    
+    // 打开手动总结弹窗
+    openManualSummaryModal() {
+        console.log('📝 打开手动总结弹窗');
+        
+        const modal = document.getElementById('manualSummaryModal');
+        if (!modal) return;
+        
+        // 显示弹窗
+        modal.style.display = 'flex';
+        
+        // 计算消息统计
+        const summaries = this.storage.getChatSummaries(this.currentFriendCode);
+        const summarizedCount = summaries.reduce((sum, s) => sum + s.messageCount, 0);
+        const unsummarizedCount = this.messages.length - summarizedCount;
+        
+        // 更新统计信息
+        document.getElementById('manualTotalMessages').textContent = this.messages.length;
+        document.getElementById('manualSummarizedMessages').textContent = summarizedCount;
+        document.getElementById('manualUnsummarizedMessages').textContent = unsummarizedCount;
+        document.getElementById('manualUnsummarizedCount').textContent = unsummarizedCount;
+        
+        // 绑定弹窗事件
+        if (!this.manualSummaryEventsBound) {
+            this.bindManualSummaryEvents();
+            this.manualSummaryEventsBound = true;
+        }
+    }
+    
+    // 关闭手动总结弹窗
+    closeManualSummaryModal() {
+        console.log('📝 关闭手动总结弹窗');
+        
+        const modal = document.getElementById('manualSummaryModal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+    
+    // 绑定手动总结弹窗事件
+    bindManualSummaryEvents() {
+        // 关闭按钮
+        const closeBtn = document.getElementById('manualSummaryClose');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                this.closeManualSummaryModal();
+            });
+        }
+        
+        // 遮罩层点击关闭
+        const overlay = document.getElementById('manualSummaryOverlay');
+        if (overlay) {
+            overlay.addEventListener('click', () => {
+                this.closeManualSummaryModal();
+            });
+        }
+        
+        // 取消按钮
+        const cancelBtn = document.getElementById('manualSummaryCancel');
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => {
+                this.closeManualSummaryModal();
+            });
+        }
+        
+        // 确认按钮
+        const confirmBtn = document.getElementById('manualSummaryConfirm');
+        if (confirmBtn) {
+            confirmBtn.addEventListener('click', () => {
+                this.handleManualSummaryConfirm();
+            });
+        }
+    }
+    
+    // 处理手动总结确认
+    handleManualSummaryConfirm() {
+        console.log('📝 处理手动总结确认');
+        
+        // 获取选中的范围类型
+        const rangeType = document.querySelector('input[name="summaryRange"]:checked').value;
+        
+        let startIndex, endIndex;
+        
+        if (rangeType === 'recent') {
+            // 最近N条
+            const count = parseInt(document.getElementById('manualRecentCount').value);
+            if (count <= 0 || count > this.messages.length) {
+                alert('请输入有效的消息条数');
+                return;
+            }
+            endIndex = this.messages.length;
+            startIndex = Math.max(0, endIndex - count);
+            
+        } else if (rangeType === 'range') {
+            // 从第X条到第Y条
+            startIndex = parseInt(document.getElementById('manualRangeStart').value) - 1;
+            endIndex = parseInt(document.getElementById('manualRangeEnd').value);
+            
+            if (startIndex < 0 || endIndex > this.messages.length || startIndex >= endIndex) {
+                alert('请输入有效的消息范围');
+                return;
+            }
+            
+        } else if (rangeType === 'unsummarized') {
+            // 所有未总结的消息
+            const summaries = this.storage.getChatSummaries(this.currentFriendCode);
+            startIndex = summaries.reduce((sum, s) => sum + s.messageCount, 0);
+            endIndex = this.messages.length;
+            
+            if (startIndex >= endIndex) {
+                alert('没有未总结的消息');
+                return;
+            }
+        }
+        
+        // 关闭弹窗
+        this.closeManualSummaryModal();
+        
+        // 关闭记忆模块页面
+        this.closeMemoryModule();
+        
+        // 生成总结
+        this.generateAutoSummary(startIndex, endIndex);
+    }
+    
+    // ==================== 历史总结列表 ====================
+    
+    // 打开历史总结列表
+    openSummaryHistory() {
+        console.log('📚 打开历史总结列表');
+        
+        const historyPage = document.getElementById('summaryHistoryPage');
+        if (!historyPage) return;
+        
+        historyPage.style.display = 'flex';
+        
+        // 绑定历史总结事件
+        if (!this.summaryHistoryEventsBound) {
+            this.bindSummaryHistoryEvents();
+            this.summaryHistoryEventsBound = true;
+        }
+        
+        // 加载历史总结列表
+        this.loadSummaryHistory();
+    }
+    
+    // 关闭历史总结列表
+    closeSummaryHistory() {
+        console.log('📚 关闭历史总结列表');
+        
+        const historyPage = document.getElementById('summaryHistoryPage');
+        if (historyPage) {
+            historyPage.style.display = 'none';
+        }
+    }
+    
+    // 绑定历史总结事件
+    bindSummaryHistoryEvents() {
+        const backBtn = document.getElementById('summaryHistoryBackBtn');
+        if (backBtn) {
+            backBtn.addEventListener('click', () => {
+                this.closeSummaryHistory();
+            });
+        }
+    }
+    
+    // 加载历史总结列表
+    loadSummaryHistory() {
+        console.log('📚 加载历史总结列表');
+        
+        const content = document.getElementById('summaryHistoryContent');
+        if (!content) return;
+        
+        const summaries = this.storage.getChatSummaries(this.currentFriendCode);
+        
+        if (summaries.length === 0) {
+            content.innerHTML = `
+                <div class="summary-history-empty">
+                    <div class="summary-history-empty-icon">📋</div>
+                    <div class="summary-history-empty-text">暂无历史总结</div>
+                </div>
+            `;
+            return;
+        }
+        
+        // 按时间倒序排列
+        summaries.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        
+        let html = '';
+        summaries.forEach((summary, index) => {
+            const number = summaries.length - index;
+            html += this.createSummaryHistoryCardHTML(summary, number);
+        });
+        
+        content.innerHTML = html;
+    }
+    
+    // 生成历史总结卡片HTML
+    createSummaryHistoryCardHTML(summary, number) {
+        const startTime = new Date(summary.startTime);
+        const endTime = new Date(summary.endTime);
+        const createdTime = new Date(summary.createdAt);
+        
+        const timeRange = `${this.formatTime2(startTime)} - ${this.formatTime2(endTime)}`;
+        const createdTimeStr = this.formatTime2(createdTime);
+        
+        return `
+            <div class="summary-history-card">
+                <div class="summary-history-card-header">
+                    <span class="summary-history-card-title">📋 ${summary.date} 对话总结</span>
+                    <span class="summary-history-card-number">#${number}</span>
+                </div>
+                
+                <div class="summary-history-card-info">
+                    <div class="summary-history-card-info-item">
+                        <span>📊</span>
+                        <span>总结了 ${summary.messageCount} 条消息</span>
+                    </div>
+                    <div class="summary-history-card-info-item">
+                        <span>🕐</span>
+                        <span>生成于 ${createdTimeStr}</span>
+                    </div>
+                    <div class="summary-history-card-info-item">
+                        <span>💬</span>
+                        <span>涵盖时间：${timeRange}</span>
+                    </div>
+                </div>
+                
+                <div class="summary-history-card-summary">
+                    <div class="summary-history-card-summary-label">📝 主要内容：</div>
+                    <div class="summary-history-card-summary-text">${this.escapeHtml(summary.summary || '对话总结')}</div>
+                </div>
+                
+                <div class="summary-history-card-actions">
+                    <button class="summary-history-card-btn" onclick="window.chatInterface.viewSummaryDetail('${summary.id}')">
+                        <span>👁️</span>
+                        <span>查看详情</span>
+                    </button>
+                    <button class="summary-history-card-btn" onclick="window.chatInterface.copySummaryFromHistory('${summary.id}')">
+                        <span>📋</span>
+                        <span>复制</span>
+                    </button>
+                    <button class="summary-history-card-btn" onclick="window.chatInterface.editSummaryFromHistory('${summary.id}')">
+                        <span>⚙️</span>
+                        <span>编辑</span>
+                    </button>
+                    <button class="summary-history-card-btn summary-history-card-btn-danger" onclick="window.chatInterface.deleteSummaryFromHistory('${summary.id}')">
+                        <span>🗑️</span>
+                        <span>删除</span>
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+    
+    // ==================== 总结详情页面 ====================
+    
+    // 查看总结详情
+    viewSummaryDetail(summaryId) {
+        console.log('👁️ 查看总结详情:', summaryId);
+        
+        const summaries = this.storage.getChatSummaries(this.currentFriendCode);
+        const summary = summaries.find(s => s.id === summaryId);
+        
+        if (!summary) {
+            console.error('❌ 找不到总结');
+            return;
+        }
+        
+        const detailPage = document.getElementById('summaryDetailPage');
+        if (!detailPage) return;
+        
+        detailPage.style.display = 'flex';
+        
+        // 绑定详情页事件
+        if (!this.summaryDetailEventsBound) {
+            this.bindSummaryDetailEvents();
+            this.summaryDetailEventsBound = true;
+        }
+        
+        // 设置标题
+        const titleEl = document.getElementById('summaryDetailTitle');
+        if (titleEl) {
+            titleEl.textContent = `${summary.date} 对话总结`;
+        }
+        
+        // 生成详情内容
+        const contentEl = document.getElementById('summaryDetailContent');
+        if (contentEl) {
+            contentEl.innerHTML = this.createSummaryDetailHTML(summary);
+        }
+        
+        // 保存当前查看的总结ID
+        this.currentViewingSummaryId = summaryId;
+    }
+    
+    // 关闭总结详情
+    closeSummaryDetail() {
+        console.log('👁️ 关闭总结详情');
+        
+        const detailPage = document.getElementById('summaryDetailPage');
+        if (detailPage) {
+            detailPage.style.display = 'none';
+        }
+        
+        this.currentViewingSummaryId = null;
+    }
+    
+   // 绑定详情页事件
+    bindSummaryDetailEvents() {
+        const backBtn = document.getElementById('summaryDetailBackBtn');
+        if (backBtn) {
+            backBtn.addEventListener('click', () => {
+                this.closeSummaryDetail();
+            });
+        }
+    }
+    
+    // 生成总结详情HTML
+    createSummaryDetailHTML(summary) {
+        const startTime = new Date(summary.startTime);
+        const endTime = new Date(summary.endTime);
+        const createdTime = new Date(summary.createdAt);
+        
+        const timeRange = `${this.formatTime2(startTime)} - ${this.formatTime2(endTime)}`;
+        const createdTimeStr = this.formatTime2(createdTime);
+        
+        // 解析详细内容
+        const entries = this.parseSummaryContent(summary.content);
+        
+        const entriesHTML = entries.map(entry => `
+            <div class="summary-detail-entry">
+                <div class="summary-detail-entry-time">${entry.time}</div>
+                <div class="summary-detail-entry-content">${this.escapeHtml(entry.content)}</div>
+            </div>
+        `).join('');
+        
+        return `
+            <div class="summary-detail-info">
+                <div class="summary-detail-info-item">
+                    <span>📊</span>
+                    <span>总结了 ${summary.messageCount} 条消息</span>
+                </div>
+                <div class="summary-detail-info-item">
+                    <span>🕐</span>
+                    <span>生成于 ${createdTimeStr}</span>
+                </div>
+                <div class="summary-detail-info-item">
+                    <span>💬</span>
+                    <span>涵盖时间：${timeRange}</span>
+                </div>
+            </div>
+            
+            <div class="summary-detail-timeline">
+                ${entriesHTML}
+            </div>
+            
+            <div class="summary-detail-actions">
+                <button class="summary-detail-btn summary-detail-btn-primary" onclick="window.chatInterface.copySummaryDetail('${summary.id}')">
+                    <span>📋</span>
+                    <span>复制全部</span>
+                </button>
+                <button class="summary-detail-btn" onclick="window.chatInterface.editSummaryDetail('${summary.id}')">
+                    <span>⚙️</span>
+                    <span>编辑</span>
+                </button>
+                <button class="summary-detail-btn summary-detail-btn-danger" onclick="window.chatInterface.deleteSummaryDetail('${summary.id}')">
+                    <span>🗑️</span>
+                    <span>删除</span>
+                </button>
+            </div>
+        `;
+    }
+    
+    // 解析总结内容
+    parseSummaryContent(content) {
+        const entries = [];
+        const lines = content.split('\n');
+        
+        lines.forEach(line => {
+            line = line.trim();
+            if (!line) return;
+            
+            const match = line.match(/^【(.+?)】(.+)$/);
+            if (match) {
+                entries.push({
+                    time: `【${match[1]}】`,
+                    content: match[2].trim()
+                });
+            }
+        });
+        
+        return entries;
+    }
+    
+    // 从历史列表复制总结
+    copySummaryFromHistory(summaryId) {
+        console.log('📋 从历史列表复制总结:', summaryId);
+        
+        const summaries = this.storage.getChatSummaries(this.currentFriendCode);
+        const summary = summaries.find(s => s.id === summaryId);
+        
+        if (!summary) {
+            console.error('❌ 找不到总结');
+            return;
+        }
+        
+        navigator.clipboard.writeText(summary.content).then(() => {
+            console.log('✅ 复制成功');
+            alert('✅ 已复制到剪贴板！');
+        }).catch(err => {
+            console.error('❌ 复制失败:', err);
+            alert('❌ 复制失败，请手动复制');
+        });
+    }
+    
+    // 从详情页复制总结
+    copySummaryDetail(summaryId) {
+        this.copySummaryFromHistory(summaryId);
+    }
+    
+    // 从历史列表编辑总结
+    editSummaryFromHistory(summaryId) {
+        console.log('⚙️ 从历史列表编辑总结:', summaryId);
+        alert('⚙️ 编辑功能开发中...');
+    }
+    
+    // 从详情页编辑总结
+    editSummaryDetail(summaryId) {
+        this.editSummaryFromHistory(summaryId);
+    }
+    
+    // 从历史列表删除总结
+    deleteSummaryFromHistory(summaryId) {
+        console.log('🗑️ 从历史列表删除总结:', summaryId);
+        
+        if (!confirm('确定要删除这条总结吗？')) {
+            return;
+        }
+        
+        const success = this.storage.deleteChatSummary(this.currentFriendCode, summaryId);
+        
+        if (success) {
+            console.log('✅ 总结删除成功');
+            // 重新加载历史列表
+            this.loadSummaryHistory();
+        } else {
+            console.error('❌ 总结删除失败');
+            alert('❌ 删除失败！');
+        }
+    }
+    
+    // 从详情页删除总结
+    deleteSummaryDetail(summaryId) {
+        console.log('🗑️ 从详情页删除总结:', summaryId);
+        
+        if (!confirm('确定要删除这条总结吗？')) {
+            return;
+        }
+        
+        const success = this.storage.deleteChatSummary(this.currentFriendCode, summaryId);
+        
+        if (success) {
+            console.log('✅ 总结删除成功');
+            // 关闭详情页
+            this.closeSummaryDetail();
+            // 重新加载历史列表
+            this.loadSummaryHistory();
+        } else {
+            console.error('❌ 总结删除失败');
+            alert('❌ 删除失败！');
         }
     }
     
@@ -1159,12 +1653,12 @@ class ChatInterface {
         
         try {
             // 调用AI生成总结
-            const summaryContent = await this.callAIForSummary(messagesToSummarize);
+            const summaryResult = await this.callAIForSummary(messagesToSummarize);
             
             // 隐藏生成中的提示
             this.hideSummaryGenerating();
             
-            if (!summaryContent) {
+            if (!summaryResult || !summaryResult.content) {
                 console.error('❌ 总结生成失败');
                 alert('❌ 总结生成失败，请稍后重试');
                 return;
@@ -1180,7 +1674,8 @@ class ChatInterface {
                 messageCount: messagesToSummarize.length,
                 startTime: startTime.toISOString(),
                 endTime: endTime.toISOString(),
-                content: summaryContent
+                summary: summaryResult.summary,
+                content: summaryResult.content
             };
             
             // 保存总结到storage
@@ -1191,14 +1686,8 @@ class ChatInterface {
                 return;
             }
             
-            // 显示总结卡片
-            this.displaySummaryCard({
-                id: summaryId,
-                ...summaryData,
-                createdAt: new Date().toISOString()
-            });
-            
             console.log('✅ 自动总结生成成功');
+            alert('✅ 总结已生成！可在"记忆模块 > 查看历史总结"中查看。');
             
         } catch (error) {
             console.error('❌ 生成总结时出错:', error);
@@ -1214,6 +1703,14 @@ class ChatInterface {
         // 构造总结的系统提示
         const summaryPrompt = `你是一个专业的对话总结助手。请按照以下格式总结对话内容：
 
+第一部分：一句话总结（用 === 包裹）
+用1-2句话概括整个对话的主要内容，不超过80字。
+
+===
+（在这里写一句话总结）
+===
+
+第二部分：详细时间轴（每条消息单独总结）
 1. 每一条消息都要单独总结
 2. 使用【年月日 时:分:秒】格式标注时间
 3. 使用第三人称客观描述
@@ -1221,8 +1718,8 @@ class ChatInterface {
 5. 每条总结独立成段
 
 示例格式：
-【2026年1月17日 14:34:42】"我"向沈眠提议去王者荣耀商城购物。
-【2026年1月17日 14:34:55】"我"提示沈眠带上大小号的购物袋，并确认了外出的目的地。
+【2026年1月18日 14:34:42】"我"向沈眠提议去王者荣耀商城购物。
+【2026年1月18日 14:34:55】"我"提示沈眠带上大小号的购物袋，并确认了外出的目的地。
 
 请总结以下对话内容。只输出总结内容，不要有任何其他说明。`;
         
@@ -1245,201 +1742,23 @@ class ChatInterface {
             throw new Error(result.error);
         }
         
-        return result.text;
-    }
-    
-    // 显示总结卡片
-    displaySummaryCard(summary) {
-        console.log('🎨 显示总结卡片:', summary.id);
+        // 解析AI返回的内容，分离一句话总结和详细内容
+        const fullText = result.text;
         
-        const messagesList = document.getElementById('messagesList');
-        if (!messagesList) {
-            console.error('❌ 找不到 messagesList 元素');
-            return;
-        }
+        // 提取一句话总结（在 === 和 === 之间）
+        const summaryMatch = fullText.match(/===\s*([\s\S]*?)\s*===/);
+        const oneLinerSummary = summaryMatch ? summaryMatch[1].trim() : '对话总结';
         
-        // 获取总结编号
-        const summaries = this.storage.getChatSummaries(this.currentFriendCode);
-        const summaryNumber = summaries.length;
+        // 提取详细内容（=== 后面的所有内容）
+        const detailedContent = fullText.split(/===\s*[\s\S]*?\s*===\s*/)[1]?.trim() || fullText;
         
-        // 生成HTML
-        const html = this.createSummaryCardHTML(summary, summaryNumber);
+        console.log('📝 一句话总结:', oneLinerSummary);
+        console.log('📋 详细内容长度:', detailedContent.length);
         
-        // 插入到消息列表
-        messagesList.insertAdjacentHTML('beforeend', html);
-        
-        // 滚动到底部
-        this.scrollToBottom();
-    }
-    
-    // 生成总结卡片HTML
-    createSummaryCardHTML(summary, number) {
-        const startTime = new Date(summary.startTime);
-        const endTime = new Date(summary.endTime);
-        const createdTime = new Date(summary.createdAt);
-        
-        const timeRange = `${this.formatTime2(startTime)} - ${this.formatTime2(endTime)}`;
-        const createdTimeStr = this.formatTime2(createdTime);
-        
-        // 解析总结内容，分成多个条目
-        const entries = this.parseSummaryContent(summary.content);
-        
-        const entriesHTML = entries.map(entry => `
-            <div class="summary-entry">
-                <div class="summary-entry-time">${entry.time}</div>
-                <div class="summary-entry-content">${this.escapeHtml(entry.content)}</div>
-            </div>
-        `).join('');
-        
-        return `
-            <div class="chat-summary-card" data-summary-id="${summary.id}">
-                <div class="summary-header">
-                    <span class="summary-icon">📋</span>
-                    <span class="summary-title">${summary.date} 对话总结</span>
-                    <span class="summary-number">#${number}</span>
-                </div>
-                
-                <div class="summary-info">
-                    <div class="summary-info-item">
-                        <span>📊</span>
-                        <span>总结了 ${summary.messageCount} 条消息</span>
-                    </div>
-                    <div class="summary-info-item">
-                        <span>🕐</span>
-                        <span>生成于 ${createdTimeStr}</span>
-                    </div>
-                    <div class="summary-info-item">
-                        <span>💬</span>
-                        <span>涵盖时间：${timeRange}</span>
-                    </div>
-                </div>
-                
-                <div class="summary-content" data-summary-id="${summary.id}">
-                    ${entriesHTML}
-                </div>
-                
-                <div class="summary-actions">
-                    <button class="summary-btn summary-btn-primary" onclick="window.chatInterface.toggleSummary('${summary.id}')">
-                        <span>👁️</span>
-                        <span>查看详情</span>
-                    </button>
-                    <button class="summary-btn summary-btn-copy" onclick="window.chatInterface.copySummary('${summary.id}')">
-                        <span>📋</span>
-                        <span>复制全部</span>
-                    </button>
-                    <button class="summary-btn" onclick="window.chatInterface.editSummary('${summary.id}')">
-                        <span>⚙️</span>
-                        <span>编辑</span>
-                    </button>
-                    <button class="summary-btn summary-btn-danger" onclick="window.chatInterface.deleteSummary('${summary.id}')">
-                        <span>🗑️</span>
-                        <span>删除</span>
-                    </button>
-                </div>
-            </div>
-        `;
-    }
-    
-    // 解析总结内容
-    parseSummaryContent(content) {
-        const entries = [];
-        const lines = content.split('\n');
-        
-        lines.forEach(line => {
-            line = line.trim();
-            if (!line) return;
-            
-            // 匹配 【时间】内容 格式
-            const match = line.match(/^【(.+?)】(.+)$/);
-            if (match) {
-                entries.push({
-                    time: `【${match[1]}】`,
-                    content: match[2].trim()
-                });
-            }
-        });
-        
-        return entries;
-    }
-    
-    // 展开/折叠总结
-    toggleSummary(summaryId) {
-        console.log('👁️ 切换总结显示:', summaryId);
-        
-        const content = document.querySelector(`.summary-content[data-summary-id="${summaryId}"]`);
-        const btn = event.target.closest('.summary-btn-primary');
-        
-        if (!content || !btn) return;
-        
-        if (content.classList.contains('expanded')) {
-            // 折叠
-            content.classList.remove('expanded');
-            btn.innerHTML = '<span>👁️</span><span>查看详情</span>';
-        } else {
-            // 展开
-            content.classList.add('expanded');
-            btn.innerHTML = '<span>▲</span><span>收起</span>';
-        }
-    }
-    
-    // 复制总结内容
-    copySummary(summaryId) {
-        console.log('📋 复制总结:', summaryId);
-        
-        const content = document.querySelector(`.summary-content[data-summary-id="${summaryId}"]`);
-        if (!content) {
-            console.error('❌ 找不到总结内容');
-            return;
-        }
-        
-        // 获取所有条目
-        const entries = content.querySelectorAll('.summary-entry');
-        let textToCopy = '';
-        
-        entries.forEach(entry => {
-            const time = entry.querySelector('.summary-entry-time').textContent;
-            const text = entry.querySelector('.summary-entry-content').textContent;
-            textToCopy += `${time}${text}\n`;
-        });
-        
-        // 复制到剪贴板
-        navigator.clipboard.writeText(textToCopy).then(() => {
-            console.log('✅ 复制成功');
-            alert('✅ 已复制到剪贴板！');
-        }).catch(err => {
-            console.error('❌ 复制失败:', err);
-            alert('❌ 复制失败，请手动复制');
-        });
-    }
-    
-    // 编辑总结
-    editSummary(summaryId) {
-        console.log('⚙️ 编辑总结:', summaryId);
-        alert('⚙️ 编辑功能开发中...');
-        // TODO: 实现编辑功能
-    }
-    
-    // 删除总结
-    deleteSummary(summaryId) {
-        console.log('🗑️ 删除总结:', summaryId);
-        
-        if (!confirm('确定要删除这条总结吗？')) {
-            return;
-        }
-        
-        const success = this.storage.deleteChatSummary(this.currentFriendCode, summaryId);
-        
-        if (success) {
-            // 从DOM中移除
-            const card = document.querySelector(`.chat-summary-card[data-summary-id="${summaryId}"]`);
-            if (card) {
-                card.remove();
-            }
-            console.log('✅ 总结删除成功');
-        } else {
-            console.error('❌ 总结删除失败');
-            alert('❌ 删除失败！');
-        }
+        return {
+            summary: oneLinerSummary,
+            content: detailedContent
+        };
     }
     
     // 显示"生成中"提示
@@ -1487,39 +1806,6 @@ class ChatInterface {
         const minutes = String(date.getMinutes()).padStart(2, '0');
         const seconds = String(date.getSeconds()).padStart(2, '0');
         return `${year}/${month}/${day} ${hours}:${minutes}:${seconds}`;
-    }
-    
-    // 手动总结
-    triggerManualSummary() {
-        console.log('📝 触发手动总结');
-        
-        if (this.messages.length === 0) {
-            alert('⚠️ 当前没有消息可以总结');
-            return;
-        }
-        
-        // 获取已总结的消息数量
-        const summaries = this.storage.getChatSummaries(this.currentFriendCode);
-        const summarizedCount = summaries.reduce((sum, s) => sum + s.messageCount, 0);
-        
-        // 计算未总结的消息数量
-        const unsummarizedCount = this.messages.length - summarizedCount;
-        
-        if (unsummarizedCount === 0) {
-            alert('ℹ️ 所有消息都已经总结过了');
-            return;
-        }
-        
-        // 确认总结
-        if (!confirm(`确定要总结最近的 ${unsummarizedCount} 条消息吗？`)) {
-            return;
-        }
-        
-        // 关闭设置页面
-        this.closeChatSettings();
-        
-        // 生成总结
-        this.generateAutoSummary(summarizedCount, this.messages.length);
     }
 }
 
