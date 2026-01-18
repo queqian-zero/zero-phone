@@ -2,28 +2,28 @@
 
 class ChatInterface {
     constructor(chatApp) {
-    this.chatApp = chatApp;
-    this.storage = chatApp.storage;
-    this.apiManager = new APIManager();
-    this.currentFriendCode = null;
-    this.currentFriend = null;
-    this.messages = [];
-    this.isExpanded = false;
-    this.isMenuOpen = false;
-    this.eventsBound = false;
-    this.originalFriendName = null;
-    
-    // 设置相关
-    this.settings = {
-        aiRecognizeImage: true,
-        chatPin: false,
-        hideToken: false,
-        autoSummary: true,           // ← 新增：自动总结开关
-        summaryInterval: 20          // ← 新增：每20条总结一次
-    };
-    
-    this.init();
-}
+        this.chatApp = chatApp;
+        this.storage = chatApp.storage;
+        this.apiManager = new APIManager();
+        this.currentFriendCode = null;
+        this.currentFriend = null;
+        this.messages = [];
+        this.isExpanded = false;
+        this.isMenuOpen = false;
+        this.eventsBound = false;
+        this.originalFriendName = null;
+        
+        // 设置相关
+        this.settings = {
+            aiRecognizeImage: true,
+            chatPin: false,
+            hideToken: false,
+            autoSummary: true,           // 自动总结开关
+            summaryInterval: 20          // 每20条总结一次
+        };
+        
+        this.init();
+    }
     
     init() {
         console.log('🚀 ChatInterface init() 开始');
@@ -242,11 +242,10 @@ class ChatInterface {
         this.loadSettings();
         
         setTimeout(() => this.scrollToBottom(), 100);
-    
-    // ===== 新增：暴露实例到全局 =====
-    window.chatInterface = this;
-    // ===== 新增结束 =====
-}
+        
+        // 暴露实例到全局
+        window.chatInterface = this;
+    }
 
     addWelcomeMessage(friend) {
         console.log('👋 添加欢迎消息');
@@ -612,73 +611,71 @@ class ChatInterface {
     // ==================== 消息渲染 ====================
     
     addMessage(message) {
-    console.log('➕ addMessage() 被调用:', message.type, message.text.substring(0, 20));
-    
-    const messagesList = document.getElementById('messagesList');
-    if (!messagesList) {
-        console.error('❌ 找不到 messagesList 元素');
-        return;
+        console.log('➕ addMessage() 被调用:', message.type, message.text.substring(0, 20));
+        
+        const messagesList = document.getElementById('messagesList');
+        if (!messagesList) {
+            console.error('❌ 找不到 messagesList 元素');
+            return;
+        }
+        
+        const messageEl = this.createMessageElement(message);
+        messagesList.appendChild(messageEl);
+        console.log('✅ 消息元素已添加到DOM');
+        
+        this.messages.push(message);
+        
+        // 检查是否需要自动总结
+        if (this.settings.autoSummary) {
+            this.checkAutoSummary();
+        }
     }
-    
-    const messageEl = this.createMessageElement(message);
-    messagesList.appendChild(messageEl);
-    console.log('✅ 消息元素已添加到DOM');
-    
-    this.messages.push(message);
-    
-    // ===== 新增：检查是否需要自动总结 =====
-    if (this.settings.autoSummary) {
-        this.checkAutoSummary();
-    }
-    // ===== 新增结束 =====
-}
     
     createMessageElement(message) {
-    const div = document.createElement('div');
-    div.className = `message message-${message.type}`;
-    
-    const time = this.formatTimeAdvanced(new Date(message.timestamp));
-    
-    let avatarHTML = '';
-    if (message.type === 'ai') {
-        const friend = this.currentFriend || this.storage.getFriendByCode(this.currentFriendCode);
+        const div = document.createElement('div');
+        div.className = `message message-${message.type}`;
         
-        if (friend && friend.avatar) {
-            avatarHTML = `<img src="${friend.avatar}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" alt="头像">`;
-        } else if (friend) {
-            avatarHTML = `<div class="avatar-placeholder">${friend.name.charAt(0)}</div>`;
+        const time = this.formatTimeAdvanced(new Date(message.timestamp));
+        
+        let avatarHTML = '';
+        if (message.type === 'ai') {
+            const friend = this.currentFriend || this.storage.getFriendByCode(this.currentFriendCode);
+            
+            if (friend && friend.avatar) {
+                avatarHTML = `<img src="${friend.avatar}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" alt="头像">`;
+            } else if (friend) {
+                avatarHTML = `<div class="avatar-placeholder">${friend.name.charAt(0)}</div>`;
+            } else {
+                avatarHTML = `<div class="avatar-placeholder">AI</div>`;
+            }
         } else {
-            avatarHTML = `<div class="avatar-placeholder">AI</div>`;
+            avatarHTML = `<div class="avatar-placeholder">我</div>`;
         }
-    } else {
-        avatarHTML = `<div class="avatar-placeholder">我</div>`;
-    }
-    
-    div.innerHTML = `
-        <div class="message-avatar">
-            ${avatarHTML}
-        </div>
-        <div class="message-content">
-            <div class="message-bubble">
-                <div class="message-text">${this.escapeHtml(message.text)}</div>
+        
+        div.innerHTML = `
+            <div class="message-avatar">
+                ${avatarHTML}
             </div>
-            <div class="message-time">${time}</div>
-        </div>
-    `;
-    
-    // ===== 新增：给头像添加双击事件 =====
-    const avatarEl = div.querySelector('.message-avatar');
-    if (avatarEl) {
-        avatarEl.addEventListener('dblclick', () => {
-            console.log('👆 双击头像');
-            this.handlePoke(message.type);
-        });
+            <div class="message-content">
+                <div class="message-bubble">
+                    <div class="message-text">${this.escapeHtml(message.text)}</div>
+                </div>
+                <div class="message-time">${time}</div>
+            </div>
+        `;
+        
+        // 给头像添加双击事件
+        const avatarEl = div.querySelector('.message-avatar');
+        if (avatarEl) {
+            avatarEl.addEventListener('dblclick', () => {
+                console.log('👆 双击头像');
+                this.handlePoke(message.type);
+            });
+        }
+        
+        console.log('🎨 创建消息元素:', message.type);
+        return div;
     }
-    // ===== 新增结束 =====
-    
-    console.log('🎨 创建消息元素:', message.type);
-    return div;
-}
     
     formatTime(date) {
         const year = date.getFullYear();
@@ -852,6 +849,70 @@ class ChatInterface {
                 alert('导出数据功能开发中...');
             });
         }
+        
+        // ===== 记忆模块事件 =====
+        
+        // 聊天总结展开/折叠
+        const summaryToggle = document.getElementById('settingSummaryToggle');
+        const summaryPanel = document.getElementById('summaryDetailsPanel');
+        const summaryExpandIcon = document.getElementById('summaryExpandIcon');
+        
+        if (summaryToggle && summaryPanel) {
+            summaryToggle.addEventListener('click', (e) => {
+                // 如果点击的是开关，不触发展开/折叠
+                if (e.target.closest('.setting-switch')) {
+                    return;
+                }
+                
+                if (summaryPanel.style.display === 'none') {
+                    summaryPanel.style.display = 'block';
+                    if (summaryExpandIcon) {
+                        summaryExpandIcon.textContent = '▲';
+                    }
+                } else {
+                    summaryPanel.style.display = 'none';
+                    if (summaryExpandIcon) {
+                        summaryExpandIcon.textContent = '▼';
+                    }
+                }
+            });
+        }
+        
+        // 自动总结开关
+        const autoSummarySwitch = document.getElementById('settingAutoSummary');
+        if (autoSummarySwitch) {
+            autoSummarySwitch.addEventListener('change', (e) => {
+                this.settings.autoSummary = e.target.checked;
+                console.log('自动总结:', this.settings.autoSummary);
+                this.saveSettings();
+            });
+        }
+        
+        // 总结间隔选择
+        const summaryIntervalSelect = document.getElementById('settingSummaryInterval');
+        if (summaryIntervalSelect) {
+            summaryIntervalSelect.addEventListener('change', (e) => {
+                this.settings.summaryInterval = parseInt(e.target.value);
+                console.log('总结间隔:', this.settings.summaryInterval);
+                this.saveSettings();
+            });
+        }
+        
+        // 手动总结按钮
+        const manualSummaryBtn = document.getElementById('settingManualSummary');
+        if (manualSummaryBtn) {
+            manualSummaryBtn.addEventListener('click', () => {
+                this.triggerManualSummary();
+            });
+        }
+        
+        // 核心记忆按钮
+        const coreMemoryBtn = document.getElementById('settingCoreMemoryBtn');
+        if (coreMemoryBtn) {
+            coreMemoryBtn.addEventListener('click', () => {
+                alert('核心记忆功能开发中...');
+            });
+        }
     }
     
     loadSettings() {
@@ -912,6 +973,17 @@ class ChatInterface {
         const pokeValue = document.getElementById('settingPokeValue');
         if (pokeValue && this.currentFriend) {
             pokeValue.textContent = this.currentFriend.poke || '戳了戳你';
+        }
+        
+        // 记忆模块UI更新
+        const autoSummarySwitch = document.getElementById('settingAutoSummary');
+        if (autoSummarySwitch) {
+            autoSummarySwitch.checked = this.settings.autoSummary !== false;
+        }
+        
+        const summaryIntervalSelect = document.getElementById('settingSummaryInterval');
+        if (summaryIntervalSelect) {
+            summaryIntervalSelect.value = this.settings.summaryInterval || 20;
         }
         
         this.toggleTokenDisplay();
@@ -1415,6 +1487,39 @@ class ChatInterface {
         const minutes = String(date.getMinutes()).padStart(2, '0');
         const seconds = String(date.getSeconds()).padStart(2, '0');
         return `${year}/${month}/${day} ${hours}:${minutes}:${seconds}`;
+    }
+    
+    // 手动总结
+    triggerManualSummary() {
+        console.log('📝 触发手动总结');
+        
+        if (this.messages.length === 0) {
+            alert('⚠️ 当前没有消息可以总结');
+            return;
+        }
+        
+        // 获取已总结的消息数量
+        const summaries = this.storage.getChatSummaries(this.currentFriendCode);
+        const summarizedCount = summaries.reduce((sum, s) => sum + s.messageCount, 0);
+        
+        // 计算未总结的消息数量
+        const unsummarizedCount = this.messages.length - summarizedCount;
+        
+        if (unsummarizedCount === 0) {
+            alert('ℹ️ 所有消息都已经总结过了');
+            return;
+        }
+        
+        // 确认总结
+        if (!confirm(`确定要总结最近的 ${unsummarizedCount} 条消息吗？`)) {
+            return;
+        }
+        
+        // 关闭设置页面
+        this.closeChatSettings();
+        
+        // 生成总结
+        this.generateAutoSummary(summarizedCount, this.messages.length);
     }
 }
 
