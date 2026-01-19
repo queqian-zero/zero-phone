@@ -1555,15 +1555,156 @@ class ChatInterface {
     }
     
     // 从历史列表编辑总结
-    editSummaryFromHistory(summaryId) {
-        console.log('⚙️ 从历史列表编辑总结:', summaryId);
-        alert('⚙️ 编辑功能开发中...');
+editSummaryFromHistory(summaryId) {
+    console.log('⚙️ 从历史列表编辑总结:', summaryId);
+    
+    const summaries = this.storage.getChatSummaries(this.currentFriendCode);
+    const summary = summaries.find(s => s.id === summaryId);
+    
+    if (!summary) {
+        console.error('❌ 找不到总结');
+        return;
     }
     
-    // 从详情页编辑总结
-    editSummaryDetail(summaryId) {
-        this.editSummaryFromHistory(summaryId);
+    this.openEditSummaryModal(summary);
+}
+
+// 从详情页编辑总结
+editSummaryDetail(summaryId) {
+    this.editSummaryFromHistory(summaryId);
+}
+
+// 打开编辑总结弹窗
+openEditSummaryModal(summary) {
+    console.log('✏️ 打开编辑总结弹窗');
+    
+    const modal = document.getElementById('editSummaryModal');
+    if (!modal) return;
+    
+    // 显示弹窗
+    modal.style.display = 'flex';
+    
+    // 填充当前内容
+    const summaryInput = document.getElementById('editSummarySummary');
+    const contentTextarea = document.getElementById('editSummaryContent');
+    
+    if (summaryInput) {
+        summaryInput.value = summary.summary || '';
     }
+    
+    if (contentTextarea) {
+        contentTextarea.value = summary.content || '';
+    }
+    
+    // 保存当前编辑的总结ID
+    this.currentEditingSummaryId = summary.id;
+    
+    // 绑定编辑弹窗事件
+    if (!this.editSummaryEventsBound) {
+        this.bindEditSummaryEvents();
+        this.editSummaryEventsBound = true;
+    }
+}
+
+// 关闭编辑总结弹窗
+closeEditSummaryModal() {
+    console.log('✏️ 关闭编辑总结弹窗');
+    
+    const modal = document.getElementById('editSummaryModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+    
+    this.currentEditingSummaryId = null;
+}
+
+// 绑定编辑弹窗事件
+bindEditSummaryEvents() {
+    // 关闭按钮
+    const closeBtn = document.getElementById('editSummaryClose');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            this.closeEditSummaryModal();
+        });
+    }
+    
+    // 遮罩层点击关闭
+    const overlay = document.getElementById('editSummaryOverlay');
+    if (overlay) {
+        overlay.addEventListener('click', () => {
+            this.closeEditSummaryModal();
+        });
+    }
+    
+    // 取消按钮
+    const cancelBtn = document.getElementById('editSummaryCancel');
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', () => {
+            this.closeEditSummaryModal();
+        });
+    }
+    
+    // 确认按钮
+    const confirmBtn = document.getElementById('editSummaryConfirm');
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', () => {
+            this.handleEditSummaryConfirm();
+        });
+    }
+}
+
+// 处理编辑总结确认
+handleEditSummaryConfirm() {
+    console.log('✏️ 处理编辑总结确认');
+    
+    if (!this.currentEditingSummaryId) {
+        console.error('❌ 没有正在编辑的总结ID');
+        return;
+    }
+    
+    const summaryInput = document.getElementById('editSummarySummary');
+    const contentTextarea = document.getElementById('editSummaryContent');
+    
+    if (!summaryInput || !contentTextarea) {
+        console.error('❌ 找不到输入元素');
+        return;
+    }
+    
+    const newSummary = summaryInput.value.trim();
+    const newContent = contentTextarea.value.trim();
+    
+    if (!newSummary || !newContent) {
+        alert('一句话总结和详细内容不能为空！');
+        return;
+    }
+    
+    // 更新总结
+    const success = this.storage.updateChatSummaryFull(
+        this.currentFriendCode,
+        this.currentEditingSummaryId,
+        newSummary,
+        newContent
+    );
+    
+    if (success) {
+        console.log('✅ 总结更新成功');
+        alert('✅ 总结已更新！');
+        
+        // 关闭编辑弹窗
+        this.closeEditSummaryModal();
+        
+        // 如果当前在详情页，关闭详情页
+        if (this.currentViewingSummaryId === this.currentEditingSummaryId) {
+            this.closeSummaryDetail();
+        }
+        
+        // 重新加载历史列表
+        this.loadSummaryHistory();
+    } else {
+        console.error('❌ 总结更新失败');
+        alert('❌ 更新失败！');
+    }
+}
     
     // 从历史列表删除总结
     deleteSummaryFromHistory(summaryId) {

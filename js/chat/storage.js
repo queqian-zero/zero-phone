@@ -255,32 +255,61 @@ addChatSummary(friendCode, summary) {
 }
     
     // 更新聊天总结
-    updateChatSummary(friendCode, summaryId, newContent) {
-        console.log('💾 更新聊天总结:', summaryId);
-        
-        const chats = this.getChats();
-        const chat = chats.find(c => c.friendCode === friendCode);
-        
-        if (!chat || !chat.summaries) {
-            console.error('❌ 找不到聊天记录或总结列表');
-            return false;
-        }
-        
-        const summary = chat.summaries.find(s => s.id === summaryId);
-        
-        if (!summary) {
-            console.error('❌ 找不到指定的总结');
-            return false;
-        }
-        
-        summary.content = newContent;
-        summary.updatedAt = new Date().toISOString();
-        
-        this.saveData(this.KEYS.CHATS, chats);
-        console.log('✅ 总结更新成功');
-        
-        return true;
+updateChatSummary(friendCode, summaryId, newContent) {
+    console.log('💾 更新聊天总结:', summaryId);
+    
+    const chats = this.getChats();
+    const chat = chats.find(c => c.friendCode === friendCode);
+    
+    if (!chat || !chat.summaries) {
+        console.error('❌ 找不到聊天记录或总结列表');
+        return false;
     }
+    
+    const summary = chat.summaries.find(s => s.id === summaryId);
+    
+    if (!summary) {
+        console.error('❌ 找不到指定的总结');
+        return false;
+    }
+    
+    summary.content = newContent;
+    summary.updatedAt = new Date().toISOString();
+    
+    this.saveData(this.KEYS.CHATS, chats);
+    console.log('✅ 总结更新成功');
+    
+    return true;
+}
+
+   // 完整更新聊天总结（包括一句话总结和详细内容）
+   updateChatSummaryFull(friendCode, summaryId, newSummary, newContent) {
+    console.log('💾 完整更新聊天总结:', summaryId);
+    
+    const chats = this.getChats();
+    const chat = chats.find(c => c.friendCode === friendCode);
+    
+    if (!chat || !chat.summaries) {
+        console.error('❌ 找不到聊天记录或总结列表');
+        return false;
+    }
+    
+    const summary = chat.summaries.find(s => s.id === summaryId);
+    
+    if (!summary) {
+        console.error('❌ 找不到指定的总结');
+        return false;
+    }
+    
+    summary.summary = newSummary;
+    summary.content = newContent;
+    summary.updatedAt = new Date().toISOString();
+    
+    this.saveData(this.KEYS.CHATS, chats);
+    console.log('✅ 总结完整更新成功');
+    
+    return true;
+}
     
     // 删除聊天总结
     deleteChatSummary(friendCode, summaryId) {
