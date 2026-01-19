@@ -634,6 +634,32 @@
 </div>
 <!-- ==================== 手动总结弹窗结束 ==================== -->
 
+<!-- ==================== 编辑总结弹窗 ==================== -->
+<div class="edit-summary-modal" id="editSummaryModal" style="display: none;">
+    <div class="edit-summary-overlay" id="editSummaryOverlay"></div>
+    <div class="edit-summary-dialog">
+        <div class="edit-summary-header">
+            <h3>编辑总结</h3>
+            <button class="edit-summary-close" id="editSummaryClose">×</button>
+        </div>
+        <div class="edit-summary-body">
+            <div class="edit-summary-field">
+                <label>一句话总结：</label>
+                <input type="text" id="editSummarySummary" class="edit-summary-input" maxlength="80">
+            </div>
+            <div class="edit-summary-field">
+                <label>详细内容：</label>
+                <textarea id="editSummaryContent" class="edit-summary-textarea" rows="15"></textarea>
+            </div>
+        </div>
+        <div class="edit-summary-footer">
+            <button class="edit-summary-cancel" id="editSummaryCancel">取消</button>
+            <button class="edit-summary-confirm" id="editSummaryConfirm">保存</button>
+        </div>
+    </div>
+</div>
+<!-- ==================== 编辑总结弹窗结束 ==================== -->
+
         </div>
         <!-- ← pages-container 结束 -->
 
