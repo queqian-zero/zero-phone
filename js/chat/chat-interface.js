@@ -922,11 +922,18 @@ class ChatInterface {
         }
         
         const importDataBtn = document.getElementById('settingImportData');
-        if (importDataBtn) {
-            importDataBtn.addEventListener('click', () => {
-                alert('导入数据功能开发中...');
-            });
-        }
+if (importDataBtn) {
+    importDataBtn.addEventListener('click', () => {
+        this.openImportDataModal();  // ← 改这行
+    });
+}
+
+        const exportDataBtn = document.getElementById('settingExportData');
+if (exportDataBtn) {
+    exportDataBtn.addEventListener('click', () => {
+        this.openExportDataModal();  // ← 改这行
+    });
+}
         
         const exportDataBtn = document.getElementById('settingExportData');
         if (exportDataBtn) {
@@ -2040,14 +2047,585 @@ handleEditSummaryConfirm() {
     
     // 格式化时间（用于总结）
     formatTimeForSummary(date) {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        const hours = String(date.getHours()).padStart(2, '0');
-        const minutes = String(date.getMinutes()).padStart(2, '0');
-        const seconds = String(date.getSeconds()).padStart(2, '0');
-        return `${year}/${month}/${day} ${hours}:${minutes}:${seconds}`;
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    return `${year}/${month}/${day} ${hours}:${minutes}:${seconds}`;
+}
+
+// ==================== 数据导入导出功能 ====================
+
+// 打开导出数据弹窗
+openExportDataModal() {
+    console.log('📤 打开导出数据弹窗');
+    
+    const modal = document.getElementById('exportDataModal');
+    if (!modal) return;
+    
+    modal.style.display = 'flex';
+    
+    // 绑定事件
+    if (!this.exportDataEventsBound) {
+        this.bindExportDataEvents();
+        this.exportDataEventsBound = true;
     }
+}
+
+// 关闭导出数据弹窗
+closeExportDataModal() {
+    console.log('📤 关闭导出数据弹窗');
+    
+    const modal = document.getElementById('exportDataModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+// 绑定导出弹窗事件
+bindExportDataEvents() {
+    // 关闭按钮
+    const closeBtn = document.getElementById('exportDataClose');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            this.closeExportDataModal();
+        });
+    }
+    
+    // 遮罩层点击关闭
+    const overlay = document.getElementById('exportDataOverlay');
+    if (overlay) {
+        overlay.addEventListener('click', () => {
+            this.closeExportDataModal();
+        });
+    }
+    
+    // 取消按钮
+    const cancelBtn = document.getElementById('exportDataCancel');
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', () => {
+            this.closeExportDataModal();
+        });
+    }
+    
+    // 确认按钮
+    const confirmBtn = document.getElementById('exportDataConfirm');
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', () => {
+            this.handleExportDataConfirm();
+        });
+    }
+}
+
+// 处理导出确认
+handleExportDataConfirm() {
+    console.log('📤 处理导出确认');
+    
+    // 获取选择的导出内容
+    const contentType = document.querySelector('input[name="exportContent"]:checked').value;
+    // 获取选择的导出格式
+    const format = document.querySelector('input[name="exportFormat"]:checked').value;
+    
+    console.log('导出内容:', contentType);
+    console.log('导出格式:', format);
+    
+    // 关闭弹窗
+    this.closeExportDataModal();
+    
+    // 执行导出
+    if (contentType === 'messages') {
+        // 仅导出聊天记录
+        if (format === 'txt') {
+            this.exportMessagesAsTXT();
+        } else {
+            this.exportMessagesAsJSON();
+        }
+    } else {
+        // 导出完整数据（只能是JSON格式）
+        this.exportFullDataAsJSON();
+    }
+}
+
+// 导出聊天记录为TXT
+exportMessagesAsTXT() {
+    console.log('📤 导出聊天记录为TXT');
+    
+    if (!this.currentFriend) {
+        alert('❌ 没有当前好友信息');
+        return;
+    }
+    
+    const friendName = this.currentFriend.nickname || this.currentFriend.name;
+    
+    let content = '';
+    
+    this.messages.forEach(msg => {
+        const time = this.formatTime(new Date(msg.timestamp));
+        const sender = msg.type === 'user' ? '我' : friendName;
+        content += `${time} ${sender}：${msg.text}\n`;
+    });
+    
+    // 下载文件
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+    const filename = `chat_${friendName}_${dateStr}.txt`;
+    
+    this.downloadFile(content, filename, 'text/plain');
+    
+    console.log('✅ TXT导出成功');
+    alert('✅ 聊天记录已导出！');
+}
+
+// 导出聊天记录为JSON
+exportMessagesAsJSON() {
+    console.log('📤 导出聊天记录为JSON');
+    
+    if (!this.currentFriend) {
+        alert('❌ 没有当前好友信息');
+        return;
+    }
+    
+    const friendName = this.currentFriend.nickname || this.currentFriend.name;
+    
+    const data = {
+        exportType: 'messages',
+        friendName: friendName,
+        exportTime: new Date().toISOString(),
+        messages: this.messages
+    };
+    
+    const content = JSON.stringify(data, null, 2);
+    
+    // 下载文件
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+    const filename = `chat_${friendName}_${dateStr}.json`;
+    
+    this.downloadFile(content, filename, 'application/json');
+    
+    console.log('✅ JSON导出成功');
+    alert('✅ 聊天记录已导出！');
+}
+
+// 导出完整数据为JSON
+exportFullDataAsJSON() {
+    console.log('📤 导出完整数据为JSON');
+    
+    if (!this.currentFriend) {
+        alert('❌ 没有当前好友信息');
+        return;
+    }
+    
+    const friendName = this.currentFriend.nickname || this.currentFriend.name;
+    
+    // 获取聊天设置
+    const settings = this.storage.getChatSettings(this.currentFriendCode);
+    
+    // 获取聊天总结
+    const summaries = this.storage.getChatSummaries(this.currentFriendCode);
+    
+    const data = {
+        exportType: 'full',
+        exportTime: new Date().toISOString(),
+        friend: this.currentFriend,
+        messages: this.messages,
+        settings: settings || {},
+        summaries: summaries || []
+    };
+    
+    const content = JSON.stringify(data, null, 2);
+    
+    // 下载文件
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+    const filename = `full_${friendName}_${dateStr}.json`;
+    
+    this.downloadFile(content, filename, 'application/json');
+    
+    console.log('✅ 完整数据导出成功');
+    alert('✅ 完整数据已导出！');
+}
+
+// 下载文件
+downloadFile(content, filename, mimeType) {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    
+    URL.revokeObjectURL(url);
+}
+
+// 打开导入数据弹窗
+openImportDataModal() {
+    console.log('📥 打开导入数据弹窗');
+    
+    const modal = document.getElementById('importDataModal');
+    if (!modal) return;
+    
+    modal.style.display = 'flex';
+    
+    // 重置文件选择
+    const fileInput = document.getElementById('importDataFile');
+    const fileName = document.getElementById('importDataFileName');
+    if (fileInput) {
+        fileInput.value = '';
+    }
+    if (fileName) {
+        fileName.textContent = '未选择文件';
+    }
+    
+    // 绑定事件
+    if (!this.importDataEventsBound) {
+        this.bindImportDataEvents();
+        this.importDataEventsBound = true;
+    }
+}
+
+// 关闭导入数据弹窗
+closeImportDataModal() {
+    console.log('📥 关闭导入数据弹窗');
+    
+    const modal = document.getElementById('importDataModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+// 绑定导入弹窗事件
+bindImportDataEvents() {
+    // 关闭按钮
+    const closeBtn = document.getElementById('importDataClose');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            this.closeImportDataModal();
+        });
+    }
+    
+    // 遮罩层点击关闭
+    const overlay = document.getElementById('importDataOverlay');
+    if (overlay) {
+        overlay.addEventListener('click', () => {
+            this.closeImportDataModal();
+        });
+    }
+    
+    // 取消按钮
+    const cancelBtn = document.getElementById('importDataCancel');
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', () => {
+            this.closeImportDataModal();
+        });
+    }
+    
+    // 选择文件按钮
+    const fileBtn = document.getElementById('importDataFileBtn');
+    const fileInput = document.getElementById('importDataFile');
+    if (fileBtn && fileInput) {
+        fileBtn.addEventListener('click', () => {
+            fileInput.click();
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            const fileName = document.getElementById('importDataFileName');
+            if (file && fileName) {
+                fileName.textContent = file.name;
+            }
+        });
+    }
+    
+    // 确认按钮
+    const confirmBtn = document.getElementById('importDataConfirm');
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', () => {
+            this.handleImportDataConfirm();
+        });
+    }
+}
+
+// 处理导入确认
+handleImportDataConfirm() {
+    console.log('📥 处理导入确认');
+    
+    const fileInput = document.getElementById('importDataFile');
+    if (!fileInput || !fileInput.files || !fileInput.files[0]) {
+        alert('❌ 请先选择文件！');
+        return;
+    }
+    
+    const file = fileInput.files[0];
+    const mode = document.querySelector('input[name="importMode"]:checked').value;
+    
+    console.log('导入文件:', file.name);
+    console.log('导入方式:', mode);
+    
+    // 读取文件
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+        try {
+            const content = e.target.result;
+            
+            // 判断文件类型
+            if (file.name.endsWith('.txt')) {
+                this.importFromTXT(content, mode);
+            } else if (file.name.endsWith('.json')) {
+                this.importFromJSON(content, mode);
+            } else {
+                alert('❌ 不支持的文件格式！请选择 .txt 或 .json 文件');
+            }
+        } catch (error) {
+            console.error('❌ 导入失败:', error);
+            alert('❌ 导入失败：' + error.message);
+        }
+    };
+    
+    reader.onerror = () => {
+        alert('❌ 文件读取失败！');
+    };
+    
+    reader.readAsText(file);
+    
+    // 关闭弹窗
+    this.closeImportDataModal();
+}
+
+// 从TXT导入
+importFromTXT(content, mode) {
+    console.log('📥 从TXT导入');
+    
+    const lines = content.split('\n');
+    const messages = [];
+    
+    lines.forEach(line => {
+        line = line.trim();
+        if (!line) return;
+        
+        // 解析格式：2026-01-20 14:30:15 我：你好
+        const match = line.match(/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) (.+?)：(.+)$/);
+        if (match) {
+            const timestamp = new Date(match[1]).toISOString();
+            const sender = match[2];
+            const text = match[3];
+            
+            messages.push({
+                type: sender === '我' ? 'user' : 'ai',
+                text: text,
+                timestamp: timestamp
+            });
+        }
+    });
+    
+    if (messages.length === 0) {
+        alert('❌ 未找到有效的聊天记录！');
+        return;
+    }
+    
+    console.log(`✅ 解析到 ${messages.length} 条消息`);
+    
+    if (mode === 'overwrite') {
+        // 覆盖当前好友
+        this.overwriteMessages(messages);
+    } else {
+        // 新建好友
+        this.createNewFriendWithMessages(messages);
+    }
+}
+
+// 从JSON导入
+importFromJSON(content, mode) {
+    console.log('📥 从JSON导入');
+    
+    let data;
+    try {
+        data = JSON.parse(content);
+    } catch (e) {
+        alert('❌ JSON格式错误！');
+        return;
+    }
+    
+    if (data.exportType === 'messages') {
+        // 仅聊天记录
+        if (!data.messages || !Array.isArray(data.messages)) {
+            alert('❌ 数据格式错误：缺少messages字段！');
+            return;
+        }
+        
+        console.log(`✅ 解析到 ${data.messages.length} 条消息`);
+        
+        if (mode === 'overwrite') {
+            this.overwriteMessages(data.messages);
+        } else {
+            this.createNewFriendWithMessages(data.messages);
+        }
+        
+    } else if (data.exportType === 'full') {
+        // 完整数据
+        if (!data.friend || !data.messages) {
+            alert('❌ 数据格式错误：缺少必要字段！');
+            return;
+        }
+        
+        console.log(`✅ 解析到完整数据`);
+        
+        if (mode === 'overwrite') {
+            this.overwriteFullData(data);
+        } else {
+            this.createNewFriendWithFullData(data);
+        }
+        
+    } else {
+        alert('❌ 未知的导出类型！');
+    }
+}
+
+// 覆盖当前好友的消息
+overwriteMessages(messages) {
+    console.log('📥 覆盖当前好友的消息');
+    
+    if (!confirm(`确定要覆盖 ${this.currentFriend.nickname || this.currentFriend.name} 的聊天记录吗？\n\n这将删除现有的 ${this.messages.length} 条消息！`)) {
+        return;
+    }
+    
+    // 更新内存
+    this.messages = messages;
+    
+    // 更新storage
+    this.storage.setMessages(this.currentFriendCode, messages);
+    
+    // 重新渲染
+    this.renderMessages();
+    this.scrollToBottom();
+    
+    console.log('✅ 消息覆盖成功');
+    alert(`✅ 已导入 ${messages.length} 条消息！`);
+}
+
+// 覆盖当前好友的完整数据
+overwriteFullData(data) {
+    console.log('📥 覆盖当前好友的完整数据');
+    
+    if (!confirm(`确定要覆盖 ${this.currentFriend.nickname || this.currentFriend.name} 的所有数据吗？\n\n这将替换：\n- 好友信息\n- ${this.messages.length} 条聊天记录\n- 聊天设置\n- 聊天总结`)) {
+        return;
+    }
+    
+    // 保留原来的friendCode和头像
+    const oldCode = this.currentFriendCode;
+    const oldAvatar = this.currentFriend.avatar;
+    
+    // 更新好友信息
+    const updatedFriend = {
+        ...data.friend,
+        code: oldCode,
+        avatar: data.friend.avatar || oldAvatar
+    };
+    
+    this.storage.updateFriend(oldCode, updatedFriend);
+    
+    // 更新消息
+    this.messages = data.messages;
+    this.storage.setMessages(oldCode, data.messages);
+    
+    // 更新设置
+    if (data.settings) {
+        this.storage.saveChatSettings(oldCode, data.settings);
+    }
+    
+    // 更新总结
+    if (data.summaries && data.summaries.length > 0) {
+        // 先清空现有总结
+        const oldSummaries = this.storage.getChatSummaries(oldCode);
+        oldSummaries.forEach(s => {
+            this.storage.deleteChatSummary(oldCode, s.id);
+        });
+        
+        // 添加新总结
+        data.summaries.forEach(summary => {
+            this.storage.addChatSummary(oldCode, summary);
+        });
+    }
+    
+    // 重新加载
+    this.loadChat(oldCode);
+    
+    console.log('✅ 完整数据覆盖成功');
+    alert('✅ 完整数据已导入！');
+}
+
+// 新建好友（仅消息）
+createNewFriendWithMessages(messages) {
+    console.log('📥 新建好友（仅消息）');
+    
+    const newName = prompt('请输入新好友的名字：', '新导入的好友');
+    if (!newName || !newName.trim()) {
+        alert('❌ 已取消导入');
+        return;
+    }
+    
+    // 创建新好友
+    const newFriend = {
+        name: newName.trim(),
+        nickname: '',
+        signature: '',
+        persona: '',
+        poke: '戳了戳你'
+    };
+    
+    const newFriendCode = this.storage.addFriend(newFriend);
+    
+    // 添加消息
+    this.storage.setMessages(newFriendCode, messages);
+    
+    console.log('✅ 新好友创建成功:', newFriendCode);
+    alert(`✅ 已创建新好友"${newName}"，导入了 ${messages.length} 条消息！`);
+}
+
+// 新建好友（完整数据）
+createNewFriendWithFullData(data) {
+    console.log('📥 新建好友（完整数据）');
+    
+    const newName = prompt('请输入新好友的名字：', data.friend.name || '新导入的好友');
+    if (!newName || !newName.trim()) {
+        alert('❌ 已取消导入');
+        return;
+    }
+    
+    // 创建新好友
+    const newFriend = {
+        ...data.friend,
+        name: newName.trim()
+    };
+    
+    // 不带头像（避免重复）
+    delete newFriend.code;
+    delete newFriend.avatar;
+    
+    const newFriendCode = this.storage.addFriend(newFriend);
+    
+    // 添加消息
+    this.storage.setMessages(newFriendCode, data.messages);
+    
+    // 添加设置
+    if (data.settings) {
+        this.storage.saveChatSettings(newFriendCode, data.settings);
+    }
+    
+    // 添加总结
+    if (data.summaries && data.summaries.length > 0) {
+        data.summaries.forEach(summary => {
+            this.storage.addChatSummary(newFriendCode, summary);
+        });
+    }
+    
+    console.log('✅ 新好友创建成功:', newFriendCode);
+    alert(`✅ 已创建新好友"${newName}"，导入了完整数据！`);
+}
 }
 
 // 暴露到全局（供HTML onclick使用）
