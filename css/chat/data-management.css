@@ -1,0 +1,344 @@
+/* ==================== 导出数据弹窗 ==================== */
+
+.export-data-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+}
+
+.export-data-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(5px);
+}
+
+.export-data-dialog {
+    position: relative;
+    width: 90%;
+    max-width: 500px;
+    background: rgba(20, 20, 30, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    z-index: 1;
+}
+
+.export-data-header {
+    padding: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.export-data-header h3 {
+    margin: 0;
+    font-size: 18px;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.export-data-close {
+    background: none;
+    border: none;
+    font-size: 28px;
+    color: rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.export-data-close:hover {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.export-data-body {
+    padding: 20px;
+}
+
+.export-data-section {
+    margin-bottom: 24px;
+}
+
+.export-data-section:last-child {
+    margin-bottom: 0;
+}
+
+.export-data-section-title {
+    display: block;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 12px;
+}
+
+.export-data-options {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.export-data-option {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.export-data-option:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.export-data-option input[type="radio"] {
+    margin-right: 10px;
+}
+
+.export-data-option span {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.export-data-footer {
+    padding: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.export-data-cancel,
+.export-data-confirm {
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.export-data-cancel {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.export-data-cancel:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.export-data-confirm {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    color: white;
+}
+
+.export-data-confirm:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+/* ==================== 导入数据弹窗 ==================== */
+
+.import-data-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+}
+
+.import-data-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(5px);
+}
+
+.import-data-dialog {
+    position: relative;
+    width: 90%;
+    max-width: 500px;
+    background: rgba(20, 20, 30, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    z-index: 1;
+}
+
+.import-data-header {
+    padding: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.import-data-header h3 {
+    margin: 0;
+    font-size: 18px;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.import-data-close {
+    background: none;
+    border: none;
+    font-size: 28px;
+    color: rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.import-data-close:hover {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.import-data-body {
+    padding: 20px;
+}
+
+.import-data-section {
+    margin-bottom: 24px;
+}
+
+.import-data-section:last-child {
+    margin-bottom: 0;
+}
+
+.import-data-section-title {
+    display: block;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 12px;
+}
+
+.import-data-file-select {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.import-data-file-btn {
+    padding: 10px 20px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.import-data-file-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.import-data-file-name {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.import-data-options {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.import-data-option {
+    display: flex;
+    flex-direction: column;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.import-data-option:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.import-data-option input[type="radio"] {
+    margin-right: 10px;
+}
+
+.import-data-option > span:first-of-type {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.9);
+    display: flex;
+    align-items: center;
+}
+
+.import-data-option-desc {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+    margin-left: 24px;
+    margin-top: 4px;
+}
+
+.import-data-footer {
+    padding: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.import-data-cancel,
+.import-data-confirm {
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.import-data-cancel {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.import-data-cancel:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.import-data-confirm {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    color: white;
+}
+
+.import-data-confirm:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
