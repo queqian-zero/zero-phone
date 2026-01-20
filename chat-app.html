@@ -6,6 +6,10 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>聊天</title>
+
+<!-- ========== 引入农历库 ========== -->
+<script src="https://cdn.jsdelivr.net/npm/lunar-javascript@1.6.12/dist/lunar.min.js"></script>
+<!-- ========== 引入结束 ========== -->
     
     <!-- CSS文件引入 -->
     <link rel="stylesheet" href="css/reset.css">
@@ -345,6 +349,19 @@
     <span style="color: rgba(255,255,255,0.5); font-size: 16px;">›</span>
 </div>
     
+    <!-- ========== 新增：破次元时间感知 ========== -->
+<div class="setting-item">
+    <div class="setting-info">
+        <span class="setting-label">破次元时间感知</span>
+        <span class="setting-desc">让AI感知真实的年月日、时分秒和节日</span>
+    </div>
+    <label class="setting-switch">
+        <input type="checkbox" id="settingTimeAwareness" checked>
+        <span class="switch-slider"></span>
+    </label>
+</div>
+<!-- ========== 新增结束 ========== -->
+
     <!-- 群聊消息同步 -->
     <div class="setting-item disabled">
         <div class="setting-info">
@@ -382,28 +399,6 @@
                     <span class="setting-label">AI主动发朋友圈</span>
                     <span class="setting-desc">设置发朋友圈的频率</span>
                 </div>
-                <span class="setting-badge">待开发</span>
-            </div>
-            
-            <!-- 可见消息条数 -->
-            <div class="setting-item disabled">
-                <div class="setting-info">
-                    <span class="setting-label">可见消息条数</span>
-                    <span class="setting-desc">AI能看到的上下文消息数量</span>
-                </div>
-                <span class="setting-badge">待开发</span>
-            </div>
-            
-            <!-- 破次元时间感知 -->
-            <div class="setting-item disabled">
-                <div class="setting-info">
-                    <span class="setting-label">破次元时间感知</span>
-                    <span class="setting-desc">让AI感知现实世界的时间</span>
-                </div>
-                <label class="setting-switch">
-                    <input type="checkbox" disabled checked>
-                    <span class="switch-slider"></span>
-                </label>
                 <span class="setting-badge">待开发</span>
             </div>
             
