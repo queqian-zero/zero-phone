@@ -935,13 +935,6 @@ if (exportDataBtn) {
     });
 }
         
-        const exportDataBtn = document.getElementById('settingExportData');
-        if (exportDataBtn) {
-            exportDataBtn.addEventListener('click', () => {
-                alert('导出数据功能开发中...');
-            });
-        }
-        
         // 记忆模块入口
         const memoryModuleBtn = document.getElementById('settingMemoryModule');
         if (memoryModuleBtn) {
@@ -2587,7 +2580,7 @@ createNewFriendWithMessages(messages) {
 }
 
 // 新建好友（完整数据）
-createNewFriendWithFullData(data) {
+     createNewFriendWithFullData(data) {
     console.log('📥 新建好友（完整数据）');
     
     const newName = prompt('请输入新好友的名字：', data.friend.name || '新导入的好友');
