@@ -303,25 +303,47 @@
     <h3 class="section-title">进阶设置</h3>
     
     <!-- 隐藏Token统计 -->
-    <div class="setting-item">
-        <div class="setting-info">
-            <span class="setting-label">隐藏Token统计</span>
-            <span class="setting-desc">关闭聊天界面的Token显示</span>
-        </div>
-        <label class="setting-switch">
-            <input type="checkbox" id="settingHideToken">
-            <span class="switch-slider"></span>
-        </label>
+<div class="setting-item">
+    <div class="setting-info">
+        <span class="setting-label">隐藏Token统计</span>
+        <span class="setting-desc">关闭聊天界面的Token显示</span>
     </div>
-    
-    <!-- 记忆模块入口 -->
-    <div class="setting-item" id="settingMemoryModule" style="cursor: pointer;">
-        <div class="setting-info">
-            <span class="setting-label">记忆模块</span>
-            <span class="setting-desc">自动总结、手动总结、聊天记录同步</span>
-        </div>
-        <span style="color: rgba(255,255,255,0.5); font-size: 16px;">›</span>
+    <label class="setting-switch">
+        <input type="checkbox" id="settingHideToken">
+        <span class="switch-slider"></span>
+    </label>
+</div>
+
+<!-- ========== 新增：上下文记忆条数 ========== -->
+<div class="setting-item">
+    <div class="setting-info">
+        <span class="setting-label">上下文记忆条数</span>
+        <span class="setting-desc">AI每次能看到多少条历史消息</span>
     </div>
+    <input type="number" 
+           id="settingContextMessages" 
+           min="1" 
+           max="100" 
+           value="20"
+           style="width: 60px; padding: 6px 10px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; color: rgba(255,255,255,0.9); text-align: center; font-size: 14px;">
+</div>
+
+<div style="padding: 10px 16px; margin: 0 16px 16px 16px; background: rgba(139,0,0,0.1); border-left: 3px solid rgba(139,0,0,0.5); border-radius: 4px; font-size: 12px; color: rgba(255,255,255,0.7); line-height: 1.6;">
+    💡 提示：<br>
+    • 条数越多，AI记忆越完整<br>
+    • 但会消耗更多Token，响应可能更慢<br>
+    • 推荐设置：10-30条
+</div>
+<!-- ========== 新增结束 ========== -->
+
+<!-- 记忆模块入口 -->
+<div class="setting-item" id="settingMemoryModule" style="cursor: pointer;">
+    <div class="setting-info">
+        <span class="setting-label">记忆模块</span>
+        <span class="setting-desc">自动总结、手动总结、聊天记录同步</span>
+    </div>
+    <span style="color: rgba(255,255,255,0.5); font-size: 16px;">›</span>
+</div>
     
     <!-- 群聊消息同步 -->
     <div class="setting-item disabled">
