@@ -14,14 +14,15 @@ class ChatInterface {
         this.originalFriendName = null;
         
         // 设置相关
-         this.settings = {
-    aiRecognizeImage: true,
-    chatPin: false,
-    hideToken: false,
-    autoSummary: true,
-    summaryInterval: 20,
-    contextMessages: 20  // ← 新增：上下文记忆条数
-};
+        this.settings = {
+            aiRecognizeImage: true,
+            chatPin: false,
+            hideToken: false,
+            autoSummary: true,
+            summaryInterval: 20,
+            contextMessages: 20,
+            timeAwareness: true  // ← 新增：破次元时间感知
+        };
         
         this.init();
     }
@@ -530,21 +531,29 @@ class ChatInterface {
         this.scrollToBottom();
     }
     
+    // ← 修改：添加破次元时间感知
     async sendAIMessage() {
-    console.log('🤖 sendAIMessage() 被调用');
-    
-    this.showTypingIndicator();
-    
-    try {
-        // 使用用户设置的上下文条数，而不是固定的20条
-        const maxMessages = this.settings.contextMessages || 20;
-        const recentMessages = this.messages.slice(-maxMessages);
+        console.log('🤖 sendAIMessage() 被调用');
         
-        console.log('📜 准备发送的消息历史:', recentMessages.length, '条');
-        console.log(`📊 使用 ${maxMessages} 条消息作为上下文（设置值：${this.settings.contextMessages}）`);
+        this.showTypingIndicator();
         
-        const systemPrompt = this.currentFriend?.persona || '';
-        console.log('👤 人设:', systemPrompt.substring(0, 50), '...');
+        try {
+            const maxMessages = this.settings.contextMessages || 20;
+            const recentMessages = this.messages.slice(-maxMessages);
+            
+            console.log('📜 准备发送的消息历史:', recentMessages.length, '条');
+            console.log(`📊 使用 ${maxMessages} 条消息作为上下文`);
+            
+            // ← 新增：构造系统提示（包含时间信息）
+            let systemPrompt = this.currentFriend?.persona || '';
+            
+            if (this.settings.timeAwareness) {
+                const timeInfo = this.getCurrentTimeInfo();
+                systemPrompt = `${timeInfo}\n\n${systemPrompt}`;
+                console.log('🕐 时间感知已开启，添加时间信息');
+            }
+            
+            console.log('👤 最终系统提示:', systemPrompt.substring(0, 100), '...');
             
             console.log('🌐 开始调用API...');
             const result = await this.apiManager.callAI(recentMessages, systemPrompt);
@@ -586,6 +595,56 @@ class ChatInterface {
         }
     }
     
+    // ← 新增：获取当前时间信息（包含农历）
+    getCurrentTimeInfo() {
+        const now = new Date();
+        
+        // 检查农历库是否加载
+        if (typeof Lunar === 'undefined') {
+            console.warn('⚠️ 农历库未加载，使用基础时间信息');
+            return `【当前时间】${this.formatFullDateTime(now)}`;
+        }
+        
+        try {
+            // 使用农历库
+            const lunar = Lunar.fromDate(now);
+            const solarTerm = lunar.getCurrentJieQi()?.getName() || '';
+            const festival = lunar.getFestivals().join('、') || '';
+            
+            let timeInfo = `【当前时间】${this.formatFullDateTime(now)}`;
+            timeInfo += `\n【农历】${lunar.getYearInChinese()}年${lunar.getMonthInChinese()}月${lunar.getDayInChinese()}`;
+            
+            if (solarTerm) {
+                timeInfo += `\n【节气】${solarTerm}`;
+            }
+            
+            if (festival) {
+                timeInfo += `\n【节日】${festival}`;
+            }
+            
+            return timeInfo;
+            
+        } catch (error) {
+            console.error('❌ 农历库调用失败:', error);
+            return `【当前时间】${this.formatFullDateTime(now)}`;
+        }
+    }
+    
+    // ← 新增：格式化完整日期时间
+    formatFullDateTime(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
+        
+        const weekDays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+        const weekDay = weekDays[date.getDay()];
+        
+        return `${year}年${month}月${day}日 ${weekDay} ${hours}:${minutes}:${seconds}`;
+    }
+    
     showErrorAlert(errorMessage) {
         console.log('⚠️ 显示错误提示:', errorMessage);
         alert('❌ AI调用失败\n\n' + errorMessage);
@@ -609,6 +668,7 @@ class ChatInterface {
             console.log('💬 恢复好友名称');
         }
     }
+    
     // ==================== 消息渲染 ====================
     
     addMessage(message) {
@@ -827,31 +887,39 @@ class ChatInterface {
         }
         
         const hideTokenSwitch = document.getElementById('settingHideToken');
-if (hideTokenSwitch) {
-    hideTokenSwitch.addEventListener('change', (e) => {
-        this.settings.hideToken = e.target.checked;
-        console.log('隐藏Token统计:', this.settings.hideToken);
-        this.toggleTokenDisplay();
-        this.saveSettings();
-    });
-}
-
-// ========== 新增：上下文记忆条数 ==========
-const contextMessagesInput = document.getElementById('settingContextMessages');
-if (contextMessagesInput) {
-    contextMessagesInput.addEventListener('change', (e) => {
-        const value = parseInt(e.target.value);
-        if (value >= 1 && value <= 100) {
-            this.settings.contextMessages = value;
-            console.log('✅ 上下文记忆条数已更新:', this.settings.contextMessages);
-            this.saveSettings();
-        } else {
-            alert('❌ 请输入1-100之间的数字');
-            e.target.value = this.settings.contextMessages || 20;
+        if (hideTokenSwitch) {
+            hideTokenSwitch.addEventListener('change', (e) => {
+                this.settings.hideToken = e.target.checked;
+                console.log('隐藏Token统计:', this.settings.hideToken);
+                this.toggleTokenDisplay();
+                this.saveSettings();
+            });
         }
-    });
-}
-// ========== 新增结束 ==========
+
+        const contextMessagesInput = document.getElementById('settingContextMessages');
+        if (contextMessagesInput) {
+            contextMessagesInput.addEventListener('change', (e) => {
+                const value = parseInt(e.target.value);
+                if (value >= 1 && value <= 100) {
+                    this.settings.contextMessages = value;
+                    console.log('✅ 上下文记忆条数已更新:', this.settings.contextMessages);
+                    this.saveSettings();
+                } else {
+                    alert('❌ 请输入1-100之间的数字');
+                    e.target.value = this.settings.contextMessages || 20;
+                }
+            });
+        }
+        
+        // ← 新增：破次元时间感知开关
+        const timeAwarenessSwitch = document.getElementById('settingTimeAwareness');
+        if (timeAwarenessSwitch) {
+            timeAwarenessSwitch.addEventListener('change', (e) => {
+                this.settings.timeAwareness = e.target.checked;
+                console.log('破次元时间感知:', this.settings.timeAwareness);
+                this.saveSettings();
+            });
+        }
         
         const importDataBtn = document.getElementById('settingImportData');
         if (importDataBtn) {
@@ -914,34 +982,38 @@ if (contextMessagesInput) {
     }
     
     applySettingsToUI() {
-    console.log('🎨 应用设置到UI');
-    
-    const aiRecognizeSwitch = document.getElementById('settingAiRecognizeImage');
-    if (aiRecognizeSwitch) {
-        aiRecognizeSwitch.checked = this.settings.aiRecognizeImage;
-    }
-    
-    const chatPinSwitch = document.getElementById('settingChatPin');
-    if (chatPinSwitch) {
-        chatPinSwitch.checked = this.settings.chatPin;
-    }
-    
-    const hideTokenSwitch = document.getElementById('settingHideToken');
-    if (hideTokenSwitch) {
-        hideTokenSwitch.checked = this.settings.hideToken;
-    }
-    
-    const pokeValue = document.getElementById('settingPokeValue');
-    if (pokeValue && this.currentFriend) {
-        pokeValue.textContent = this.currentFriend.poke || '戳了戳你';
-    }
-    
-    // ========== 新增：上下文记忆条数 ==========
-    const contextMessagesInput = document.getElementById('settingContextMessages');
-    if (contextMessagesInput) {
-        contextMessagesInput.value = this.settings.contextMessages || 20;
-    }
-    // ========== 新增结束 ==========
+        console.log('🎨 应用设置到UI');
+        
+        const aiRecognizeSwitch = document.getElementById('settingAiRecognizeImage');
+        if (aiRecognizeSwitch) {
+            aiRecognizeSwitch.checked = this.settings.aiRecognizeImage;
+        }
+        
+        const chatPinSwitch = document.getElementById('settingChatPin');
+        if (chatPinSwitch) {
+            chatPinSwitch.checked = this.settings.chatPin;
+        }
+        
+        const hideTokenSwitch = document.getElementById('settingHideToken');
+        if (hideTokenSwitch) {
+            hideTokenSwitch.checked = this.settings.hideToken;
+        }
+        
+        const pokeValue = document.getElementById('settingPokeValue');
+        if (pokeValue && this.currentFriend) {
+            pokeValue.textContent = this.currentFriend.poke || '戳了戳你';
+        }
+        
+        const contextMessagesInput = document.getElementById('settingContextMessages');
+        if (contextMessagesInput) {
+            contextMessagesInput.value = this.settings.contextMessages || 20;
+        }
+        
+        // ← 新增：破次元时间感知开关
+        const timeAwarenessSwitch = document.getElementById('settingTimeAwareness');
+        if (timeAwarenessSwitch) {
+            timeAwarenessSwitch.checked = this.settings.timeAwareness !== false;
+        }
         
         this.toggleTokenDisplay();
     }
@@ -1057,6 +1129,7 @@ if (contextMessagesInput) {
             }, 500);
         }
     }
+
     // ==================== 记忆模块功能 ====================
     
     // 打开记忆模块页面
