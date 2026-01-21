@@ -379,6 +379,50 @@ updateChatSummary(friendCode, summaryId, newContent) {
         }
     }
     
+    // ← 在这里添加新方法
+// 替换整个消息列表（用于导入）
+setMessages(friendCode, messages) {
+    try {
+        console.log('💾 setMessages() 被调用:', friendCode, messages.length, '条消息');
+        
+        const chats = this.getData(this.KEYS.CHATS) || [];
+        let chat = chats.find(c => c.friendCode === friendCode);
+        
+        if (!chat) {
+            // 如果还没有聊天记录，创建新的
+            chat = {
+                friendCode: friendCode,
+                messages: [],
+                tokenStats: {
+                    worldBook: 0,
+                    persona: 0,
+                    chatHistory: 0,
+                    input: 0,
+                    output: 0,
+                    total: 0,
+                    lastUpdate: new Date().toISOString()
+                },
+                lastSummaryIndex: 0
+            };
+            chats.push(chat);
+        }
+        
+        // 直接替换整个消息列表
+        chat.messages = messages;
+        
+        const success = this.saveData(this.KEYS.CHATS, chats);
+        
+        if (success) {
+            console.log('✅ 消息列表已替换:', friendCode);
+        }
+        
+        return success;
+    } catch (e) {
+        console.error('❌ 替换消息列表失败:', e);
+        return false;
+    }
+}
+    
     // 更新Token统计
     updateTokenStats(friendCode, stats) {
         try {
