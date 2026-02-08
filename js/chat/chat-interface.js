@@ -21,7 +21,7 @@ class ChatInterface {
             autoSummary: true,
             summaryInterval: 20,
             contextMessages: 20,
-            timeAwareness: true  // ← 新增：破次元时间感知
+            timeAwareness: true,  // ← 新增：破次元时间感知
             chatWallpaper: 'default'  // ← 新增：聊天壁纸
         };
         
