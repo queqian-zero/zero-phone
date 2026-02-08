@@ -169,17 +169,6 @@
     font-weight: 600;
 }
 
-/* ==================== 消息区域 ==================== */
-
-.messages-container {
-    flex: 1;
-    overflow-y: auto;
-    padding: 16px;
-    padding-bottom: 80px;
-    background: #000;
-    position: relative;
-}
-
 .messages-list {
     display: flex;
     flex-direction: column;
