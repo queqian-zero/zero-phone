@@ -435,23 +435,15 @@
                 <span class="setting-badge">待开发</span>
             </div>
             
-<!-- ==================== 修改聊天设置中的壁纸项 ==================== -->
-<!-- 
-    使用说明：
-    在 chat-app.html 中找到"聊天壁纸"这个 setting-item，
-    把原来的 disabled 版本替换成下面这个可点击的版本
--->
-
-<!-- 聊天壁纸 -->
-<div class="setting-item" id="settingChatWallpaper" style="cursor: pointer;">
-    <div class="setting-info">
-        <span class="setting-label">聊天壁纸</span>
-        <span class="setting-desc">选择预设或上传自定义背景</span>
-    </div>
-    <button class="setting-action-btn">
-        <span>🖼️</span>
-    </button>
-</div>
+            <!-- 聊天壁纸 -->
+            <div class="setting-item disabled">
+                <div class="setting-info">
+                    <span class="setting-label">聊天壁纸</span>
+                    <span class="setting-desc">上传自定义聊天背景</span>
+                </div>
+                <span class="setting-badge">待开发</span>
+            </div>
+        </div>
         
         <!-- ========== 亲密关系模块 ========== -->
         <div class="settings-section">
@@ -770,134 +762,6 @@
     </div>
 </div>
 <!-- ==================== 导入数据弹窗结束 ==================== -->
-<!-- ==================== 聊天壁纸弹窗 ==================== -->
-<!-- 
-    使用说明：
-    1. 将这段代码插入到 chat-app.html 中，放在所有弹窗的最后（在 </div> 闭合标签之前）
-    2. 建议放在"导入数据弹窗"后面
--->
-
-<div class="wallpaper-modal" id="wallpaperModal" style="display: none;">
-    <div class="wallpaper-overlay" id="wallpaperOverlay"></div>
-    <div class="wallpaper-dialog">
-        <div class="wallpaper-header">
-            <h3>选择聊天壁纸</h3>
-            <button class="wallpaper-close" id="wallpaperClose">×</button>
-        </div>
-        
-        <div class="wallpaper-body">
-            <!-- 当前壁纸预览 -->
-            <div class="wallpaper-current-section">
-                <div class="wallpaper-current-label">当前壁纸：</div>
-                <div class="wallpaper-current-preview" id="wallpaperCurrentPreview">
-                    <span>默认（纯黑色）</span>
-                </div>
-            </div>
-            
-            <!-- 预设壁纸 -->
-            <div class="wallpaper-preset-section">
-                <div class="wallpaper-preset-label">预设壁纸：</div>
-                <div class="wallpaper-preset-grid" id="wallpaperPresetGrid">
-                    <!-- 默认选项 -->
-                    <div class="wallpaper-preset-item" data-wallpaper="default">
-                        <div class="wallpaper-preset-thumbnail wallpaper-default">
-                            <span>默认</span>
-                        </div>
-                    </div>
-                    
-                    <!-- wallpaper-1.jpg -->
-                    <div class="wallpaper-preset-item" data-wallpaper="assets/images/chat-wallpapers/wallpaper-1.jpg">
-                        <div class="wallpaper-preset-thumbnail" style="background-image: url('assets/images/chat-wallpapers/wallpaper-1.jpg');"></div>
-                    </div>
-                    
-                    <!-- wallpaper-2.png -->
-                    <div class="wallpaper-preset-item" data-wallpaper="assets/images/chat-wallpapers/wallpaper-2.png">
-                        <div class="wallpaper-preset-thumbnail" style="background-image: url('assets/images/chat-wallpapers/wallpaper-2.png');"></div>
-                    </div>
-                    
-                    <!-- wallpaper-3.png -->
-                    <div class="wallpaper-preset-item" data-wallpaper="assets/images/chat-wallpapers/wallpaper-3.png">
-                        <div class="wallpaper-preset-thumbnail" style="background-image: url('assets/images/chat-wallpapers/wallpaper-3.png');"></div>
-                    </div>
-                    
-                    <!-- wallpaper-4.png -->
-                    <div class="wallpaper-preset-item" data-wallpaper="assets/images/chat-wallpapers/wallpaper-4.png">
-                        <div class="wallpaper-preset-thumbnail" style="background-image: url('assets/images/chat-wallpapers/wallpaper-4.png');"></div>
-                    </div>
-                    
-                    <!-- wallpaper-5.png -->
-                    <div class="wallpaper-preset-item" data-wallpaper="assets/images/chat-wallpapers/wallpaper-5.png">
-                        <div class="wallpaper-preset-thumbnail" style="background-image: url('assets/images/chat-wallpapers/wallpaper-5.png');"></div>
-                    </div>
-                    
-                    <!-- wallpaper-6.jpg -->
-                    <div class="wallpaper-preset-item" data-wallpaper="assets/images/chat-wallpapers/wallpaper-6.jpg">
-                        <div class="wallpaper-preset-thumbnail" style="background-image: url('assets/images/chat-wallpapers/wallpaper-6.jpg');"></div>
-                    </div>
-                    
-                    <!-- wallpaper-7.png -->
-                    <div class="wallpaper-preset-item" data-wallpaper="assets/images/chat-wallpapers/wallpaper-7.png">
-                        <div class="wallpaper-preset-thumbnail" style="background-image: url('assets/images/chat-wallpapers/wallpaper-7.png');"></div>
-                    </div>
-                    
-                    <!-- wallpaper-8.png -->
-                    <div class="wallpaper-preset-item" data-wallpaper="assets/images/chat-wallpapers/wallpaper-8.png">
-                        <div class="wallpaper-preset-thumbnail" style="background-image: url('assets/images/chat-wallpapers/wallpaper-8.png');"></div>
-                    </div>
-                    
-                    <!-- wallpaper-9.png -->
-                    <div class="wallpaper-preset-item" data-wallpaper="assets/images/chat-wallpapers/wallpaper-9.png">
-                        <div class="wallpaper-preset-thumbnail" style="background-image: url('assets/images/chat-wallpapers/wallpaper-9.png');"></div>
-                    </div>
-                    
-                    <!-- wallpaper-10.png -->
-                    <div class="wallpaper-preset-item" data-wallpaper="assets/images/chat-wallpapers/wallpaper-10.png">
-                        <div class="wallpaper-preset-thumbnail" style="background-image: url('assets/images/chat-wallpapers/wallpaper-10.png');"></div>
-                    </div>
-                    
-                    <!-- wallpaper-11.png -->
-                    <div class="wallpaper-preset-item" data-wallpaper="assets/images/chat-wallpapers/wallpaper-11.png">
-                        <div class="wallpaper-preset-thumbnail" style="background-image: url('assets/images/chat-wallpapers/wallpaper-11.png');"></div>
-                    </div>
-                    
-                    <!-- wallpaper-12.png -->
-                    <div class="wallpaper-preset-item" data-wallpaper="assets/images/chat-wallpapers/wallpaper-12.png">
-                        <div class="wallpaper-preset-thumbnail" style="background-image: url('assets/images/chat-wallpapers/wallpaper-12.png');"></div>
-                    </div>
-                    
-                    <!-- wallpaper-13.png -->
-                    <div class="wallpaper-preset-item" data-wallpaper="assets/images/chat-wallpapers/wallpaper-13.png">
-                        <div class="wallpaper-preset-thumbnail" style="background-image: url('assets/images/chat-wallpapers/wallpaper-13.png');"></div>
-                    </div>
-                    
-                    <!-- wallpaper-14.jpg -->
-                    <div class="wallpaper-preset-item" data-wallpaper="assets/images/chat-wallpapers/wallpaper-14.jpg">
-                        <div class="wallpaper-preset-thumbnail" style="background-image: url('assets/images/chat-wallpapers/wallpaper-14.jpg');"></div>
-                    </div>
-                    
-                    <!-- wallpaper-15.jpg -->
-                    <div class="wallpaper-preset-item" data-wallpaper="assets/images/chat-wallpapers/wallpaper-15.jpg">
-                        <div class="wallpaper-preset-thumbnail" style="background-image: url('assets/images/chat-wallpapers/wallpaper-15.jpg');"></div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- 自定义上传 -->
-            <div class="wallpaper-upload-section">
-                <div class="wallpaper-upload-label">或上传自定义壁纸：</div>
-                <div class="wallpaper-upload-area">
-                    <input type="file" id="wallpaperUploadInput" accept="image/*" style="display: none;">
-                    <button class="wallpaper-upload-btn" id="wallpaperUploadBtn">
-                        <span>📤</span>
-                        <span>选择图片上传</span>
-                    </button>
-                    <div class="wallpaper-upload-hint">图片将自动压缩以优化性能</div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-<!-- ==================== 聊天壁纸弹窗结束 ==================== -->
 
         </div>
         <!-- ← pages-container 结束 -->
