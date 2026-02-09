@@ -208,6 +208,13 @@
     position: relative;
     z-index: 1;
 }
+
+.messages-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding-bottom: 16px;
+}
 /* ==================== 消息样式 ==================== */
 
 .message {
