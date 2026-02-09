@@ -169,13 +169,6 @@
     font-weight: 600;
 }
 
-.messages-list {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    padding-bottom: 16px;
-}
-
 /* ==================== 聊天界面背景壁纸支持 ==================== */
 /* 
    使用说明：
