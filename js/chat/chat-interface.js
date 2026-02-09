@@ -283,6 +283,12 @@ class ChatInterface {
         document.querySelector('.bottom-nav').style.display = 'flex';
         document.querySelector('.top-bar').style.display = 'flex';
         
+            // ← 添加这行：确保聊天设置页面被隐藏
+    const settingsPage = document.getElementById('chatSettingsPage');
+    if (settingsPage) {
+        settingsPage.style.display = 'none';
+    }
+    
         this.chatApp.switchPage('friendListPage');
         
         const inputField = document.getElementById('inputField');
