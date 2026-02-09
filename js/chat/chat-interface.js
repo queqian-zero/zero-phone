@@ -21,8 +21,9 @@ class ChatInterface {
             autoSummary: true,
             summaryInterval: 20,
             contextMessages: 20,
-            timeAwareness: true  // ← 新增：破次元时间感知
-        };
+            timeAwareness: true,
+            chatWallpaper: 'default'  // ← 新加的这一行
+};
         
         this.init();
     }
@@ -846,6 +847,14 @@ class ChatInterface {
             });
         }
         
+        // 聊天壁纸按钮
+        const wallpaperBtn = document.getElementById('settingChatWallpaper');
+        if (wallpaperBtn) {
+            wallpaperBtn.addEventListener('click', () => {
+                this.openWallpaperModal();
+            });
+        }
+        
         const settingsDoneBtn = document.getElementById('settingsDoneBtn');
         if (settingsDoneBtn) {
             settingsDoneBtn.addEventListener('click', () => {
@@ -962,6 +971,10 @@ if (exportDataBtn) {
         }
         
         this.applySettingsToUI();
+        
+        // 加载聊天壁纸
+this.applyWallpaper(this.settings.chatWallpaper || 'default');
+
     }
     
     saveSettings() {
@@ -1016,6 +1029,10 @@ if (exportDataBtn) {
         }
         
         this.toggleTokenDisplay();
+        
+        // 应用聊天壁纸
+this.applyWallpaper(this.settings.chatWallpaper || 'default');
+
     }
     
     toggleTokenDisplay() {
@@ -2618,6 +2635,264 @@ createNewFriendWithMessages(messages) {
     
     console.log('✅ 新好友创建成功:', newFriendCode);
     alert(`✅ 已创建新好友"${newName}"，导入了完整数据！`);
+}
+  // ==================== 壁纸功能方法 ====================
+
+// 打开壁纸选择弹窗
+openWallpaperModal() {
+    console.log('🖼️ 打开壁纸选择弹窗');
+    
+    const modal = document.getElementById('wallpaperModal');
+    if (!modal) {
+        console.error('❌ 找不到壁纸弹窗元素');
+        return;
+    }
+    
+    // 显示弹窗
+    modal.style.display = 'flex';
+    
+    // 更新当前壁纸预览
+    this.updateCurrentWallpaperPreview();
+    
+    // 更新选中状态
+    this.updateWallpaperSelection();
+    
+    // 绑定壁纸弹窗事件
+    if (!this.wallpaperEventsBound) {
+        this.bindWallpaperEvents();
+        this.wallpaperEventsBound = true;
+    }
+}
+
+// 关闭壁纸选择弹窗
+closeWallpaperModal() {
+    console.log('🖼️ 关闭壁纸选择弹窗');
+    
+    const modal = document.getElementById('wallpaperModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+// 绑定壁纸弹窗事件
+bindWallpaperEvents() {
+    console.log('🔗 绑定壁纸弹窗事件');
+    
+    // 关闭按钮
+    const closeBtn = document.getElementById('wallpaperClose');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            this.closeWallpaperModal();
+        });
+    }
+    
+    // 遮罩层点击关闭
+    const overlay = document.getElementById('wallpaperOverlay');
+    if (overlay) {
+        overlay.addEventListener('click', () => {
+            this.closeWallpaperModal();
+        });
+    }
+    
+    // 预设壁纸点击事件
+    const presetItems = document.querySelectorAll('.wallpaper-preset-item');
+    presetItems.forEach(item => {
+        item.addEventListener('click', () => {
+            const wallpaper = item.getAttribute('data-wallpaper');
+            this.selectWallpaper(wallpaper);
+        });
+    });
+    
+    // 上传按钮
+    const uploadBtn = document.getElementById('wallpaperUploadBtn');
+    const uploadInput = document.getElementById('wallpaperUploadInput');
+    
+    if (uploadBtn && uploadInput) {
+        uploadBtn.addEventListener('click', () => {
+            uploadInput.click();
+        });
+        
+        uploadInput.addEventListener('change', (e) => {
+            this.handleWallpaperUpload(e);
+        });
+    }
+}
+
+// 选择壁纸
+selectWallpaper(wallpaper) {
+    console.log('🖼️ 选择壁纸:', wallpaper);
+    
+    // 更新设置
+    this.settings.chatWallpaper = wallpaper;
+    
+    // 保存设置
+    this.saveSettings();
+    
+    // 应用壁纸
+    this.applyWallpaper(wallpaper);
+    
+    // 更新当前壁纸预览
+    this.updateCurrentWallpaperPreview();
+    
+    // 更新选中状态
+    this.updateWallpaperSelection();
+    
+    console.log('✅ 壁纸已应用');
+}
+
+// 应用壁纸到聊天界面
+applyWallpaper(wallpaper) {
+    console.log('🎨 应用壁纸:', wallpaper);
+    
+    const container = document.getElementById('messagesContainer');
+    if (!container) {
+        console.error('❌ 找不到消息容器');
+        return;
+    }
+    
+    if (wallpaper === 'default') {
+        // 恢复默认（纯黑色）
+        container.style.backgroundImage = 'none';
+        container.classList.remove('has-wallpaper');
+        console.log('✅ 已恢复默认壁纸');
+    } else {
+        // 设置壁纸
+        container.style.backgroundImage = `url('${wallpaper}')`;
+        container.classList.add('has-wallpaper');
+        console.log('✅ 壁纸已设置');
+    }
+}
+
+// 更新当前壁纸预览
+updateCurrentWallpaperPreview() {
+    const preview = document.getElementById('wallpaperCurrentPreview');
+    if (!preview) return;
+    
+    const currentWallpaper = this.settings.chatWallpaper || 'default';
+    
+    if (currentWallpaper === 'default') {
+        preview.style.backgroundImage = 'none';
+        preview.innerHTML = '<span>默认（纯黑色）</span>';
+    } else {
+        preview.style.backgroundImage = `url('${currentWallpaper}')`;
+        preview.innerHTML = '';
+    }
+}
+
+// 更新壁纸选中状态
+updateWallpaperSelection() {
+    const currentWallpaper = this.settings.chatWallpaper || 'default';
+    
+    // 移除所有选中状态
+    document.querySelectorAll('.wallpaper-preset-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    
+    // 添加当前选中状态
+    const activeItem = document.querySelector(`.wallpaper-preset-item[data-wallpaper="${currentWallpaper}"]`);
+    if (activeItem) {
+        activeItem.classList.add('active');
+    }
+}
+
+// 处理壁纸上传
+handleWallpaperUpload(event) {
+    console.log('📤 处理壁纸上传');
+    
+    const file = event.target.files[0];
+    if (!file) {
+        console.log('⚠️ 没有选择文件');
+        return;
+    }
+    
+    // 检查文件类型
+    if (!file.type.startsWith('image/')) {
+        alert('❌ 请选择图片文件！');
+        return;
+    }
+    
+    // 检查文件大小（限制10MB）
+    if (file.size > 10 * 1024 * 1024) {
+        alert('❌ 图片文件太大！请选择小于10MB的图片。');
+        return;
+    }
+    
+    console.log('📷 开始处理图片:', file.name, '大小:', (file.size / 1024).toFixed(2), 'KB');
+    
+    // 读取图片并压缩
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+        this.compressAndApplyWallpaper(e.target.result);
+    };
+    
+    reader.onerror = () => {
+        console.error('❌ 读取文件失败');
+        alert('❌ 读取文件失败！');
+    };
+    
+    reader.readAsDataURL(file);
+}
+
+// 压缩并应用壁纸
+compressAndApplyWallpaper(imageData) {
+    console.log('🗜️ 开始压缩图片...');
+    
+    const img = new Image();
+    
+    img.onload = () => {
+        console.log('📐 原始尺寸:', img.width, 'x', img.height);
+        
+        // 创建canvas
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // 计算压缩后的尺寸（最大宽度1080px）
+        const maxWidth = 1080;
+        let width = img.width;
+        let height = img.height;
+        
+        if (width > maxWidth) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        console.log('📐 压缩后尺寸:', width, 'x', height);
+        
+        // 绘制图片
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        // 压缩为JPEG格式，质量70%
+        const compressedData = canvas.toDataURL('image/jpeg', 0.7);
+        
+        // 计算压缩后的大小
+        const originalSize = imageData.length;
+        const compressedSize = compressedData.length;
+        const compressionRatio = ((1 - compressedSize / originalSize) * 100).toFixed(2);
+        
+        console.log('✅ 压缩完成！');
+        console.log('📊 原始大小:', (originalSize / 1024).toFixed(2), 'KB');
+        console.log('📊 压缩后大小:', (compressedSize / 1024).toFixed(2), 'KB');
+        console.log('📊 压缩率:', compressionRatio, '%');
+        
+        // 应用壁纸
+        this.selectWallpaper(compressedData);
+        
+        // 关闭弹窗
+        this.closeWallpaperModal();
+        
+        alert('✅ 壁纸上传成功！已自动压缩优化。');
+    };
+    
+    img.onerror = () => {
+        console.error('❌ 图片加载失败');
+        alert('❌ 图片加载失败！');
+    };
+    
+    img.src = imageData;
 }
 }
 
