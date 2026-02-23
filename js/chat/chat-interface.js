@@ -22,8 +22,10 @@ class ChatInterface {
             summaryInterval: 20,
             contextMessages: 20,
             timeAwareness: true,
-            chatWallpaper: 'default'  // ← 新加的这一行
+                chatWallpaper: 'default',
+            bubbleStyle: 'default'   // ← 新加这一行
 };
+
         
         this.init();
     }
@@ -855,6 +857,15 @@ class ChatInterface {
             });
         }
         
+                // 聊天气泡美化按钮
+        const bubbleBtn = document.getElementById('settingBubbleStyle');
+        if (bubbleBtn) {
+            bubbleBtn.addEventListener('click', () => {
+                this.openBubbleModal();
+            });
+        }
+
+        
         const settingsDoneBtn = document.getElementById('settingsDoneBtn');
         if (settingsDoneBtn) {
             settingsDoneBtn.addEventListener('click', () => {
@@ -974,6 +985,9 @@ if (exportDataBtn) {
         
         // 加载聊天壁纸
 this.applyWallpaper(this.settings.chatWallpaper || 'default');
+       // 加载气泡样式
+        this.applyBubbleStyle(this.settings.bubbleStyle || 'default');
+
 
     }
     
@@ -1032,6 +1046,9 @@ this.applyWallpaper(this.settings.chatWallpaper || 'default');
         
         // 应用聊天壁纸
 this.applyWallpaper(this.settings.chatWallpaper || 'default');
+        // 应用气泡样式
+        this.applyBubbleStyle(this.settings.bubbleStyle || 'default');
+
 
     }
     
@@ -2894,6 +2911,151 @@ compressAndApplyWallpaper(imageData) {
     
     img.src = imageData;
 }
+
+    // ==================== 气泡美化功能方法 ====================
+
+    // 打开气泡美化弹窗
+    openBubbleModal() {
+        console.log('💬 打开气泡美化弹窗');
+
+        const modal = document.getElementById('bubbleModal');
+        if (!modal) {
+            console.error('❌ 找不到气泡弹窗元素');
+            return;
+        }
+
+        modal.style.display = 'flex';
+
+        // 更新预览区域的气泡样式
+        this.updateBubblePreview(this.settings.bubbleStyle || 'default');
+
+        // 更新选中状态
+        this.updateBubbleSelection();
+
+        // 绑定弹窗事件（只绑定一次）
+        if (!this.bubbleEventsBound) {
+            this.bindBubbleEvents();
+            this.bubbleEventsBound = true;
+        }
+    }
+
+    // 关闭气泡美化弹窗
+    closeBubbleModal() {
+        console.log('💬 关闭气泡美化弹窗');
+
+        const modal = document.getElementById('bubbleModal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+
+    // 绑定气泡弹窗事件
+    bindBubbleEvents() {
+        console.log('🔗 绑定气泡弹窗事件');
+
+        // 关闭按钮
+        const closeBtn = document.getElementById('bubbleClose');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                this.closeBubbleModal();
+            });
+        }
+
+        // 遮罩层点击关闭
+        const overlay = document.getElementById('bubbleOverlay');
+        if (overlay) {
+            overlay.addEventListener('click', () => {
+                this.closeBubbleModal();
+            });
+        }
+
+        // 样式选项点击事件
+        const styleItems = document.querySelectorAll('.bubble-style-item');
+        styleItems.forEach(item => {
+            item.addEventListener('click', () => {
+                const style = item.getAttribute('data-style');
+                this.selectBubbleStyle(style);
+            });
+        });
+    }
+
+    // 选择气泡样式
+    selectBubbleStyle(style) {
+        console.log('💬 选择气泡样式:', style);
+
+        // 更新设置
+        this.settings.bubbleStyle = style;
+
+        // 保存设置
+        this.saveSettings();
+
+        // 应用样式到聊天界面
+        this.applyBubbleStyle(style);
+
+        // 更新弹窗预览
+        this.updateBubblePreview(style);
+
+        // 更新选中状态
+        this.updateBubbleSelection();
+
+        console.log('✅ 气泡样式已应用');
+    }
+
+    // 应用气泡样式到聊天界面
+    applyBubbleStyle(style) {
+        console.log('🎨 应用气泡样式:', style);
+
+        // 先移除所有气泡样式类
+        document.body.classList.remove(
+            'bubble-wechat',
+            'bubble-qq',
+            'bubble-telegram',
+            'bubble-line'
+        );
+
+        // 再加上新的样式类（默认不加任何类）
+        if (style !== 'default') {
+            document.body.classList.add(`bubble-${style}`);
+            console.log('✅ 气泡样式类已添加:', `bubble-${style}`);
+        } else {
+            console.log('✅ 已恢复默认气泡样式');
+        }
+    }
+
+    // 更新弹窗内的预览效果
+    updateBubblePreview(style) {
+        const previewArea = document.getElementById('bubblePreviewArea');
+        if (!previewArea) return;
+
+        // 先移除所有预览样式类
+        previewArea.classList.remove(
+            'preview-wechat',
+            'preview-qq',
+            'preview-telegram',
+            'preview-line'
+        );
+
+        // 加上对应的预览样式类
+        if (style !== 'default') {
+            previewArea.classList.add(`preview-${style}`);
+        }
+    }
+
+    // 更新选中状态（高亮显示当前选中的样式）
+    updateBubbleSelection() {
+        const currentStyle = this.settings.bubbleStyle || 'default';
+
+        // 先移除所有选中状态
+        document.querySelectorAll('.bubble-style-item').forEach(item => {
+            item.classList.remove('active');
+        });
+
+        // 给当前样式加上选中状态
+        const activeItem = document.querySelector(`.bubble-style-item[data-style="${currentStyle}"]`);
+        if (activeItem) {
+            activeItem.classList.add('active');
+        }
+    }
 }
 
 // 暴露到全局（供HTML onclick使用）
