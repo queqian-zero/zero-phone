@@ -417,14 +417,17 @@
         <div class="settings-section">
             <h3 class="section-title">美化模块</h3>
             
-            <!-- 聊天气泡CSS -->
-            <div class="setting-item disabled">
+            <!-- 聊天气泡美化 -->
+            <div class="setting-item" id="settingBubbleStyle" style="cursor: pointer;">
                 <div class="setting-info">
                     <span class="setting-label">聊天气泡美化</span>
-                    <span class="setting-desc">自定义气泡样式、圆角、颜色</span>
+                    <span class="setting-desc">选择气泡样式主题</span>
                 </div>
-                <span class="setting-badge">待开发</span>
+                <button class="setting-action-btn">
+                    <span>💬</span>
+                </button>
             </div>
+
             
             <!-- 头像框 -->
             <div class="setting-item disabled">
@@ -1091,6 +1094,87 @@
     </div>
 </div>
 <!-- ==================== 聊天壁纸弹窗结束 ==================== -->
+
+<!-- ==================== 聊天气泡美化弹窗 ==================== -->
+<div class="bubble-modal" id="bubbleModal" style="display: none;">
+    <div class="bubble-overlay" id="bubbleOverlay"></div>
+    <div class="bubble-dialog">
+        <div class="bubble-header">
+            <h3>聊天气泡美化</h3>
+            <button class="bubble-close" id="bubbleClose">×</button>
+        </div>
+
+        <div class="bubble-body">
+
+            <!-- 实时预览区域 -->
+            <div class="bubble-preview-section">
+                <div class="bubble-preview-label">预览效果：</div>
+                <div class="bubble-preview-area" id="bubblePreviewArea">
+                    <!-- AI气泡 -->
+                    <div class="bubble-preview-row bubble-preview-ai">
+                        <div class="bubble-preview-avatar">AI</div>
+                        <div class="bubble-preview-bubble bubble-preview-bubble-ai">你好！今天天气真不错。</div>
+                    </div>
+                    <!-- 用户气泡 -->
+                    <div class="bubble-preview-row bubble-preview-user">
+                        <div class="bubble-preview-bubble bubble-preview-bubble-user">是啊，适合出去玩！</div>
+                        <div class="bubble-preview-avatar">我</div>
+                    </div>
+                    <!-- AI气泡2 -->
+                    <div class="bubble-preview-row bubble-preview-ai">
+                        <div class="bubble-preview-avatar">AI</div>
+                        <div class="bubble-preview-bubble bubble-preview-bubble-ai">那我们去哪里好呢？</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 样式选择 -->
+            <div class="bubble-style-section">
+                <div class="bubble-style-label">选择样式：</div>
+                <div class="bubble-style-grid">
+
+                    <!-- 默认样式 -->
+                    <div class="bubble-style-item" data-style="default">
+                        <div class="bubble-style-icon">🖤</div>
+                        <div class="bubble-style-name">默认</div>
+                        <div class="bubble-style-desc">暗色磨砂</div>
+                    </div>
+
+                    <!-- 微信样式 -->
+                    <div class="bubble-style-item" data-style="wechat">
+                        <div class="bubble-style-icon">💚</div>
+                        <div class="bubble-style-name">微信</div>
+                        <div class="bubble-style-desc">绿白气泡</div>
+                    </div>
+
+                    <!-- QQ样式 -->
+                    <div class="bubble-style-item" data-style="qq">
+                        <div class="bubble-style-icon">💙</div>
+                        <div class="bubble-style-name">QQ</div>
+                        <div class="bubble-style-desc">蓝白气泡</div>
+                    </div>
+
+                    <!-- Telegram样式 -->
+                    <div class="bubble-style-item" data-style="telegram">
+                        <div class="bubble-style-icon">✈️</div>
+                        <div class="bubble-style-name">Telegram</div>
+                        <div class="bubble-style-desc">深蓝气泡</div>
+                    </div>
+
+                    <!-- LINE样式 -->
+                    <div class="bubble-style-item" data-style="line">
+                        <div class="bubble-style-icon">💚</div>
+                        <div class="bubble-style-name">LINE</div>
+                        <div class="bubble-style-desc">清新绿白</div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+<!-- ==================== 聊天气泡美化弹窗结束 ==================== -->
 
 </body>
 </html>
