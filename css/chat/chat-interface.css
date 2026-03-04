@@ -207,7 +207,6 @@ body:not(.bubble-wechat):not(.bubble-qq):not(.bubble-telegram):not(.bubble-line)
     flex-direction: column;
     gap: 16px;
     padding-bottom: 16px;
-    min-height: 100%; /* ← 加这一行 */
 }
 
 /* ==================== 消息样式 ==================== */
@@ -714,25 +713,28 @@ body:not(.bubble-wechat):not(.bubble-qq):not(.bubble-telegram):not(.bubble-line)
 /* ========== 微信样式 ========== */
 
 /* 无壁纸时：纯色底 */
-body.bubble-wechat .messages-container {
-    background-color: #EDEDED;
+body.bubble-wechat .messages-container::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: #EDEDED;
+    z-index: 0;
+    pointer-events: none;
 }
 
 /* 有壁纸时：只加一层淡淡的白色磨砂感，让壁纸透出来 */
-body.bubble-wechat .messages-container.has-wallpaper {
-    background-color: rgba(237, 237, 237, 0.25);
+body.bubble-wechat .messages-container.has-wallpaper::before {
+    background: rgba(237, 237, 237, 0.25);
 }
 
-
 body.bubble-wechat .message-ai .message-bubble {
-    background: #FFFFFF !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
+    background: #FFFFFF;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
     border-radius: 4px 16px 16px 16px;
     box-shadow: 0 1px 2px rgba(0,0,0,0.1);
     position: relative;
 }
-
 
 body.bubble-wechat .message-ai .message-bubble::before {
     content: '';
@@ -745,9 +747,9 @@ body.bubble-wechat .message-ai .message-bubble::before {
 }
 
 body.bubble-wechat .message-user .message-bubble {
-    background: #95EC69 !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
+    background: #95EC69;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
     border-radius: 16px 4px 16px 16px;
     box-shadow: 0 1px 2px rgba(0,0,0,0.1);
     position: relative;
@@ -773,26 +775,31 @@ body.bubble-wechat .avatar-placeholder {
 
 /* ========== QQ样式 ========== */
 
-body.bubble-qq .messages-container {
-    background-color: #F0F4FF;
+body.bubble-qq .messages-container::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: #F0F4FF;
+    z-index: 0;
+    pointer-events: none;
 }
 
-body.bubble-qq .messages-container.has-wallpaper {
-    background-color: rgba(240, 244, 255, 0.25);
+body.bubble-qq .messages-container.has-wallpaper::before {
+    background: rgba(240, 244, 255, 0.25);
 }
 
 body.bubble-qq .message-ai .message-bubble {
-    background: #FFFFFF !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
+    background: #FFFFFF;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
     border-radius: 4px 18px 18px 18px;
     box-shadow: 0 2px 6px rgba(0,100,255,0.08);
 }
 
 body.bubble-qq .message-user .message-bubble {
-    background: #4D9EFF !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
+    background: #4D9EFF;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
     border-radius: 18px 4px 18px 18px;
     box-shadow: 0 2px 6px rgba(0,100,255,0.3);
 }
@@ -807,12 +814,17 @@ body.bubble-qq .avatar-placeholder {
 
 /* ========== Telegram样式 ========== */
 
-body.bubble-telegram .messages-container {
-    background-color: #17212B;
+body.bubble-telegram .messages-container::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: #17212B;
+    z-index: 0;
+    pointer-events: none;
 }
 
-body.bubble-telegram .messages-container.has-wallpaper {
-    background-color: rgba(23, 33, 43, 0.55);
+body.bubble-telegram .messages-container.has-wallpaper::before {
+    background: rgba(23, 33, 43, 0.55);
 }
 
 body.bubble-telegram .message-ai .message-bubble {
@@ -840,18 +852,23 @@ body.bubble-telegram .avatar-placeholder {
 
 /* ========== LINE样式 ========== */
 
-body.bubble-line .messages-container {
-    background-color: #B9E2C2;
+body.bubble-line .messages-container::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: #B9E2C2;
+    z-index: 0;
+    pointer-events: none;
 }
 
-body.bubble-line .messages-container.has-wallpaper {
-    background-color: rgba(185, 226, 194, 0.25);
+body.bubble-line .messages-container.has-wallpaper::before {
+    background: rgba(185, 226, 194, 0.25);
 }
 
 body.bubble-line .message-ai .message-bubble {
-    background: #FFFFFF !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
+    background: #FFFFFF;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
     border-radius: 4px 14px 14px 14px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.12);
     position: relative;
@@ -868,9 +885,9 @@ body.bubble-line .message-ai .message-bubble::before {
 }
 
 body.bubble-line .message-user .message-bubble {
-    background: #06C755 !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
+    background: #06C755;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
     border-radius: 14px 4px 14px 14px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.15);
 }
