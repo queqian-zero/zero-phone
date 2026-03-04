@@ -1170,6 +1170,99 @@
 
                 </div>
             </div>
+            
+            
+
+            <!-- ★ 自定义CSS区块 -->
+            <div class="bubble-custom-section">
+                <div class="bubble-style-label">
+                    🎨 自定义 CSS
+                    <button class="bubble-css-hint-btn" id="bubbleCssHintBtn">查看类名提示</button>
+                </div>
+
+                <!-- 类名提示面板（默认折叠） -->
+                <div class="bubble-css-hint-panel" id="bubbleCssHintPanel" style="display:none;">
+                    <div class="bubble-css-hint-title">📋 可用的 CSS 类名：</div>
+                    <div class="bubble-css-hint-list">
+                        <div class="bubble-css-hint-item">
+                            <code>.messages-container</code>
+                            <span>— 消息区域背景色</span>
+                        </div>
+                        <div class="bubble-css-hint-item">
+                            <code>.message-ai .message-bubble</code>
+                            <span>— AI气泡</span>
+                        </div>
+                        <div class="bubble-css-hint-item">
+                            <code>.message-user .message-bubble</code>
+                            <span>— 用户气泡</span>
+                        </div>
+                        <div class="bubble-css-hint-item">
+                            <code>.message-ai .message-text</code>
+                            <span>— AI文字颜色</span>
+                        </div>
+                        <div class="bubble-css-hint-item">
+                            <code>.message-user .message-text</code>
+                            <span>— 用户文字颜色</span>
+                        </div>
+                        <div class="bubble-css-hint-item">
+                            <code>.message-time</code>
+                            <span>— 时间戳文字</span>
+                        </div>
+                        <div class="bubble-css-hint-item">
+                            <code>.avatar-placeholder</code>
+                            <span>— 头像占位（无图时）</span>
+                        </div>
+                    </div>
+                    <div class="bubble-css-hint-title">💡 示例（暗夜红风格）：</div>
+                    <pre class="bubble-css-example-code">.messages-container { background: #1a1a2e; }
+.message-ai .message-bubble {
+  background: #16213e;
+  border-radius: 4px 18px 18px 18px;
+  border: 1px solid #0f3460;
+}
+.message-user .message-bubble {
+  background: #e94560;
+  border-radius: 18px 4px 18px 18px;
+}
+.message-ai .message-text { color: #e0e0e0; }
+.message-user .message-text { color: #fff; }
+.message-time { color: rgba(255,255,255,0.3); }</pre>
+                </div>
+
+                <!-- CSS输入框 -->
+                <textarea
+                    id="bubbleCustomCss"
+                    class="bubble-custom-css-input"
+                    placeholder="在这里输入自定义CSS…
+例如：
+.messages-container { background: #1a1a2e; }
+.message-ai .message-bubble { background: #16213e; border-radius: 4px 18px 18px 18px; }
+.message-user .message-bubble { background: #e94560; border-radius: 18px 4px 18px 18px; }
+.message-ai .message-text { color: #e0e0e0; }
+.message-user .message-text { color: #fff; }"
+                    rows="6"
+                ></textarea>
+
+                <!-- 操作按钮 -->
+                <div class="bubble-custom-actions">
+                    <button class="bubble-css-btn bubble-css-apply-btn" id="bubbleCssApply">应用预览</button>
+                    <button class="bubble-css-btn bubble-css-clear-btn" id="bubbleCssClear">清空</button>
+                    <button class="bubble-css-btn bubble-css-save-btn" id="bubbleCssSave">存为存档</button>
+                </div>
+            </div>
+
+            <!-- ★ 气泡存档区块 -->
+            <div class="bubble-archive-section">
+                <div class="bubble-style-label">
+                    📁 气泡存档
+                    <span class="bubble-archive-hint">（点击加载，× 删除）</span>
+                </div>
+                <div class="bubble-archive-list" id="bubbleArchiveList">
+                    <div class="bubble-archive-empty" id="bubbleArchiveEmpty">
+                        暂无存档，写好CSS后点"存为存档"保存 ✨
+                    </div>
+                </div>
+            </div>
 
         </div>
     </div>
