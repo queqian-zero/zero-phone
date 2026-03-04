@@ -1607,9 +1607,6 @@
 /* 添加到 css/chat/chat-interface.css 末尾 */
 
 /* ========== 微信样式 ========== */
-body.bubble-wechat .messages-container {
-    background: #EDEDED;
-}
 
 body.bubble-wechat .message-ai .message-bubble {
     background: #FFFFFF;
@@ -1657,15 +1654,9 @@ body.bubble-wechat .avatar-placeholder {
     color: #555;
 }
 
-/* 微信壁纸模式兼容 */
-body.bubble-wechat .messages-container.has-wallpaper {
-    background: transparent;
-}
 
 /* ========== QQ样式 ========== */
-body.bubble-qq .messages-container {
-    background: #F0F4FF;
-}
+
 
 body.bubble-qq .message-ai .message-bubble {
     background: #FFFFFF;
@@ -1691,14 +1682,7 @@ body.bubble-qq .avatar-placeholder {
     color: #fff;
 }
 
-body.bubble-qq .messages-container.has-wallpaper {
-    background: transparent;
-}
-
 /* ========== Telegram样式 ========== */
-body.bubble-telegram .messages-container {
-    background: #17212B;
-}
 
 body.bubble-telegram .message-ai .message-bubble {
     background: #182533;
@@ -1723,14 +1707,7 @@ body.bubble-telegram .avatar-placeholder {
     color: #E8E8E8;
 }
 
-body.bubble-telegram .messages-container.has-wallpaper {
-    background: transparent;
-}
-
 /* ========== LINE样式 ========== */
-body.bubble-line .messages-container {
-    background: #B9E2C2;
-}
 
 body.bubble-line .message-ai .message-bubble {
     background: #FFFFFF;
@@ -1767,9 +1744,6 @@ body.bubble-line .avatar-placeholder {
     color: #fff;
 }
 
-body.bubble-line .messages-container.has-wallpaper {
-    background: transparent;
-}
 /* ==================== 弹窗内预览区域的主题样式 ==================== */
 /* 这段也添加到 css/chat/chat-settings.css 末尾（紧接在气泡弹窗样式后面） */
 
