@@ -207,6 +207,7 @@ body:not(.bubble-wechat):not(.bubble-qq):not(.bubble-telegram):not(.bubble-line)
     flex-direction: column;
     gap: 16px;
     padding-bottom: 16px;
+    min-height: 100%; /* ← 加这一行 */
 }
 
 /* ==================== 消息样式 ==================== */
