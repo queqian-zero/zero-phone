@@ -717,7 +717,10 @@ body:not(.bubble-wechat):not(.bubble-qq):not(.bubble-telegram):not(.bubble-line)
 body.bubble-wechat .messages-container::before {
     content: '';
     position: absolute;
-    inset: 0;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: -9999px;
     background: #EDEDED;
     z-index: 0;
     pointer-events: none;
@@ -779,7 +782,10 @@ body.bubble-wechat .avatar-placeholder {
 body.bubble-qq .messages-container::before {
     content: '';
     position: absolute;
-    inset: 0;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: -9999px;
     background: #F0F4FF;
     z-index: 0;
     pointer-events: none;
@@ -818,7 +824,10 @@ body.bubble-qq .avatar-placeholder {
 body.bubble-telegram .messages-container::before {
     content: '';
     position: absolute;
-    inset: 0;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: -9999px;
     background: #17212B;
     z-index: 0;
     pointer-events: none;
@@ -856,7 +865,10 @@ body.bubble-telegram .avatar-placeholder {
 body.bubble-line .messages-container::before {
     content: '';
     position: absolute;
-    inset: 0;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: -9999px;
     background: #B9E2C2;
     z-index: 0;
     pointer-events: none;
