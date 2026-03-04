@@ -171,36 +171,27 @@
 
 /* ==================== 消息区域 ==================== */
 
-/* ==================== 聊天界面背景壁纸支持 ==================== */
-/* 
-   使用说明：
-   将这段 CSS 添加到 css/chat/chat-interface.css 文件的"消息区域"部分
-*/
-
-/* 消息区域 - 添加背景壁纸支持 */
 .messages-container {
     flex: 1;
     overflow-y: auto;
     padding: 16px;
     padding-bottom: 80px;
-    background: #000; /* 默认纯黑色 */
+    background: #000;
     position: relative;
-    
-    /* 添加壁纸支持 */
+
+    /* 壁纸支持 */
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
 }
 
-/* 当有壁纸时，添加半透明遮罩以保证文字可读性 */
-.messages-container.has-wallpaper::before {
+/* ==================== 默认壁纸遮罩（无气泡主题时） ==================== */
+/* 注意：有气泡主题时，各主题自己的::before会接管 */
+body:not(.bubble-wechat):not(.bubble-qq):not(.bubble-telegram):not(.bubble-line):not(.bubble-custom) .messages-container.has-wallpaper::before {
     content: '';
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.3); /* 半透明黑色遮罩 */
+    inset: 0;
+    background: rgba(0, 0, 0, 0.3);
     pointer-events: none;
     z-index: 0;
 }
@@ -210,7 +201,6 @@
     position: relative;
     z-index: 1;
 }
-
 
 .messages-list {
     display: flex;
@@ -335,7 +325,6 @@
     padding-bottom: calc(12px + env(safe-area-inset-bottom));
 }
 
-/* 展开状态的输入框区域 */
 .input-wrapper {
     position: relative;
     background: rgba(0, 0, 0, 0.04);
@@ -395,7 +384,6 @@
     transform: rotate(180deg);
 }
 
-/* 底部工具栏 */
 .input-bar-bottom {
     display: flex;
     align-items: center;
@@ -425,7 +413,6 @@
     background: rgba(0, 0, 0, 0.08);
 }
 
-/* 收起状态的输入框 */
 .input-bar-bottom textarea {
     flex: 1;
     background: rgba(0, 0, 0, 0.04);
@@ -439,14 +426,13 @@
     height: 36px;
     overflow: hidden;
     font-family: inherit;
-     padding-right: 140px; /* 给右边3个按钮留空间：36*3 + 8*2 + 一点余量 */
+    padding-right: 140px;
 }
 
 .input-bar-bottom textarea::placeholder {
     color: rgba(0, 0, 0, 0.3);
 }
 
-/* 展开按钮 - 固定在右下角 */
 .inline-expand-btn {
     width: 36px;
     height: 36px;
@@ -463,7 +449,7 @@
     flex-shrink: 0;
     position: fixed;
     bottom: calc(12px + env(safe-area-inset-bottom));
-    right: calc(16px + 36px + 8px + 36px + 8px); /* 右边距 + 两个按钮 + 两个间隙 */
+    right: calc(16px + 36px + 8px + 36px + 8px);
     z-index: 20;
 }
 
@@ -471,7 +457,6 @@
     transform: scale(0.9);
 }
 
-/* 展开时隐藏底部行的输入框和展开按钮 */
 .input-bar.expanded .input-bar-bottom textarea,
 .input-bar.expanded .inline-expand-btn {
     display: none;
@@ -670,7 +655,6 @@
 
 /* ==================== 拍一拍功能 ==================== */
 
-/* 系统提示消息 */
 .system-message {
     text-align: center;
     margin: 16px 0;
@@ -699,7 +683,6 @@
     }
 }
 
-/* 头像震动动画 */
 @keyframes shake {
     0%, 100% { transform: translateX(0); }
     10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
@@ -710,7 +693,6 @@
     animation: shake 0.5s ease-in-out;
 }
 
-/* 头像可点击提示 */
 .message-avatar {
     cursor: pointer;
     transition: opacity 0.2s;
@@ -720,9 +702,29 @@
     opacity: 0.7;
 }
 
+/* ============================================================
+   ★ 四套内置气泡主题
+   
+   【修复说明】背景色改用 ::before 伪元素实现，
+   不再直接覆盖 background 属性，
+   这样壁纸的 background-image / background-size: cover 不受影响。
+   ============================================================ */
+
 /* ========== 微信样式 ========== */
-body.bubble-wechat .messages-container {
+
+/* 无壁纸时：纯色底 */
+body.bubble-wechat .messages-container::before {
+    content: '';
+    position: absolute;
+    inset: 0;
     background: #EDEDED;
+    z-index: 0;
+    pointer-events: none;
+}
+
+/* 有壁纸时：只加一层淡淡的白色磨砂感，让壁纸透出来 */
+body.bubble-wechat .messages-container.has-wallpaper::before {
+    background: rgba(237, 237, 237, 0.25);
 }
 
 body.bubble-wechat .message-ai .message-bubble {
@@ -771,14 +773,19 @@ body.bubble-wechat .avatar-placeholder {
     color: #555;
 }
 
-/* 微信壁纸模式兼容 */
-body.bubble-wechat .messages-container.has-wallpaper {
-    background: transparent;
+/* ========== QQ样式 ========== */
+
+body.bubble-qq .messages-container::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: #F0F4FF;
+    z-index: 0;
+    pointer-events: none;
 }
 
-/* ========== QQ样式 ========== */
-body.bubble-qq .messages-container {
-    background: #F0F4FF;
+body.bubble-qq .messages-container.has-wallpaper::before {
+    background: rgba(240, 244, 255, 0.25);
 }
 
 body.bubble-qq .message-ai .message-bubble {
@@ -805,13 +812,19 @@ body.bubble-qq .avatar-placeholder {
     color: #fff;
 }
 
-body.bubble-qq .messages-container.has-wallpaper {
-    background: transparent;
+/* ========== Telegram样式 ========== */
+
+body.bubble-telegram .messages-container::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: #17212B;
+    z-index: 0;
+    pointer-events: none;
 }
 
-/* ========== Telegram样式 ========== */
-body.bubble-telegram .messages-container {
-    background: #17212B;
+body.bubble-telegram .messages-container.has-wallpaper::before {
+    background: rgba(23, 33, 43, 0.55);
 }
 
 body.bubble-telegram .message-ai .message-bubble {
@@ -837,13 +850,19 @@ body.bubble-telegram .avatar-placeholder {
     color: #E8E8E8;
 }
 
-body.bubble-telegram .messages-container.has-wallpaper {
-    background: transparent;
+/* ========== LINE样式 ========== */
+
+body.bubble-line .messages-container::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: #B9E2C2;
+    z-index: 0;
+    pointer-events: none;
 }
 
-/* ========== LINE样式 ========== */
-body.bubble-line .messages-container {
-    background: #B9E2C2;
+body.bubble-line .messages-container.has-wallpaper::before {
+    background: rgba(185, 226, 194, 0.25);
 }
 
 body.bubble-line .message-ai .message-bubble {
@@ -879,8 +898,4 @@ body.bubble-line .message-time { color: rgba(0,0,0,0.4); }
 body.bubble-line .avatar-placeholder {
     background: #06C755;
     color: #fff;
-}
-
-body.bubble-line .messages-container.has-wallpaper {
-    background: transparent;
 }

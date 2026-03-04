@@ -1833,3 +1833,318 @@ body.bubble-line .messages-container.has-wallpaper {
     color: #fff;
     border-radius: 14px 4px 14px 14px;
 }
+
+/* ============================================================
+   ★ 以下是新增内容，追加到你原来 chat-settings.css 的最末尾
+   ============================================================ */
+
+/* ==================== 弹窗内预览区域的主题样式 ==================== */
+
+/* 微信预览 */
+#bubblePreviewArea.preview-wechat {
+    background: #EDEDED;
+}
+#bubblePreviewArea.preview-wechat .bubble-preview-bubble-ai {
+    background: #FFFFFF;
+    color: #000;
+    border-radius: 4px 16px 16px 16px;
+}
+#bubblePreviewArea.preview-wechat .bubble-preview-bubble-user {
+    background: #95EC69;
+    color: #000;
+    border-radius: 16px 4px 16px 16px;
+}
+
+/* QQ预览 */
+#bubblePreviewArea.preview-qq {
+    background: #F0F4FF;
+}
+#bubblePreviewArea.preview-qq .bubble-preview-bubble-ai {
+    background: #FFFFFF;
+    color: #333;
+    border-radius: 4px 18px 18px 18px;
+}
+#bubblePreviewArea.preview-qq .bubble-preview-bubble-user {
+    background: #4D9EFF;
+    color: #fff;
+    border-radius: 18px 4px 18px 18px;
+}
+
+/* Telegram预览 */
+#bubblePreviewArea.preview-telegram {
+    background: #17212B;
+}
+#bubblePreviewArea.preview-telegram .bubble-preview-bubble-ai {
+    background: #182533;
+    color: #E8E8E8;
+    border-radius: 4px 16px 16px 16px;
+    border: 1px solid rgba(255,255,255,0.06);
+}
+#bubblePreviewArea.preview-telegram .bubble-preview-bubble-user {
+    background: #2B5278;
+    color: #E8E8E8;
+    border-radius: 16px 4px 16px 16px;
+}
+
+/* LINE预览 */
+#bubblePreviewArea.preview-line {
+    background: #B9E2C2;
+}
+#bubblePreviewArea.preview-line .bubble-preview-bubble-ai {
+    background: #FFFFFF;
+    color: #333;
+    border-radius: 4px 14px 14px 14px;
+}
+#bubblePreviewArea.preview-line .bubble-preview-bubble-user {
+    background: #06C755;
+    color: #fff;
+    border-radius: 14px 4px 14px 14px;
+}
+
+/* ==================== 自定义CSS区块 ==================== */
+
+.bubble-custom-section {
+    background: rgba(255,255,255,0.05);
+    border-radius: 12px;
+    padding: 16px;
+}
+
+.bubble-css-hint-btn {
+    float: right;
+    background: rgba(139,0,0,0.3);
+    border: 1px solid rgba(139,0,0,0.5);
+    border-radius: 6px;
+    color: rgba(255,255,255,0.8);
+    font-size: 11px;
+    padding: 3px 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+.bubble-css-hint-btn:active { transform: scale(0.95); }
+
+.bubble-css-hint-panel {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    padding: 12px;
+    margin: 10px 0 0 0;
+    font-size: 12px;
+    clear: both;
+}
+
+.bubble-css-hint-title {
+    color: rgba(255,255,255,0.7);
+    font-weight: 600;
+    margin-bottom: 8px;
+    font-size: 12px;
+}
+
+.bubble-css-hint-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.bubble-css-hint-item {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.bubble-css-hint-item code {
+    background: rgba(139,0,0,0.2);
+    border: 1px solid rgba(139,0,0,0.3);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    color: rgba(255,150,150,0.9);
+    white-space: nowrap;
+}
+
+.bubble-css-hint-item span {
+    color: rgba(255,255,255,0.5);
+    font-size: 11px;
+}
+
+.bubble-css-example-code {
+    background: rgba(0,0,0,0.4);
+    border-radius: 6px;
+    padding: 10px;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    color: rgba(255,220,150,0.9);
+    line-height: 1.6;
+    white-space: pre;
+    overflow-x: auto;
+    margin: 8px 0 0 0;
+    display: block;
+}
+
+.bubble-custom-css-input {
+    width: 100%;
+    background: rgba(0,0,0,0.35);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px;
+    color: rgba(255,255,220,0.9);
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    padding: 10px 12px;
+    resize: vertical;
+    outline: none;
+    margin-top: 10px;
+    box-sizing: border-box;
+    min-height: 140px;
+    transition: border-color 0.2s;
+}
+.bubble-custom-css-input:focus {
+    border-color: rgba(139,0,0,0.6);
+}
+.bubble-custom-css-input::placeholder {
+    color: rgba(255,255,255,0.2);
+    font-family: 'Courier New', monospace;
+}
+
+.bubble-custom-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.bubble-css-btn {
+    flex: 1;
+    padding: 8px 0;
+    border-radius: 8px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid;
+    font-family: inherit;
+}
+.bubble-css-btn:active { transform: scale(0.96); }
+
+.bubble-css-apply-btn {
+    background: rgba(255,255,255,0.08);
+    border-color: rgba(255,255,255,0.2);
+    color: rgba(255,255,255,0.85);
+}
+.bubble-css-apply-btn:hover { background: rgba(255,255,255,0.13); }
+
+.bubble-css-clear-btn {
+    background: rgba(80,0,0,0.3);
+    border-color: rgba(139,0,0,0.4);
+    color: rgba(255,150,150,0.85);
+}
+.bubble-css-clear-btn:hover { background: rgba(80,0,0,0.45); }
+
+.bubble-css-save-btn {
+    background: rgba(139,0,0,0.35);
+    border-color: rgba(139,0,0,0.6);
+    color: rgba(255,255,255,0.9);
+}
+.bubble-css-save-btn:hover { background: rgba(139,0,0,0.5); }
+
+/* ==================== 气泡存档区块 ==================== */
+
+.bubble-archive-section {
+    background: rgba(255,255,255,0.05);
+    border-radius: 12px;
+    padding: 16px;
+}
+
+.bubble-archive-hint {
+    font-size: 11px;
+    color: rgba(255,255,255,0.35);
+    font-weight: normal;
+    margin-left: 6px;
+}
+
+.bubble-archive-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.bubble-archive-empty {
+    text-align: center;
+    color: rgba(255,255,255,0.3);
+    font-size: 13px;
+    padding: 16px 0;
+}
+
+.bubble-archive-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(0,0,0,0.25);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+}
+.bubble-archive-card:hover {
+    border-color: rgba(139,0,0,0.5);
+    background: rgba(139,0,0,0.1);
+}
+.bubble-archive-card:active { transform: scale(0.98); }
+
+.bubble-archive-card.active-archive {
+    border-color: rgba(139,0,0,0.9);
+    background: rgba(139,0,0,0.2);
+    box-shadow: 0 0 10px rgba(139,0,0,0.3);
+}
+
+.bubble-archive-card-icon { font-size: 20px; flex-shrink: 0; }
+
+.bubble-archive-card-info {
+    flex: 1;
+    overflow: hidden;
+}
+
+.bubble-archive-card-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.9);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.bubble-archive-card-preview {
+    font-size: 11px;
+    color: rgba(255,255,255,0.35);
+    font-family: 'Courier New', monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 2px;
+}
+
+.bubble-archive-card-del {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    background: rgba(139,0,0,0.2);
+    border: 1px solid rgba(139,0,0,0.3);
+    color: rgba(255,100,100,0.8);
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    font-family: inherit;
+    line-height: 1;
+}
+.bubble-archive-card-del:active {
+    transform: scale(0.9);
+    background: rgba(139,0,0,0.4);
+}
