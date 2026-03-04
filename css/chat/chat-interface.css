@@ -207,6 +207,7 @@ body:not(.bubble-wechat):not(.bubble-qq):not(.bubble-telegram):not(.bubble-line)
     flex-direction: column;
     gap: 16px;
     padding-bottom: 16px;
+    min-height: 100%; /* <- 加上这行，确保列表至少有一屏幕高 */
 }
 
 /* ==================== 消息样式 ==================== */
@@ -712,19 +713,11 @@ body:not(.bubble-wechat):not(.bubble-qq):not(.bubble-telegram):not(.bubble-line)
 
 /* ========== 微信样式 ========== */
 
-/* 无壁纸时：纯色底 */
-body.bubble-wechat .messages-container::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: #EDEDED;
-    z-index: 0;
-    pointer-events: none;
+body.bubble-wechat .messages-container {
+    background-color: #EDEDED;
 }
-
-/* 有壁纸时：只加一层淡淡的白色磨砂感，让壁纸透出来 */
-body.bubble-wechat .messages-container.has-wallpaper::before {
-    background: rgba(237, 237, 237, 0.25);
+body.bubble-wechat .messages-container.has-wallpaper {
+    background-color: rgba(237, 237, 237, 0.25);
 }
 
 body.bubble-wechat .message-ai .message-bubble {
@@ -775,17 +768,11 @@ body.bubble-wechat .avatar-placeholder {
 
 /* ========== QQ样式 ========== */
 
-body.bubble-qq .messages-container::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: #F0F4FF;
-    z-index: 0;
-    pointer-events: none;
+body.bubble-qq .messages-container {
+    background-color: #F0F4FF;
 }
-
-body.bubble-qq .messages-container.has-wallpaper::before {
-    background: rgba(240, 244, 255, 0.25);
+body.bubble-qq .messages-container.has-wallpaper {
+    background-color: rgba(240, 244, 255, 0.25);
 }
 
 body.bubble-qq .message-ai .message-bubble {
@@ -814,17 +801,11 @@ body.bubble-qq .avatar-placeholder {
 
 /* ========== Telegram样式 ========== */
 
-body.bubble-telegram .messages-container::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: #17212B;
-    z-index: 0;
-    pointer-events: none;
+body.bubble-telegram .messages-container {
+    background-color: #17212B;
 }
-
-body.bubble-telegram .messages-container.has-wallpaper::before {
-    background: rgba(23, 33, 43, 0.55);
+body.bubble-telegram .messages-container.has-wallpaper {
+    background-color: rgba(23, 33, 43, 0.55);
 }
 
 body.bubble-telegram .message-ai .message-bubble {
@@ -852,17 +833,11 @@ body.bubble-telegram .avatar-placeholder {
 
 /* ========== LINE样式 ========== */
 
-body.bubble-line .messages-container::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: #B9E2C2;
-    z-index: 0;
-    pointer-events: none;
+body.bubble-line .messages-container {
+    background-color: #B9E2C2;
 }
-
-body.bubble-line .messages-container.has-wallpaper::before {
-    background: rgba(185, 226, 194, 0.25);
+body.bubble-line .messages-container.has-wallpaper {
+    background-color: rgba(185, 226, 194, 0.25);
 }
 
 body.bubble-line .message-ai .message-bubble {
