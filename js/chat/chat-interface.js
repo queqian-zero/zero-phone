@@ -987,6 +987,22 @@ if (exportDataBtn) {
 this.applyWallpaper(this.settings.chatWallpaper || 'default');
        // 加载气泡样式
         this.applyBubbleStyle(this.settings.bubbleStyle || 'default');
+        /* ======================== 第四处 ========================
+   插入位置：loadSettings() 方法里，
+   this.applyBubbleStyle(this.settings.bubbleStyle || 'default'); 这行后面
+   ======================================================== */
+
+        // 加载自定义CSS（如果有的话）
+        if (this.settings.customBubbleCss) {
+            // 重新注入自定义CSS到页面
+            const oldStyle = document.getElementById('customBubbleCssTag');
+            if (oldStyle) oldStyle.remove();
+            const style = document.createElement('style');
+            style.id = 'customBubbleCssTag';
+            style.textContent = this.settings.customBubbleCss;
+            document.head.appendChild(style);
+            console.log('✅ 自定义CSS已从设置恢复');
+        }
 
 
     }
@@ -2931,6 +2947,19 @@ compressAndApplyWallpaper(imageData) {
 
         // 更新选中状态
         this.updateBubbleSelection();
+        /* ======================== 第二处 ========================
+   插入位置：openBubbleModal() 方法里，this.updateBubbleSelection(); 后面
+   ======================================================== */
+
+        // 加载自定义CSS到输入框
+        const customCssTextarea = document.getElementById('bubbleCustomCss');
+        if (customCssTextarea) {
+            customCssTextarea.value = this.settings.customBubbleCss || '';
+        }
+
+        // 渲染存档列表
+        this.renderBubbleArchives();
+
 
         // 绑定弹窗事件（只绑定一次）
         if (!this.bubbleEventsBound) {
@@ -2977,6 +3006,51 @@ compressAndApplyWallpaper(imageData) {
                 this.selectBubbleStyle(style);
             });
         });
+        /* ======================== 第一处 ========================
+   插入位置：bindBubbleEvents() 方法里，styleItems.forEach 那段结束后
+   ======================================================== */
+
+        // 类名提示开关
+        const hintBtn = document.getElementById('bubbleCssHintBtn');
+        const hintPanel = document.getElementById('bubbleCssHintPanel');
+        if (hintBtn && hintPanel) {
+            hintBtn.addEventListener('click', () => {
+                const isOpen = hintPanel.style.display !== 'none';
+                hintPanel.style.display = isOpen ? 'none' : 'block';
+                hintBtn.textContent = isOpen ? '查看类名提示' : '收起提示';
+            });
+        }
+
+        // 应用预览按钮
+        const cssApplyBtn = document.getElementById('bubbleCssApply');
+        if (cssApplyBtn) {
+            cssApplyBtn.addEventListener('click', () => {
+                // 先清掉预设样式
+                this.selectBubbleStyle('default');
+                this.applyCustomCss(true);
+            });
+        }
+
+        // 清空按钮
+        const cssClearBtn = document.getElementById('bubbleCssClear');
+        if (cssClearBtn) {
+            cssClearBtn.addEventListener('click', () => {
+                const textarea = document.getElementById('bubbleCustomCss');
+                if (textarea) textarea.value = '';
+                this.removeCustomCss();
+                this.settings.customBubbleCss = '';
+                this.saveSettings();
+            });
+        }
+
+        // 存为存档按钮
+        const cssSaveBtn = document.getElementById('bubbleCssSave');
+        if (cssSaveBtn) {
+            cssSaveBtn.addEventListener('click', () => {
+                this.saveCustomCssArchive();
+            });
+        }
+
     }
 
     // 选择气泡样式
@@ -3056,6 +3130,216 @@ compressAndApplyWallpaper(imageData) {
             activeItem.classList.add('active');
         }
     }
+    
+    /* ======================== 第三处 ========================
+   插入位置：ChatInterface 类的末尾（最后一个 } 之前）
+   整段复制粘贴过去即可
+   ======================================================== */
+
+    // ==================== 自定义CSS气泡 ====================
+
+    // 应用自定义CSS到页面
+    applyCustomCss(save = true) {
+        const textarea = document.getElementById('bubbleCustomCss');
+        const css = textarea ? textarea.value.trim() : '';
+
+        // 先移除旧的自定义style标签
+        this.removeCustomCss();
+
+        if (css) {
+            const style = document.createElement('style');
+            style.id = 'customBubbleCssTag';
+            style.textContent = css;
+            document.head.appendChild(style);
+            console.log('✅ 自定义CSS已应用');
+        }
+
+        if (save) {
+            this.settings.customBubbleCss = css;
+            this.saveSettings();
+        }
+
+        // 同步更新弹窗内预览
+        this.updateCustomCssPreview(css);
+    }
+
+    // 移除自定义CSS
+    removeCustomCss() {
+        const oldStyle = document.getElementById('customBubbleCssTag');
+        if (oldStyle) oldStyle.remove();
+        const oldPreview = document.getElementById('customBubbleCssPreviewTag');
+        if (oldPreview) oldPreview.remove();
+    }
+
+    // 更新弹窗内预览区域（把用户写的CSS转换成作用在预览区的CSS）
+    updateCustomCssPreview(css) {
+        const oldPreviewStyle = document.getElementById('customBubbleCssPreviewTag');
+        if (oldPreviewStyle) oldPreviewStyle.remove();
+
+        if (!css) return;
+
+        // 把常用类名替换成预览区内的对应元素
+        const previewCss = css
+            .replace(/\.messages-container/g, '#bubblePreviewArea')
+            .replace(/\.message-ai\s+\.message-bubble/g, '#bubblePreviewArea .bubble-preview-bubble-ai')
+            .replace(/\.message-user\s+\.message-bubble/g, '#bubblePreviewArea .bubble-preview-bubble-user')
+            .replace(/\.message-ai\s+\.message-text/g, '#bubblePreviewArea .bubble-preview-bubble-ai')
+            .replace(/\.message-user\s+\.message-text/g, '#bubblePreviewArea .bubble-preview-bubble-user')
+            .replace(/\.message-time/g, '#bubblePreviewArea .bubble-preview-time')
+            .replace(/\.avatar-placeholder/g, '#bubblePreviewArea .bubble-preview-avatar');
+
+        const style = document.createElement('style');
+        style.id = 'customBubbleCssPreviewTag';
+        style.textContent = previewCss;
+        document.head.appendChild(style);
+    }
+
+    // 保存当前CSS为一个存档
+    saveCustomCssArchive() {
+        const textarea = document.getElementById('bubbleCustomCss');
+        const css = textarea ? textarea.value.trim() : '';
+
+        if (!css) {
+            alert('❌ 请先在输入框里写入自定义CSS代码');
+            return;
+        }
+
+        const name = prompt(
+            '给这个气泡存档起个名字：',
+            '我的气泡 ' + (new Date().getMonth() + 1) + '月款'
+        );
+        if (!name || !name.trim()) return;
+
+        const archives = this.getBubbleArchives();
+
+        const newArchive = {
+            id: 'archive_' + Date.now(),
+            name: name.trim(),
+            css: css,
+            createdAt: new Date().toISOString()
+        };
+
+        archives.push(newArchive);
+        this.saveBubbleArchives(archives);
+
+        console.log('✅ 气泡存档已保存:', name.trim());
+        alert('✅ 存档"' + name.trim() + '"已保存！');
+
+        this.renderBubbleArchives();
+    }
+
+    // 读取所有气泡存档（以好友编码为key，不同好友存档独立）
+    getBubbleArchives() {
+        try {
+            const key = 'zero_phone_bubble_archives_' + (this.currentFriendCode || 'global');
+            const data = localStorage.getItem(key);
+            return data ? JSON.parse(data) : [];
+        } catch (e) {
+            console.error('❌ 读取气泡存档失败:', e);
+            return [];
+        }
+    }
+
+    // 保存所有气泡存档
+    saveBubbleArchives(archives) {
+        try {
+            const key = 'zero_phone_bubble_archives_' + (this.currentFriendCode || 'global');
+            localStorage.setItem(key, JSON.stringify(archives));
+        } catch (e) {
+            console.error('❌ 保存气泡存档失败:', e);
+        }
+    }
+
+    // 渲染存档列表
+    renderBubbleArchives() {
+        const list = document.getElementById('bubbleArchiveList');
+        const emptyEl = document.getElementById('bubbleArchiveEmpty');
+        if (!list) return;
+
+        const archives = this.getBubbleArchives();
+
+        // 清除旧卡片
+        list.querySelectorAll('.bubble-archive-card').forEach(c => c.remove());
+
+        if (archives.length === 0) {
+            if (emptyEl) emptyEl.style.display = 'block';
+            return;
+        }
+
+        if (emptyEl) emptyEl.style.display = 'none';
+
+        const currentCss = (this.settings.customBubbleCss || '').trim();
+
+        archives.forEach(archive => {
+            const isActive = archive.css.trim() === currentCss && currentCss !== '';
+
+            const card = document.createElement('div');
+            card.className = 'bubble-archive-card' + (isActive ? ' active-archive' : '');
+            card.setAttribute('data-id', archive.id);
+
+            // 预览文字：取CSS第一行或前60字符
+            const firstLine = archive.css.split('\n')[0].trim();
+            const preview = firstLine.length > 55
+                ? firstLine.substring(0, 55) + '…'
+                : firstLine;
+
+            card.innerHTML =
+                '<div class="bubble-archive-card-icon">💾</div>' +
+                '<div class="bubble-archive-card-info">' +
+                    '<div class="bubble-archive-card-name">' + this.escapeHtml(archive.name) + '</div>' +
+                    '<div class="bubble-archive-card-preview">' + this.escapeHtml(preview) + '</div>' +
+                '</div>' +
+                '<button class="bubble-archive-card-del" data-id="' + archive.id + '" title="删除存档">×</button>';
+
+            // 点击卡片主体 → 加载
+            card.addEventListener('click', (e) => {
+                if (e.target.classList.contains('bubble-archive-card-del')) return;
+                this.loadBubbleArchive(archive);
+            });
+
+            // 点击删除按钮
+            const delBtn = card.querySelector('.bubble-archive-card-del');
+            delBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.deleteBubbleArchive(archive.id, archive.name);
+            });
+
+            list.appendChild(card);
+        });
+    }
+
+    // 加载存档到编辑器并应用
+    loadBubbleArchive(archive) {
+        console.log('📂 加载气泡存档:', archive.name);
+
+        // 把CSS填入输入框
+        const textarea = document.getElementById('bubbleCustomCss');
+        if (textarea) textarea.value = archive.css;
+
+        // 先清掉预设气泡样式
+        this.selectBubbleStyle('default');
+
+        // 应用CSS
+        this.settings.customBubbleCss = archive.css;
+        this.applyCustomCss(true);
+
+        // 刷新存档列表（更新高亮）
+        this.renderBubbleArchives();
+
+        console.log('✅ 存档已加载:', archive.name);
+    }
+
+    // 删除存档
+    deleteBubbleArchive(id, name) {
+        if (!confirm('确定要删除存档"' + name + '"吗？')) return;
+
+        const archives = this.getBubbleArchives().filter(a => a.id !== id);
+        this.saveBubbleArchives(archives);
+        this.renderBubbleArchives();
+
+        console.log('🗑️ 气泡存档已删除:', id);
+    }
+
 }
 
 // 暴露到全局（供HTML onclick使用）
