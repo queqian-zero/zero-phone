@@ -3140,8 +3140,20 @@ compressAndApplyWallpaper(imageData) {
 
     // 应用自定义CSS到页面
     applyCustomCss(save = true) {
-        const textarea = document.getElementById('bubbleCustomCss');
-        const css = textarea ? textarea.value.trim() : '';
+    const textarea = document.getElementById('bubbleCustomCss');
+    let css = textarea ? textarea.value.trim() : '';
+
+    // 防止自定义CSS里的 background 简写覆盖壁纸
+    css = css.replace(
+        /\.messages-container\s*\{([^}]*)\}/g,
+        (match, inner) => {
+            inner = inner.replace(
+                /background\s*:\s*(?!.*url)([^;]+);/g,
+                'background-color: $1;'
+            );
+            return `.messages-container {${inner}}`;
+        }
+    );
 
         // 先移除旧的自定义style标签
         this.removeCustomCss();
