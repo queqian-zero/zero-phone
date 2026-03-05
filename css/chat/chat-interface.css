@@ -187,13 +187,14 @@
 
 /* ==================== 默认壁纸遮罩（无气泡主题时） ==================== */
 /* 注意：有气泡主题时，各主题自己的::before会接管 */
-body:not(.bubble-wechat):not(.bubble-qq):not(.bubble-telegram):not(.bubble-line):not(.bubble-custom) .messages-container.has-wallpaper::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.3);
-    pointer-events: none;
-    z-index: 0;
+/* 默认气泡无壁纸时：纯黑底 */
+body:not(.bubble-wechat):not(.bubble-qq):not(.bubble-telegram):not(.bubble-line):not(.bubble-custom) .messages-container {
+    background-color: #000;
+}
+
+/* 默认气泡有壁纸时：透明，让壁纸完整显示 */
+body:not(.bubble-wechat):not(.bubble-qq):not(.bubble-telegram):not(.bubble-line):not(.bubble-custom) .messages-container.has-wallpaper {
+    background-color: transparent;
 }
 
 /* 确保消息列表在遮罩之上 */
