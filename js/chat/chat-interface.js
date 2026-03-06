@@ -754,7 +754,7 @@ class ChatInterface {
         const time = this.formatTimeAdvanced(new Date(message.timestamp));
         
         const avatarRadius = this.getAvatarBorderRadius();
-const avatarFrameClass = this.getAvatarFrameClass();
+const avatarFrameClass = this.getAvatarFrameClass(message.type);
 const avatarFrameHTML = this.getAvatarFrameHTML(message.type);
 
 let avatarHTML = '';
@@ -3430,11 +3430,17 @@ getAvatarBorderRadius() {
     return `${r}%`;
 }
 
-getAvatarFrameClass() {
-    const t = this.settings.avatarFrameType || 'none';
-    if (t !== 'none' && t !== 'custom') {
-        return `af-frame-${t}`;
+getAvatarFrameClass(msgType) {
+    const t = msgType === 'user'
+        ? (this.settings.userAvatarFrameType || 'none')
+        : (this.settings.avatarFrameType || 'none');
+
+    // 内置框：两边都用AI选的那个
+    const builtinType = this.settings.avatarFrameType || 'none';
+    if (builtinType !== 'none' && builtinType !== 'custom') {
+        return `af-frame-${builtinType}`;
     }
+    // 自定义上传：各自独立，不加class
     return '';
 }
 
