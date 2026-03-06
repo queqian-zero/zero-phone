@@ -23,7 +23,15 @@ class ChatInterface {
             contextMessages: 20,
             timeAwareness: true,
                 chatWallpaper: 'default',
-            bubbleStyle: 'default'   // ← 新加这一行
+            bubbleStyle: 'default',
+            avatarShape: 'circle',
+            avatarBorderRadius: 50,
+            avatarFrameType: 'none',
+            avatarFrameSrc: '',
+            avatarFrameOffsetX: 0,
+            avatarFrameOffsetY: 0,
+            avatarFrameScale: 100,
+            avatarFrameCss: ''
 };
 
         
@@ -740,25 +748,31 @@ class ChatInterface {
         
         const time = this.formatTimeAdvanced(new Date(message.timestamp));
         
-        let avatarHTML = '';
-        if (message.type === 'ai') {
-            const friend = this.currentFriend || this.storage.getFriendByCode(this.currentFriendCode);
+        const avatarRadius = this.getAvatarBorderRadius();
+const avatarFrameClass = this.getAvatarFrameClass();
+const avatarFrameHTML = this.getAvatarFrameHTML();
+
+let avatarHTML = '';
+if (message.type === 'ai') {
+    const friend = this.currentFriend || this.storage.getFriendByCode(this.currentFriendCode);
+    
+    if (friend && friend.avatar) {
+        avatarHTML = `<img src="${friend.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:${avatarRadius};" alt="头像">`;
+    } else if (friend) {
+        avatarHTML = `<div class="avatar-placeholder" style="border-radius:${avatarRadius};">${friend.name.charAt(0)}</div>`;
+    } else {
+        avatarHTML = `<div class="avatar-placeholder" style="border-radius:${avatarRadius};">AI</div>`;
+    }
+} else {
+    avatarHTML = `<div class="avatar-placeholder" style="border-radius:${avatarRadius};">我</div>`;
+}
+
+div.innerHTML = `
+    <div class="message-avatar ${avatarFrameClass}">
+        ${avatarHTML}
+        ${avatarFrameHTML}
+    </div>
             
-            if (friend && friend.avatar) {
-                avatarHTML = `<img src="${friend.avatar}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" alt="头像">`;
-            } else if (friend) {
-                avatarHTML = `<div class="avatar-placeholder">${friend.name.charAt(0)}</div>`;
-            } else {
-                avatarHTML = `<div class="avatar-placeholder">AI</div>`;
-            }
-        } else {
-            avatarHTML = `<div class="avatar-placeholder">我</div>`;
-        }
-        
-        div.innerHTML = `
-            <div class="message-avatar">
-                ${avatarHTML}
-            </div>
             <div class="message-content">
                 <div class="message-bubble">
                     <div class="message-text">${this.escapeHtml(message.text)}</div>
@@ -894,6 +908,14 @@ class ChatInterface {
             wallpaperBtn.addEventListener('click', () => {
                 this.openWallpaperModal();
             });
+        }
+        
+                // 头像框按钮
+        const avatarFrameBtn = document.getElementById('settingAvatarFrame');
+        if (avatarFrameBtn) {
+        avatarFrameBtn.addEventListener('click', () => {
+        this.openAvatarFrameModal();
+           });
         }
         
                 // 聊天气泡美化按钮
@@ -1042,6 +1064,11 @@ this.applyWallpaper(this.settings.chatWallpaper || 'default');
             document.head.appendChild(style);
             console.log('✅ 自定义CSS已从设置恢复');
         }
+        
+        // 恢复头像框CSS
+if (this.settings.avatarFrameCss) {
+    this.applyAvatarFrameCss(false);
+}
 
 
     }
@@ -3390,6 +3417,320 @@ compressAndApplyWallpaper(imageData) {
 
         console.log('🗑️ 气泡存档已删除:', id);
     }
+    
+    // ==================== 头像框功能方法 ====================
+
+getAvatarBorderRadius() {
+    const r = this.settings.avatarBorderRadius ?? 50;
+    return `${r}%`;
+}
+
+getAvatarFrameClass() {
+    const t = this.settings.avatarFrameType || 'none';
+    if (t !== 'none' && t !== 'custom') {
+        return `af-frame-${t}`;
+    }
+    return '';
+}
+
+getAvatarFrameHTML() {
+    if (this.settings.avatarFrameType === 'custom' && this.settings.avatarFrameSrc) {
+        const ox = this.settings.avatarFrameOffsetX || 0;
+        const oy = this.settings.avatarFrameOffsetY || 0;
+        const sc = (this.settings.avatarFrameScale || 100) / 100;
+        return `<img class="avatar-frame-img" src="${this.settings.avatarFrameSrc}" style="transform:translate(${ox}px,${oy}px) scale(${sc});" alt="">`;
+    }
+    return '';
+}
+
+openAvatarFrameModal() {
+    console.log('🖼️ 打开头像框弹窗');
+    const modal = document.getElementById('avatarFrameModal');
+    if (!modal) return;
+    modal.style.display = 'flex';
+
+    // 同步UI到当前设置
+    this.syncAvatarFrameUI();
+
+    // 更新预览
+    this.updateAvatarPreview();
+
+    if (!this.avatarFrameEventsBound) {
+        this.bindAvatarFrameEvents();
+        this.avatarFrameEventsBound = true;
+    }
+}
+
+closeAvatarFrameModal() {
+    const modal = document.getElementById('avatarFrameModal');
+    if (modal) modal.style.display = 'none';
+}
+
+syncAvatarFrameUI() {
+    // 形状按钮
+    document.querySelectorAll('.af-shape-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-shape') === (this.settings.avatarShape || 'circle'));
+    });
+
+    // 圆角滑块
+    const slider = document.getElementById('afRadiusSlider');
+    const sliderVal = document.getElementById('afRadiusValue');
+    if (slider) slider.value = this.settings.avatarBorderRadius ?? 50;
+    if (sliderVal) sliderVal.textContent = this.settings.avatarBorderRadius ?? 50;
+
+    // 内置框选中状态
+    document.querySelectorAll('.af-builtin-item').forEach(item => {
+        item.classList.toggle('active', item.getAttribute('data-frame') === (this.settings.avatarFrameType || 'none'));
+    });
+
+    // 位置滑块
+    const ox = document.getElementById('afOffsetXSlider');
+    const oy = document.getElementById('afOffsetYSlider');
+    const sc = document.getElementById('afScaleSlider');
+    if (ox) ox.value = this.settings.avatarFrameOffsetX || 0;
+    if (oy) oy.value = this.settings.avatarFrameOffsetY || 0;
+    if (sc) sc.value = this.settings.avatarFrameScale || 100;
+    const oxv = document.getElementById('afOffsetXValue');
+    const oyv = document.getElementById('afOffsetYValue');
+    const scv = document.getElementById('afScaleValue');
+    if (oxv) oxv.textContent = this.settings.avatarFrameOffsetX || 0;
+    if (oyv) oyv.textContent = this.settings.avatarFrameOffsetY || 0;
+    if (scv) scv.textContent = this.settings.avatarFrameScale || 100;
+
+    // 位置区显示/隐藏
+    const posSection = document.getElementById('afPositionSection');
+    if (posSection) posSection.style.display = this.settings.avatarFrameType === 'custom' ? 'block' : 'none';
+
+    // CSS输入框
+    const cssInput = document.getElementById('afCustomCss');
+    if (cssInput) cssInput.value = this.settings.avatarFrameCss || '';
+}
+
+updateAvatarPreview() {
+    const wrapper = document.getElementById('afPreviewWrapper');
+    const avatarEl = document.getElementById('afPreviewAvatar');
+    const frameImg = document.getElementById('afPreviewFrameImg');
+    if (!wrapper || !avatarEl) return;
+
+    // 形状和圆角
+    const r = this.settings.avatarBorderRadius ?? 50;
+    avatarEl.style.borderRadius = `${r}%`;
+
+    // 内置框 class
+    wrapper.className = 'af-preview-wrapper';
+    const t = this.settings.avatarFrameType || 'none';
+    if (t !== 'none' && t !== 'custom') {
+        // 在预览里用缩放版的 box-shadow 模拟
+        const previewFrameMap = {
+            'glow-white': '0 0 16px 5px rgba(255,255,255,0.7)',
+            'glow-red':   '0 0 16px 5px rgba(220,0,0,0.8)',
+            'border-gold':'0 0 0 4px gold, 0 0 12px rgba(255,215,0,0.5)',
+        };
+        avatarEl.style.boxShadow = previewFrameMap[t] || '';
+        avatarEl.style.outline = (t === 'pixel') ? '3px solid rgba(255,255,255,0.9)' : '';
+        avatarEl.style.borderRadius = (t === 'pixel') ? '0' : `${r}%`;
+    } else {
+        avatarEl.style.boxShadow = '';
+        avatarEl.style.outline = '';
+    }
+
+    // 自定义上传帧
+    if (frameImg) {
+        if (t === 'custom' && this.settings.avatarFrameSrc) {
+            frameImg.src = this.settings.avatarFrameSrc;
+            frameImg.style.display = 'block';
+            const ox = this.settings.avatarFrameOffsetX || 0;
+            const oy = this.settings.avatarFrameOffsetY || 0;
+            const sc = (this.settings.avatarFrameScale || 100) / 100;
+            frameImg.style.transform = `translate(${ox}px,${oy}px) scale(${sc})`;
+        } else {
+            frameImg.style.display = 'none';
+            frameImg.src = '';
+        }
+    }
+
+    // 彩虹预览特殊处理
+    if (t === 'border-rainbow') {
+        avatarEl.style.boxShadow = '0 0 0 3px hsl(0,100%,60%)';
+        avatarEl.style.animation = 'rainbowBorder 3s linear infinite';
+    } else {
+        avatarEl.style.animation = '';
+    }
+}
+
+bindAvatarFrameEvents() {
+    console.log('🔗 绑定头像框弹窗事件');
+
+    // 关闭
+    const closeBtn = document.getElementById('avatarFrameClose');
+    const overlay = document.getElementById('avatarFrameOverlay');
+    if (closeBtn) closeBtn.addEventListener('click', () => this.closeAvatarFrameModal());
+    if (overlay) overlay.addEventListener('click', () => this.closeAvatarFrameModal());
+
+    // 形状按钮
+    document.querySelectorAll('.af-shape-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const shape = btn.getAttribute('data-shape');
+            this.settings.avatarShape = shape;
+            // 圆形默认50，方形默认0
+            if (shape === 'circle') {
+                this.settings.avatarBorderRadius = 50;
+            } else {
+                this.settings.avatarBorderRadius = 0;
+            }
+            const slider = document.getElementById('afRadiusSlider');
+            const valEl = document.getElementById('afRadiusValue');
+            if (slider) slider.value = this.settings.avatarBorderRadius;
+            if (valEl) valEl.textContent = this.settings.avatarBorderRadius;
+            document.querySelectorAll('.af-shape-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            this.updateAvatarPreview();
+            this.saveSettings();
+            this.renderMessages();
+        });
+    });
+
+    // 圆角滑块
+    const radiusSlider = document.getElementById('afRadiusSlider');
+    if (radiusSlider) {
+        radiusSlider.addEventListener('input', (e) => {
+            const v = parseInt(e.target.value);
+            this.settings.avatarBorderRadius = v;
+            const valEl = document.getElementById('afRadiusValue');
+            if (valEl) valEl.textContent = v;
+            this.updateAvatarPreview();
+        });
+        radiusSlider.addEventListener('change', () => {
+            this.saveSettings();
+            this.renderMessages();
+        });
+    }
+
+    // 内置框选择
+    document.querySelectorAll('.af-builtin-item').forEach(item => {
+        item.addEventListener('click', () => {
+            const frame = item.getAttribute('data-frame');
+            this.settings.avatarFrameType = frame;
+            this.settings.avatarFrameSrc = '';
+            document.querySelectorAll('.af-builtin-item').forEach(i => i.classList.remove('active'));
+            item.classList.add('active');
+            const posSection = document.getElementById('afPositionSection');
+            if (posSection) posSection.style.display = 'none';
+            this.updateAvatarPreview();
+            this.saveSettings();
+            this.renderMessages();
+        });
+    });
+
+    // 上传自定义帧
+    const uploadBtn = document.getElementById('afUploadBtn');
+    const uploadInput = document.getElementById('afUploadInput');
+    if (uploadBtn && uploadInput) {
+        uploadBtn.addEventListener('click', () => uploadInput.click());
+        uploadInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            if (!file.type.startsWith('image/')) {
+                alert('❌ 请选择图片文件！'); return;
+            }
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                this.settings.avatarFrameType = 'custom';
+                this.settings.avatarFrameSrc = ev.target.result;
+                // 清除内置框选中
+                document.querySelectorAll('.af-builtin-item').forEach(i => i.classList.remove('active'));
+                // 显示位置调节
+                const posSection = document.getElementById('afPositionSection');
+                if (posSection) posSection.style.display = 'block';
+                this.updateAvatarPreview();
+                this.saveSettings();
+                this.renderMessages();
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    // 位置滑块
+    const makeSliderHandler = (sliderId, valueId, settingKey) => {
+        const slider = document.getElementById(sliderId);
+        if (!slider) return;
+        slider.addEventListener('input', (e) => {
+            const v = parseInt(e.target.value);
+            this.settings[settingKey] = v;
+            const valEl = document.getElementById(valueId);
+            if (valEl) valEl.textContent = v;
+            this.updateAvatarPreview();
+        });
+        slider.addEventListener('change', () => {
+            this.saveSettings();
+            this.renderMessages();
+        });
+    };
+    makeSliderHandler('afOffsetXSlider', 'afOffsetXValue', 'avatarFrameOffsetX');
+    makeSliderHandler('afOffsetYSlider', 'afOffsetYValue', 'avatarFrameOffsetY');
+    makeSliderHandler('afScaleSlider',   'afScaleValue',   'avatarFrameScale');
+
+    // CSS提示开关
+    const hintBtn = document.getElementById('afHintBtn');
+    const hintPanel = document.getElementById('afHintPanel');
+    if (hintBtn && hintPanel) {
+        hintBtn.addEventListener('click', () => {
+            const open = hintPanel.style.display !== 'none';
+            hintPanel.style.display = open ? 'none' : 'block';
+            hintBtn.textContent = open ? '查看类名提示' : '收起提示';
+        });
+    }
+
+    // 应用CSS
+    const applyBtn = document.getElementById('afCssApply');
+    if (applyBtn) {
+        applyBtn.addEventListener('click', () => {
+            this.applyAvatarFrameCss(true);
+        });
+    }
+
+    // 清空CSS
+    const clearBtn = document.getElementById('afCssClear');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            const textarea = document.getElementById('afCustomCss');
+            if (textarea) textarea.value = '';
+            this.settings.avatarFrameCss = '';
+            this.removeAvatarFrameCss();
+            this.saveSettings();
+        });
+    }
+
+    // 保存CSS
+    const saveBtn = document.getElementById('afCssSave');
+    if (saveBtn) {
+        saveBtn.addEventListener('click', () => {
+            this.applyAvatarFrameCss(true);
+            alert('✅ 头像框CSS已保存！');
+        });
+    }
+}
+
+applyAvatarFrameCss(save = true) {
+    const textarea = document.getElementById('afCustomCss');
+    const css = textarea ? textarea.value.trim() : '';
+    this.removeAvatarFrameCss();
+    if (css) {
+        const style = document.createElement('style');
+        style.id = 'customAvatarFrameCssTag';
+        style.textContent = css;
+        document.head.appendChild(style);
+    }
+    if (save) {
+        this.settings.avatarFrameCss = css;
+        this.saveSettings();
+    }
+}
+
+removeAvatarFrameCss() {
+    const old = document.getElementById('customAvatarFrameCssTag');
+    if (old) old.remove();
+}
 
 }
 
