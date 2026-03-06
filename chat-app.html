@@ -430,13 +430,13 @@
 
             
             <!-- 头像框 -->
-            <div class="setting-item disabled">
-                <div class="setting-info">
-                    <span class="setting-label">头像框</span>
-                    <span class="setting-desc">圆形/方形，自定义头像框</span>
-                </div>
-                <span class="setting-badge">待开发</span>
-            </div>
+<div class="setting-item" id="settingAvatarFrame" style="cursor: pointer;">
+    <div class="setting-info">
+        <span class="setting-label">头像框</span>
+        <span class="setting-desc">圆形/方形，圆角调节，自定义头像框</span>
+    </div>
+    <button class="setting-action-btn"><span>🖼️</span></button>
+</div>
             
             <!-- 聊天壁纸 -->
 <div class="setting-item" id="settingChatWallpaper" style="cursor: pointer;">
@@ -1268,6 +1268,135 @@
     </div>
 </div>
 <!-- ==================== 聊天气泡美化弹窗结束 ==================== -->
+         <!-- ==================== 头像框弹窗 ==================== -->
+<div class="avatar-frame-modal" id="avatarFrameModal" style="display: none;">
+    <div class="avatar-frame-overlay" id="avatarFrameOverlay"></div>
+    <div class="avatar-frame-dialog">
+        <div class="avatar-frame-header">
+            <h3>头像框设置</h3>
+            <button class="avatar-frame-close" id="avatarFrameClose">×</button>
+        </div>
+        <div class="avatar-frame-body">
+
+            <!-- 预览区 -->
+            <div class="af-section">
+                <div class="af-label">预览效果：</div>
+                <div class="af-preview-area">
+                    <div class="af-preview-wrapper" id="afPreviewWrapper">
+                        <div class="af-preview-avatar" id="afPreviewAvatar">
+                            <span id="afPreviewInitial">测</span>
+                        </div>
+                        <img class="af-preview-frame-img" id="afPreviewFrameImg" src="" style="display:none;" alt="">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 头像形状 -->
+            <div class="af-section">
+                <div class="af-label">头像形状：</div>
+                <div class="af-shape-btns">
+                    <button class="af-shape-btn" data-shape="circle">⭕ 圆形</button>
+                    <button class="af-shape-btn" data-shape="square">⬜ 方形</button>
+                </div>
+            </div>
+
+            <!-- 圆角滑块 -->
+            <div class="af-section">
+                <div class="af-label">圆角弧度：<span id="afRadiusValue">50</span>%</div>
+                <input type="range" id="afRadiusSlider" min="0" max="50" value="50" class="af-slider">
+                <div class="af-slider-hints"><span>方角</span><span>圆形</span></div>
+            </div>
+
+            <!-- 内置头像框 -->
+            <div class="af-section">
+                <div class="af-label">内置头像框：</div>
+                <div class="af-builtin-grid" id="afBuiltinGrid">
+                    <div class="af-builtin-item" data-frame="none">
+                        <div class="af-builtin-thumb af-thumb-none">无框</div>
+                    </div>
+                    <div class="af-builtin-item" data-frame="glow-white">
+                        <div class="af-builtin-thumb af-thumb-glow-white"></div>
+                    </div>
+                    <div class="af-builtin-item" data-frame="glow-red">
+                        <div class="af-builtin-thumb af-thumb-glow-red"></div>
+                    </div>
+                    <div class="af-builtin-item" data-frame="border-gold">
+                        <div class="af-builtin-thumb af-thumb-border-gold"></div>
+                    </div>
+                    <div class="af-builtin-item" data-frame="border-rainbow">
+                        <div class="af-builtin-thumb af-thumb-border-rainbow"></div>
+                    </div>
+                    <div class="af-builtin-item" data-frame="pixel">
+                        <div class="af-builtin-thumb af-thumb-pixel"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 上传自定义头像框 -->
+            <div class="af-section">
+                <div class="af-label">上传自定义头像框：</div>
+                <input type="file" id="afUploadInput" accept="image/*" style="display:none;">
+                <button class="af-upload-btn" id="afUploadBtn">📤 选择图片（支持GIF动态）</button>
+                <div class="af-upload-hint">建议使用透明背景PNG或GIF，与头像等尺寸</div>
+            </div>
+
+            <!-- 位置调节（上传图片后显示） -->
+            <div class="af-section" id="afPositionSection" style="display:none;">
+                <div class="af-label">头像框位置调节：</div>
+                <div class="af-pos-row">
+                    <span>水平偏移：<span id="afOffsetXValue">0</span>px</span>
+                    <input type="range" id="afOffsetXSlider" min="-20" max="20" value="0" class="af-slider">
+                </div>
+                <div class="af-pos-row">
+                    <span>垂直偏移：<span id="afOffsetYValue">0</span>px</span>
+                    <input type="range" id="afOffsetYSlider" min="-20" max="20" value="0" class="af-slider">
+                </div>
+                <div class="af-pos-row">
+                    <span>大小缩放：<span id="afScaleValue">100</span>%</span>
+                    <input type="range" id="afScaleSlider" min="80" max="150" value="100" class="af-slider">
+                </div>
+            </div>
+
+            <!-- CSS自定义 -->
+            <div class="af-section">
+                <div class="af-label">
+                    🎨 CSS 自定义头像框
+                    <button class="af-hint-btn" id="afHintBtn">查看类名提示</button>
+                </div>
+                <div class="af-hint-panel" id="afHintPanel" style="display:none;">
+                    <div class="af-hint-title">📋 可用的 CSS 类名：</div>
+                    <div class="af-hint-list">
+                        <div class="af-hint-item"><code>.message-avatar</code><span>— 头像容器（40×40px）</span></div>
+                        <div class="af-hint-item"><code>.message-avatar img</code><span>— 头像图片本体</span></div>
+                        <div class="af-hint-item"><code>.avatar-placeholder</code><span>— 无图时的文字头像</span></div>
+                        <div class="af-hint-item"><code>.avatar-frame-img</code><span>— 自定义上传的头像框图层</span></div>
+                        <div class="af-hint-item"><code>.message-ai .message-avatar</code><span>— 仅作用于AI头像</span></div>
+                        <div class="af-hint-item"><code>.message-user .message-avatar</code><span>— 仅作用于用户头像</span></div>
+                    </div>
+                    <div class="af-hint-title">💡 示例（金色发光）：</div>
+                    <pre class="af-hint-code">.message-avatar {
+  box-shadow: 0 0 10px 3px gold;
+  border-radius: 50%;
+}
+.avatar-frame-img {
+  opacity: 0.85;
+  mix-blend-mode: screen;
+}</pre>
+                </div>
+                <textarea id="afCustomCss" class="af-css-input"
+                    placeholder="在这里输入自定义CSS…&#10;例如：&#10;.message-avatar { box-shadow: 0 0 8px 2px gold; }&#10;.avatar-frame-img { opacity: 0.8; }"
+                    rows="5"></textarea>
+                <div class="af-css-actions">
+                    <button class="af-css-btn af-css-apply-btn" id="afCssApply">应用预览</button>
+                    <button class="af-css-btn af-css-clear-btn" id="afCssClear">清空</button>
+                    <button class="af-css-btn af-css-save-btn" id="afCssSave">保存设置</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+<!-- ==================== 头像框弹窗结束 ==================== -->
 
 </body>
 </html>
