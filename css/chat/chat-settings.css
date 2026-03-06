@@ -2552,3 +2552,85 @@ body.bubble-line .avatar-placeholder {
     color: rgba(255,255,255,0.9);
 }
 .af-css-save-btn:hover { background: rgba(139,0,0,0.5); }
+
+/* ==================== 头像框弹窗补充样式 ==================== */
+
+/* 预览区双列 */
+.af-preview-area {
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+    padding: 8px 0;
+}
+
+.af-preview-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.af-preview-col-label {
+    font-size: 12px;
+    color: rgba(255,255,255,0.5);
+}
+
+/* 上传双列 */
+.af-upload-pair {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.af-upload-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.af-upload-col-label {
+    font-size: 12px;
+    color: rgba(255,255,255,0.6);
+    text-align: center;
+}
+
+.af-clear-frame-btn {
+    width: 100%;
+    padding: 6px;
+    background: rgba(80,0,0,0.3);
+    border: 1px solid rgba(139,0,0,0.4);
+    border-radius: 6px;
+    color: rgba(255,150,150,0.85);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+.af-clear-frame-btn:active { transform: scale(0.96); }
+
+/* 位置调节标签 */
+.af-pos-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.af-pos-tab {
+    flex: 1;
+    padding: 7px;
+    border-radius: 7px;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.05);
+    color: rgba(255,255,255,0.6);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+
+.af-pos-tab.active {
+    border-color: rgba(139,0,0,0.8);
+    background: rgba(139,0,0,0.2);
+    color: #fff;
+}
