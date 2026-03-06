@@ -1280,16 +1280,24 @@
 
             <!-- 预览区 -->
             <div class="af-section">
-                <div class="af-label">预览效果：</div>
-                <div class="af-preview-area">
-                    <div class="af-preview-wrapper" id="afPreviewWrapper">
-                        <div class="af-preview-avatar" id="afPreviewAvatar">
-                            <span id="afPreviewInitial">测</span>
-                        </div>
-                        <img class="af-preview-frame-img" id="afPreviewFrameImg" src="" style="display:none;" alt="">
-                    </div>
-                </div>
+            <div class="af-label">预览效果：</div>
+            <div class="af-preview-area">
+            <div class="af-preview-col">
+            <div class="af-preview-col-label">AI 头像</div>
+            <div class="af-preview-wrapper" id="afPreviewWrapperAI">
+                <div class="af-preview-avatar" id="afPreviewAvatarAI"><span>AI</span></div>
+                <img class="af-preview-frame-img" id="afPreviewFrameImgAI" src="" style="display:none;" alt="">
             </div>
+        </div>
+        <div class="af-preview-col">
+            <div class="af-preview-col-label">我的头像</div>
+            <div class="af-preview-wrapper" id="afPreviewWrapperUser">
+                <div class="af-preview-avatar" id="afPreviewAvatarUser"><span>我</span></div>
+                <img class="af-preview-frame-img" id="afPreviewFrameImgUser" src="" style="display:none;" alt="">
+            </div>
+        </div>
+    </div>
+</div>
 
             <!-- 头像形状 -->
             <div class="af-section">
@@ -1334,28 +1342,60 @@
 
             <!-- 上传自定义头像框 -->
             <div class="af-section">
-                <div class="af-label">上传自定义头像框：</div>
-                <input type="file" id="afUploadInput" accept="image/*" style="display:none;">
-                <button class="af-upload-btn" id="afUploadBtn">📤 选择图片（支持GIF动态）</button>
-                <div class="af-upload-hint">建议使用透明背景PNG或GIF，与头像等尺寸</div>
-            </div>
+            <div class="af-label">上传自定义头像框：</div>
+            <div class="af-upload-pair">
+            <div class="af-upload-col">
+            <div class="af-upload-col-label">AI 头像框</div>
+            <input type="file" id="afUploadInputAI" accept="image/*" style="display:none;">
+            <button class="af-upload-btn" id="afUploadBtnAI">📤 上传AI头像框</button>
+            <button class="af-clear-frame-btn" id="afClearFrameAI" style="display:none;">× 移除</button>
+        </div>
+        <div class="af-upload-col">
+            <div class="af-upload-col-label">我的头像框</div>
+            <input type="file" id="afUploadInputUser" accept="image/*" style="display:none;">
+            <button class="af-upload-btn" id="afUploadBtnUser">📤 上传我的头像框</button>
+            <button class="af-clear-frame-btn" id="afClearFrameUser" style="display:none;">× 移除</button>
+        </div>
+    </div>
+    <div class="af-upload-hint">建议使用透明背景PNG或GIF，与头像等尺寸</div>
+</div>
 
             <!-- 位置调节（上传图片后显示） -->
             <div class="af-section" id="afPositionSection" style="display:none;">
-                <div class="af-label">头像框位置调节：</div>
-                <div class="af-pos-row">
-                    <span>水平偏移：<span id="afOffsetXValue">0</span>px</span>
-                    <input type="range" id="afOffsetXSlider" min="-20" max="20" value="0" class="af-slider">
-                </div>
-                <div class="af-pos-row">
-                    <span>垂直偏移：<span id="afOffsetYValue">0</span>px</span>
-                    <input type="range" id="afOffsetYSlider" min="-20" max="20" value="0" class="af-slider">
-                </div>
-                <div class="af-pos-row">
-                    <span>大小缩放：<span id="afScaleValue">100</span>%</span>
-                    <input type="range" id="afScaleSlider" min="80" max="150" value="100" class="af-slider">
-                </div>
-            </div>
+            <div class="af-label">头像框位置调节：</div>
+            <div class="af-pos-tabs">
+            <button class="af-pos-tab active" data-target="AI">AI 头像框</button>
+            <button class="af-pos-tab" data-target="User">我的头像框</button>
+    </div>
+            <div class="af-pos-panel" id="afPosPanelAI">
+            <div class="af-pos-row">
+            <span>水平偏移：<span id="afOffsetXValueAI">0</span>px</span>
+            <input type="range" id="afOffsetXSliderAI" min="-20" max="20" value="0" class="af-slider">
+        </div>
+        <div class="af-pos-row">
+            <span>垂直偏移：<span id="afOffsetYValueAI">0</span>px</span>
+            <input type="range" id="afOffsetYSliderAI" min="-20" max="20" value="0" class="af-slider">
+        </div>
+        <div class="af-pos-row">
+            <span>大小缩放：<span id="afScaleValueAI">100</span>%</span>
+            <input type="range" id="afScaleSliderAI" min="80" max="150" value="100" class="af-slider">
+        </div>
+    </div>
+    <div class="af-pos-panel" id="afPosPanelUser" style="display:none;">
+        <div class="af-pos-row">
+            <span>水平偏移：<span id="afOffsetXValueUser">0</span>px</span>
+            <input type="range" id="afOffsetXSliderUser" min="-20" max="20" value="0" class="af-slider">
+        </div>
+        <div class="af-pos-row">
+            <span>垂直偏移：<span id="afOffsetYValueUser">0</span>px</span>
+            <input type="range" id="afOffsetYSliderUser" min="-20" max="20" value="0" class="af-slider">
+        </div>
+        <div class="af-pos-row">
+            <span>大小缩放：<span id="afScaleValueUser">100</span>%</span>
+            <input type="range" id="afScaleSliderUser" min="80" max="150" value="100" class="af-slider">
+        </div>
+    </div>
+</div>
 
             <!-- CSS自定义 -->
             <div class="af-section">
