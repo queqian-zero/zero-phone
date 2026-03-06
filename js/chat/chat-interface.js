@@ -3564,7 +3564,9 @@ _updateSinglePreview(suffix, frameType, frameSrc, ox, oy, scale) {
     const frameImg = document.getElementById(`afPreviewFrameImg${suffix}`);
     if (!avatarEl) return;
 
-    const t = frameType || 'none';
+    // 内置框统一用AI侧的选择，自定义上传各用各的
+const builtinType = this.settings.avatarFrameType || 'none';
+const t = (frameType === 'custom') ? 'custom' : builtinType;
 
     const previewFrameMap = {
         'glow-white':  '0 0 16px 5px rgba(255,255,255,0.7)',
