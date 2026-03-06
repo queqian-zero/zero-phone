@@ -31,7 +31,12 @@ class ChatInterface {
             avatarFrameOffsetX: 0,
             avatarFrameOffsetY: 0,
             avatarFrameScale: 100,
-            avatarFrameCss: ''
+            avatarFrameCss: '',
+            userAvatarFrameType: 'none',
+            userAvatarFrameSrc: '',
+            userAvatarFrameOffsetX: 0,
+            userAvatarFrameOffsetY: 0,
+            userAvatarFrameScale: 100
 };
 
         
@@ -750,7 +755,7 @@ class ChatInterface {
         
         const avatarRadius = this.getAvatarBorderRadius();
 const avatarFrameClass = this.getAvatarFrameClass();
-const avatarFrameHTML = this.getAvatarFrameHTML();
+const avatarFrameHTML = this.getAvatarFrameHTML(message.type);
 
 let avatarHTML = '';
 if (message.type === 'ai') {
@@ -3433,12 +3438,21 @@ getAvatarFrameClass() {
     return '';
 }
 
-getAvatarFrameHTML() {
-    if (this.settings.avatarFrameType === 'custom' && this.settings.avatarFrameSrc) {
-        const ox = this.settings.avatarFrameOffsetX || 0;
-        const oy = this.settings.avatarFrameOffsetY || 0;
-        const sc = (this.settings.avatarFrameScale || 100) / 100;
-        return `<img class="avatar-frame-img" src="${this.settings.avatarFrameSrc}" style="transform:translate(${ox}px,${oy}px) scale(${sc});" alt="">`;
+getAvatarFrameHTML(msgType) {
+    if (msgType === 'ai') {
+        if (this.settings.avatarFrameType === 'custom' && this.settings.avatarFrameSrc) {
+            const ox = this.settings.avatarFrameOffsetX || 0;
+            const oy = this.settings.avatarFrameOffsetY || 0;
+            const sc = (this.settings.avatarFrameScale || 100) / 100;
+            return `<img class="avatar-frame-img" src="${this.settings.avatarFrameSrc}" style="transform:translate(${ox}px,${oy}px) scale(${sc});" alt="">`;
+        }
+    } else {
+        if (this.settings.userAvatarFrameType === 'custom' && this.settings.userAvatarFrameSrc) {
+            const ox = this.settings.userAvatarFrameOffsetX || 0;
+            const oy = this.settings.userAvatarFrameOffsetY || 0;
+            const sc = (this.settings.userAvatarFrameScale || 100) / 100;
+            return `<img class="avatar-frame-img" src="${this.settings.userAvatarFrameSrc}" style="transform:translate(${ox}px,${oy}px) scale(${sc});" alt="">`;
+        }
     }
     return '';
 }
@@ -3471,35 +3485,48 @@ syncAvatarFrameUI() {
     document.querySelectorAll('.af-shape-btn').forEach(btn => {
         btn.classList.toggle('active', btn.getAttribute('data-shape') === (this.settings.avatarShape || 'circle'));
     });
-
-    // 圆角滑块
     const slider = document.getElementById('afRadiusSlider');
     const sliderVal = document.getElementById('afRadiusValue');
     if (slider) slider.value = this.settings.avatarBorderRadius ?? 50;
     if (sliderVal) sliderVal.textContent = this.settings.avatarBorderRadius ?? 50;
 
-    // 内置框选中状态
+    // 内置框选中
     document.querySelectorAll('.af-builtin-item').forEach(item => {
         item.classList.toggle('active', item.getAttribute('data-frame') === (this.settings.avatarFrameType || 'none'));
     });
 
-    // 位置滑块
-    const ox = document.getElementById('afOffsetXSlider');
-    const oy = document.getElementById('afOffsetYSlider');
-    const sc = document.getElementById('afScaleSlider');
-    if (ox) ox.value = this.settings.avatarFrameOffsetX || 0;
-    if (oy) oy.value = this.settings.avatarFrameOffsetY || 0;
-    if (sc) sc.value = this.settings.avatarFrameScale || 100;
-    const oxv = document.getElementById('afOffsetXValue');
-    const oyv = document.getElementById('afOffsetYValue');
-    const scv = document.getElementById('afScaleValue');
-    if (oxv) oxv.textContent = this.settings.avatarFrameOffsetX || 0;
-    if (oyv) oyv.textContent = this.settings.avatarFrameOffsetY || 0;
-    if (scv) scv.textContent = this.settings.avatarFrameScale || 100;
+    // AI位置滑块
+    const setSlider = (id, valId, val) => {
+        const el = document.getElementById(id);
+        const vel = document.getElementById(valId);
+        if (el) el.value = val || 0;
+        if (vel) vel.textContent = val || 0;
+    };
+    setSlider('afOffsetXSliderAI', 'afOffsetXValueAI', this.settings.avatarFrameOffsetX);
+    setSlider('afOffsetYSliderAI', 'afOffsetYValueAI', this.settings.avatarFrameOffsetY);
+    const scAI = document.getElementById('afScaleSliderAI');
+    const scAIv = document.getElementById('afScaleValueAI');
+    if (scAI) scAI.value = this.settings.avatarFrameScale || 100;
+    if (scAIv) scAIv.textContent = this.settings.avatarFrameScale || 100;
 
-    // 位置区显示/隐藏
+    // User位置滑块
+    setSlider('afOffsetXSliderUser', 'afOffsetXValueUser', this.settings.userAvatarFrameOffsetX);
+    setSlider('afOffsetYSliderUser', 'afOffsetYValueUser', this.settings.userAvatarFrameOffsetY);
+    const scUser = document.getElementById('afScaleSliderUser');
+    const scUserv = document.getElementById('afScaleValueUser');
+    if (scUser) scUser.value = this.settings.userAvatarFrameScale || 100;
+    if (scUserv) scUserv.textContent = this.settings.userAvatarFrameScale || 100;
+
+    // 位置区域显示（任一有自定义图片就显示）
     const posSection = document.getElementById('afPositionSection');
-    if (posSection) posSection.style.display = this.settings.avatarFrameType === 'custom' ? 'block' : 'none';
+    const hasCustom = this.settings.avatarFrameType === 'custom' || this.settings.userAvatarFrameType === 'custom';
+    if (posSection) posSection.style.display = hasCustom ? 'block' : 'none';
+
+    // 移除按钮显示
+    const clearAI = document.getElementById('afClearFrameAI');
+    const clearUser = document.getElementById('afClearFrameUser');
+    if (clearAI) clearAI.style.display = this.settings.avatarFrameSrc ? 'block' : 'none';
+    if (clearUser) clearUser.style.display = this.settings.userAvatarFrameSrc ? 'block' : 'none';
 
     // CSS输入框
     const cssInput = document.getElementById('afCustomCss');
@@ -3507,54 +3534,60 @@ syncAvatarFrameUI() {
 }
 
 updateAvatarPreview() {
-    const wrapper = document.getElementById('afPreviewWrapper');
-    const avatarEl = document.getElementById('afPreviewAvatar');
-    const frameImg = document.getElementById('afPreviewFrameImg');
-    if (!wrapper || !avatarEl) return;
+    this._updateSinglePreview(
+        'AI',
+        this.settings.avatarFrameType,
+        this.settings.avatarFrameSrc,
+        this.settings.avatarFrameOffsetX,
+        this.settings.avatarFrameOffsetY,
+        this.settings.avatarFrameScale
+    );
+    this._updateSinglePreview(
+        'User',
+        this.settings.userAvatarFrameType,
+        this.settings.userAvatarFrameSrc,
+        this.settings.userAvatarFrameOffsetX,
+        this.settings.userAvatarFrameOffsetY,
+        this.settings.userAvatarFrameScale
+    );
+}
 
-    // 形状和圆角
+_updateSinglePreview(suffix, frameType, frameSrc, ox, oy, scale) {
     const r = this.settings.avatarBorderRadius ?? 50;
-    avatarEl.style.borderRadius = `${r}%`;
+    const avatarEl = document.getElementById(`afPreviewAvatar${suffix}`);
+    const frameImg = document.getElementById(`afPreviewFrameImg${suffix}`);
+    if (!avatarEl) return;
 
-    // 内置框 class
-    wrapper.className = 'af-preview-wrapper';
-    const t = this.settings.avatarFrameType || 'none';
+    const t = frameType || 'none';
+
+    const previewFrameMap = {
+        'glow-white':  '0 0 16px 5px rgba(255,255,255,0.7)',
+        'glow-red':    '0 0 16px 5px rgba(220,0,0,0.8)',
+        'border-gold': '0 0 0 4px gold, 0 0 12px rgba(255,215,0,0.5)',
+    };
+
     if (t !== 'none' && t !== 'custom') {
-        // 在预览里用缩放版的 box-shadow 模拟
-        const previewFrameMap = {
-            'glow-white': '0 0 16px 5px rgba(255,255,255,0.7)',
-            'glow-red':   '0 0 16px 5px rgba(220,0,0,0.8)',
-            'border-gold':'0 0 0 4px gold, 0 0 12px rgba(255,215,0,0.5)',
-        };
         avatarEl.style.boxShadow = previewFrameMap[t] || '';
-        avatarEl.style.outline = (t === 'pixel') ? '3px solid rgba(255,255,255,0.9)' : '';
+        avatarEl.style.outline   = (t === 'pixel') ? '3px solid rgba(255,255,255,0.9)' : '';
         avatarEl.style.borderRadius = (t === 'pixel') ? '0' : `${r}%`;
+        avatarEl.style.animation = (t === 'border-rainbow') ? 'rainbowBorder 3s linear infinite' : '';
     } else {
-        avatarEl.style.boxShadow = '';
-        avatarEl.style.outline = '';
+        avatarEl.style.boxShadow    = '';
+        avatarEl.style.outline      = '';
+        avatarEl.style.borderRadius = `${r}%`;
+        avatarEl.style.animation    = '';
     }
 
-    // 自定义上传帧
     if (frameImg) {
-        if (t === 'custom' && this.settings.avatarFrameSrc) {
-            frameImg.src = this.settings.avatarFrameSrc;
+        if (t === 'custom' && frameSrc) {
+            frameImg.src = frameSrc;
             frameImg.style.display = 'block';
-            const ox = this.settings.avatarFrameOffsetX || 0;
-            const oy = this.settings.avatarFrameOffsetY || 0;
-            const sc = (this.settings.avatarFrameScale || 100) / 100;
-            frameImg.style.transform = `translate(${ox}px,${oy}px) scale(${sc})`;
+            const sc = (scale || 100) / 100;
+            frameImg.style.transform = `translate(${ox||0}px,${oy||0}px) scale(${sc})`;
         } else {
             frameImg.style.display = 'none';
             frameImg.src = '';
         }
-    }
-
-    // 彩虹预览特殊处理
-    if (t === 'border-rainbow') {
-        avatarEl.style.boxShadow = '0 0 0 3px hsl(0,100%,60%)';
-        avatarEl.style.animation = 'rainbowBorder 3s linear infinite';
-    } else {
-        avatarEl.style.animation = '';
     }
 }
 
@@ -3622,53 +3655,107 @@ bindAvatarFrameEvents() {
         });
     });
 
-    // 上传自定义帧
-    const uploadBtn = document.getElementById('afUploadBtn');
-    const uploadInput = document.getElementById('afUploadInput');
-    if (uploadBtn && uploadInput) {
-        uploadBtn.addEventListener('click', () => uploadInput.click());
-        uploadInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            if (!file.type.startsWith('image/')) {
-                alert('❌ 请选择图片文件！'); return;
-            }
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-                this.settings.avatarFrameType = 'custom';
-                this.settings.avatarFrameSrc = ev.target.result;
-                // 清除内置框选中
-                document.querySelectorAll('.af-builtin-item').forEach(i => i.classList.remove('active'));
-                // 显示位置调节
-                const posSection = document.getElementById('afPositionSection');
-                if (posSection) posSection.style.display = 'block';
-                this.updateAvatarPreview();
-                this.saveSettings();
-                this.renderMessages();
-            };
-            reader.readAsDataURL(file);
-        });
-    }
-
-    // 位置滑块
-    const makeSliderHandler = (sliderId, valueId, settingKey) => {
-        const slider = document.getElementById(sliderId);
-        if (!slider) return;
-        slider.addEventListener('input', (e) => {
-            const v = parseInt(e.target.value);
-            this.settings[settingKey] = v;
-            const valEl = document.getElementById(valueId);
-            if (valEl) valEl.textContent = v;
+    // 上传AI头像框
+const makeUploadHandler = (btnId, inputId, frameTypeKey, frameSrcKey) => {
+    const btn = document.getElementById(btnId);
+    const input = document.getElementById(inputId);
+    if (!btn || !input) return;
+    btn.addEventListener('click', () => input.click());
+    input.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        if (!file.type.startsWith('image/')) { alert('❌ 请选择图片文件！'); return; }
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            this.settings[frameTypeKey] = 'custom';
+            this.settings[frameSrcKey] = ev.target.result;
+            document.querySelectorAll('.af-builtin-item').forEach(i => i.classList.remove('active'));
+            const posSection = document.getElementById('afPositionSection');
+            if (posSection) posSection.style.display = 'block';
+            // 切换到对应Tab
+            const target = frameTypeKey === 'avatarFrameType' ? 'AI' : 'User';
+            document.querySelectorAll('.af-pos-tab').forEach(t => {
+                t.classList.toggle('active', t.getAttribute('data-target') === target);
+            });
+            document.getElementById('afPosPanelAI').style.display   = target === 'AI'   ? 'block' : 'none';
+            document.getElementById('afPosPanelUser').style.display  = target === 'User' ? 'block' : 'none';
+            // 移除按钮
+            const suffix = target === 'AI' ? 'AI' : 'User';
+            const clearBtn = document.getElementById(`afClearFrame${suffix}`);
+            if (clearBtn) clearBtn.style.display = 'block';
             this.updateAvatarPreview();
-        });
-        slider.addEventListener('change', () => {
             this.saveSettings();
             this.renderMessages();
-        });
-    };
-    makeSliderHandler('afOffsetXSlider', 'afOffsetXValue', 'avatarFrameOffsetX');
-    makeSliderHandler('afOffsetYSlider', 'afOffsetYValue', 'avatarFrameOffsetY');
-    makeSliderHandler('afScaleSlider',   'afScaleValue',   'avatarFrameScale');
+        };
+        reader.readAsDataURL(file);
+    });
+};
+makeUploadHandler('afUploadBtnAI',   'afUploadInputAI',   'avatarFrameType',     'avatarFrameSrc');
+makeUploadHandler('afUploadBtnUser', 'afUploadInputUser', 'userAvatarFrameType', 'userAvatarFrameSrc');
+
+// 移除按钮
+const clearAIBtn = document.getElementById('afClearFrameAI');
+if (clearAIBtn) {
+    clearAIBtn.addEventListener('click', () => {
+        this.settings.avatarFrameType = 'none';
+        this.settings.avatarFrameSrc = '';
+        clearAIBtn.style.display = 'none';
+        const posSection = document.getElementById('afPositionSection');
+        const hasCustom = this.settings.userAvatarFrameType === 'custom';
+        if (posSection) posSection.style.display = hasCustom ? 'block' : 'none';
+        this.updateAvatarPreview();
+        this.saveSettings();
+        this.renderMessages();
+    });
+}
+const clearUserBtn = document.getElementById('afClearFrameUser');
+if (clearUserBtn) {
+    clearUserBtn.addEventListener('click', () => {
+        this.settings.userAvatarFrameType = 'none';
+        this.settings.userAvatarFrameSrc = '';
+        clearUserBtn.style.display = 'none';
+        const posSection = document.getElementById('afPositionSection');
+        const hasCustom = this.settings.avatarFrameType === 'custom';
+        if (posSection) posSection.style.display = hasCustom ? 'block' : 'none';
+        this.updateAvatarPreview();
+        this.saveSettings();
+        this.renderMessages();
+    });
+}
+
+// 位置Tab切换
+document.querySelectorAll('.af-pos-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        const target = tab.getAttribute('data-target');
+        document.querySelectorAll('.af-pos-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('afPosPanelAI').style.display   = target === 'AI'   ? 'block' : 'none';
+        document.getElementById('afPosPanelUser').style.display = target === 'User' ? 'block' : 'none';
+    });
+});
+
+// 位置滑块
+const makeSliderHandler = (sliderId, valueId, settingKey) => {
+    const slider = document.getElementById(sliderId);
+    if (!slider) return;
+    slider.addEventListener('input', (e) => {
+        const v = parseInt(e.target.value);
+        this.settings[settingKey] = v;
+        const valEl = document.getElementById(valueId);
+        if (valEl) valEl.textContent = v;
+        this.updateAvatarPreview();
+    });
+    slider.addEventListener('change', () => {
+        this.saveSettings();
+        this.renderMessages();
+    });
+};
+makeSliderHandler('afOffsetXSliderAI',   'afOffsetXValueAI',   'avatarFrameOffsetX');
+makeSliderHandler('afOffsetYSliderAI',   'afOffsetYValueAI',   'avatarFrameOffsetY');
+makeSliderHandler('afScaleSliderAI',     'afScaleValueAI',     'avatarFrameScale');
+makeSliderHandler('afOffsetXSliderUser', 'afOffsetXValueUser', 'userAvatarFrameOffsetX');
+makeSliderHandler('afOffsetYSliderUser', 'afOffsetYValueUser', 'userAvatarFrameOffsetY');
+makeSliderHandler('afScaleSliderUser',   'afScaleValueUser',   'userAvatarFrameScale');
 
     // CSS提示开关
     const hintBtn = document.getElementById('afHintBtn');
