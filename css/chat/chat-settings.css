@@ -2122,3 +2122,433 @@ body.bubble-line .avatar-placeholder {
     transform: scale(0.9);
     background: rgba(139,0,0,0.4);
 }
+
+/* ==================== 头像框弹窗样式 ==================== */
+
+.avatar-frame-modal {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 3200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.avatar-frame-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.8);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+.avatar-frame-dialog {
+    position: relative;
+    background: rgba(20,20,20,0.95);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 16px;
+    max-width: 600px;
+    width: 100%;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    animation: afModalIn 0.3s ease-out;
+}
+
+@keyframes afModalIn {
+    from { opacity: 0; transform: scale(0.9); }
+    to   { opacity: 1; transform: scale(1); }
+}
+
+.avatar-frame-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.avatar-frame-header h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.9);
+    margin: 0;
+}
+
+.avatar-frame-close {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.6);
+    font-size: 28px;
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: color 0.2s;
+}
+.avatar-frame-close:hover { color: rgba(255,255,255,0.9); }
+
+.avatar-frame-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.avatar-frame-body::-webkit-scrollbar { width: 4px; }
+.avatar-frame-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 2px; }
+.avatar-frame-body::-webkit-scrollbar-track { background: transparent; }
+
+/* 通用区块 */
+.af-section {
+    background: rgba(255,255,255,0.05);
+    border-radius: 12px;
+    padding: 16px;
+}
+
+.af-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.9);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* 预览区 */
+.af-preview-area {
+    display: flex;
+    justify-content: center;
+    padding: 16px 0 8px;
+}
+
+.af-preview-wrapper {
+    position: relative;
+    width: 80px;
+    height: 80px;
+}
+
+.af-preview-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    color: rgba(255,255,255,0.7);
+    font-weight: 500;
+    transition: border-radius 0.3s;
+    overflow: hidden;
+}
+
+.af-preview-frame-img {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    object-fit: contain;
+    transition: transform 0.2s;
+}
+
+/* 形状按钮 */
+.af-shape-btns {
+    display: flex;
+    gap: 10px;
+}
+
+.af-shape-btn {
+    flex: 1;
+    padding: 10px;
+    border-radius: 8px;
+    border: 2px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.05);
+    color: rgba(255,255,255,0.8);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+
+.af-shape-btn.active {
+    border-color: rgba(139,0,0,0.9);
+    background: rgba(139,0,0,0.2);
+    box-shadow: 0 0 10px rgba(139,0,0,0.3);
+    color: #fff;
+}
+
+.af-shape-btn:active { transform: scale(0.96); }
+
+/* 滑块 */
+.af-slider {
+    width: 100%;
+    height: 4px;
+    border-radius: 2px;
+    accent-color: rgba(139,0,0,0.9);
+    cursor: pointer;
+    margin: 4px 0;
+}
+
+.af-slider-hints {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: rgba(255,255,255,0.4);
+    margin-top: 4px;
+}
+
+/* 位置调节行 */
+.af-pos-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 12px;
+    font-size: 13px;
+    color: rgba(255,255,255,0.8);
+}
+
+/* 内置头像框网格 */
+.af-builtin-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+}
+
+@media (max-width: 480px) {
+    .af-builtin-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+.af-builtin-item {
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+.af-builtin-item:active { transform: scale(0.94); }
+
+.af-builtin-thumb {
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 8px;
+    border: 2px solid rgba(255,255,255,0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: rgba(255,255,255,0.5);
+    transition: all 0.2s;
+    background: rgba(255,255,255,0.05);
+    overflow: hidden;
+}
+
+.af-builtin-item:hover .af-builtin-thumb {
+    border-color: rgba(139,0,0,0.5);
+}
+
+.af-builtin-item.active .af-builtin-thumb {
+    border-color: rgba(139,0,0,0.9);
+    box-shadow: 0 0 12px rgba(139,0,0,0.5);
+}
+
+/* 内置框预览外观 */
+.af-thumb-none { background: rgba(0,0,0,0.4); }
+
+.af-thumb-glow-white {
+    background: rgba(255,255,255,0.1);
+    box-shadow: 0 0 10px 3px rgba(255,255,255,0.6) inset;
+}
+
+.af-thumb-glow-red {
+    background: rgba(139,0,0,0.1);
+    box-shadow: 0 0 10px 3px rgba(220,0,0,0.7) inset;
+}
+
+.af-thumb-border-gold {
+    background: rgba(0,0,0,0.3);
+    border: 4px solid gold !important;
+    box-shadow: 0 0 8px 1px rgba(255,215,0,0.5);
+}
+
+.af-thumb-border-rainbow {
+    background: rgba(0,0,0,0.3);
+    border: 3px solid transparent !important;
+    background-clip: padding-box;
+    outline: 3px solid;
+    outline-color: transparent;
+    background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)),
+                      linear-gradient(135deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+    background-origin: border-box;
+}
+
+.af-thumb-pixel {
+    background: rgba(0,0,0,0.3);
+    border: 3px solid rgba(255,255,255,0.8) !important;
+    border-radius: 0 !important;
+    image-rendering: pixelated;
+    box-shadow: 2px 2px 0 rgba(255,255,255,0.3), -2px -2px 0 rgba(0,0,0,0.5);
+}
+
+/* 上传按钮 */
+.af-upload-btn {
+    width: 100%;
+    padding: 12px;
+    background: rgba(139,0,0,0.3);
+    border: 1px solid rgba(139,0,0,0.5);
+    border-radius: 8px;
+    color: rgba(255,255,255,0.9);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+.af-upload-btn:hover { background: rgba(139,0,0,0.4); }
+.af-upload-btn:active { transform: scale(0.98); }
+
+.af-upload-hint {
+    font-size: 12px;
+    color: rgba(255,255,255,0.4);
+    margin-top: 8px;
+    text-align: center;
+}
+
+/* CSS自定义区 */
+.af-hint-btn {
+    background: rgba(139,0,0,0.3);
+    border: 1px solid rgba(139,0,0,0.5);
+    border-radius: 6px;
+    color: rgba(255,255,255,0.8);
+    font-size: 11px;
+    padding: 3px 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+    margin-left: auto;
+}
+.af-hint-btn:active { transform: scale(0.95); }
+
+.af-hint-panel {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 10px;
+    font-size: 12px;
+}
+
+.af-hint-title {
+    color: rgba(255,255,255,0.7);
+    font-weight: 600;
+    margin-bottom: 8px;
+    font-size: 12px;
+}
+
+.af-hint-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.af-hint-item {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.af-hint-item code {
+    background: rgba(139,0,0,0.2);
+    border: 1px solid rgba(139,0,0,0.3);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    color: rgba(255,150,150,0.9);
+    white-space: nowrap;
+}
+
+.af-hint-item span {
+    color: rgba(255,255,255,0.5);
+    font-size: 11px;
+}
+
+.af-hint-code {
+    background: rgba(0,0,0,0.4);
+    border-radius: 6px;
+    padding: 10px;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    color: rgba(255,220,150,0.9);
+    line-height: 1.6;
+    white-space: pre;
+    overflow-x: auto;
+    margin: 8px 0 0 0;
+    display: block;
+}
+
+.af-css-input {
+    width: 100%;
+    background: rgba(0,0,0,0.35);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px;
+    color: rgba(255,255,220,0.9);
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    padding: 10px 12px;
+    resize: vertical;
+    outline: none;
+    box-sizing: border-box;
+    min-height: 100px;
+    transition: border-color 0.2s;
+}
+.af-css-input:focus { border-color: rgba(139,0,0,0.6); }
+.af-css-input::placeholder {
+    color: rgba(255,255,255,0.2);
+    font-family: 'Courier New', monospace;
+}
+
+.af-css-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.af-css-btn {
+    flex: 1;
+    padding: 8px 0;
+    border-radius: 8px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid;
+    font-family: inherit;
+}
+.af-css-btn:active { transform: scale(0.96); }
+
+.af-css-apply-btn {
+    background: rgba(255,255,255,0.08);
+    border-color: rgba(255,255,255,0.2);
+    color: rgba(255,255,255,0.85);
+}
+.af-css-apply-btn:hover { background: rgba(255,255,255,0.13); }
+
+.af-css-clear-btn {
+    background: rgba(80,0,0,0.3);
+    border-color: rgba(139,0,0,0.4);
+    color: rgba(255,150,150,0.85);
+}
+
+.af-css-save-btn {
+    background: rgba(139,0,0,0.35);
+    border-color: rgba(139,0,0,0.6);
+    color: rgba(255,255,255,0.9);
+}
+.af-css-save-btn:hover { background: rgba(139,0,0,0.5); }
