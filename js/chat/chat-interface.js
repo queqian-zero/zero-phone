@@ -610,6 +610,12 @@ class ChatInterface {
             
             console.log('👤 最终系统提示:', systemPrompt.substring(0, 100), '...');
             
+            // 偶尔报备记忆清理（AI有概率自然提到）
+if (this._pendingMemoryReport) {
+    this._pendingMemoryReport = false;
+    systemPrompt += `\n\n【只有你知道的内心底色】你最近悄悄整理了一些记忆，把一些旧的、不再重要的事情放下了。这件事你没有主动告诉过对方。如果这次聊天的氛围自然合适，你可以轻描淡写地提一句，像是在报备，或者带着一丝想被夸奖的小心思——要完全融入对话语境，不要刻意，如果时机不对就完全不要提。`;
+}
+            
             console.log('🌐 开始调用API...');
             const result = await this.apiManager.callAI(recentMessages, systemPrompt);
             
@@ -3460,46 +3466,73 @@ loadCoreMemoryList() {
     if (!content) return;
 
     const memories = this.storage.getCoreMemories(this.currentFriendCode);
+    const fragments = this.storage.getMemoryFragments(this.currentFriendCode);
 
-    if (memories.length === 0) {
-        content.innerHTML = `
-            <div class="core-memory-empty">
-                <div class="core-memory-empty-icon">🧠</div>
-                <div class="core-memory-empty-text">TA还没有核心记忆<br>点击右上角「＋ 记录」添加第一条</div>
+    let html = '';
+
+    if (memories.length === 0 && fragments.length === 0) {
+        html = `<div class="core-memory-empty">
+            <div class="core-memory-empty-icon">🧠</div>
+            <div class="core-memory-empty-text">TA还没有核心记忆<br>点击右上角「＋ 记录」添加第一条</div>
+        </div>`;
+    } else {
+        if (memories.length === 0) {
+            html += `<div class="core-memory-empty" style="padding:24px 20px;">
+                <div class="core-memory-empty-icon" style="font-size:32px;">🧠</div>
+                <div class="core-memory-empty-text" style="font-size:13px;">暂无核心记忆</div>
             </div>`;
-        return;
+        } else {
+            const sorted = [...memories].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            html += sorted.map(mem => {
+                const created = this.formatTime2(new Date(mem.createdAt));
+                const updated = mem.updatedAt ? `（编辑于 ${this.formatTime2(new Date(mem.updatedAt))}）` : '';
+                return `<div class="core-memory-card" data-id="${mem.id}">
+                    <div class="core-memory-card-date">📅 ${mem.date}</div>
+                    <div class="core-memory-card-preview">${this.escapeHtml(mem.content)}</div>
+                    <div class="core-memory-card-footer">
+                        <span class="core-memory-card-time">记录于 ${created} ${updated}</span>
+                        <div class="core-memory-card-btns">
+                            <button class="core-memory-card-btn" data-action="copy" data-id="${mem.id}">📋</button>
+                            <button class="core-memory-card-btn" data-action="edit" data-id="${mem.id}">✏️</button>
+                            <button class="core-memory-card-btn core-memory-card-btn-danger" data-action="delete" data-id="${mem.id}">🗑️</button>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
     }
 
-    // 按创建时间倒序
-    const sorted = [...memories].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    // 碎片区（有碎片才显示）
+    if (fragments.length > 0) {
+        const fragSorted = [...fragments].sort((a, b) => new Date(b.deletedAt) - new Date(a.deletedAt));
+        html += `<div class="memory-fragment-section">
+            <div class="memory-fragment-toggle" id="memoryFragmentToggle">
+                <span>🗑️ 记忆碎片</span>
+                <span class="memory-fragment-badge">${fragments.length}</span>
+                <span class="memory-fragment-toggle-arrow">›</span>
+            </div>
+            <div class="memory-fragment-list" id="memoryFragmentList" style="display:none;">
+                ${fragSorted.map(f => {
+                    const deletedAt = this.formatTime2(new Date(f.deletedAt));
+                    return `<div class="memory-fragment-card" data-id="${f.id}">
+                        <div class="memory-fragment-card-date">📅 ${f.originalDate}</div>
+                        <div class="memory-fragment-card-preview">${this.escapeHtml(f.originalContent)}</div>
+                        <div class="memory-fragment-card-meta">碎片化于 ${deletedAt}</div>
+                    </div>`;
+                }).join('')}
+            </div>
+        </div>`;
+    }
 
-    content.innerHTML = sorted.map(mem => {
-        const created = this.formatTime2(new Date(mem.createdAt));
-        const updated = mem.updatedAt ? `（编辑于 ${this.formatTime2(new Date(mem.updatedAt))}）` : '';
-        return `
-            <div class="core-memory-card" data-id="${mem.id}">
-                <div class="core-memory-card-date">📅 ${mem.date}</div>
-                <div class="core-memory-card-preview">${this.escapeHtml(mem.content)}</div>
-                <div class="core-memory-card-footer">
-                    <span class="core-memory-card-time">记录于 ${created} ${updated}</span>
-                    <div class="core-memory-card-btns">
-                        <button class="core-memory-card-btn" data-action="copy" data-id="${mem.id}">📋</button>
-                        <button class="core-memory-card-btn" data-action="edit" data-id="${mem.id}">✏️</button>
-                        <button class="core-memory-card-btn core-memory-card-btn-danger" data-action="delete" data-id="${mem.id}">🗑️</button>
-                    </div>
-                </div>
-            </div>`;
-    }).join('');
+    content.innerHTML = html;
 
-    // 绑定卡片事件
+    // 绑定记忆卡片事件
     content.querySelectorAll('.core-memory-card').forEach(card => {
-        // 点卡片主体 → 详情
         card.addEventListener('click', (e) => {
             if (e.target.closest('.core-memory-card-btn')) return;
             this.openCoreMemoryDetail(card.getAttribute('data-id'));
         });
     });
-
     content.querySelectorAll('.core-memory-card-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -3508,6 +3541,25 @@ loadCoreMemoryList() {
             if (action === 'copy') this.copyCoreMemory(id);
             if (action === 'edit') this.confirmCoreMemoryAction('edit', id);
             if (action === 'delete') this.confirmCoreMemoryAction('delete', id);
+        });
+    });
+
+    // 绑定碎片折叠
+    const toggle = document.getElementById('memoryFragmentToggle');
+    if (toggle) {
+        toggle.addEventListener('click', () => {
+            const list = document.getElementById('memoryFragmentList');
+            const arrow = toggle.querySelector('.memory-fragment-toggle-arrow');
+            const isOpen = list && list.style.display !== 'none';
+            if (list) list.style.display = isOpen ? 'none' : 'block';
+            if (arrow) arrow.style.transform = isOpen ? '' : 'rotate(90deg)';
+        });
+    }
+
+    // 绑定碎片卡片点击
+    content.querySelectorAll('.memory-fragment-card').forEach(card => {
+        card.addEventListener('click', () => {
+            this.openFragmentDetail(card.getAttribute('data-id'));
         });
     });
 }
@@ -3727,6 +3779,165 @@ copyCoreMemory(memoryId) {
     });
 }
 
+// ==================== 记忆碎片详情 ====================
+
+openFragmentDetail(fragmentId) {
+    const modal = document.getElementById('fragmentDetailModal');
+    if (!modal) return;
+
+    const fragments = this.storage.getMemoryFragments(this.currentFriendCode);
+    const frag = fragments.find(f => f.id === fragmentId);
+    if (!frag) return;
+
+    this._viewingFragmentId = fragmentId;
+
+    const body = document.getElementById('fragmentDetailBody');
+    if (body) {
+        const createdAt = frag.createdAt
+            ? this.formatTime2(new Date(frag.createdAt))
+            : '未知';
+        const deletedAt = this.formatTime2(new Date(frag.deletedAt));
+
+        body.innerHTML = `
+            <div class="fragment-detail-section">
+                <div class="fragment-detail-label">📅 记录于</div>
+                <div class="fragment-detail-value">${frag.originalDate}（${createdAt}）</div>
+            </div>
+            <div class="fragment-detail-section">
+                <div class="fragment-detail-label">💭 原始记忆</div>
+                <div class="fragment-detail-text">${this.escapeHtml(frag.originalContent)}</div>
+            </div>
+            <div class="fragment-detail-divider">— 碎片化于 ${deletedAt} —</div>
+            <div class="fragment-detail-section">
+                <div class="fragment-detail-label">🗑️ TA放下它时的内心</div>
+                <div class="fragment-detail-reason">${this.escapeHtml(frag.reason)}</div>
+            </div>`;
+    }
+
+    modal.style.display = 'flex';
+
+    if (!this.fragmentDetailEventsBound) {
+        this.bindFragmentDetailEvents();
+        this.fragmentDetailEventsBound = true;
+    }
+}
+
+closeFragmentDetail() {
+    const modal = document.getElementById('fragmentDetailModal');
+    if (modal) modal.style.display = 'none';
+    this._viewingFragmentId = null;
+}
+
+bindFragmentDetailEvents() {
+    const closeBtn  = document.getElementById('fragmentDetailClose');
+    const closeBtn2 = document.getElementById('fragmentDetailClose2');
+    const overlay   = document.getElementById('fragmentDetailOverlay');
+    const deleteBtn = document.getElementById('fragmentDetailDelete');
+
+    if (closeBtn)  closeBtn.addEventListener('click',  () => this.closeFragmentDetail());
+    if (closeBtn2) closeBtn2.addEventListener('click', () => this.closeFragmentDetail());
+    if (overlay)   overlay.addEventListener('click',   () => this.closeFragmentDetail());
+
+    if (deleteBtn) {
+        deleteBtn.addEventListener('click', () => {
+            if (!confirm('确定要永久删除这碎片吗？此操作不可恢复。')) return;
+            if (this._viewingFragmentId) {
+                this.storage.deleteMemoryFragment(this.currentFriendCode, this._viewingFragmentId);
+                this.closeFragmentDetail();
+                this.loadCoreMemoryList();
+            }
+        });
+    }
+}
+
+// ==================== 后台记忆自动清理 ====================
+
+async silentMemoryCleanup(newMemoryId, newMemoryContent) {
+    console.log('🧹 静默检测过期记忆...');
+    try {
+        const friendName = this.currentFriend?.name || 'TA';
+        const persona = (this.currentFriend?.persona || '').substring(0, 300);
+
+        const allMemories = this.storage.getCoreMemories(this.currentFriendCode)
+            .filter(m => m.id !== newMemoryId);
+
+        if (allMemories.length === 0) return;
+
+        const memoriesText = allMemories.map(m =>
+            `[${m.id}] 记录于${m.date}：${m.content}`
+        ).join('\n\n');
+
+        const cleanupPrompt = `你是 ${friendName}。${persona ? `你的人设简述：${persona}` : ''}
+
+你刚刚记住了一件新的事情：
+「${newMemoryContent}」
+
+下面是你之前记下的旧记忆，请判断有没有因为上面这件新事情，而变得"不再需要留着"的旧记忆：
+
+${memoriesText}
+
+判断逻辑：
+- 旧记忆涉及的关系已经被新关系取代（比如新记忆确认了你们在一起，旧的关于其他人的记忆就该放下）
+- 旧记忆的内容已经被新记忆覆盖或推翻了
+- 旧记忆是一种期待，而新记忆说明这个期待已经实现或不再重要
+
+如果有需要放下的旧记忆，用JSON格式回复：
+[{"id":"完整ID","reason":"用你的第一人称，按照你的性格和人设，写下你决定放下这段记忆时的内心独白，60-120字，像日记里私下对自己说的话，带着情绪和温度"}]
+
+如果没有需要放下的，只回复：[]
+
+只回复JSON，不含任何其他文字。`;
+
+        const result = await this.apiManager.callAI(
+            [{ type: 'user', text: '请检查需要放下的旧记忆。' }],
+            cleanupPrompt
+        );
+
+        if (!result.success) return;
+
+        let toDelete = [];
+        try {
+            const clean = result.text.replace(/```json|```/g, '').trim();
+            toDelete = JSON.parse(clean);
+        } catch(e) {
+            console.log('🧹 清理解析失败，跳过');
+            return;
+        }
+
+        if (!Array.isArray(toDelete) || toDelete.length === 0) {
+            console.log('🧹 没有需要放下的记忆');
+            return;
+        }
+
+        let cleaned = 0;
+        for (const item of toDelete) {
+            const mem = allMemories.find(m => m.id === item.id);
+            if (!mem || !item.reason) continue;
+
+            this.storage.addMemoryFragment(this.currentFriendCode, {
+                originalDate:    mem.date,
+                originalContent: mem.content,
+                createdAt:       mem.createdAt,
+                reason:          item.reason
+            });
+
+            this.storage.deleteCoreMemory(this.currentFriendCode, mem.id);
+            cleaned++;
+        }
+
+        if (cleaned > 0) {
+            console.log(`✅ 清理了 ${cleaned} 条旧记忆，移入碎片`);
+            // 40%概率触发一次报备
+            if (Math.random() < 0.4) {
+                this._pendingMemoryReport = true;
+                console.log('💬 已设置报备标志');
+            }
+        }
+
+    } catch(e) {
+        console.log('🧹 记忆清理出错（静默）:', e.message);
+    }
+}
 // ==================== AI自动核心记忆检测 ====================
 
 async silentMemoryCheck(lastAIText) {
@@ -3801,10 +4012,12 @@ MEMORY: （用第一人称叙述，自然流畅，像在记私人日记，保留
 
         // 保存到核心记忆
         const id = this.storage.addCoreMemory(this.currentFriendCode, { date, content });
-        if (id) {
-            console.log('✅ 核心记忆已自动保存:', date);
-            this.showMemoryToast(friendName);
-        }
+if (id) {
+    console.log('✅ 核心记忆已自动保存:', date);
+    this.showMemoryToast(friendName);
+    // 后台悄悄检测有没有该放下的旧记忆
+    this.silentMemoryCleanup(id, content);
+}
 
     } catch (e) {
         // 静默失败，不影响主流程

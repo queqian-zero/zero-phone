@@ -407,6 +407,55 @@ deleteCoreMemory(friendCode, memoryId) {
         return false;
     }
 }
+
+// ==================== 记忆碎片相关 ====================
+
+// 获取记忆碎片列表
+getMemoryFragments(friendCode) {
+    const chat = this.getChatByFriendCode(friendCode);
+    return chat?.memoryFragments || [];
+}
+
+// 添加记忆碎片（由核心记忆移入）
+addMemoryFragment(friendCode, fragmentData) {
+    try {
+        const chats = this.getChats();
+        const chat = chats.find(c => c.friendCode === friendCode);
+        if (!chat) return false;
+        if (!chat.memoryFragments) chat.memoryFragments = [];
+        const id = 'fragment_' + Date.now();
+        chat.memoryFragments.push({
+            id,
+            originalDate: fragmentData.originalDate,
+            originalContent: fragmentData.originalContent,
+            createdAt: fragmentData.createdAt,
+            deletedAt: new Date().toISOString(),
+            reason: fragmentData.reason
+        });
+        this.saveData(this.KEYS.CHATS, chats);
+        console.log('✅ 记忆碎片已保存');
+        return id;
+    } catch(e) {
+        console.error('❌ 添加记忆碎片失败:', e);
+        return false;
+    }
+}
+
+// 永久删除记忆碎片
+deleteMemoryFragment(friendCode, fragmentId) {
+    try {
+        const chats = this.getChats();
+        const chat = chats.find(c => c.friendCode === friendCode);
+        if (!chat || !chat.memoryFragments) return false;
+        const idx = chat.memoryFragments.findIndex(f => f.id === fragmentId);
+        if (idx === -1) return false;
+        chat.memoryFragments.splice(idx, 1);
+        this.saveData(this.KEYS.CHATS, chats);
+        return true;
+    } catch(e) {
+        return false;
+    }
+}
     
     // 获取某个好友的聊天记录
     getChatByFriendCode(friendCode) {
