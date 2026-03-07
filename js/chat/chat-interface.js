@@ -1338,6 +1338,14 @@ this.applyWallpaper(this.settings.chatWallpaper || 'default');
                 this.openSummaryHistory();
             });
         }
+        
+        // 核心记忆入口
+const coreMemoryBtn = document.getElementById('memoryCoreMemoryBtn');
+if (coreMemoryBtn) {
+    coreMemoryBtn.addEventListener('click', () => {
+        this.openCoreMemoryPage();
+    });
+}
     }
     
     // 应用记忆模块设置到UI
@@ -3422,6 +3430,299 @@ compressAndApplyWallpaper(imageData) {
 
         console.log('🗑️ 气泡存档已删除:', id);
     }
+    
+    // ==================== 核心记忆功能 ====================
+
+// 打开核心记忆列表页
+openCoreMemoryPage() {
+    console.log('🧠 打开核心记忆列表');
+    const page = document.getElementById('coreMemoryPage');
+    if (!page) return;
+    page.style.display = 'flex';
+    this.loadCoreMemoryList();
+
+    if (!this.coreMemoryEventsBound) {
+        this.bindCoreMemoryEvents();
+        this.coreMemoryEventsBound = true;
+    }
+}
+
+closeCoreMemoryPage() {
+    const page = document.getElementById('coreMemoryPage');
+    if (page) page.style.display = 'none';
+}
+
+loadCoreMemoryList() {
+    const content = document.getElementById('coreMemoryContent');
+    if (!content) return;
+
+    const memories = this.storage.getCoreMemories(this.currentFriendCode);
+
+    if (memories.length === 0) {
+        content.innerHTML = `
+            <div class="core-memory-empty">
+                <div class="core-memory-empty-icon">🧠</div>
+                <div class="core-memory-empty-text">TA还没有核心记忆<br>点击右上角「＋ 记录」添加第一条</div>
+            </div>`;
+        return;
+    }
+
+    // 按创建时间倒序
+    const sorted = [...memories].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    content.innerHTML = sorted.map(mem => {
+        const created = this.formatTime2(new Date(mem.createdAt));
+        const updated = mem.updatedAt ? `（编辑于 ${this.formatTime2(new Date(mem.updatedAt))}）` : '';
+        return `
+            <div class="core-memory-card" data-id="${mem.id}">
+                <div class="core-memory-card-date">📅 ${mem.date}</div>
+                <div class="core-memory-card-preview">${this.escapeHtml(mem.content)}</div>
+                <div class="core-memory-card-footer">
+                    <span class="core-memory-card-time">记录于 ${created} ${updated}</span>
+                    <div class="core-memory-card-btns">
+                        <button class="core-memory-card-btn" data-action="copy" data-id="${mem.id}">📋</button>
+                        <button class="core-memory-card-btn" data-action="edit" data-id="${mem.id}">✏️</button>
+                        <button class="core-memory-card-btn core-memory-card-btn-danger" data-action="delete" data-id="${mem.id}">🗑️</button>
+                    </div>
+                </div>
+            </div>`;
+    }).join('');
+
+    // 绑定卡片事件
+    content.querySelectorAll('.core-memory-card').forEach(card => {
+        // 点卡片主体 → 详情
+        card.addEventListener('click', (e) => {
+            if (e.target.closest('.core-memory-card-btn')) return;
+            this.openCoreMemoryDetail(card.getAttribute('data-id'));
+        });
+    });
+
+    content.querySelectorAll('.core-memory-card-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const action = btn.getAttribute('data-action');
+            const id = btn.getAttribute('data-id');
+            if (action === 'copy') this.copyCoreMemory(id);
+            if (action === 'edit') this.confirmCoreMemoryAction('edit', id);
+            if (action === 'delete') this.confirmCoreMemoryAction('delete', id);
+        });
+    });
+}
+
+// 打开详情页
+openCoreMemoryDetail(memoryId) {
+    const page = document.getElementById('coreMemoryDetailPage');
+    if (!page) return;
+    page.style.display = 'flex';
+    this.currentViewingCoreMemoryId = memoryId;
+
+    const memories = this.storage.getCoreMemories(this.currentFriendCode);
+    const mem = memories.find(m => m.id === memoryId);
+    if (!mem) return;
+
+    const titleEl = document.getElementById('coreMemoryDetailTitle');
+    if (titleEl) titleEl.textContent = mem.date;
+
+    const body = document.getElementById('coreMemoryDetailBody');
+    if (body) {
+        const created = this.formatTime2(new Date(mem.createdAt));
+        const updated = mem.updatedAt ? `\n编辑于 ${this.formatTime2(new Date(mem.updatedAt))}` : '';
+        body.innerHTML = `
+            <div class="core-memory-detail-date">📅 ${mem.date}</div>
+            <div class="core-memory-detail-text">${this.escapeHtml(mem.content)}</div>
+            <div class="core-memory-detail-meta">记录于 ${created}${updated}</div>`;
+    }
+
+    if (!this.coreMemoryDetailEventsBound) {
+        this.bindCoreMemoryDetailEvents();
+        this.coreMemoryDetailEventsBound = true;
+    }
+}
+
+closeCoreMemoryDetail() {
+    const page = document.getElementById('coreMemoryDetailPage');
+    if (page) page.style.display = 'none';
+    this.currentViewingCoreMemoryId = null;
+}
+
+bindCoreMemoryDetailEvents() {
+    const backBtn = document.getElementById('coreMemoryDetailBackBtn');
+    if (backBtn) backBtn.addEventListener('click', () => this.closeCoreMemoryDetail());
+
+    const copyBtn = document.getElementById('coreMemoryDetailCopy');
+    if (copyBtn) copyBtn.addEventListener('click', () => {
+        this.copyCoreMemory(this.currentViewingCoreMemoryId);
+    });
+
+    const editBtn = document.getElementById('coreMemoryDetailEdit');
+    if (editBtn) editBtn.addEventListener('click', () => {
+        this.confirmCoreMemoryAction('edit', this.currentViewingCoreMemoryId);
+    });
+
+    const deleteBtn = document.getElementById('coreMemoryDetailDelete');
+    if (deleteBtn) deleteBtn.addEventListener('click', () => {
+        this.confirmCoreMemoryAction('delete', this.currentViewingCoreMemoryId);
+    });
+}
+
+// 绑定列表页事件
+bindCoreMemoryEvents() {
+    const backBtn = document.getElementById('coreMemoryBackBtn');
+    if (backBtn) backBtn.addEventListener('click', () => this.closeCoreMemoryPage());
+
+    const addBtn = document.getElementById('coreMemoryAddBtn');
+    if (addBtn) addBtn.addEventListener('click', () => this.openCoreMemoryModal(null));
+
+    // 编辑弹窗事件
+    const modalClose = document.getElementById('coreMemoryModalClose');
+    const modalOverlay = document.getElementById('coreMemoryOverlay');
+    const modalCancel = document.getElementById('coreMemoryModalCancel');
+    const modalConfirm = document.getElementById('coreMemoryModalConfirm');
+
+    if (modalClose) modalClose.addEventListener('click', () => this.closeCoreMemoryModal());
+    if (modalOverlay) modalOverlay.addEventListener('click', () => this.closeCoreMemoryModal());
+    if (modalCancel) modalCancel.addEventListener('click', () => this.closeCoreMemoryModal());
+    if (modalConfirm) modalConfirm.addEventListener('click', () => this.handleCoreMemoryModalConfirm());
+
+    // 确认弹窗事件
+    const confirmOk = document.getElementById('coreMemoryConfirmOk');
+    const confirmCancel = document.getElementById('coreMemoryConfirmCancel');
+    const confirmOverlay = document.getElementById('coreMemoryConfirmOverlay');
+
+    if (confirmCancel) confirmCancel.addEventListener('click', () => this.closeCoreMemoryConfirm());
+    if (confirmOverlay) confirmOverlay.addEventListener('click', () => this.closeCoreMemoryConfirm());
+    if (confirmOk) confirmOk.addEventListener('click', () => {
+        if (this._coreMemoryConfirmCallback) {
+            this._coreMemoryConfirmCallback();
+        }
+        this.closeCoreMemoryConfirm();
+    });
+}
+
+// 打开编辑弹窗（id为null时是新建）
+openCoreMemoryModal(memoryId) {
+    const modal = document.getElementById('coreMemoryModal');
+    if (!modal) return;
+    modal.style.display = 'flex';
+    this._editingCoreMemoryId = memoryId;
+
+    const titleEl = document.getElementById('coreMemoryModalTitle');
+    const dateInput = document.getElementById('coreMemoryDateInput');
+    const contentInput = document.getElementById('coreMemoryContentInput');
+
+    if (memoryId) {
+        // 编辑模式
+        const mem = this.storage.getCoreMemories(this.currentFriendCode).find(m => m.id === memoryId);
+        if (titleEl) titleEl.textContent = '编辑核心记忆';
+        if (dateInput) dateInput.value = mem?.date || '';
+        if (contentInput) contentInput.value = mem?.content || '';
+    } else {
+        // 新建模式
+        if (titleEl) titleEl.textContent = '记录核心记忆';
+        // 默认填入今天日期
+        const now = new Date();
+        const defaultDate = `${now.getFullYear()}年${String(now.getMonth()+1).padStart(2,'0')}月${String(now.getDate()).padStart(2,'0')}日`;
+        if (dateInput) dateInput.value = defaultDate;
+        if (contentInput) contentInput.value = '';
+    }
+}
+
+closeCoreMemoryModal() {
+    const modal = document.getElementById('coreMemoryModal');
+    if (modal) modal.style.display = 'none';
+    this._editingCoreMemoryId = null;
+}
+
+handleCoreMemoryModalConfirm() {
+    const dateInput = document.getElementById('coreMemoryDateInput');
+    const contentInput = document.getElementById('coreMemoryContentInput');
+    const date = dateInput?.value.trim();
+    const content = contentInput?.value.trim();
+
+    if (!date || !content) {
+        alert('❌ 日期和内容不能为空！');
+        return;
+    }
+
+    if (this._editingCoreMemoryId) {
+        // 编辑已有记忆 → 需要确认
+        this.closeCoreMemoryModal();
+        this.confirmCoreMemoryAction('editConfirm', this._editingCoreMemoryId, { date, content });
+    } else {
+        // 新建直接保存
+        const id = this.storage.addCoreMemory(this.currentFriendCode, { date, content });
+        if (id) {
+            this.closeCoreMemoryModal();
+            this.loadCoreMemoryList();
+            console.log('✅ 核心记忆已新建');
+        } else {
+            alert('❌ 保存失败！');
+        }
+    }
+}
+
+// 操作前确认弹窗
+confirmCoreMemoryAction(action, memoryId, extraData) {
+    const descMap = {
+        'edit':        '确定要编辑这条记忆吗？',
+        'editConfirm': '确定要保存这次编辑吗？',
+        'delete':      '确定要删除这条记忆吗？\n删除后无法恢复。'
+    };
+    const modal = document.getElementById('coreMemoryConfirmModal');
+    const descEl = document.getElementById('coreMemoryConfirmDesc');
+    if (!modal) return;
+
+    if (descEl) descEl.textContent = descMap[action] || '确定要修改吗？';
+    modal.style.display = 'flex';
+
+    this._coreMemoryConfirmCallback = () => {
+        if (action === 'edit') {
+            // 先关详情页，再打开编辑弹窗
+            this.closeCoreMemoryDetail();
+            this.openCoreMemoryModal(memoryId);
+        } else if (action === 'editConfirm') {
+            const success = this.storage.updateCoreMemory(
+                this.currentFriendCode, memoryId, extraData.date, extraData.content
+            );
+            if (success) {
+                this.loadCoreMemoryList();
+                // 若详情页还开着则刷新
+                if (this.currentViewingCoreMemoryId === memoryId) {
+                    this.openCoreMemoryDetail(memoryId);
+                }
+                console.log('✅ 核心记忆已编辑');
+            } else {
+                alert('❌ 保存失败！');
+            }
+        } else if (action === 'delete') {
+            const success = this.storage.deleteCoreMemory(this.currentFriendCode, memoryId);
+            if (success) {
+                this.closeCoreMemoryDetail();
+                this.loadCoreMemoryList();
+                console.log('✅ 核心记忆已删除');
+            } else {
+                alert('❌ 删除失败！');
+            }
+        }
+    };
+}
+
+closeCoreMemoryConfirm() {
+    const modal = document.getElementById('coreMemoryConfirmModal');
+    if (modal) modal.style.display = 'none';
+    this._coreMemoryConfirmCallback = null;
+}
+
+copyCoreMemory(memoryId) {
+    const mem = this.storage.getCoreMemories(this.currentFriendCode).find(m => m.id === memoryId);
+    if (!mem) return;
+    const text = `${mem.date}\n\n${mem.content}`;
+    navigator.clipboard.writeText(text).then(() => {
+        alert('✅ 已复制到剪贴板！');
+    }).catch(() => {
+        alert('❌ 复制失败，请手动复制');
+    });
+}
     
     // ==================== 头像框功能方法 ====================
 

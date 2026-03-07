@@ -338,6 +338,76 @@ updateChatSummary(friendCode, summaryId, newContent) {
         return true;
     }
     
+    // ==================== 核心记忆相关 ====================
+
+// 获取核心记忆列表
+getCoreMemories(friendCode) {
+    const chat = this.getChatByFriendCode(friendCode);
+    return chat?.coreMemories || [];
+}
+
+// 添加核心记忆
+addCoreMemory(friendCode, memoryData) {
+    try {
+        const chats = this.getChats();
+        const chat = chats.find(c => c.friendCode === friendCode);
+        if (!chat) { console.error('❌ 找不到聊天记录'); return false; }
+        if (!chat.coreMemories) chat.coreMemories = [];
+        const id = 'coremem_' + Date.now();
+        chat.coreMemories.push({
+            id,
+            date: memoryData.date,
+            content: memoryData.content,
+            createdAt: new Date().toISOString(),
+            updatedAt: null
+        });
+        this.saveData(this.KEYS.CHATS, chats);
+        console.log('✅ 核心记忆添加成功');
+        return id;
+    } catch (e) {
+        console.error('❌ 添加核心记忆失败:', e);
+        return false;
+    }
+}
+
+// 更新核心记忆
+updateCoreMemory(friendCode, memoryId, newDate, newContent) {
+    try {
+        const chats = this.getChats();
+        const chat = chats.find(c => c.friendCode === friendCode);
+        if (!chat || !chat.coreMemories) return false;
+        const mem = chat.coreMemories.find(m => m.id === memoryId);
+        if (!mem) return false;
+        mem.date = newDate;
+        mem.content = newContent;
+        mem.updatedAt = new Date().toISOString();
+        this.saveData(this.KEYS.CHATS, chats);
+        console.log('✅ 核心记忆更新成功');
+        return true;
+    } catch (e) {
+        console.error('❌ 更新核心记忆失败:', e);
+        return false;
+    }
+}
+
+// 删除核心记忆
+deleteCoreMemory(friendCode, memoryId) {
+    try {
+        const chats = this.getChats();
+        const chat = chats.find(c => c.friendCode === friendCode);
+        if (!chat || !chat.coreMemories) return false;
+        const idx = chat.coreMemories.findIndex(m => m.id === memoryId);
+        if (idx === -1) return false;
+        chat.coreMemories.splice(idx, 1);
+        this.saveData(this.KEYS.CHATS, chats);
+        console.log('✅ 核心记忆删除成功');
+        return true;
+    } catch (e) {
+        console.error('❌ 删除核心记忆失败:', e);
+        return false;
+    }
+}
+    
     // 获取某个好友的聊天记录
     getChatByFriendCode(friendCode) {
         const chats = this.getData(this.KEYS.CHATS) || [];
