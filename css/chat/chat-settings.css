@@ -3048,3 +3048,239 @@ body.bubble-line .avatar-placeholder {
 }
 .core-memory-confirm-ok:active,
 .core-memory-confirm-cancel:active { transform: scale(0.96); }
+
+/* ==================== 记忆碎片区域 ==================== */
+
+.memory-fragment-section {
+    margin-top: 24px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    padding-top: 16px;
+}
+
+.memory-fragment-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.03);
+    border: 1px dashed rgba(255,255,255,0.1);
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+}
+.memory-fragment-toggle:hover {
+    background: rgba(255,255,255,0.06);
+}
+.memory-fragment-toggle:active {
+    transform: scale(0.98);
+}
+
+.memory-fragment-toggle > span:first-child {
+    font-size: 13px;
+    color: rgba(255,255,255,0.4);
+    flex: 1;
+}
+
+.memory-fragment-badge {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px;
+    padding: 1px 8px;
+    font-size: 11px;
+    color: rgba(255,255,255,0.4);
+}
+
+.memory-fragment-toggle-arrow {
+    font-size: 14px;
+    color: rgba(255,255,255,0.3);
+    transition: transform 0.3s;
+    display: inline-block;
+}
+
+.memory-fragment-list {
+    padding-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* 碎片卡片 */
+.memory-fragment-card {
+    background: rgba(255,255,255,0.02);
+    border: 1px dashed rgba(255,255,255,0.08);
+    border-radius: 10px;
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    opacity: 0.7;
+}
+.memory-fragment-card:hover {
+    opacity: 1;
+    background: rgba(255,255,255,0.05);
+    border-color: rgba(255,255,255,0.15);
+}
+.memory-fragment-card:active { transform: scale(0.98); }
+
+.memory-fragment-card-date {
+    font-size: 11px;
+    color: rgba(139,0,0,0.6);
+    font-family: 'Courier New', monospace;
+    margin-bottom: 6px;
+}
+
+.memory-fragment-card-preview {
+    font-size: 13px;
+    color: rgba(255,255,255,0.5);
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.memory-fragment-card-meta {
+    margin-top: 8px;
+    font-size: 11px;
+    color: rgba(255,255,255,0.2);
+}
+
+/* 碎片详情弹窗 */
+.fragment-detail-modal {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 3600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.fragment-detail-dialog {
+    position: relative;
+    background: rgba(15,15,15,0.98);
+    border: 1px dashed rgba(255,255,255,0.15);
+    border-radius: 16px;
+    max-width: 540px;
+    width: 100%;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    animation: coreMemModalIn 0.3s ease-out;
+}
+
+.fragment-detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.fragment-detail-header h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.5);
+    margin: 0;
+}
+
+.fragment-detail-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+.fragment-detail-body::-webkit-scrollbar { width: 4px; }
+.fragment-detail-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+.fragment-detail-section {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.fragment-detail-label {
+    font-size: 12px;
+    color: rgba(255,255,255,0.35);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.fragment-detail-value {
+    font-size: 13px;
+    color: rgba(255,255,255,0.5);
+    font-family: 'Courier New', monospace;
+}
+
+.fragment-detail-text {
+    font-size: 14px;
+    color: rgba(255,255,255,0.65);
+    line-height: 1.7;
+    white-space: pre-wrap;
+    background: rgba(255,255,255,0.03);
+    border-radius: 8px;
+    padding: 12px 14px;
+    border-left: 2px solid rgba(255,255,255,0.1);
+}
+
+.fragment-detail-divider {
+    text-align: center;
+    font-size: 11px;
+    color: rgba(255,255,255,0.2);
+    font-family: 'Courier New', monospace;
+    padding: 4px 0;
+    position: relative;
+}
+
+.fragment-detail-reason {
+    font-size: 14px;
+    color: rgba(255,200,200,0.55);
+    line-height: 1.8;
+    white-space: pre-wrap;
+    background: rgba(139,0,0,0.06);
+    border-radius: 8px;
+    padding: 14px;
+    border-left: 2px solid rgba(139,0,0,0.25);
+    font-style: italic;
+}
+
+.fragment-detail-footer {
+    display: flex;
+    gap: 10px;
+    padding: 14px 20px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+}
+
+.fragment-detail-delete-btn {
+    flex: 1;
+    padding: 10px;
+    border-radius: 8px;
+    background: rgba(80,0,0,0.25);
+    border: 1px dashed rgba(139,0,0,0.3);
+    color: rgba(255,100,100,0.6);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+.fragment-detail-delete-btn:hover {
+    background: rgba(139,0,0,0.3);
+    color: rgba(255,100,100,0.9);
+}
+
+.fragment-detail-close-btn {
+    flex: 1;
+    padding: 10px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: rgba(255,255,255,0.6);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+.fragment-detail-delete-btn:active,
+.fragment-detail-close-btn:active { transform: scale(0.96); }
