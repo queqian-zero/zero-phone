@@ -632,14 +632,17 @@ class ChatInterface {
             });
             
             this.storage.addMessage(this.currentFriendCode, {
-                type: 'ai',
-                text: result.text,
-                timestamp: new Date().toISOString()
-            });
-            
-            if (result.tokens) {
-                this.updateTokenStatsFromAPI(result.tokens);
-            }
+    type: 'ai',
+    text: result.text,
+    timestamp: new Date().toISOString()
+});
+
+if (result.tokens) {
+    this.updateTokenStatsFromAPI(result.tokens);
+}
+
+// 后台静默检测是否有值得记住的内容
+this.silentMemoryCheck(result.text);
             
             this.scrollToBottom();
             
@@ -3722,6 +3725,147 @@ copyCoreMemory(memoryId) {
     }).catch(() => {
         alert('❌ 复制失败，请手动复制');
     });
+}
+
+// ==================== AI自动核心记忆检测 ====================
+
+async silentMemoryCheck(lastAIText) {
+    // 避免太频繁：每隔N条消息才检测一次
+    this._memoryCheckCounter = (this._memoryCheckCounter || 0) + 1;
+    if (this._memoryCheckCounter % 3 !== 0) return; // 每3条AI回复检测一次
+
+    console.log('🧠 后台静默检测核心记忆...');
+
+    try {
+        const friendName = this.currentFriend?.name || 'TA';
+        const userName = '〇'; // 可以之后接用户设置
+
+        // 取最近6条消息作为上下文
+        const recentMessages = this.messages.slice(-6);
+        let dialogText = '';
+        recentMessages.forEach(msg => {
+            const sender = msg.type === 'user' ? userName : friendName;
+            dialogText += `${sender}：${msg.text}\n`;
+        });
+
+        const memoryDetectPrompt = `你是 ${friendName}，请判断以下这段对话里，有没有让你觉得"这件事我要记住"的内容。
+
+判断标准（符合任意一条就算）：
+- 对方说了某个重要的个人信息（梦想、恐惧、喜好、讨厌的事、重要的人）
+- 发生了一个有意义的时刻（第一次说某句话、做了某个约定、表达了某种感情）
+- 对方说了让你很触动或很在意的话
+- 你们之间有了某种新的进展或共识
+
+如果有值得记住的内容，请用你（${friendName}）的第一人称视角，以"记日记"的方式写下这段记忆。格式如下：
+DATE: （今天的日期，格式：XXXX年XX月XX日）
+MEMORY: （用第一人称叙述，自然流畅，像在记私人日记，保留情绪和细节，50-150字）
+
+如果这段对话没有值得特别记住的内容，只回复：NO_MEMORY
+
+注意：不要记录日常寒暄，只记录真正触动你或让你觉得重要的事。`;
+
+        const result = await this.apiManager.callAI(
+            [{ type: 'user', text: dialogText }],
+            memoryDetectPrompt
+        );
+
+        if (!result.success) return;
+
+        const text = result.text.trim();
+        if (text === 'NO_MEMORY' || text.startsWith('NO_MEMORY')) {
+            console.log('🧠 本次对话无需记忆');
+            return;
+        }
+
+        // 解析返回内容
+        const dateMatch = text.match(/DATE:\s*(.+)/);
+        const memoryMatch = text.match(/MEMORY:\s*([\s\S]+)/);
+
+        if (!dateMatch || !memoryMatch) {
+            console.log('🧠 记忆格式解析失败，跳过');
+            return;
+        }
+
+        const date = dateMatch[1].trim();
+        const content = memoryMatch[1].trim();
+
+        if (!date || !content) return;
+
+        // 防重复：检查最近的核心记忆，避免同一天同类内容重复存
+        const existing = this.storage.getCoreMemories(this.currentFriendCode);
+        const todayMems = existing.filter(m => m.date === date);
+        if (todayMems.some(m => this.textSimilarity(m.content, content) > 0.6)) {
+            console.log('🧠 相似记忆已存在，跳过');
+            return;
+        }
+
+        // 保存到核心记忆
+        const id = this.storage.addCoreMemory(this.currentFriendCode, { date, content });
+        if (id) {
+            console.log('✅ 核心记忆已自动保存:', date);
+            this.showMemoryToast(friendName);
+        }
+
+    } catch (e) {
+        // 静默失败，不影响主流程
+        console.log('🧠 记忆检测出错（静默）:', e.message);
+    }
+}
+
+// 简单文本相似度（防重复用）
+textSimilarity(a, b) {
+    if (!a || !b) return 0;
+    const setA = new Set(a.split(''));
+    const setB = new Set(b.split(''));
+    const intersection = [...setA].filter(c => setB.has(c)).length;
+    return intersection / Math.max(setA.size, setB.size);
+}
+
+// 显示"TA记住了什么"的小提示
+showMemoryToast(friendName) {
+    // 避免重复
+    const existing = document.getElementById('memoryToast');
+    if (existing) existing.remove();
+
+    const toast = document.createElement('div');
+    toast.id = 'memoryToast';
+    toast.style.cssText = `
+        position: fixed;
+        bottom: 90px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(20,20,20,0.92);
+        border: 1px solid rgba(139,0,0,0.4);
+        border-radius: 20px;
+        padding: 8px 18px;
+        font-size: 13px;
+        color: rgba(255,255,255,0.75);
+        z-index: 9999;
+        pointer-events: none;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        animation: toastFadeIn 0.4s ease-out;
+        white-space: nowrap;
+    `;
+    toast.textContent = `💭 ${friendName}好像悄悄记住了什么…`;
+
+    // 添加动画
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes toastFadeIn {
+            from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+            to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+    `;
+    document.head.appendChild(style);
+    document.body.appendChild(toast);
+
+    // 3秒后淡出消失
+    setTimeout(() => {
+        toast.style.transition = 'opacity 0.5s ease';
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 500);
+    }, 3000);
 }
     
     // ==================== 头像框功能方法 ====================
