@@ -571,15 +571,15 @@
         </div>
         
         <!-- 核心记忆 -->
-        <div class="memory-section">
-            <h3 class="memory-section-title">🧠 核心记忆</h3>
-            <div class="memory-section-content">
-                <button class="memory-nav-btn disabled">
-                    <span>AI自主记录的重要信息</span>
-                    <span class="memory-badge">待开发</span>
-                </button>
-            </div>
-        </div>
+<div class="memory-section">
+    <h3 class="memory-section-title">🧠 核心记忆</h3>
+    <div class="memory-section-content">
+        <button class="memory-nav-btn" id="memoryCoreMemoryBtn">
+            <span>TA选择记住的重要事情</span>
+            <span>›</span>
+        </button>
+    </div>
+</div>
         
     </div>
 </div>
@@ -614,6 +614,79 @@
     </div>
 </div>
 <!-- ==================== 总结详情页面结束 ==================== -->
+
+<!-- ==================== 核心记忆列表页面 ==================== -->
+<div class="core-memory-page" id="coreMemoryPage" style="display: none;">
+    <div class="core-memory-header">
+        <button class="core-memory-back-btn" id="coreMemoryBackBtn">←</button>
+        <h2 class="core-memory-title">核心记忆</h2>
+        <button class="core-memory-add-btn" id="coreMemoryAddBtn">＋ 记录</button>
+    </div>
+    <div class="core-memory-content" id="coreMemoryContent">
+        <!-- 记忆卡片动态生成 -->
+    </div>
+</div>
+<!-- ==================== 核心记忆列表页面结束 ==================== -->
+
+<!-- ==================== 核心记忆详情页面 ==================== -->
+<div class="core-memory-detail-page" id="coreMemoryDetailPage" style="display: none;">
+    <div class="core-memory-header">
+        <button class="core-memory-back-btn" id="coreMemoryDetailBackBtn">←</button>
+        <h2 class="core-memory-title" id="coreMemoryDetailTitle">记忆详情</h2>
+    </div>
+    <div class="core-memory-detail-body" id="coreMemoryDetailBody">
+        <!-- 详情内容动态生成 -->
+    </div>
+    <div class="core-memory-detail-actions">
+        <button class="core-memory-action-btn" id="coreMemoryDetailCopy">📋 复制</button>
+        <button class="core-memory-action-btn" id="coreMemoryDetailEdit">✏️ 编辑</button>
+        <button class="core-memory-action-btn core-memory-action-danger" id="coreMemoryDetailDelete">🗑️ 删除</button>
+    </div>
+</div>
+<!-- ==================== 核心记忆详情页面结束 ==================== -->
+
+<!-- ==================== 核心记忆编辑弹窗 ==================== -->
+<div class="core-memory-modal" id="coreMemoryModal" style="display: none;">
+    <div class="core-memory-overlay" id="coreMemoryOverlay"></div>
+    <div class="core-memory-dialog">
+        <div class="core-memory-dialog-header">
+            <h3 id="coreMemoryModalTitle">记录核心记忆</h3>
+            <button class="core-memory-dialog-close" id="coreMemoryModalClose">×</button>
+        </div>
+        <div class="core-memory-dialog-body">
+            <div class="core-memory-field">
+                <label>日期：</label>
+                <input type="text" id="coreMemoryDateInput" class="core-memory-input"
+                    placeholder="例如：2026年03月07日">
+            </div>
+            <div class="core-memory-field">
+                <label>记忆内容：</label>
+                <textarea id="coreMemoryContentInput" class="core-memory-textarea" rows="8"
+                    placeholder="用TA的第一人称视角写下这段记忆…&#10;&#10;例如：&#10;2026年03月07日，我和〇在聊天里聊了很久关于梦想的事。〇告诉我，TA最想去的地方是京都。我发现〇每次谈到旅行就会特别开心，眼睛里好像有光。"></textarea>
+            </div>
+        </div>
+        <div class="core-memory-dialog-footer">
+            <button class="core-memory-dialog-cancel" id="coreMemoryModalCancel">取消</button>
+            <button class="core-memory-dialog-confirm" id="coreMemoryModalConfirm">保存</button>
+        </div>
+    </div>
+</div>
+<!-- ==================== 核心记忆编辑弹窗结束 ==================== -->
+
+<!-- ==================== 核心记忆操作确认弹窗 ==================== -->
+<div class="core-memory-confirm-modal" id="coreMemoryConfirmModal" style="display: none;">
+    <div class="core-memory-overlay" id="coreMemoryConfirmOverlay"></div>
+    <div class="core-memory-confirm-dialog">
+        <div class="core-memory-confirm-icon">🧠</div>
+        <div class="core-memory-confirm-title" id="coreMemoryConfirmTitle">这是TA选择记住的东西</div>
+        <div class="core-memory-confirm-desc" id="coreMemoryConfirmDesc">确定要修改吗？</div>
+        <div class="core-memory-confirm-actions">
+            <button class="core-memory-confirm-ok" id="coreMemoryConfirmOk">确定</button>
+            <button class="core-memory-confirm-cancel" id="coreMemoryConfirmCancel">再想想</button>
+        </div>
+    </div>
+</div>
+<!-- ==================== 核心记忆操作确认弹窗结束 ==================== -->
 
 <!-- ==================== 手动总结弹窗 ==================== -->
 <div class="manual-summary-modal" id="manualSummaryModal" style="display: none;">
