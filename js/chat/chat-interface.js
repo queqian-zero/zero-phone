@@ -2357,14 +2357,19 @@ exportFullDataAsJSON() {
     // 获取聊天总结
     const summaries = this.storage.getChatSummaries(this.currentFriendCode);
     
-    const data = {
-        exportType: 'full',
-        exportTime: new Date().toISOString(),
-        friend: this.currentFriend,
-        messages: this.messages,
-        settings: settings || {},
-        summaries: summaries || []
-    };
+    const coreMemories = this.storage.getCoreMemories(this.currentFriendCode);
+const memoryFragments = this.storage.getMemoryFragments(this.currentFriendCode);
+
+const data = {
+    exportType: 'full',
+    exportTime: new Date().toISOString(),
+    friend: this.currentFriend,
+    messages: this.messages,
+    settings: settings || {},
+    summaries: summaries || [],
+    coreMemories: coreMemories || [],
+    memoryFragments: memoryFragments || []
+};
     
     const content = JSON.stringify(data, null, 2);
     
@@ -2682,6 +2687,26 @@ overwriteFullData(data) {
         });
     }
     
+    // 导入核心记忆
+if (data.coreMemories && data.coreMemories.length > 0) {
+    const chats = this.storage.getChats();
+    const chat = chats.find(c => c.friendCode === oldCode);
+    if (chat) {
+        chat.coreMemories = data.coreMemories;
+        this.storage.saveData(this.storage.KEYS.CHATS, chats);
+    }
+}
+
+// 导入记忆碎片
+if (data.memoryFragments && data.memoryFragments.length > 0) {
+    const chats = this.storage.getChats();
+    const chat = chats.find(c => c.friendCode === oldCode);
+    if (chat) {
+        chat.memoryFragments = data.memoryFragments;
+        this.storage.saveData(this.storage.KEYS.CHATS, chats);
+    }
+}
+    
     // 重新加载
     this.loadChat(oldCode);
     
@@ -2753,6 +2778,26 @@ createNewFriendWithMessages(messages) {
             this.storage.addChatSummary(newFriendCode, summary);
         });
     }
+    
+    // 导入核心记忆
+if (data.coreMemories && data.coreMemories.length > 0) {
+    const chats = this.storage.getChats();
+    const chat = chats.find(c => c.friendCode === newFriendCode);
+    if (chat) {
+        chat.coreMemories = data.coreMemories;
+        this.storage.saveData(this.storage.KEYS.CHATS, chats);
+    }
+}
+
+// 导入记忆碎片
+if (data.memoryFragments && data.memoryFragments.length > 0) {
+    const chats = this.storage.getChats();
+    const chat = chats.find(c => c.friendCode === newFriendCode);
+    if (chat) {
+        chat.memoryFragments = data.memoryFragments;
+        this.storage.saveData(this.storage.KEYS.CHATS, chats);
+    }
+}
     
     console.log('✅ 新好友创建成功:', newFriendCode);
     alert(`✅ 已创建新好友"${newName}"，导入了完整数据！`);
@@ -3513,7 +3558,7 @@ loadCoreMemoryList() {
             </div>
             <div class="memory-fragment-list" id="memoryFragmentList" style="display:none;">
                 ${fragSorted.map(f => {
-                    const deletedAt = this.formatTime2(new Date(f.deletedAt));
+                    const deletedAt = this.formatFullDateTime(new Date(f.deletedAt));
                     return `<div class="memory-fragment-card" data-id="${f.id}">
                         <div class="memory-fragment-card-date">📅 ${f.originalDate}</div>
                         <div class="memory-fragment-card-preview">${this.escapeHtml(f.originalContent)}</div>
@@ -3796,7 +3841,7 @@ openFragmentDetail(fragmentId) {
         const createdAt = frag.createdAt
             ? this.formatTime2(new Date(frag.createdAt))
             : '未知';
-        const deletedAt = this.formatTime2(new Date(frag.deletedAt));
+        const deletedAt = this.formatFullDateTime(new Date(frag.deletedAt));
 
         body.innerHTML = `
             <div class="fragment-detail-section">
