@@ -58,14 +58,15 @@
         <div class="pages-container">
             
             <!-- 聊天列表页 -->
-            <div class="chat-page active" id="chatListPage">
-                <div class="page-content">
-                    <div class="empty-placeholder">
-                        <div class="empty-icon">💬</div>
-                        <div class="empty-text">暂无聊天</div>
-                    </div>
-                </div>
-            </div>
+<div class="chat-page active" id="chatListPage">
+    <div class="page-content">
+        <div id="chatListContainer"></div>
+        <div class="empty-placeholder" id="chatListEmpty" style="display:none;">
+            <div class="empty-icon">💬</div>
+            <div class="empty-text">暂无聊天<br><span style="font-size:13px;opacity:0.5;">点右上角图标开始新对话</span></div>
+        </div>
+    </div>
+</div>
             
             <!-- 好友列表页 -->
             <div class="chat-page" id="friendListPage">
@@ -859,6 +860,21 @@
     </div>
 </div>
 <!-- ==================== 导入数据弹窗结束 ==================== -->
+
+<!-- ==================== 创建聊天弹窗 ==================== -->
+<div class="create-chat-modal" id="createChatModal" style="display:none;">
+    <div class="create-chat-overlay" id="createChatOverlay"></div>
+    <div class="create-chat-dialog">
+        <div class="create-chat-header">
+            <h3>选择好友开始聊天</h3>
+            <button class="create-chat-close" id="createChatClose">×</button>
+        </div>
+        <div class="create-chat-body" id="createChatBody">
+            <!-- 好友列表动态生成 -->
+        </div>
+    </div>
+</div>
+<!-- ==================== 创建聊天弹窗结束 ==================== -->
 
         </div>
         <!-- ← pages-container 结束 -->
