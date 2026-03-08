@@ -293,32 +293,32 @@ class ChatInterface {
     }
     
     closeChatInterface() {
-        console.log('🔙 关闭聊天界面');
-        
-        document.querySelector('.bottom-nav').style.display = 'flex';
-        document.querySelector('.top-bar').style.display = 'flex';
-        
-        this.chatApp.switchPage('friendListPage');
-        
-        const inputField = document.getElementById('inputField');
-        const inputFieldInline = document.getElementById('inputFieldInline');
-        if (inputField) {
-            inputField.value = '';
-        }
-        if (inputFieldInline) {
-            inputFieldInline.value = '';
-        }
-        
-        this.currentFriendCode = null;
-        this.currentFriend = null;
-        this.messages = [];
-        this.originalFriendName = null;
-        
-        const messagesList = document.getElementById('messagesList');
-        if (messagesList) {
-            messagesList.innerHTML = '';
-        }
+    console.log('🔙 关闭聊天界面');
+    
+    document.querySelector('.bottom-nav').style.display = 'flex';
+    document.querySelector('.top-bar').style.display = 'flex';
+    
+    this.chatApp.switchPage('chatListPage');
+    
+    const inputField = document.getElementById('inputField');
+    const inputFieldInline = document.getElementById('inputFieldInline');
+    if (inputField) inputField.value = '';
+    if (inputFieldInline) inputFieldInline.value = '';
+    
+    this.currentFriendCode = null;
+    this.currentFriend = null;
+    this.messages = [];
+    this.originalFriendName = null;
+    
+    const messagesList = document.getElementById('messagesList');
+    if (messagesList) messagesList.innerHTML = '';
+    
+    // 通知聊天列表刷新
+    if (this._onBackCallback) {
+        this._onBackCallback();
+        this._onBackCallback = null;
     }
+}
     
    // ==================== Token统计 ====================
     

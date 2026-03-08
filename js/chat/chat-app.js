@@ -21,8 +21,8 @@ class ChatApp {
         });
         
         document.getElementById('addChatBtn').addEventListener('click', () => {
-            alert('创建聊天框功能开发中...');
-        });
+    this.openCreateChatModal();
+});
         
         // ===== 好友列表按钮 =====
         document.getElementById('manageGroupBtn').addEventListener('click', () => {
@@ -66,9 +66,14 @@ class ChatApp {
         this.updateTopBar(pageId);
         
         // 如果切换到好友页，渲染好友列表
-        if (pageId === 'friendListPage') {
-            this.renderFriendList();
-        }
+if (pageId === 'friendListPage') {
+    this.renderFriendList();
+}
+
+// 如果切换到聊天列表页，渲染聊天列表
+if (pageId === 'chatListPage') {
+    this.renderChatList();
+}
         
         this.currentPage = pageId;
     }
@@ -227,6 +232,11 @@ class ChatApp {
         }
         
         window.chatInterface.loadChat(friendCode);
+        
+        // 返回时刷新聊天列表
+window.chatInterface._onBackCallback = () => {
+    this.renderChatList();
+};
     }
     
     // 长按好友卡片
@@ -239,6 +249,179 @@ class ChatApp {
         window.history.back();
     }
     
+    // ==================== 聊天列表相关 ====================
+
+renderChatList() {
+    const container = document.getElementById('chatListContainer');
+    const empty = document.getElementById('chatListEmpty');
+    if (!container) return;
+
+    const friends = this.storage.getAllFriends();
+    const allChats = this.storage.getChats();
+
+    // 只渲染有聊天记录的好友（有messages数组且非空）
+    let chatItems = [];
+    for (const friend of friends) {
+        const chat = allChats.find(c => c.friendCode === friend.code);
+        const lastMsg = chat?.messages?.length
+            ? chat.messages[chat.messages.length - 1]
+            : null;
+        chatItems.push({ friend, chat, lastMsg });
+    }
+
+    // 也把没有好友信息但有聊天记录的加进来（理论上不应该出现，保险起见）
+    // 过滤掉完全没有消息的（没聊过的好友不显示在聊天列表）
+    chatItems = chatItems.filter(item => item.lastMsg);
+
+    if (chatItems.length === 0) {
+        container.innerHTML = '';
+        if (empty) empty.style.display = 'flex';
+        return;
+    }
+
+    if (empty) empty.style.display = 'none';
+
+    // 排序：置顶在前，其余按最后消息时间倒序
+    const getSettings = (code) => this.storage.getChatSettings(code) || {};
+
+    chatItems.sort((a, b) => {
+        const aPinned = getSettings(a.friend.code).chatPin || false;
+        const bPinned = getSettings(b.friend.code).chatPin || false;
+        if (aPinned !== bPinned) return aPinned ? -1 : 1;
+        const aTime = a.lastMsg?.timestamp || 0;
+        const bTime = b.lastMsg?.timestamp || 0;
+        return new Date(bTime) - new Date(aTime);
+    });
+
+    container.innerHTML = chatItems.map(item => this.createChatListItem(item)).join('');
+
+    // 绑定点击事件
+    container.querySelectorAll('.chat-list-item').forEach(el => {
+        el.addEventListener('click', () => {
+            this.openChatInterface(el.getAttribute('data-code'));
+        });
+    });
+}
+
+createChatListItem({ friend, lastMsg }) {
+    const displayName = friend.nickname || friend.name;
+    const settings = this.storage.getChatSettings(friend.code) || {};
+    const pinned = settings.chatPin ? 'pinned' : '';
+
+    const avatarContent = friend.avatar
+        ? `<img src="${friend.avatar}" alt="">`
+        : friend.name.charAt(0);
+
+    // 最后消息预览
+    let preview = '还没有消息';
+    if (lastMsg) {
+        const prefix = lastMsg.type === 'user' ? '我：' : '';
+        const text = (lastMsg.text || '').replace(/\n/g, ' ');
+        preview = prefix + (text.length > 30 ? text.substring(0, 30) + '…' : text);
+    }
+
+    // 时间显示
+    const timeStr = lastMsg?.timestamp ? this.formatChatListTime(new Date(lastMsg.timestamp)) : '';
+
+    return `
+        <div class="chat-list-item ${pinned}" data-code="${friend.code}">
+            <div class="chat-list-avatar">${avatarContent}</div>
+            <div class="chat-list-info">
+                <div class="chat-list-name-row">
+                    <span class="chat-list-name">${displayName}</span>
+                    <span class="chat-list-time">${timeStr}</span>
+                </div>
+                <div class="chat-list-preview">${this.escapeHtml(preview)}</div>
+            </div>
+        </div>`;
+}
+
+// 聊天列表时间格式化
+formatChatListTime(date) {
+    const now = new Date();
+    const diff = now - date;
+    const oneDay = 86400000;
+
+    const pad = n => String(n).padStart(2, '0');
+
+    if (diff < oneDay && date.getDate() === now.getDate()) {
+        // 今天：显示 HH:mm
+        return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    } else if (diff < 2 * oneDay && (now.getDate() - date.getDate() === 1)) {
+        return '昨天';
+    } else if (date.getFullYear() === now.getFullYear()) {
+        // 今年：显示 M/D
+        return `${date.getMonth() + 1}/${date.getDate()}`;
+    } else {
+        return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
+    }
+}
+
+escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ==================== 创建聊天弹窗 ====================
+
+openCreateChatModal() {
+    const modal = document.getElementById('createChatModal');
+    if (!modal) return;
+
+    const body = document.getElementById('createChatBody');
+    const friends = this.storage.getAllFriends();
+    const allChats = this.storage.getChats();
+
+    if (friends.length === 0) {
+        body.innerHTML = `<div class="create-chat-empty">还没有好友<br>先去好友页添加一个吧</div>`;
+    } else {
+        body.innerHTML = friends.map(friend => {
+            const hasChat = allChats.some(c => c.friendCode === friend.code && c.messages?.length > 0);
+            const displayName = friend.nickname || friend.name;
+            const avatarContent = friend.avatar
+                ? `<img src="${friend.avatar}" alt="">`
+                : friend.name.charAt(0);
+            const tag = hasChat ? `<span class="create-chat-existing-tag">已有聊天</span>` : '';
+
+            return `
+                <div class="create-chat-friend-item" data-code="${friend.code}">
+                    <div class="create-chat-friend-avatar">${avatarContent}</div>
+                    <div class="create-chat-friend-info">
+                        <div class="create-chat-friend-name">${displayName}</div>
+                        <div class="create-chat-friend-sig">${friend.signature || '没有个性签名'}</div>
+                    </div>
+                    ${tag}
+                </div>`;
+        }).join('');
+
+        body.querySelectorAll('.create-chat-friend-item').forEach(el => {
+            el.addEventListener('click', () => {
+                this.closeCreateChatModal();
+                this.openChatInterface(el.getAttribute('data-code'));
+            });
+        });
+    }
+
+    modal.style.display = 'flex';
+
+    if (!this.createChatEventsBound) {
+        this.bindCreateChatEvents();
+        this.createChatEventsBound = true;
+    }
+}
+
+closeCreateChatModal() {
+    const modal = document.getElementById('createChatModal');
+    if (modal) modal.style.display = 'none';
+}
+
+bindCreateChatEvents() {
+    const closeBtn = document.getElementById('createChatClose');
+    const overlay = document.getElementById('createChatOverlay');
+    if (closeBtn) closeBtn.addEventListener('click', () => this.closeCreateChatModal());
+    if (overlay) overlay.addEventListener('click', () => this.closeCreateChatModal());
+}
+
     // ===== 测试方法（临时） =====
     testAddFriend() {
         // 生成测试好友
