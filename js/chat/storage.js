@@ -406,32 +406,6 @@ deleteCoreMemory(friendCode, memoryId) {
         console.error('❌ 删除核心记忆失败:', e);
         return false;
     }
-    
-    // ==================== 聊天列表隐藏相关 ====================
-
-// 从聊天列表隐藏（不删消息）
-hideChatFromList(friendCode) {
-    try {
-        const chats = this.getChats();
-        const chat = chats.find(c => c.friendCode === friendCode);
-        if (!chat) return false;
-        chat.hiddenFromList = true;
-        this.saveData(this.KEYS.CHATS, chats);
-        return true;
-    } catch(e) { return false; }
-}
-
-// 恢复显示
-showChatInList(friendCode) {
-    try {
-        const chats = this.getChats();
-        const chat = chats.find(c => c.friendCode === friendCode);
-        if (!chat) return false;
-        chat.hiddenFromList = false;
-        this.saveData(this.KEYS.CHATS, chats);
-        return true;
-    } catch(e) { return false; }
-}
 }
 
 // ==================== 记忆碎片相关 ====================
