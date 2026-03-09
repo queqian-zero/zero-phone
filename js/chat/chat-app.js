@@ -217,6 +217,15 @@ if (pageId === 'chatListPage') {
     
     // 打开聊天界面
     openChatInterface(friendCode) {
+      
+      // 检查是否是隐藏状态的聊天
+const _hiddenChat = this.storage.getChatByFriendCode(friendCode);
+if (_hiddenChat && _hiddenChat.hiddenFromList) {
+    const reshow = confirm('这个聊天之前已从列表隐藏\n\n确定 → 重新显示在聊天列表\n取消 → 继续隐藏（只能从好友列表进入）');
+    if (reshow) {
+        this.storage.showChatInList(friendCode);
+    }
+}
         // 隐藏底部导航
         document.querySelector('.bottom-nav').style.display = 'none';
         
