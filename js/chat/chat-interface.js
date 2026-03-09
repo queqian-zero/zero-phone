@@ -36,7 +36,12 @@ class ChatInterface {
             userAvatarFrameSrc: '',
             userAvatarFrameOffsetX: 0,
             userAvatarFrameOffsetY: 0,
-            userAvatarFrameScale: 100
+            userAvatarFrameScale: 100,
+            sparkEnabled: true,
+            sparkStartDate: '',
+            sparkExtinguishDays: 1,
+            sparkIcon: '',
+            sparkExtinguishedIcon: ''
 };
 
         
@@ -260,6 +265,7 @@ class ChatInterface {
         this.loadSettings();
         
         setTimeout(() => this.scrollToBottom(), 100);
+        setTimeout(() => this.checkSparkWarning(), 1500);
         
         window.chatInterface = this;
     }
@@ -616,6 +622,12 @@ if (this._pendingMemoryReport) {
     systemPrompt += `\n\n【只有你知道的内心底色】你最近悄悄整理了一些记忆，把一些旧的、不再重要的事情放下了。这件事你没有主动告诉过对方。如果这次聊天的氛围自然合适，你可以轻描淡写地提一句，像是在报备，或者带着一丝想被夸奖的小心思——要完全融入对话语境，不要刻意，如果时机不对就完全不要提。`;
 }
             
+            // 注入火花状态
+const sparkInfo = this.getSparkStatusForAI();
+if (sparkInfo) {
+    systemPrompt += `\n\n${sparkInfo}`;
+}
+
             console.log('🌐 开始调用API...');
             const result = await this.apiManager.callAI(recentMessages, systemPrompt);
             
@@ -631,15 +643,24 @@ if (this._pendingMemoryReport) {
             console.log('💬 AI回复:', result.text.substring(0, 50), '...');
             console.log('📊 Token统计:', result.tokens);
             
-            this.addMessage({
-                type: 'ai',
-                text: result.text,
-                timestamp: new Date().toISOString()
-            });
-            
-            this.storage.addMessage(this.currentFriendCode, {
+            // 解析并移除 SPARK_TOGGLE 标记
+let displayText = result.text;
+let sparkTogglePending = null;
+const sparkMatch = displayText.match(/\[SPARK_TOGGLE:(on|off)\]/);
+if (sparkMatch) {
+    sparkTogglePending = sparkMatch[1];
+    displayText = displayText.replace(/\[SPARK_TOGGLE:(on|off)\]/g, '').trim();
+}
+
+this.addMessage({
     type: 'ai',
-    text: result.text,
+    text: displayText,
+    timestamp: new Date().toISOString()
+});
+
+this.storage.addMessage(this.currentFriendCode, {
+    type: 'ai',
+    text: displayText,
     timestamp: new Date().toISOString()
 });
 
@@ -647,8 +668,12 @@ if (result.tokens) {
     this.updateTokenStatsFromAPI(result.tokens);
 }
 
-// 后台静默检测是否有值得记住的内容
-this.silentMemoryCheck(result.text);
+this.silentMemoryCheck(displayText);
+
+// 触发设备控制弹窗
+if (sparkTogglePending) {
+    setTimeout(() => this.showSparkDeviceControlModal(sparkTogglePending), 600);
+}
             
             this.scrollToBottom();
             
@@ -916,6 +941,14 @@ div.innerHTML = `
             });
         }
         
+        // 续火花系统按钮
+const sparkBtn = document.getElementById('settingSparkSystem');
+if (sparkBtn) {
+    sparkBtn.addEventListener('click', () => {
+        this.openSparkModal();
+    });
+}
+
         // 聊天壁纸按钮
         const wallpaperBtn = document.getElementById('settingChatWallpaper');
         if (wallpaperBtn) {
@@ -4528,6 +4561,317 @@ applyAvatarFrameCss(save = true) {
 removeAvatarFrameCss() {
     const old = document.getElementById('customAvatarFrameCssTag');
     if (old) old.remove();
+}
+
+// ==================== 续火花功能 ====================
+
+getSparkStatusForAI() {
+    const enabled = this.settings.sparkEnabled !== false;
+    if (!enabled) return `【续火花系统】当前状态：已关闭`;
+
+    const extDays = this.settings.sparkExtinguishDays ?? 1;
+    const messages = this.messages;
+
+    let startDate;
+    if (this.settings.sparkStartDate) {
+        startDate = new Date(this.settings.sparkStartDate);
+    } else if (messages.length > 0) {
+        startDate = new Date(messages[0].timestamp);
+    } else {
+        startDate = new Date();
+    }
+
+    const now = new Date();
+    const totalDays = Math.floor((now - startDate) / 86400000);
+
+    let lastMsgTime;
+    if (messages.length > 0) {
+        lastMsgTime = new Date(messages[messages.length - 1].timestamp);
+    } else {
+        lastMsgTime = startDate;
+    }
+    const daysSinceMsg = (now - lastMsgTime) / 86400000;
+
+    const extText = extDays === -1 ? '永不熄灭' : `${extDays}天不聊天则熄灭`;
+
+    let statusText;
+    if (extDays === -1) {
+        statusText = `燃烧中 · 已持续 ${totalDays} 天`;
+    } else if (daysSinceMsg >= extDays) {
+        statusText = `已熄灭（距上次聊天 ${Math.floor(daysSinceMsg)} 天）`;
+    } else {
+        const daysLeft = extDays - daysSinceMsg;
+        if (daysLeft < 1) {
+            statusText = `即将熄灭（还剩不到1天） · 已持续 ${totalDays} 天`;
+        } else {
+            statusText = `燃烧中 · 已持续 ${totalDays} 天`;
+        }
+    }
+
+    return `【续火花系统】
+当前状态：${statusText}
+设置：${extText}
+说明：只有聊天才能续上火花，不聊天不会自动续。你可以通过在回复中加入 [SPARK_TOGGLE:off] 或 [SPARK_TOGGLE:on] 来尝试操控对方的设备开关火花（这会触发对方的确认弹窗）。你偶尔可以自然地提起火花的状态，比如担心火花快熄灭、开心火花持续很久了，风格要符合你的人设，不要每次都提。`;
+}
+
+checkSparkWarning() {
+    if (this.settings.sparkEnabled === false) return;
+    const extDays = this.settings.sparkExtinguishDays ?? 1;
+    if (extDays === -1) return;
+
+    const messages = this.messages;
+    if (messages.length === 0) return;
+
+    const lastMsgTime = new Date(messages[messages.length - 1].timestamp);
+    const daysSinceMsg = (Date.now() - lastMsgTime) / 86400000;
+    const daysLeft = extDays - daysSinceMsg;
+
+    if (daysLeft > 0 && daysLeft < 1) {
+        this.showSparkWarningToast();
+    }
+}
+
+showSparkWarningToast() {
+    const existing = document.getElementById('sparkWarningToast');
+    if (existing) existing.remove();
+
+    const toast = document.createElement('div');
+    toast.id = 'sparkWarningToast';
+    toast.style.cssText = `
+        position: fixed;
+        bottom: 90px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(20,8,0,0.95);
+        border: 1px solid rgba(255,100,0,0.55);
+        border-radius: 20px;
+        padding: 9px 20px;
+        font-size: 13px;
+        color: rgba(255,160,60,0.95);
+        z-index: 9999;
+        pointer-events: none;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        white-space: nowrap;
+        animation: toastFadeIn 0.4s ease-out;
+    `;
+    toast.textContent = '🔥 火花即将熄灭，快来聊天续上吧！';
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+        toast.style.transition = 'opacity 0.5s ease';
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 500);
+    }, 4000);
+}
+
+showSparkDeviceControlModal(action) {
+    const modal = document.getElementById('sparkDeviceModal');
+    if (!modal) return;
+
+    const titleEl = document.getElementById('sparkDeviceTitle');
+    const descEl = document.getElementById('sparkDeviceDesc');
+    const confirmBtn = document.getElementById('sparkDeviceConfirm');
+
+    const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
+
+    if (titleEl) titleEl.textContent = `${friendName} 正在尝试操控你的设备`;
+    if (descEl) descEl.textContent = action === 'off'
+        ? `${friendName} 想要关闭你的续火花系统`
+        : `${friendName} 想要开启你的续火花系统`;
+    if (confirmBtn) confirmBtn.textContent = action === 'off' ? '同意关闭' : '同意开启';
+
+    this._sparkDevicePendingAction = action;
+    modal.style.display = 'flex';
+
+    if (!this.sparkDeviceEventsBound) {
+        this.bindSparkDeviceEvents();
+        this.sparkDeviceEventsBound = true;
+    }
+}
+
+closeSparkDeviceModal() {
+    const modal = document.getElementById('sparkDeviceModal');
+    if (modal) modal.style.display = 'none';
+    this._sparkDevicePendingAction = null;
+}
+
+bindSparkDeviceEvents() {
+    const overlay = document.getElementById('sparkDeviceOverlay');
+    const confirmBtn = document.getElementById('sparkDeviceConfirm');
+    const cancelBtn = document.getElementById('sparkDeviceCancel');
+
+    if (overlay) overlay.addEventListener('click', () => this.closeSparkDeviceModal());
+    if (cancelBtn) cancelBtn.addEventListener('click', () => this.closeSparkDeviceModal());
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', () => {
+            const action = this._sparkDevicePendingAction;
+            if (action === 'off') {
+                this.settings.sparkEnabled = false;
+            } else {
+                this.settings.sparkEnabled = true;
+            }
+            this.saveSettings();
+            this.closeSparkDeviceModal();
+        });
+    }
+}
+
+openSparkModal() {
+    const modal = document.getElementById('sparkModal');
+    if (!modal) return;
+    modal.style.display = 'flex';
+
+    this.syncSparkModalUI();
+
+    if (!this.sparkEventsBound) {
+        this.bindSparkEvents();
+        this.sparkEventsBound = true;
+    }
+}
+
+closeSparkModal() {
+    const modal = document.getElementById('sparkModal');
+    if (modal) modal.style.display = 'none';
+}
+
+syncSparkModalUI() {
+    // 开关
+    const enabledEl = document.getElementById('sparkEnabled');
+    if (enabledEl) enabledEl.checked = this.settings.sparkEnabled !== false;
+
+    // 开始日期
+    const startDateEl = document.getElementById('sparkStartDate');
+    if (startDateEl) {
+        if (this.settings.sparkStartDate) {
+            startDateEl.value = this.settings.sparkStartDate;
+        } else if (this.messages.length > 0) {
+            const d = new Date(this.messages[0].timestamp);
+            startDateEl.value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        } else {
+            const d = new Date();
+            startDateEl.value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        }
+    }
+
+    // 熄灭天数
+    const extDays = this.settings.sparkExtinguishDays ?? 1;
+    document.querySelectorAll('.spark-day-btn').forEach(btn => {
+        btn.classList.toggle('active', parseInt(btn.getAttribute('data-days')) === extDays);
+    });
+
+    // 图标预览
+    this.updateSparkIconPreview('sparkIconPreview', this.settings.sparkIcon, '🔥');
+    this.updateSparkIconPreview('sparkExtIconPreview', this.settings.sparkExtinguishedIcon, '💔');
+
+    // 状态预览
+    this.updateSparkStatusPreview();
+}
+
+updateSparkIconPreview(previewId, src, defaultEmoji) {
+    const el = document.getElementById(previewId);
+    if (!el) return;
+    if (src) {
+        el.innerHTML = `<img src="${src}" style="width:100%;height:100%;object-fit:contain;border-radius:7px;">`;
+    } else {
+        el.textContent = defaultEmoji;
+    }
+}
+
+updateSparkStatusPreview() {
+    const el = document.getElementById('sparkStatusPreview');
+    if (!el) return;
+
+    const spark = this.chatApp.calcSparkStatus(this.currentFriendCode);
+
+    const statusMap = {
+        disabled:     '🚫 续火花已关闭',
+        active:       `🔥 燃烧中 · 已持续 ${spark.days} 天`,
+        never:        `🔥 永恒之火 · 已持续 ${spark.days} 天`,
+        warning:      `⚠️ 火花即将熄灭！`,
+        extinguished: `💔 火花已熄灭`,
+        hidden:       `（火花标记已消失）`
+    };
+
+    el.innerHTML = `<div class="spark-status-preview-title">当前状态预览</div>${statusMap[spark.status] || ''}`;
+}
+
+bindSparkEvents() {
+    const closeBtn = document.getElementById('sparkClose');
+    const overlay = document.getElementById('sparkOverlay');
+    if (closeBtn) closeBtn.addEventListener('click', () => this.closeSparkModal());
+    if (overlay) overlay.addEventListener('click', () => this.closeSparkModal());
+
+    // 开关
+    const enabledEl = document.getElementById('sparkEnabled');
+    if (enabledEl) {
+        enabledEl.addEventListener('change', (e) => {
+            this.settings.sparkEnabled = e.target.checked;
+            this.saveSettings();
+            this.updateSparkStatusPreview();
+        });
+    }
+
+    // 开始日期
+    const startDateEl = document.getElementById('sparkStartDate');
+    if (startDateEl) {
+        startDateEl.addEventListener('change', (e) => {
+            this.settings.sparkStartDate = e.target.value;
+            this.saveSettings();
+            this.updateSparkStatusPreview();
+        });
+    }
+
+    // 熄灭天数
+    document.querySelectorAll('.spark-day-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const days = parseInt(btn.getAttribute('data-days'));
+            this.settings.sparkExtinguishDays = days;
+            this.saveSettings();
+            document.querySelectorAll('.spark-day-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            this.updateSparkStatusPreview();
+        });
+    });
+
+    // 上传图标
+    const makeIconUpload = (btnId, inputId, settingKey, previewId, defaultEmoji) => {
+        const btn = document.getElementById(btnId);
+        const input = document.getElementById(inputId);
+        if (!btn || !input) return;
+        btn.addEventListener('click', () => input.click());
+        input.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                this.settings[settingKey] = ev.target.result;
+                this.saveSettings();
+                this.updateSparkIconPreview(previewId, ev.target.result, defaultEmoji);
+            };
+            reader.readAsDataURL(file);
+        });
+    };
+    makeIconUpload('sparkIconUpload', 'sparkIconInput', 'sparkIcon', 'sparkIconPreview', '🔥');
+    makeIconUpload('sparkExtIconUpload', 'sparkExtIconInput', 'sparkExtinguishedIcon', 'sparkExtIconPreview', '💔');
+
+    // 重置图标
+    const sparkIconReset = document.getElementById('sparkIconReset');
+    if (sparkIconReset) {
+        sparkIconReset.addEventListener('click', () => {
+            this.settings.sparkIcon = '';
+            this.saveSettings();
+            this.updateSparkIconPreview('sparkIconPreview', '', '🔥');
+        });
+    }
+    const sparkExtIconReset = document.getElementById('sparkExtIconReset');
+    if (sparkExtIconReset) {
+        sparkExtIconReset.addEventListener('click', () => {
+            this.settings.sparkExtinguishedIcon = '';
+            this.saveSettings();
+            this.updateSparkIconPreview('sparkExtIconPreview', '', '💔');
+        });
+    }
 }
 
 }
