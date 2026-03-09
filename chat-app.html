@@ -456,13 +456,13 @@
             <h3 class="section-title">亲密关系</h3>
             
             <!-- 续火花系统 -->
-<div class="setting-item" id="settingSparkSystem" style="cursor:pointer;">
-    <div class="setting-info">
-        <span class="setting-label">续火花系统</span>
-        <span class="setting-desc">记录你们在一起的每一天</span>
-    </div>
-    <button class="setting-action-btn"><span>🔥</span></button>
-</div>
+            <div class="setting-item disabled">
+                <div class="setting-info">
+                    <span class="setting-label">续火花系统</span>
+                    <span class="setting-desc">设置火花开始时间和熄灭时长</span>
+                </div>
+                <span class="setting-badge">待开发</span>
+            </div>
             
             <!-- 亲密关系绑定 -->
             <div class="setting-item disabled">
@@ -688,112 +688,6 @@
     </div>
 </div>
 <!-- ==================== 核心记忆操作确认弹窗结束 ==================== -->
-
-<!-- ==================== 续火花设置弹窗 ==================== -->
-<div class="spark-modal" id="sparkModal" style="display:none;">
-    <div class="spark-overlay" id="sparkOverlay"></div>
-    <div class="spark-dialog">
-        <div class="spark-header">
-            <h3>🔥 续火花系统</h3>
-            <button class="spark-close" id="sparkClose">×</button>
-        </div>
-        <div class="spark-body">
-            <!-- 开关 -->
-            <div class="spark-section">
-                <div class="spark-section-row">
-                    <div class="spark-section-label">启用续火花</div>
-                    <label class="setting-switch">
-                        <input type="checkbox" id="sparkEnabled" checked>
-                        <span class="switch-slider"></span>
-                    </label>
-                </div>
-            </div>
-            <!-- 开始日期 -->
-            <div class="spark-section">
-                <div class="spark-section-label">火花开始日期</div>
-                <input type="date" id="sparkStartDate" class="spark-input">
-                <div class="spark-hint">默认为第一条消息的日期，可手动修改</div>
-            </div>
-            <!-- 熄灭天数 -->
-            <div class="spark-section">
-                <div class="spark-section-label">几天不聊天则熄灭</div>
-                <div class="spark-days-options">
-                    <button class="spark-day-btn active" data-days="1">1天</button>
-                    <button class="spark-day-btn" data-days="3">3天</button>
-                    <button class="spark-day-btn" data-days="5">5天</button>
-                    <button class="spark-day-btn" data-days="7">7天</button>
-                    <button class="spark-day-btn" data-days="-1">永不熄灭</button>
-                </div>
-            </div>
-            <!-- 火花图标 -->
-            <div class="spark-section">
-                <div class="spark-section-label">活跃时图标</div>
-                <div class="spark-icon-row">
-                    <div class="spark-icon-preview" id="sparkIconPreview">🔥</div>
-                    <input type="file" id="sparkIconInput" accept="image/*" style="display:none;">
-                    <button class="spark-upload-btn" id="sparkIconUpload">上传自定义</button>
-                    <button class="spark-reset-btn" id="sparkIconReset">重置</button>
-                </div>
-            </div>
-            <!-- 熄灭图标 -->
-            <div class="spark-section">
-                <div class="spark-section-label">熄灭后图标</div>
-                <div class="spark-icon-row">
-                    <div class="spark-icon-preview" id="sparkExtIconPreview">💔</div>
-                    <input type="file" id="sparkExtIconInput" accept="image/*" style="display:none;">
-                    <button class="spark-upload-btn" id="sparkExtIconUpload">上传自定义</button>
-                    <button class="spark-reset-btn" id="sparkExtIconReset">重置</button>
-                </div>
-            </div>
-            <!-- 当前状态预览 -->
-            <div class="spark-status-preview" id="sparkStatusPreview"></div>
-        </div>
-    </div>
-</div>
-<!-- ==================== 续火花设置弹窗结束 ==================== -->
-
-<!-- ==================== 火花设备控制弹窗 ==================== -->
-<div class="spark-device-modal" id="sparkDeviceModal" style="display:none;">
-    <div class="spark-overlay" id="sparkDeviceOverlay"></div>
-    <div class="spark-device-dialog">
-        <div class="spark-device-icon">🔥</div>
-        <div class="spark-device-title" id="sparkDeviceTitle">TA正在尝试操控你的设备</div>
-        <div class="spark-device-desc" id="sparkDeviceDesc">TA想要关闭续火花系统</div>
-        <div class="spark-device-actions">
-            <button class="spark-device-confirm" id="sparkDeviceConfirm">同意</button>
-            <button class="spark-device-cancel" id="sparkDeviceCancel">我想和TA再商量商量</button>
-        </div>
-    </div>
-</div>
-<!-- ==================== 火花设备控制弹窗结束 ==================== -->
-
-<!-- ==================== 聊天长按菜单 ==================== -->
-<div class="chat-list-context-menu" id="chatListContextMenu" style="display:none;">
-    <div class="chat-list-context-overlay" id="chatListContextOverlay"></div>
-    <div class="chat-list-context-dialog">
-        <div class="chat-list-context-title" id="chatListContextTitle">操作</div>
-        <button class="chat-list-context-btn" id="chatContextPin">📌 置顶聊天</button>
-        <button class="chat-list-context-btn chat-list-context-danger" id="chatContextDelete">🗑️ 删除聊天</button>
-    </div>
-</div>
-<!-- 删除确认弹窗 -->
-<div class="chat-delete-modal" id="chatDeleteModal" style="display:none;">
-    <div class="chat-list-context-overlay" id="chatDeleteOverlay"></div>
-    <div class="chat-delete-dialog">
-        <div class="chat-delete-title">删除聊天</div>
-        <div class="chat-delete-desc">请选择删除方式</div>
-        <button class="chat-delete-option" id="chatDeleteOnlyEntry">
-            仅删除聊天条目
-            <span>聊天记录保留，从好友列表仍可进入</span>
-        </button>
-        <button class="chat-delete-option chat-delete-option-danger" id="chatDeleteWithMessages">
-            连带删除聊天记录
-            <span>聊天记录将永久删除，不可恢复</span>
-        </button>
-        <button class="chat-delete-cancel" id="chatDeleteCancel">取消</button>
-    </div>
-</div>
-<!-- ==================== 聊天长按菜单结束 ==================== -->
 
 <!-- ==================== 记忆碎片详情弹窗 ==================== -->
 <div class="fragment-detail-modal" id="fragmentDetailModal" style="display: none;">
