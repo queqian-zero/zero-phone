@@ -464,14 +464,14 @@
     <button class="setting-action-btn"><span>🔥</span></button>
 </div>
             
-            <!-- 亲密关系绑定 -->
-            <div class="setting-item disabled">
-                <div class="setting-info">
-                    <span class="setting-label">亲密关系绑定</span>
-                    <span class="setting-desc">情侣、基友等亲密关系</span>
-                </div>
-                <span class="setting-badge">待开发</span>
-            </div>
+            <!-- 亲密关系 -->
+<div class="setting-item" id="settingIntimacy" style="cursor:pointer;">
+    <div class="setting-info">
+        <span class="setting-label">亲密关系</span>
+        <span class="setting-desc">查看亲密值、火花天数和更多</span>
+    </div>
+    <button class="setting-action-btn"><span>💕</span></button>
+</div>
             
             <!-- 语音与视频 -->
             <div class="setting-item disabled">
@@ -707,6 +707,110 @@
     </div>
 </div>
 <!-- ==================== 记忆碎片详情弹窗结束 ==================== -->
+
+<!-- ==================== 亲密关系面板 ==================== -->
+<div class="intimacy-panel-page" id="intimacyPanelPage" style="display:none;">
+    <div class="intimacy-bg" id="intimacyBg"></div>
+    <div class="intimacy-content" id="intimacyContent">
+        <div class="intimacy-top-bar">
+            <button class="intimacy-back-btn" id="intimacyBackBtn">‹</button>
+            <span class="intimacy-title">亲密关系</span>
+            <button class="intimacy-custom-btn" id="intimacyCustomBtn">自定义</button>
+        </div>
+        <div class="intimacy-friend-name" id="intimacyFriendName"></div>
+        <div class="intimacy-stats">
+            <div class="intimacy-stat-card">
+                <div class="intimacy-stat-value" id="intimacyTotalValue">0</div>
+                <div class="intimacy-stat-label">亲密值</div>
+            </div>
+            <div class="intimacy-stat-divider"></div>
+            <div class="intimacy-stat-card">
+                <div class="intimacy-stat-value" id="intimacySparkDays">0</div>
+                <div class="intimacy-stat-label">火花天数</div>
+            </div>
+            <div class="intimacy-stat-divider"></div>
+            <div class="intimacy-stat-card">
+                <div class="intimacy-stat-value" id="intimacyTodayCount">0</div>
+                <div class="intimacy-stat-label">今日消息</div>
+            </div>
+        </div>
+        <div class="intimacy-entries">
+            <div class="intimacy-entry-row">
+                <button class="intimacy-entry-btn" onclick="alert('幸运字符功能开发中...')">
+                    <div class="intimacy-entry-icon">🎲</div>
+                    <div class="intimacy-entry-label">幸运字符</div>
+                    <div class="intimacy-entry-badge">待开发</div>
+                </button>
+                <button class="intimacy-entry-btn" onclick="alert('关系绑定功能开发中...')">
+                    <div class="intimacy-entry-icon">💍</div>
+                    <div class="intimacy-entry-label">关系绑定</div>
+                    <div class="intimacy-entry-badge">待开发</div>
+                </button>
+                <button class="intimacy-entry-btn" onclick="alert('亲密徽章功能开发中...')">
+                    <div class="intimacy-entry-icon">🏅</div>
+                    <div class="intimacy-entry-label">亲密徽章</div>
+                    <div class="intimacy-entry-badge">待开发</div>
+                </button>
+            </div>
+            <div class="intimacy-entry-row">
+                <button class="intimacy-entry-btn" onclick="alert('跨次元兑换所功能开发中...')">
+                    <div class="intimacy-entry-icon">🌀</div>
+                    <div class="intimacy-entry-label">跨次元兑换所</div>
+                    <div class="intimacy-entry-badge">待开发</div>
+                </button>
+                <button class="intimacy-entry-btn" onclick="alert('岁月胶囊功能开发中...')">
+                    <div class="intimacy-entry-icon">⏳</div>
+                    <div class="intimacy-entry-label">岁月胶囊</div>
+                    <div class="intimacy-entry-badge">待开发</div>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== 亲密关系自定义弹窗 ==================== -->
+<div class="intimacy-custom-modal" id="intimacyCustomModal" style="display:none;">
+    <div class="intimacy-custom-overlay" id="intimacyCustomOverlay"></div>
+    <div class="intimacy-custom-dialog">
+        <div class="intimacy-custom-header">
+            <span>面板自定义</span>
+            <button id="intimacyCustomClose">×</button>
+        </div>
+        <div class="intimacy-custom-body">
+            <div class="intimacy-custom-section">
+                <div class="intimacy-custom-label">背景图片</div>
+                <div class="intimacy-custom-row">
+                    <input type="text" id="intimacyBgUrl" placeholder="输入图片URL" class="intimacy-custom-input">
+                    <button id="intimacyBgUrlApply" class="intimacy-custom-apply-btn">应用</button>
+                </div>
+                <div class="intimacy-custom-or">或</div>
+                <div class="intimacy-custom-row">
+                    <input type="file" id="intimacyBgFile" accept="image/*" style="display:none;">
+                    <button id="intimacyBgUpload" class="intimacy-custom-upload-btn">上传图片</button>
+                    <button id="intimacyBgClear" class="intimacy-custom-clear-btn">清除背景</button>
+                </div>
+            </div>
+            <div class="intimacy-custom-section">
+                <div class="intimacy-custom-label">字体颜色</div>
+                <div class="intimacy-custom-row">
+                    <input type="color" id="intimacyTextColor" value="#ffffff" class="intimacy-color-input">
+                    <span class="intimacy-custom-hint">点击选色</span>
+                    <button id="intimacyColorReset" class="intimacy-custom-clear-btn">重置</button>
+                </div>
+            </div>
+            <div class="intimacy-custom-section">
+                <div class="intimacy-custom-label">字体（填入字体URL）</div>
+                <div class="intimacy-custom-row">
+                    <input type="text" id="intimacyFontUrl" placeholder="如 Google Fonts CSS URL" class="intimacy-custom-input">
+                    <button id="intimacyFontApply" class="intimacy-custom-apply-btn">应用</button>
+                </div>
+                <div class="intimacy-custom-hint-text">示例：https://fonts.googleapis.com/css2?family=Noto+Serif+SC</div>
+                <button id="intimacyFontReset" class="intimacy-custom-clear-btn" style="margin-top:8px;width:100%;">重置字体</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- ==================== 亲密关系面板结束 ==================== -->
 
 <!-- ==================== 续火花设置弹窗 ==================== -->
 <div class="spark-modal" id="sparkModal" style="display:none;">
