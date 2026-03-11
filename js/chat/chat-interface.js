@@ -4754,17 +4754,28 @@ bindIntimacyCustomEvents() {
     if (bgUpload && bgFile) {
         bgUpload.addEventListener('click', () => bgFile.click());
         bgFile.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-                this.settings.intimacyBg = ev.target.result;
-                this.saveIntimacyCustom();
-                this.applyIntimacyCustomStyles();
-                alert('✅ 背景图已更新！');
-            };
-            reader.readAsDataURL(file);
-        });
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const maxWidth = 800;
+            let w = img.width, h = img.height;
+            if (w > maxWidth) { h = (h * maxWidth) / w; w = maxWidth; }
+            canvas.width = w; canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            const compressed = canvas.toDataURL('image/jpeg', 0.6);
+            this.settings.intimacyBg = compressed;
+            this.saveIntimacyCustom();
+            this.applyIntimacyCustomStyles();
+            alert('✅ 背景图已更新！');
+        };
+        img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+});
     }
 
     // 清除背景
