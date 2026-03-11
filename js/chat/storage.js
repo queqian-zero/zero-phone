@@ -719,6 +719,258 @@ showChatInList(friendCode) {
 }
 // ==================== 聊天列表隐藏相关 ====================
 
+// ==================== 幸运字符 ====================
+
+getLuckyCharmData() {
+    try {
+        const d = localStorage.getItem('zero_phone_lucky_charms');
+        return d ? JSON.parse(d) : this._defaultLuckyCharmData();
+    } catch(e) { return this._defaultLuckyCharmData(); }
+}
+
+_defaultLuckyCharmData() {
+    return {
+        charms: [
+            { id:'beauty',    name:'美丽', isBuiltin:true },
+            { id:'cherish',   name:'珍惜', isBuiltin:true },
+            { id:'destiny',   name:'缘分', isBuiltin:true },
+            { id:'dreamland', name:'梦境', isBuiltin:true },
+            { id:'eternal',   name:'永恒', isBuiltin:true },
+            { id:'exclusive', name:'专属', isBuiltin:true },
+            { id:'future',    name:'未来', isBuiltin:true },
+            { id:'guardian',  name:'守护', isBuiltin:true },
+            { id:'happiness', name:'幸福', isBuiltin:true },
+            { id:'meet-you',  name:'遇见', isBuiltin:true },
+            { id:'merriment', name:'欢愉', isBuiltin:true },
+            { id:'mine',      name:'我的', isBuiltin:true },
+            { id:'only',      name:'唯一', isBuiltin:true },
+            { id:'sanctuary', name:'净土', isBuiltin:true },
+            { id:'starlight', name:'星光', isBuiltin:true },
+            { id:'treasure',  name:'宝藏', isBuiltin:true }
+        ],
+        wearing:      { user: null, ai: null },
+        litProgress:  {},   // { [charmId]: litChars (int) }
+        drawHistory:  {},   // { [dateStr]: { user:[id,id,id], ai:[id,id,id] } }
+        留言Pending:  {}    // { [charmId]: { user: '', ai: '' } }
+    };
+}
+
+saveLuckyCharmData(data) {
+    try { localStorage.setItem('zero_phone_lucky_charms', JSON.stringify(data)); return true; }
+    catch(e) { return false; }
+}
+
+// ==================== 关系绑定 ====================
+
+getRelationshipTypes() {
+    // 4 内置 + 自定义
+    return [
+        { id:'bros',     name:'基友',  img:'assets/images/relationship/bros.png' },
+        { id:'couple',   name:'情侣',  img:'assets/images/relationship/couple.png' },
+        { id:'besties',  name:'闺蜜',  img:'assets/images/relationship/besties.png' },
+        { id:'partners', name:'死党',  img:'assets/images/relationship/partners.png' }
+    ];
+}
+
+getRelationshipBinding(friendCode) {
+    const chat = this.getChatByFriendCode(friendCode);
+    return chat?.relationshipBinding || null;
+}
+
+setRelationshipBinding(friendCode, binding) {
+    try {
+        const chats = this.getChats();
+        const chat = chats.find(c => c.friendCode === friendCode);
+        if (!chat) return false;
+        chat.relationshipBinding = { ...binding, boundAt: new Date().toISOString() };
+        this.saveData(this.KEYS.CHATS, chats);
+        return true;
+    } catch(e) { return false; }
+}
+
+clearRelationshipBinding(friendCode) {
+    try {
+        const chats = this.getChats();
+        const chat = chats.find(c => c.friendCode === friendCode);
+        if (!chat) return false;
+        chat.relationshipBinding = null;
+        this.saveData(this.KEYS.CHATS, chats);
+        return true;
+    } catch(e) { return false; }
+}
+
+// ==================== 亲密徽章 ====================
+
+getBadgeDefinitions() {
+    return [
+        { id:'infinite-overdraft',    name:'无限透支',  img:'assets/images/intimacy-badges/infinite-overdraft.png',
+          desc:'你和TA在跨次元兑换所各完成5件事', type:'progress', goal:10 },
+        { id:'absolute-shelter',      name:'绝对庇护',  img:'assets/images/intimacy-badges/absolute-shelter.png',
+          desc:'在0:00–5:00聊天累计30天（非连续）', type:'night_chat_days', goal:30 },
+        { id:'time-anchor',           name:'时间锚点',  img:'assets/images/intimacy-badges/time-anchor.png',
+          desc:'互相交换早安+晚安累计60天', type:'greetings', goal:60 },
+        { id:'exclusive-exception',   name:'专属例外',  img:'assets/images/intimacy-badges/exclusive-exception.png',
+          desc:'在0:00–5:00聊天累计7天', type:'night_chat_days_ex', goal:7 },
+        { id:'only-route',            name:'唯一航道',  img:'assets/images/intimacy-badges/only-route.png',
+          desc:'小火花连续燃烧365天', type:'spark_days', goal:365 },
+        { id:'sleep-guardian',        name:'睡眠守护',  img:'assets/images/intimacy-badges/sleep-guardian.png',
+          desc:'双方各说一次晚安', type:'goodnight_once', goal:2 },
+        { id:'as-promised',           name:'如约而至',  img:'assets/images/intimacy-badges/as-promised.png',
+          desc:'双方各发送一条消息（即刻解锁）', type:'instant', goal:2 },
+        { id:'dream-domain',          name:'梦境管辖',  img:'assets/images/intimacy-badges/dream-domain.png',
+          desc:'连续7天双方互道晚安（断开重计）', type:'goodnight_streak', goal:7 },
+        { id:'heartbeat-limited',     name:'心动限定',  img:'assets/images/intimacy-badges/heartbeat-limited.png',
+          desc:'限定版：情人节发送「情人节快乐」；永久版：连续3年情人节', type:'valentines', goal:1, limitedGoal:3 }
+    ];
+}
+
+getUnlockedBadges(friendCode) {
+    const chat = this.getChatByFriendCode(friendCode);
+    return chat?.unlockedBadges || [];
+}
+
+addUnlockedBadge(friendCode, badgeId, isLimited = false) {
+    try {
+        const chats = this.getChats();
+        const chat = chats.find(c => c.friendCode === friendCode);
+        if (!chat) return false;
+        if (!chat.unlockedBadges) chat.unlockedBadges = [];
+        if (chat.unlockedBadges.find(b => b.id === badgeId)) return false; // already unlocked
+        chat.unlockedBadges.push({ id: badgeId, unlockedAt: new Date().toISOString(), isLimited });
+        this.saveData(this.KEYS.CHATS, chats);
+        return true;
+    } catch(e) { return false; }
+}
+
+getCustomBadges(friendCode) {
+    try {
+        const k = `zero_phone_custom_badges_${friendCode}`;
+        const d = localStorage.getItem(k);
+        return d ? JSON.parse(d) : [];
+    } catch(e) { return []; }
+}
+
+saveCustomBadges(friendCode, badges) {
+    try { localStorage.setItem(`zero_phone_custom_badges_${friendCode}`, JSON.stringify(badges)); return true; }
+    catch(e) { return false; }
+}
+
+// ==================== 跨次元兑换所 ====================
+
+getExchangeData(friendCode) {
+    const chat = this.getChatByFriendCode(friendCode);
+    return chat?.exchangeData || { todos:[], funds:[], shopping:[], delivery:[], letters:[] };
+}
+
+saveExchangeData(friendCode, data) {
+    try {
+        const chats = this.getChats();
+        const chat = chats.find(c => c.friendCode === friendCode);
+        if (!chat) return false;
+        chat.exchangeData = data;
+        this.saveData(this.KEYS.CHATS, chats);
+        return true;
+    } catch(e) { return false; }
+}
+
+addExchangeItem(friendCode, category, item) {
+    const data = this.getExchangeData(friendCode);
+    if (!data[category]) data[category] = [];
+    const id = `ex_${category}_${Date.now()}`;
+    data[category].unshift({ id, createdAt: new Date().toISOString(), completed: false, ...item });
+    this.saveExchangeData(friendCode, data);
+    return id;
+}
+
+updateExchangeItem(friendCode, category, itemId, updates) {
+    const data = this.getExchangeData(friendCode);
+    if (!data[category]) return false;
+    const idx = data[category].findIndex(i => i.id === itemId);
+    if (idx === -1) return false;
+    data[category][idx] = { ...data[category][idx], ...updates };
+    return this.saveExchangeData(friendCode, data);
+}
+
+deleteExchangeItem(friendCode, category, itemId) {
+    const data = this.getExchangeData(friendCode);
+    if (!data[category]) return false;
+    data[category] = data[category].filter(i => i.id !== itemId);
+    return this.saveExchangeData(friendCode, data);
+}
+
+// ==================== 岁月胶囊 ====================
+
+getTimeCapsules(friendCode) {
+    const chat = this.getChatByFriendCode(friendCode);
+    return chat?.timeCapsules || [];
+}
+
+addTimeCapsule(friendCode, capsule) {
+    try {
+        const chats = this.getChats();
+        const chat = chats.find(c => c.friendCode === friendCode);
+        if (!chat) return false;
+        if (!chat.timeCapsules) chat.timeCapsules = [];
+        const id = `capsule_${Date.now()}`;
+        chat.timeCapsules.unshift({ id, createdAt: new Date().toISOString(), ...capsule });
+        this.saveData(this.KEYS.CHATS, chats);
+        return id;
+    } catch(e) { return false; }
+}
+
+updateTimeCapsule(friendCode, capsuleId, updates) {
+    try {
+        const chats = this.getChats();
+        const chat = chats.find(c => c.friendCode === friendCode);
+        if (!chat || !chat.timeCapsules) return false;
+        const idx = chat.timeCapsules.findIndex(c => c.id === capsuleId);
+        if (idx === -1) return false;
+        chat.timeCapsules[idx] = { ...chat.timeCapsules[idx], ...updates };
+        this.saveData(this.KEYS.CHATS, chats);
+        return true;
+    } catch(e) { return false; }
+}
+
+// ==================== 星迹留痕 Timeline ====================
+
+getStarTrailEvents(friendCode) {
+    const chat = this.getChatByFriendCode(friendCode);
+    return chat?.starTrailEvents || [];
+}
+
+addStarTrailEvent(friendCode, event) {
+    try {
+        const chats = this.getChats();
+        const chat = chats.find(c => c.friendCode === friendCode);
+        if (!chat) return false;
+        if (!chat.starTrailEvents) chat.starTrailEvents = [];
+        // deduplicate: same type + same ref in same day
+        const today = new Date().toISOString().slice(0,10);
+        const dup = chat.starTrailEvents.find(e => e.type === event.type && e.refId === event.refId && e.date === today);
+        if (dup) return dup.id;
+        const id = `star_${Date.now()}`;
+        chat.starTrailEvents.unshift({
+            id, date: today, aiMessage: '', userMessage: '',
+            ...event
+        });
+        this.saveData(this.KEYS.CHATS, chats);
+        return id;
+    } catch(e) { return false; }
+}
+
+updateStarTrailEvent(friendCode, eventId, updates) {
+    try {
+        const chats = this.getChats();
+        const chat = chats.find(c => c.friendCode === friendCode);
+        if (!chat || !chat.starTrailEvents) return false;
+        const idx = chat.starTrailEvents.findIndex(e => e.id === eventId);
+        if (idx === -1) return false;
+        chat.starTrailEvents[idx] = { ...chat.starTrailEvents[idx], ...updates };
+        this.saveData(this.KEYS.CHATS, chats);
+        return true;
+    } catch(e) { return false; }
+}
+
 }
 
 
