@@ -511,6 +511,35 @@ updateUnlockRecord(friendCode, recordId, updates) {
     return true;
 }
 
+getBadges(friendCode) {
+    const chat = this.getChatByFriendCode(friendCode);
+    return chat?.badges || {};
+}
+
+updateBadge(friendCode, badgeId, updates) {
+    const chats = this.getChats();
+    const chat = chats.find(c => c.friendCode === friendCode);
+    if (!chat) return false;
+    if (!chat.badges) chat.badges = {};
+    if (!chat.badges[badgeId]) chat.badges[badgeId] = {};
+    Object.assign(chat.badges[badgeId], updates);
+    this.saveData(this.KEYS.CHATS, chats);
+    return true;
+}
+
+getCustomBadges() {
+    try {
+        const data = localStorage.getItem('zero_phone_custom_badges');
+        return data ? JSON.parse(data) : [];
+    } catch(e) { return []; }
+}
+
+saveCustomBadges(badges) {
+    try {
+        localStorage.setItem('zero_phone_custom_badges', JSON.stringify(badges));
+    } catch(e) {}
+}
+
     // 获取某个好友的聊天记录
     getChatByFriendCode(friendCode) {
         const chats = this.getData(this.KEYS.CHATS) || [];
