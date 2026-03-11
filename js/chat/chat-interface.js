@@ -41,7 +41,11 @@ sparkEnabled: true,
 sparkStartDate: '',
 sparkExtinguishDays: 1,
 sparkIcon: '',
-sparkExtinguishedIcon: ''
+sparkExtinguishedIcon: '',
+intimacyBg: '',
+intimacyTextColor: '#ffffff',
+intimacyFontUrl: '',
+intimacyFontFamily: ''
 };
 
         
@@ -670,6 +674,9 @@ if (result.tokens) {
 
 this.silentMemoryCheck(displayText);
 
+// 亲密值 +1（每完成一回合）
+this.incrementIntimacyRound();
+
 // 触发设备控制弹窗
 if (sparkTogglePending) {
     setTimeout(() => this.showSparkDeviceControlModal(sparkTogglePending), 600);
@@ -940,6 +947,14 @@ div.innerHTML = `
                 this.closeChatSettings();
             });
         }
+        
+        // 亲密关系入口
+const intimacyBtn = document.getElementById('settingIntimacy');
+if (intimacyBtn) {
+    intimacyBtn.addEventListener('click', () => {
+        this.openIntimacyPanel();
+    });
+}
         
         // 续火花系统按钮
 const sparkBtn = document.getElementById('settingSparkSystem');
@@ -4561,6 +4576,237 @@ applyAvatarFrameCss(save = true) {
 removeAvatarFrameCss() {
     const old = document.getElementById('customAvatarFrameCssTag');
     if (old) old.remove();
+}
+
+// ==================== 亲密关系面板 ====================
+
+openIntimacyPanel() {
+    const page = document.getElementById('intimacyPanelPage');
+    if (!page) return;
+    page.style.display = 'flex';
+    this.loadIntimacyPanel();
+    if (!this.intimacyEventsBound) {
+        this.bindIntimacyEvents();
+        this.intimacyEventsBound = true;
+    }
+}
+
+closeIntimacyPanel() {
+    const page = document.getElementById('intimacyPanelPage');
+    if (page) page.style.display = 'none';
+}
+
+loadIntimacyPanel() {
+    const friendName = this.currentFriend?.nickname || this.currentFriend?.name || '';
+    const nameEl = document.getElementById('intimacyFriendName');
+    if (nameEl) nameEl.textContent = friendName;
+
+    // 亲密值
+    const intimacyData = this.storage.getIntimacyData(this.currentFriendCode);
+    const totalEl = document.getElementById('intimacyTotalValue');
+    if (totalEl) totalEl.textContent = intimacyData.totalRounds || 0;
+
+    // 火花天数
+    const spark = this.chatApp.calcSparkStatus(this.currentFriendCode);
+    const sparkEl = document.getElementById('intimacySparkDays');
+    if (sparkEl) {
+        if (spark.status === 'never') sparkEl.textContent = '∞';
+        else sparkEl.textContent = spark.days || 0;
+    }
+
+    // 今日消息数
+    const todayEl = document.getElementById('intimacyTodayCount');
+    if (todayEl) todayEl.textContent = this.getTodayMessageCount();
+
+    // 应用自定义样式
+    this.applyIntimacyCustomStyles();
+}
+
+getTodayMessageCount() {
+    const now = new Date();
+    return this.messages.filter(msg => {
+        const d = new Date(msg.timestamp);
+        return d.getDate() === now.getDate() &&
+               d.getMonth() === now.getMonth() &&
+               d.getFullYear() === now.getFullYear();
+    }).length;
+}
+
+applyIntimacyCustomStyles() {
+    const bg = document.getElementById('intimacyBg');
+    const content = document.getElementById('intimacyContent');
+    if (!bg || !content) return;
+
+    if (this.settings.intimacyBg) {
+        bg.style.backgroundImage = `url('${this.settings.intimacyBg}')`;
+        bg.style.backgroundSize = 'cover';
+        bg.style.backgroundPosition = 'center';
+    } else {
+        bg.style.backgroundImage = '';
+    }
+
+    content.style.color = this.settings.intimacyTextColor || '#ffffff';
+
+    if (this.settings.intimacyFontUrl) {
+        const existingLink = document.getElementById('intimacyFontLink');
+        if (!existingLink || existingLink.href !== this.settings.intimacyFontUrl) {
+            if (existingLink) existingLink.remove();
+            const link = document.createElement('link');
+            link.id = 'intimacyFontLink';
+            link.rel = 'stylesheet';
+            link.href = this.settings.intimacyFontUrl;
+            document.head.appendChild(link);
+        }
+        if (this.settings.intimacyFontFamily) {
+            content.style.fontFamily = `'${this.settings.intimacyFontFamily}', sans-serif`;
+        }
+    } else {
+        content.style.fontFamily = '';
+    }
+}
+
+incrementIntimacyRound() {
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    const newTotal = (data.totalRounds || 0) + 1;
+    this.storage.updateIntimacyData(this.currentFriendCode, { totalRounds: newTotal });
+    console.log('💕 亲密值 +1，当前总计:', newTotal);
+}
+
+bindIntimacyEvents() {
+    const backBtn = document.getElementById('intimacyBackBtn');
+    if (backBtn) backBtn.addEventListener('click', () => this.closeIntimacyPanel());
+
+    const customBtn = document.getElementById('intimacyCustomBtn');
+    if (customBtn) customBtn.addEventListener('click', () => this.openIntimacyCustomModal());
+
+    if (!this.intimacyCustomEventsBound) {
+        this.bindIntimacyCustomEvents();
+        this.intimacyCustomEventsBound = true;
+    }
+}
+
+openIntimacyCustomModal() {
+    const modal = document.getElementById('intimacyCustomModal');
+    if (!modal) return;
+    modal.style.display = 'flex';
+
+    const bgUrl = document.getElementById('intimacyBgUrl');
+    if (bgUrl) bgUrl.value = this.settings.intimacyBg?.startsWith('data:') ? '' : (this.settings.intimacyBg || '');
+
+    const colorInput = document.getElementById('intimacyTextColor');
+    if (colorInput) colorInput.value = this.settings.intimacyTextColor || '#ffffff';
+
+    const fontUrl = document.getElementById('intimacyFontUrl');
+    if (fontUrl) fontUrl.value = this.settings.intimacyFontUrl || '';
+}
+
+closeIntimacyCustomModal() {
+    const modal = document.getElementById('intimacyCustomModal');
+    if (modal) modal.style.display = 'none';
+}
+
+bindIntimacyCustomEvents() {
+    const overlay = document.getElementById('intimacyCustomOverlay');
+    const closeBtn = document.getElementById('intimacyCustomClose');
+    if (overlay) overlay.addEventListener('click', () => this.closeIntimacyCustomModal());
+    if (closeBtn) closeBtn.addEventListener('click', () => this.closeIntimacyCustomModal());
+
+    // 背景URL应用
+    const bgUrlApply = document.getElementById('intimacyBgUrlApply');
+    if (bgUrlApply) {
+        bgUrlApply.addEventListener('click', () => {
+            const url = document.getElementById('intimacyBgUrl')?.value.trim();
+            if (!url) { alert('❌ 请输入图片URL'); return; }
+            this.settings.intimacyBg = url;
+            this.saveSettings();
+            this.applyIntimacyCustomStyles();
+        });
+    }
+
+    // 背景上传
+    const bgUpload = document.getElementById('intimacyBgUpload');
+    const bgFile = document.getElementById('intimacyBgFile');
+    if (bgUpload && bgFile) {
+        bgUpload.addEventListener('click', () => bgFile.click());
+        bgFile.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                this.settings.intimacyBg = ev.target.result;
+                this.saveSettings();
+                this.applyIntimacyCustomStyles();
+                alert('✅ 背景图已更新！');
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    // 清除背景
+    const bgClear = document.getElementById('intimacyBgClear');
+    if (bgClear) {
+        bgClear.addEventListener('click', () => {
+            this.settings.intimacyBg = '';
+            this.saveSettings();
+            this.applyIntimacyCustomStyles();
+        });
+    }
+
+    // 字色实时预览
+    const colorInput = document.getElementById('intimacyTextColor');
+    if (colorInput) {
+        colorInput.addEventListener('input', (e) => {
+            this.settings.intimacyTextColor = e.target.value;
+            this.saveSettings();
+            this.applyIntimacyCustomStyles();
+        });
+    }
+
+    // 重置字色
+    const colorReset = document.getElementById('intimacyColorReset');
+    if (colorReset) {
+        colorReset.addEventListener('click', () => {
+            this.settings.intimacyTextColor = '#ffffff';
+            const ci = document.getElementById('intimacyTextColor');
+            if (ci) ci.value = '#ffffff';
+            this.saveSettings();
+            this.applyIntimacyCustomStyles();
+        });
+    }
+
+    // 字体URL应用
+    const fontApply = document.getElementById('intimacyFontApply');
+    if (fontApply) {
+        fontApply.addEventListener('click', () => {
+            const url = document.getElementById('intimacyFontUrl')?.value.trim();
+            if (!url) { alert('❌ 请输入字体URL'); return; }
+            let fontFamily = '';
+            const familyMatch = url.match(/family=([^&:]+)/);
+            if (familyMatch) {
+                fontFamily = decodeURIComponent(familyMatch[1]).replace(/\+/g, ' ').split(':')[0].trim();
+            }
+            this.settings.intimacyFontUrl = url;
+            this.settings.intimacyFontFamily = fontFamily;
+            this.saveSettings();
+            this.applyIntimacyCustomStyles();
+            alert(`✅ 字体已应用！${fontFamily ? `\n字体名：${fontFamily}` : ''}`);
+        });
+    }
+
+    // 重置字体
+    const fontReset = document.getElementById('intimacyFontReset');
+    if (fontReset) {
+        fontReset.addEventListener('click', () => {
+            this.settings.intimacyFontUrl = '';
+            this.settings.intimacyFontFamily = '';
+            const fi = document.getElementById('intimacyFontUrl');
+            if (fi) fi.value = '';
+            const link = document.getElementById('intimacyFontLink');
+            if (link) link.remove();
+            this.saveSettings();
+            this.applyIntimacyCustomStyles();
+        });
+    }
 }
 
 // ==================== 续火花功能 ====================

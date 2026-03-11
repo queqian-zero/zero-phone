@@ -456,6 +456,25 @@ deleteMemoryFragment(friendCode, fragmentId) {
         return false;
     }
 }
+
+    // ==================== 亲密关系相关 ====================
+
+getIntimacyData(friendCode) {
+    const chat = this.getChatByFriendCode(friendCode);
+    return chat?.intimacyData || { totalRounds: 0 };
+}
+
+updateIntimacyData(friendCode, updates) {
+    try {
+        const chats = this.getChats();
+        const chat = chats.find(c => c.friendCode === friendCode);
+        if (!chat) return false;
+        if (!chat.intimacyData) chat.intimacyData = { totalRounds: 0 };
+        chat.intimacyData = { ...chat.intimacyData, ...updates };
+        this.saveData(this.KEYS.CHATS, chats);
+        return true;
+    } catch(e) { return false; }
+}
     
     // 获取某个好友的聊天记录
     getChatByFriendCode(friendCode) {
