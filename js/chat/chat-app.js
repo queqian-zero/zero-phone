@@ -42,6 +42,7 @@ class ChatApp {
         });
         
         console.log('✅ 聊天APP初始化完成');
+        this.renderChatList();
     }
     
     // 切换页面

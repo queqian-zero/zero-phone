@@ -4584,6 +4584,7 @@ openIntimacyPanel() {
     const page = document.getElementById('intimacyPanelPage');
     if (!page) return;
     page.style.display = 'flex';
+    this.loadIntimacyCustom(); // ← 加这行
     this.loadIntimacyPanel();
     if (!this.intimacyEventsBound) {
         this.bindIntimacyEvents();
@@ -4684,7 +4685,31 @@ bindIntimacyEvents() {
         this.intimacyCustomEventsBound = true;
     }
 }
+saveIntimacyCustom() {
+    try {
+        const key = `zero_phone_intimacy_custom_${this.currentFriendCode}`;
+        localStorage.setItem(key, JSON.stringify({
+            intimacyBg: this.settings.intimacyBg || '',
+            intimacyTextColor: this.settings.intimacyTextColor || '#ffffff',
+            intimacyFontUrl: this.settings.intimacyFontUrl || '',
+            intimacyFontFamily: this.settings.intimacyFontFamily || ''
+        }));
+    } catch(e) { console.warn('亲密自定义保存失败:', e); }
+}
 
+loadIntimacyCustom() {
+    try {
+        const key = `zero_phone_intimacy_custom_${this.currentFriendCode}`;
+        const data = localStorage.getItem(key);
+        if (data) {
+            const parsed = JSON.parse(data);
+            this.settings.intimacyBg = parsed.intimacyBg || '';
+            this.settings.intimacyTextColor = parsed.intimacyTextColor || '#ffffff';
+            this.settings.intimacyFontUrl = parsed.intimacyFontUrl || '';
+            this.settings.intimacyFontFamily = parsed.intimacyFontFamily || '';
+        }
+    } catch(e) {}
+}
 openIntimacyCustomModal() {
     const modal = document.getElementById('intimacyCustomModal');
     if (!modal) return;
@@ -4718,7 +4743,7 @@ bindIntimacyCustomEvents() {
             const url = document.getElementById('intimacyBgUrl')?.value.trim();
             if (!url) { alert('❌ 请输入图片URL'); return; }
             this.settings.intimacyBg = url;
-            this.saveSettings();
+            this.saveIntimacyCustom();
             this.applyIntimacyCustomStyles();
         });
     }
@@ -4734,7 +4759,7 @@ bindIntimacyCustomEvents() {
             const reader = new FileReader();
             reader.onload = (ev) => {
                 this.settings.intimacyBg = ev.target.result;
-                this.saveSettings();
+                this.saveIntimacyCustom();
                 this.applyIntimacyCustomStyles();
                 alert('✅ 背景图已更新！');
             };
@@ -4747,7 +4772,7 @@ bindIntimacyCustomEvents() {
     if (bgClear) {
         bgClear.addEventListener('click', () => {
             this.settings.intimacyBg = '';
-            this.saveSettings();
+            this.saveIntimacyCustom();
             this.applyIntimacyCustomStyles();
         });
     }
@@ -4757,7 +4782,7 @@ bindIntimacyCustomEvents() {
     if (colorInput) {
         colorInput.addEventListener('input', (e) => {
             this.settings.intimacyTextColor = e.target.value;
-            this.saveSettings();
+            this.saveIntimacyCustom();
             this.applyIntimacyCustomStyles();
         });
     }
@@ -4769,7 +4794,7 @@ bindIntimacyCustomEvents() {
             this.settings.intimacyTextColor = '#ffffff';
             const ci = document.getElementById('intimacyTextColor');
             if (ci) ci.value = '#ffffff';
-            this.saveSettings();
+            this.saveIntimacyCustom();
             this.applyIntimacyCustomStyles();
         });
     }
@@ -4787,7 +4812,7 @@ bindIntimacyCustomEvents() {
             }
             this.settings.intimacyFontUrl = url;
             this.settings.intimacyFontFamily = fontFamily;
-            this.saveSettings();
+            this.saveIntimacyCustom();
             this.applyIntimacyCustomStyles();
             alert(`✅ 字体已应用！${fontFamily ? `\n字体名：${fontFamily}` : ''}`);
         });
@@ -4803,7 +4828,7 @@ bindIntimacyCustomEvents() {
             if (fi) fi.value = '';
             const link = document.getElementById('intimacyFontLink');
             if (link) link.remove();
-            this.saveSettings();
+            this.saveIntimacyCustom();
             this.applyIntimacyCustomStyles();
         });
     }
