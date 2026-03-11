@@ -746,11 +746,10 @@
                     <div class="intimacy-entry-label">关系绑定</div>
                     <div class="intimacy-entry-badge">待开发</div>
                 </button>
-                <button class="intimacy-entry-btn" onclick="alert('亲密徽章功能开发中...')">
-                    <div class="intimacy-entry-icon">🏅</div>
-                    <div class="intimacy-entry-label">亲密徽章</div>
-                    <div class="intimacy-entry-badge">待开发</div>
-                </button>
+                <button class="intimacy-entry-btn" id="intimacyBadgeBtn">
+    <div class="intimacy-entry-icon">🏅</div>
+    <div class="intimacy-entry-label">亲密徽章</div>
+</button>
             </div>
             <div class="intimacy-entry-row">
                 <button class="intimacy-entry-btn" onclick="alert('跨次元兑换所功能开发中...')">
@@ -825,6 +824,71 @@
         </div>
     </div>
 </div>
+
+<!-- ==================== 亲密徽章页面 ==================== -->
+<div class="badge-page" id="badgePage" style="display:none;">
+    <div class="badge-page-bg" id="badgePageBg"></div>
+    <div class="badge-page-content">
+        <div class="badge-page-topbar">
+            <button class="badge-page-back" id="badgePageBack">‹</button>
+            <span class="badge-page-title">亲密徽章</span>
+            <button class="badge-page-custom" id="badgePageCustom">自定义</button>
+        </div>
+        <div class="badge-page-subtitle">解锁属于你们的专属勋章</div>
+        <div class="badge-grid" id="badgeGrid">
+            <!-- 动态生成 -->
+        </div>
+    </div>
+</div>
+<!-- ==================== 亲密徽章页面结束 ==================== -->
+
+<!-- ==================== 徽章详情弹窗 ==================== -->
+<div class="badge-detail-modal" id="badgeDetailModal" style="display:none;">
+    <div class="badge-detail-overlay" id="badgeDetailOverlay"></div>
+    <div class="badge-detail-dialog">
+        <button class="badge-detail-close" id="badgeDetailClose">×</button>
+        <div class="badge-detail-img-wrap" id="badgeDetailImgWrap"></div>
+        <div class="badge-detail-name" id="badgeDetailName"></div>
+        <div class="badge-detail-status" id="badgeDetailStatus"></div>
+        <div class="badge-detail-condition" id="badgeDetailCondition"></div>
+        <div class="badge-detail-progress-wrap" id="badgeDetailProgressWrap" style="display:none;">
+            <div class="badge-detail-progress-bar">
+                <div class="badge-detail-progress-fill" id="badgeDetailProgressFill"></div>
+            </div>
+            <div class="badge-detail-progress-text" id="badgeDetailProgressText"></div>
+        </div>
+        <div class="badge-detail-unlock-time" id="badgeDetailUnlockTime"></div>
+    </div>
+</div>
+<!-- ==================== 徽章详情弹窗结束 ==================== -->
+
+<!-- ==================== 上传自定义徽章弹窗 ==================== -->
+<div class="badge-custom-modal" id="badgeCustomModal" style="display:none;">
+    <div class="badge-detail-overlay" id="badgeCustomOverlay"></div>
+    <div class="badge-custom-dialog">
+        <div class="badge-custom-header">
+            <span>自定义徽章</span>
+            <button id="badgeCustomClose">×</button>
+        </div>
+        <div class="badge-custom-body">
+            <div class="badge-custom-list" id="badgeCustomList">
+                <!-- 动态生成 -->
+            </div>
+            <div class="badge-custom-add">
+                <div class="badge-custom-label">上传新徽章</div>
+                <input type="text" id="badgeCustomName" placeholder="徽章名称" class="badge-custom-input">
+                <input type="text" id="badgeCustomCondition" placeholder="解锁条件描述" class="badge-custom-input">
+                <input type="file" id="badgeCustomFile" accept="image/*" style="display:none;">
+                <button class="badge-custom-upload-btn" id="badgeCustomUploadBtn">📤 选择图片（透明底PNG）</button>
+                <div class="badge-custom-preview-wrap" id="badgeCustomPreviewWrap" style="display:none;">
+                    <img id="badgeCustomPreviewImg" style="width:60px;height:60px;object-fit:contain;">
+                </div>
+                <button class="badge-custom-save-btn" id="badgeCustomSaveBtn">保存徽章</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- ==================== 上传自定义徽章弹窗结束 ==================== -->
 <!-- ==================== 亲密关系面板结束 ==================== -->
 
 <!-- ==================== 续火花设置弹窗 ==================== -->
