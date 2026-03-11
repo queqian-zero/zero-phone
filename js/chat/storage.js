@@ -476,6 +476,41 @@ updateIntimacyData(friendCode, updates) {
     } catch(e) { return false; }
 }
     
+    getUnlockRecords(friendCode) {
+    const chat = this.getChatByFriendCode(friendCode);
+    return chat?.unlockRecords || [];
+}
+
+addUnlockRecord(friendCode, record) {
+    const chats = this.getChats();
+    const chat = chats.find(c => c.friendCode === friendCode);
+    if (!chat) return null;
+    if (!chat.unlockRecords) chat.unlockRecords = [];
+    const newRecord = {
+        id: 'unlock_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+        ...record,
+        timestamp: new Date().toISOString(),
+        userNote: '',
+        aiNote: '',
+        userNoteTime: null,
+        aiNoteTime: null
+    };
+    chat.unlockRecords.unshift(newRecord);
+    this.saveData(this.KEYS.CHATS, chats);
+    return newRecord.id;
+}
+
+updateUnlockRecord(friendCode, recordId, updates) {
+    const chats = this.getChats();
+    const chat = chats.find(c => c.friendCode === friendCode);
+    if (!chat || !chat.unlockRecords) return false;
+    const idx = chat.unlockRecords.findIndex(r => r.id === recordId);
+    if (idx === -1) return false;
+    Object.assign(chat.unlockRecords[idx], updates);
+    this.saveData(this.KEYS.CHATS, chats);
+    return true;
+}
+
     // 获取某个好友的聊天记录
     getChatByFriendCode(friendCode) {
         const chats = this.getData(this.KEYS.CHATS) || [];

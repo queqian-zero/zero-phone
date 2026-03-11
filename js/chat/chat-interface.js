@@ -4578,6 +4578,155 @@ removeAvatarFrameCss() {
     if (old) old.remove();
 }
 
+// ==================== 星轨留痕时间轴 ====================
+
+loadIntimacyTimeline() {
+    const list = document.getElementById('intimacyTimelineList');
+    const empty = document.getElementById('intimacyTimelineEmpty');
+    if (!list) return;
+
+    list.querySelectorAll('.intimacy-timeline-item').forEach(el => el.remove());
+
+    const records = this.storage.getUnlockRecords(this.currentFriendCode);
+
+    if (records.length === 0) {
+        if (empty) empty.style.display = 'block';
+        return;
+    }
+    if (empty) empty.style.display = 'none';
+
+    const typeLabels = {
+        badge:        '亲密徽章解锁',
+        lucky:        '幸运字符获得',
+        lucky_full:   '幸运字符100%点亮',
+        relationship: '关系绑定'
+    };
+
+    records.forEach((record, index) => {
+        const isLast = index === records.length - 1;
+        const item = document.createElement('div');
+        item.className = 'intimacy-timeline-item';
+        item.setAttribute('data-id', record.id);
+
+        const iconHtml = record.iconSrc
+            ? `<img src="${record.iconSrc}" alt="">`
+            : `<span>${record.iconEmoji || '✨'}</span>`;
+
+        item.innerHTML = `
+            <div class="intimacy-timeline-line">
+                <div class="intimacy-timeline-dot"></div>
+                ${!isLast ? '<div class="intimacy-timeline-connector"></div>' : ''}
+            </div>
+            <div class="intimacy-timeline-card">
+                <div class="intimacy-timeline-card-header">
+                    <div class="intimacy-timeline-card-icon">${iconHtml}</div>
+                    <div class="intimacy-timeline-card-info">
+                        <div class="intimacy-timeline-card-name">${this.escapeHtml(record.name)}</div>
+                        <div class="intimacy-timeline-card-type">${typeLabels[record.type] || record.type}</div>
+                    </div>
+                    <div class="intimacy-timeline-card-date">${record.date}</div>
+                    <div class="intimacy-timeline-card-arrow">›</div>
+                </div>
+                <div class="intimacy-timeline-card-body">
+                    <div class="intimacy-timeline-note-divider">
+                        <div class="intimacy-timeline-note-divider-line"></div>
+                        <div class="intimacy-timeline-note-divider-text">留言</div>
+                        <div class="intimacy-timeline-note-divider-line"></div>
+                    </div>
+                    <div class="intimacy-timeline-note-row" id="userNoteRow_${record.id}">
+                        <div class="intimacy-timeline-note-label">我的寄语</div>
+                        ${this._renderTimelineNote('user', record)}
+                    </div>
+                    <div class="intimacy-timeline-note-row" id="aiNoteRow_${record.id}">
+                        <div class="intimacy-timeline-note-label">${this.currentFriend?.nickname || this.currentFriend?.name || 'TA'} 的寄语</div>
+                        ${this._renderTimelineNote('ai', record)}
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const header = item.querySelector('.intimacy-timeline-card-header');
+        const body = item.querySelector('.intimacy-timeline-card-body');
+        const arrow = item.querySelector('.intimacy-timeline-card-arrow');
+
+        header.addEventListener('click', () => {
+            const isOpen = body.classList.toggle('open');
+            arrow.classList.toggle('open', isOpen);
+            if (isOpen) this._bindTimelineNoteEvents(record.id);
+        });
+
+        list.appendChild(item);
+    });
+}
+
+_renderTimelineNote(who, record) {
+    const note = who === 'user' ? record.userNote : record.aiNote;
+    const noteTime = who === 'user' ? record.userNoteTime : record.aiNoteTime;
+
+    if (note && note.trim()) {
+        const timeStr = noteTime ? this.formatTime2(new Date(noteTime)) : '';
+        return `
+            <div class="intimacy-timeline-note-text" id="${who}NoteText_${record.id}">${this.escapeHtml(note)}</div>
+            <div class="intimacy-timeline-note-meta">
+                <span>${timeStr}</span>
+                ${who === 'user' ? `<span class="intimacy-timeline-note-edit-btn" data-who="user" data-id="${record.id}">编辑</span>` : ''}
+            </div>
+        `;
+    } else if (who === 'user') {
+        return `
+            <textarea class="intimacy-timeline-note-input" id="userNoteInput_${record.id}" placeholder="写下此刻的心情…"></textarea>
+            <button class="intimacy-timeline-note-save-btn" data-who="user" data-id="${record.id}">保存</button>
+            <div class="intimacy-timeline-clearfix"></div>
+        `;
+    } else {
+        return `<div class="intimacy-timeline-note-empty">TA 还没有留言</div>`;
+    }
+}
+
+_bindTimelineNoteEvents(recordId) {
+    // 保存按钮
+    const saveBtn = document.querySelector(`.intimacy-timeline-note-save-btn[data-id="${recordId}"]`);
+    if (saveBtn && !saveBtn._bound) {
+        saveBtn._bound = true;
+        saveBtn.addEventListener('click', () => {
+            const who = saveBtn.getAttribute('data-who');
+            const input = document.getElementById(`${who}NoteInput_${recordId}`);
+            const text = input?.value.trim();
+            if (!text) { alert('❌ 请写点什么再保存'); return; }
+            const updates = who === 'user'
+                ? { userNote: text, userNoteTime: new Date().toISOString() }
+                : { aiNote: text, aiNoteTime: new Date().toISOString() };
+            this.storage.updateUnlockRecord(this.currentFriendCode, recordId, updates);
+            this.loadIntimacyTimeline();
+        });
+    }
+
+    // 编辑按钮
+    const editBtn = document.querySelector(`.intimacy-timeline-note-edit-btn[data-id="${recordId}"]`);
+    if (editBtn && !editBtn._bound) {
+        editBtn._bound = true;
+        editBtn.addEventListener('click', () => {
+            const who = editBtn.getAttribute('data-who');
+            const records = this.storage.getUnlockRecords(this.currentFriendCode);
+            const record = records.find(r => r.id === recordId);
+            const currentNote = who === 'user' ? record?.userNote : record?.aiNote;
+            const row = document.getElementById(`${who}NoteRow_${recordId}`);
+            if (!row) return;
+            const noteText = row.querySelector('.intimacy-timeline-note-text');
+            const noteMeta = row.querySelector('.intimacy-timeline-note-meta');
+            if (noteText) noteText.style.display = 'none';
+            if (noteMeta) noteMeta.style.display = 'none';
+            const label = row.querySelector('.intimacy-timeline-note-label');
+            label.insertAdjacentHTML('afterend', `
+                <textarea class="intimacy-timeline-note-input" id="${who}NoteInput_${recordId}" placeholder="编辑寄语…">${this.escapeHtml(currentNote || '')}</textarea>
+                <button class="intimacy-timeline-note-save-btn" data-who="${who}" data-id="${recordId}">保存</button>
+                <div class="intimacy-timeline-clearfix"></div>
+            `);
+            this._bindTimelineNoteEvents(recordId);
+        });
+    }
+}
+
 // ==================== 亲密关系面板 ====================
 
 openIntimacyPanel() {
@@ -4621,6 +4770,7 @@ loadIntimacyPanel() {
 
     // 应用自定义样式
     this.applyIntimacyCustomStyles();
+    this.loadIntimacyTimeline();
 }
 
 getTodayMessageCount() {
