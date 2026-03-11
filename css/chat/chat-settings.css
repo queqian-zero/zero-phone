@@ -3899,3 +3899,240 @@ body.bubble-line .avatar-placeholder {
     color: rgba(255,255,255,0.25);
     line-height: 1.6;
 }
+
+/* ==================== 星轨留痕时间轴 ==================== */
+.intimacy-timeline-section {
+    margin: 24px 16px 40px;
+}
+
+.intimacy-timeline-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 20px;
+    gap: 5px;
+}
+
+.intimacy-timeline-title {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 4px;
+}
+
+.intimacy-timeline-subtitle {
+    font-size: 11px;
+    opacity: 0.4;
+    letter-spacing: 1.5px;
+}
+
+.intimacy-timeline-empty {
+    text-align: center;
+    padding: 40px 20px;
+    opacity: 0.45;
+}
+
+.intimacy-timeline-empty-icon { font-size: 30px; margin-bottom: 10px; }
+.intimacy-timeline-empty-text { font-size: 13px; line-height: 1.7; }
+
+.intimacy-timeline-item {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+}
+
+.intimacy-timeline-line {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+    width: 28px;
+}
+
+.intimacy-timeline-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.55);
+    border: 2px solid rgba(255,255,255,0.2);
+    margin-top: 15px;
+    flex-shrink: 0;
+}
+
+.intimacy-timeline-connector {
+    width: 1px;
+    flex: 1;
+    min-height: 16px;
+    background: rgba(255,255,255,0.12);
+}
+
+.intimacy-timeline-card {
+    flex: 1;
+    background: rgba(0,0,0,0.22);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 14px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+}
+
+.intimacy-timeline-card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 13px;
+    cursor: pointer;
+}
+
+.intimacy-timeline-card-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.intimacy-timeline-card-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.intimacy-timeline-card-info { flex: 1; min-width: 0; }
+
+.intimacy-timeline-card-name {
+    font-size: 13px;
+    font-weight: 500;
+    opacity: 0.9;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.intimacy-timeline-card-type {
+    font-size: 10px;
+    opacity: 0.4;
+    margin-top: 2px;
+    letter-spacing: 0.3px;
+}
+
+.intimacy-timeline-card-date {
+    font-size: 10px;
+    opacity: 0.35;
+    flex-shrink: 0;
+}
+
+.intimacy-timeline-card-arrow {
+    font-size: 13px;
+    opacity: 0.35;
+    transition: transform 0.25s ease;
+    flex-shrink: 0;
+    margin-left: 2px;
+}
+
+.intimacy-timeline-card-arrow.open { transform: rotate(90deg); }
+
+.intimacy-timeline-card-body {
+    display: none;
+    padding: 0 13px 13px;
+}
+
+.intimacy-timeline-card-body.open { display: block; }
+
+.intimacy-timeline-note-divider {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 2px 0 10px;
+}
+
+.intimacy-timeline-note-divider-line {
+    flex: 1;
+    height: 1px;
+    background: rgba(255,255,255,0.08);
+}
+
+.intimacy-timeline-note-divider-text {
+    font-size: 10px;
+    opacity: 0.3;
+    letter-spacing: 1px;
+}
+
+.intimacy-timeline-note-row { margin-bottom: 10px; }
+
+.intimacy-timeline-note-label {
+    font-size: 10px;
+    opacity: 0.4;
+    letter-spacing: 0.5px;
+    margin-bottom: 5px;
+}
+
+.intimacy-timeline-note-text {
+    font-size: 13px;
+    opacity: 0.82;
+    line-height: 1.55;
+    background: rgba(255,255,255,0.06);
+    border-radius: 8px;
+    padding: 8px 10px;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.intimacy-timeline-note-meta {
+    font-size: 10px;
+    opacity: 0.28;
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.intimacy-timeline-note-edit-btn {
+    text-decoration: underline;
+    cursor: pointer;
+    opacity: 0.5;
+}
+
+.intimacy-timeline-note-empty {
+    font-size: 12px;
+    opacity: 0.28;
+    font-style: italic;
+    padding: 4px 2px;
+}
+
+.intimacy-timeline-note-input {
+    width: 100%;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 13px;
+    color: inherit;
+    resize: none;
+    min-height: 58px;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+
+.intimacy-timeline-note-input::placeholder { opacity: 0.3; }
+
+.intimacy-timeline-note-save-btn {
+    margin-top: 6px;
+    float: right;
+    padding: 5px 15px;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 18px;
+    font-size: 12px;
+    color: inherit;
+    cursor: pointer;
+}
+
+.intimacy-timeline-note-save-btn:active { background: rgba(255,255,255,0.2); }
+
+.intimacy-timeline-clearfix { clear: both; }
