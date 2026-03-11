@@ -61,16 +61,7 @@
 .sub-page-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
 
 /* ──────────── 通用 Modal ──────────── */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.75);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 3600;
-  backdrop-filter: blur(6px);
-}
+
 .modal-panel {
   background: #151515;
   border: 1px solid rgba(255,255,255,0.1);
@@ -80,7 +71,7 @@
   overflow-y: auto;
   position: relative;
 }
-.modal-header {
+.modal-panel.modal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -89,7 +80,7 @@
   font-weight: 600;
   border-bottom: 1px solid rgba(255,255,255,0.07);
 }
-.modal-close-btn {
+.modal-panel.modal-close-btn {
   background: none;
   border: none;
   color: #888;
@@ -106,7 +97,7 @@
   right: 12px;
 }
 .modal-close-btn:active { background: rgba(255,255,255,0.1); }
-.modal-body { padding: 16px 18px 20px; }
+.modal-panel.modal-body { padding: 16px 18px 20px; }
 
 .form-row { margin-bottom: 16px; }
 .form-row label { display: block; font-size: 13px; color: #aaa; margin-bottom: 6px; }
@@ -139,7 +130,7 @@
 }
 .upload-hint { font-size: 12px; color: #666; }
 
-.modal-actions {
+.modal-panel.modal-actions {
   display: flex;
   gap: 10px;
   margin-top: 20px;
