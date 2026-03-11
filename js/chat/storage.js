@@ -719,6 +719,12 @@ showChatInList(friendCode) {
 }
 // ==================== 聊天列表隐藏相关 ====================
 
+/* ==========================================
+   StorageManager 亲密关系模块扩展（修正版）
+   把下面所有方法粘贴到 storage.js 中
+   StorageManager 类的末尾 } 之前
+   ========================================== */
+
 // ==================== 幸运字符 ====================
 
 getLuckyCharmData() {
@@ -731,27 +737,27 @@ getLuckyCharmData() {
 _defaultLuckyCharmData() {
     return {
         charms: [
-            { id:'beauty',    name:'美丽', isBuiltin:true },
-            { id:'cherish',   name:'珍惜', isBuiltin:true },
-            { id:'destiny',   name:'缘分', isBuiltin:true },
-            { id:'dreamland', name:'梦境', isBuiltin:true },
-            { id:'eternal',   name:'永恒', isBuiltin:true },
-            { id:'exclusive', name:'专属', isBuiltin:true },
-            { id:'future',    name:'未来', isBuiltin:true },
-            { id:'guardian',  name:'守护', isBuiltin:true },
-            { id:'happiness', name:'幸福', isBuiltin:true },
-            { id:'meet-you',  name:'遇见', isBuiltin:true },
-            { id:'merriment', name:'欢愉', isBuiltin:true },
-            { id:'mine',      name:'我的', isBuiltin:true },
-            { id:'only',      name:'唯一', isBuiltin:true },
-            { id:'sanctuary', name:'净土', isBuiltin:true },
-            { id:'starlight', name:'星光', isBuiltin:true },
-            { id:'treasure',  name:'宝藏', isBuiltin:true }
+            { id:'beauty',    name:'美丽', isBuiltin:true, img:'assets/images/lucky-chars/luck-beautiful.png' },
+            { id:'cherish',   name:'珍惜', isBuiltin:true, img:'assets/images/lucky-chars/luck-cherish.png' },
+            { id:'destiny',   name:'缘分', isBuiltin:true, img:'assets/images/lucky-chars/luck-destiny.png' },
+            { id:'dreamland', name:'梦境', isBuiltin:true, img:'assets/images/lucky-chars/luck-dreamland.png' },
+            { id:'eternal',   name:'永恒', isBuiltin:true, img:'assets/images/lucky-chars/luck-eternal.png' },
+            { id:'exclusive', name:'专属', isBuiltin:true, img:'assets/images/lucky-chars/luck-exclusive.png' },
+            { id:'future',    name:'未来', isBuiltin:true, img:'assets/images/lucky-chars/luck-future.png' },
+            { id:'guardian',  name:'守护', isBuiltin:true, img:'assets/images/lucky-chars/luck-guardian.png' },
+            { id:'happiness', name:'幸福', isBuiltin:true, img:'assets/images/lucky-chars/luck-happiness.png' },
+            { id:'meet-you',  name:'遇见', isBuiltin:true, img:'assets/images/lucky-chars/luck-meet-you.png' },
+            { id:'merriment', name:'欢愉', isBuiltin:true, img:'assets/images/lucky-chars/luck-merriment.png' },
+            { id:'mine',      name:'我的', isBuiltin:true, img:'assets/images/lucky-chars/luck-mine.png' },
+            { id:'only',      name:'唯一', isBuiltin:true, img:'assets/images/lucky-chars/luck-only.png' },
+            { id:'sanctuary', name:'净土', isBuiltin:true, img:'assets/images/lucky-chars/luck-sanctuary.png' },
+            { id:'starlight', name:'星光', isBuiltin:true, img:'assets/images/lucky-chars/luck-starlight.png' },
+            { id:'treasure',  name:'宝藏', isBuiltin:true, img:'assets/images/lucky-chars/luck-treasure.png' }
         ],
         wearing:      { user: null, ai: null },
-        litProgress:  {},   // { [charmId]: litChars (int) }
-        drawHistory:  {},   // { [dateStr]: { user:[id,id,id], ai:[id,id,id] } }
-        留言Pending:  {}    // { [charmId]: { user: '', ai: '' } }
+        litProgress:  {},
+        drawHistory:  {},
+        留言Pending:  {}
     };
 }
 
@@ -763,12 +769,11 @@ saveLuckyCharmData(data) {
 // ==================== 关系绑定 ====================
 
 getRelationshipTypes() {
-    // 4 内置 + 自定义
     return [
-        { id:'bros',     name:'基友',  img:'assets/images/relationship/bros.png' },
-        { id:'couple',   name:'情侣',  img:'assets/images/relationship/couple.png' },
-        { id:'besties',  name:'闺蜜',  img:'assets/images/relationship/besties.png' },
-        { id:'partners', name:'死党',  img:'assets/images/relationship/partners.png' }
+        { id:'bros',     name:'基友',  img:'assets/images/relationship/rel-bros.png' },
+        { id:'couple',   name:'情侣',  img:'assets/images/relationship/rel-couple.png' },
+        { id:'besties',  name:'闺蜜',  img:'assets/images/relationship/rel-besties.png' },
+        { id:'partners', name:'死党',  img:'assets/images/relationship/rel-partners.png' }
     ];
 }
 
@@ -803,23 +808,23 @@ clearRelationshipBinding(friendCode) {
 
 getBadgeDefinitions() {
     return [
-        { id:'infinite-overdraft',    name:'无限透支',  img:'assets/images/intimacy-badges/infinite-overdraft.png',
+        { id:'infinite-overdraft',    name:'无限透支',  img:'assets/images/intimacy-badges/badge-infinite-overdraft.png',
           desc:'你和TA在跨次元兑换所各完成5件事', type:'progress', goal:10 },
-        { id:'absolute-shelter',      name:'绝对庇护',  img:'assets/images/intimacy-badges/absolute-shelter.png',
+        { id:'absolute-shelter',      name:'绝对庇护',  img:'assets/images/intimacy-badges/badge-absolute-shelter.png',
           desc:'在0:00–5:00聊天累计30天（非连续）', type:'night_chat_days', goal:30 },
-        { id:'time-anchor',           name:'时间锚点',  img:'assets/images/intimacy-badges/time-anchor.png',
+        { id:'time-anchor',           name:'时间锚点',  img:'assets/images/intimacy-badges/badge-time-anchor.png',
           desc:'互相交换早安+晚安累计60天', type:'greetings', goal:60 },
-        { id:'exclusive-exception',   name:'专属例外',  img:'assets/images/intimacy-badges/exclusive-exception.png',
+        { id:'exclusive-exception',   name:'专属例外',  img:'assets/images/intimacy-badges/badge-exclusive-exception.png',
           desc:'在0:00–5:00聊天累计7天', type:'night_chat_days_ex', goal:7 },
-        { id:'only-route',            name:'唯一航道',  img:'assets/images/intimacy-badges/only-route.png',
+        { id:'only-route',            name:'唯一航道',  img:'assets/images/intimacy-badges/badge-only-route.png',
           desc:'小火花连续燃烧365天', type:'spark_days', goal:365 },
-        { id:'sleep-guardian',        name:'睡眠守护',  img:'assets/images/intimacy-badges/sleep-guardian.png',
+        { id:'sleep-guardian',        name:'睡眠守护',  img:'assets/images/intimacy-badges/badge-sleep-guardian.png',
           desc:'双方各说一次晚安', type:'goodnight_once', goal:2 },
-        { id:'as-promised',           name:'如约而至',  img:'assets/images/intimacy-badges/as-promised.png',
+        { id:'as-promised',           name:'如约而至',  img:'assets/images/intimacy-badges/badge-as-promised.png',
           desc:'双方各发送一条消息（即刻解锁）', type:'instant', goal:2 },
-        { id:'dream-domain',          name:'梦境管辖',  img:'assets/images/intimacy-badges/dream-domain.png',
+        { id:'dream-domain',          name:'梦境管辖',  img:'assets/images/intimacy-badges/badge-dream-domain.png',
           desc:'连续7天双方互道晚安（断开重计）', type:'goodnight_streak', goal:7 },
-        { id:'heartbeat-limited',     name:'心动限定',  img:'assets/images/intimacy-badges/heartbeat-limited.png',
+        { id:'heartbeat-limited',     name:'心动限定',  img:'assets/images/intimacy-badges/badge-heartbeat-limited.png',
           desc:'限定版：情人节发送「情人节快乐」；永久版：连续3年情人节', type:'valentines', goal:1, limitedGoal:3 }
     ];
 }
@@ -835,7 +840,7 @@ addUnlockedBadge(friendCode, badgeId, isLimited = false) {
         const chat = chats.find(c => c.friendCode === friendCode);
         if (!chat) return false;
         if (!chat.unlockedBadges) chat.unlockedBadges = [];
-        if (chat.unlockedBadges.find(b => b.id === badgeId)) return false; // already unlocked
+        if (chat.unlockedBadges.find(b => b.id === badgeId)) return false;
         chat.unlockedBadges.push({ id: badgeId, unlockedAt: new Date().toISOString(), isLimited });
         this.saveData(this.KEYS.CHATS, chats);
         return true;
@@ -944,7 +949,6 @@ addStarTrailEvent(friendCode, event) {
         const chat = chats.find(c => c.friendCode === friendCode);
         if (!chat) return false;
         if (!chat.starTrailEvents) chat.starTrailEvents = [];
-        // deduplicate: same type + same ref in same day
         const today = new Date().toISOString().slice(0,10);
         const dup = chat.starTrailEvents.find(e => e.type === event.type && e.refId === event.refId && e.date === today);
         if (dup) return dup.id;

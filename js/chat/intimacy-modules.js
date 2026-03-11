@@ -131,20 +131,14 @@ ChatInterface.prototype._renderLcGrid = function(data) {
 
 ChatInterface.prototype._lcCharmImgHTML = function(charm, size) {
     const s = size || 48;
-    if (charm.isBuiltin) {
-        const emojis = {
-            beauty:'💄',cherish:'💝',destiny:'🌸',dreamland:'🌙',
-            eternal:'♾️',exclusive:'👑',future:'🔮',guardian:'🛡️',
-            happiness:'🌟',  'meet-you':'🤝',merriment:'🎉',mine:'🔒',
-            only:'💎',sanctuary:'🏯',starlight:'⭐',treasure:'🎁'
-        };
-        const emoji = emojis[charm.id] || '✨';
-        return `<span style="font-size:${Math.floor(s*0.65)}px;line-height:1;">${emoji}</span>`;
-    } else if (charm.imageSrc) {
-        return `<img src="${charm.imageSrc}" style="width:${s}px;height:${s}px;object-fit:contain;" alt="">`;
+    // 内置字符用真实图片（img 字段），自定义用上传的 imageSrc
+    const src = charm.img || charm.imageSrc;
+    if (src) {
+        return `<img src="${src}" style="width:${s}px;height:${s}px;object-fit:contain;" alt="${charm.name}" onerror="this.style.display='none';this.nextSibling.style.display='inline'"><span style="font-size:${Math.floor(s*0.65)}px;line-height:1;display:none;">✨</span>`;
     }
-    return `<span style="font-size:${Math.floor(s*0.65)}px;">✨</span>`;
+    return `<span style="font-size:${Math.floor(s*0.65)}px;line-height:1;">✨</span>`;
 };
+
 
 ChatInterface.prototype._openLcDetail = function(charmId) {
     const data = this.storage.getLuckyCharmData();
@@ -851,15 +845,12 @@ ChatInterface.prototype._renderBadgeGrid = function() {
 
 ChatInterface.prototype._badgeImgHTML = function(def, size) {
     const s = size || 52;
-    const emojis = {
-        'infinite-overdraft':'💳','absolute-shelter':'🛡️','time-anchor':'⚓',
-        'exclusive-exception':'✨','only-route':'🌊','sleep-guardian':'🌙',
-        'as-promised':'🤝','dream-domain':'🌌','heartbeat-limited':'💖'
-    };
-    if (def.isCustom && def.imageSrc) {
-        return `<img src="${def.imageSrc}" style="width:${s}px;height:${s}px;object-fit:contain;">`;
+    // 内置徽章用 def.img，自定义用 def.imageSrc
+    const src = def.img || def.imageSrc;
+    if (src) {
+        return `<img src="${src}" style="width:${s}px;height:${s}px;object-fit:contain;" alt="${def.name}" onerror="this.style.display='none';this.nextSibling.style.display='inline'"><span style="font-size:${Math.floor(s*0.65)}px;line-height:1;display:none;">🏅</span>`;
     }
-    return `<span style="font-size:${Math.floor(s*0.65)}px;line-height:1;">${emojis[def.id] || '🏅'}</span>`;
+    return `<span style="font-size:${Math.floor(s*0.65)}px;line-height:1;">🏅</span>`;
 };
 
 ChatInterface.prototype._getBadgeProgressText = function(def) {
