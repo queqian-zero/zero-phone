@@ -1911,12 +1911,13 @@
     <div class="rel-pending-type" id="relPendingTypeName"></div>
     <div class="rel-pending-desc" id="relPendingDesc">邀请已发出，等待 TA 的回应…</div>
     <div class="rel-pending-card-preview" id="relPendingCardPreview"></div>
+    <!-- 只保留撤回按钮，同意/拒绝由 AI 回复自动触发 -->
     <div class="rel-pending-actions">
-      <button class="rel-confirm-btn" id="relAgreeBtn">✅ TA 同意了，确认绑定</button>
-      <button class="rel-cancel-btn"  id="relCancelInviteBtn">❌ 撤回邀请</button>
+      <button class="rel-cancel-btn" id="relCancelInviteBtn">❌ 撤回邀请</button>
     </div>
   </div>
 </div>
+
 
     <!-- 已绑定状态 -->
     <div id="relBound" style="display:none;">
@@ -2050,10 +2051,13 @@
     <!-- 留言区（解锁后） -->
     <div class="badge-liuyan-section" id="badgeLiuyanSection" style="display:none;">
       <div class="badge-liuyan-title">🏅 解锁纪念寄语</div>
-      <textarea class="badge-liuyan-input" id="badgeLiuyanUser" placeholder="写下你的解锁感言…"></textarea>
-      <div class="badge-liuyan-ai-text" id="badgeLiuyanAiText"></div>
-      <button class="badge-liuyan-save" id="badgeLiuyanSave">保存寄语</button>
-    </div>
+      <div class="badge-liuyan-user-section">
+  <div class="badge-liuyan-label">🖊️ 我的寄语</div>
+  <div class="badge-liuyan-user-area" id="badgeLiuyanUserArea">
+    <!-- 内容由 JS 动态渲染：已写→只读+删除按钮；未写→textarea -->
+  </div>
+  <button class="badge-liuyan-save" id="badgeLiuyanSave" style="display:none;">保存寄语</button>
+</div>
   </div>
 </div>
 
