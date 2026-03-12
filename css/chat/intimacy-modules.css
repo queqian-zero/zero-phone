@@ -1401,3 +1401,63 @@
 .star-trail-liuyan-text  { font-size:13px; color:rgba(255,255,255,0.75); line-height:1.6; }
 .star-trail-liuyan-btn { margin-top:6px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:7px; color:rgba(255,255,255,0.6); font-size:12px; padding:5px 10px; cursor:pointer; }
 .star-trail-liuyan-btn:hover { background:rgba(255,255,255,0.12); }
+
+/* ============================================================
+   intimacy-modules v3 CSS 补丁 — 追加到 intimacy-modules.css 末尾
+   ============================================================ */
+
+/* ── 删除按钮（幸运字符 / 关系绑定 / 亲密徽章自定义项） ── */
+.lc-card, .rel-type-card, .badge-card { position: relative; }
+
+.lc-card-delete-btn,
+.rel-type-delete-btn,
+.badge-card-delete-btn {
+    position: absolute; top: 4px; right: 4px; z-index: 10;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: rgba(200,60,60,0.75); color: #fff;
+    font-size: 13px; line-height: 18px; text-align: center;
+    cursor: pointer; display: none;
+    transition: background 0.15s, transform 0.15s;
+}
+.lc-card:hover .lc-card-delete-btn,
+.rel-type-card:hover .rel-type-delete-btn,
+.badge-card:hover .badge-card-delete-btn {
+    display: flex; align-items: center; justify-content: center;
+}
+.lc-card-delete-btn:hover,
+.rel-type-delete-btn:hover,
+.badge-card-delete-btn:hover {
+    background: rgba(220,30,30,0.9); transform: scale(1.15);
+}
+
+/* ── AI 佩戴提示 ── */
+.lc-detail-ai-hint {
+    font-size: 12px; color: rgba(255,255,255,0.4);
+    text-align: center; padding: 4px 0 8px;
+    border-top: 1px solid rgba(255,255,255,0.07); margin-top: 6px;
+}
+
+/* ── Toast 通知 ── */
+.intimacy-toast {
+    position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: rgba(30,30,30,0.92); color: rgba(255,255,255,0.9);
+    border: 1px solid rgba(255,255,255,0.15); border-radius: 20px;
+    padding: 10px 20px; font-size: 14px; white-space: nowrap;
+    z-index: 9999; pointer-events: none;
+    opacity: 0; transition: opacity 0.25s, transform 0.25s;
+    backdrop-filter: blur(10px);
+}
+.intimacy-toast.show {
+    opacity: 1; transform: translateX(-50%) translateY(0);
+}
+
+/* ── Pending 状态里的邀请卡预览区 ── */
+.rel-pending-card-preview {
+    width: 100%; max-width: 300px;
+    border-radius: 12px; overflow: hidden; min-height: 0;
+}
+
+/* ── 有AI佩戴标记的 worn badge ── */
+.lc-card-worn-badge.ai-worn {
+    background: rgba(26,95,154,0.85);
+}
