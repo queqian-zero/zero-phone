@@ -4,6 +4,8 @@ class ChatInterface {
     constructor(chatApp) {
         this.chatApp = chatApp;
         this.storage = chatApp.storage;
+        this.luckyCharm = new LuckyCharmManager(this);
+window.LuckyCharm = this.luckyCharm; // 供HTML的onclick访问
         this.apiManager = new APIManager();
         this.currentFriendCode = null;
         this.currentFriend = null;
@@ -631,6 +633,10 @@ const sparkInfo = this.getSparkStatusForAI();
 if (sparkInfo) {
     systemPrompt += `\n\n${sparkInfo}`;
 }
+// 注入幸运字符状态
+if (this.luckyCharm) {
+    systemPrompt += this.luckyCharm.getAIContextInfo(this.currentFriendCode);
+}
 
             console.log('🌐 开始调用API...');
             const result = await this.apiManager.callAI(recentMessages, systemPrompt);
@@ -654,6 +660,23 @@ const sparkMatch = displayText.match(/\[SPARK_TOGGLE:(on|off)\]/);
 if (sparkMatch) {
     sparkTogglePending = sparkMatch[1];
     displayText = displayText.replace(/\[SPARK_TOGGLE:(on|off)\]/g, '').trim();
+    // 检查AI是否要抽幸运字符
+if (displayText.includes('[LC_AI_DRAW]')) {
+    const result = this.luckyCharm.aiDrawCharm(this.currentFriendCode);
+    if (result) {
+        console.log('🎴 AI抽到了幸运字符:', result.name);
+    }
+    displayText = displayText.replace(/\[LC_AI_DRAW\]/g, '').trim();
+}
+
+// 检查AI是否要佩戴字符
+const lcEquipMatch = displayText.match(/\[LC_AI_EQUIP:([^\]]+)\]/);
+if (lcEquipMatch) {
+    const charmId = lcEquipMatch[1].trim();
+    this.luckyCharm.aiEquipCharm(this.currentFriendCode, charmId);
+    console.log('💎 AI选择佩戴:', charmId);
+    displayText = displayText.replace(lcEquipMatch[0], '').trim();
+}
 }
 
 this.addMessage({
@@ -676,6 +699,11 @@ this.silentMemoryCheck(displayText);
 
 // 亲密值 +1（每完成一回合）
 this.incrementIntimacyRound();
+
+if (this.luckyCharm && this.currentFriendCode) {
+    this.luckyCharm.onMessageSent(this.currentFriendCode);
+}
+
 
 // 触发设备控制弹窗
 if (sparkTogglePending) {
@@ -4675,6 +4703,12 @@ incrementIntimacyRound() {
 
 bindIntimacyEvents() {
     const backBtn = document.getElementById('intimacyBackBtn');
+    const lcBtn = document.getElementById('intimacyLuckyCharmBtn');
+if (lcBtn) {
+    lcBtn.addEventListener('click', () => {
+        this.luckyCharm.open(this.currentFriendCode);
+    });
+}
     if (backBtn) backBtn.addEventListener('click', () => this.closeIntimacyPanel());
 
     const customBtn = document.getElementById('intimacyCustomBtn');
