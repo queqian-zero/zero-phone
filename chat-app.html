@@ -856,7 +856,10 @@
         <div class="lc-my-charms-section">
             <div class="lc-my-charms-header">
                 <span class="lc-section-label">我的字符</span>
-                <button class="lc-upload-charm-btn" id="lc-upload-charm-btn">+ 上传</button>
+                <div class="lc-my-charms-btns">
+                    <button class="lc-upload-charm-btn" id="lc-library-btn">管理</button>
+                    <button class="lc-upload-charm-btn" id="lc-upload-charm-btn">+ 上传</button>
+                </div>
             </div>
             <div id="lc-my-charms-wrap">
                 <!-- 由JS渲染 -->
@@ -950,6 +953,25 @@
     </div>
 </div>
 <!-- ==================== 上传字符弹窗结束 ==================== -->
+
+
+<!-- ==================== 幸运字符·字符库管理弹窗 ==================== -->
+<div class="lc-modal" id="lcLibraryModal">
+    <div class="lc-modal-overlay" id="lcLibraryOverlay"></div>
+    <div class="lc-modal-dialog">
+        <div class="lc-modal-header">
+            <span class="lc-modal-title">自定义字符库</span>
+            <button class="lc-modal-close" id="lcLibraryClose">×</button>
+        </div>
+        <div class="lc-modal-body">
+            <button class="lc-btn-outline" id="lc-library-upload-btn">+ 上传新字符</button>
+            <div id="lc-library-list">
+                <!-- 由JS渲染 -->
+            </div>
+        </div>
+    </div>
+</div>
+<!-- ==================== 字符库管理弹窗结束 ==================== -->
 
 <!-- ==================== 续火花设置弹窗 ==================== -->
 <div class="spark-modal" id="sparkModal" style="display:none;">
