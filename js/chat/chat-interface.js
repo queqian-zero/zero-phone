@@ -6,6 +6,8 @@ class ChatInterface {
         this.storage = chatApp.storage;
         this.luckyCharm = new LuckyCharmManager(this);
 window.LuckyCharm = this.luckyCharm; // 供HTML的onclick访问
+  this.intimacyBadge = new IntimacyBadgeManager(this);
+  window.IntimacyBadge = this.intimacyBadge;
         this.apiManager = new APIManager();
         this.currentFriendCode = null;
         this.currentFriend = null;
@@ -642,6 +644,9 @@ if (this.luckyCharm) {
         const mtInfo = window.MilestoneTimeline.getAIContextInfo(this.currentFriendCode);
         if (mtInfo) systemPrompt += mtInfo;
     }
+      if (this.intimacyBadge) {
+      systemPrompt += this.intimacyBadge.getAIContextInfo(this.currentFriendCode);
+  }
 
             console.log('🌐 开始调用API...');
             const result = await this.apiManager.callAI(recentMessages, systemPrompt);
@@ -719,6 +724,9 @@ if (this.luckyCharm && this.currentFriendCode) {
     this.luckyCharm.onMessageSent(this.currentFriendCode);
 }
 
+  if (this.intimacyBadge && this.currentFriendCode) {
+      this.intimacyBadge.checkUnlocks(this.currentFriendCode);
+  }
 
 // 触发设备控制弹窗
 if (sparkTogglePending) {
@@ -4738,6 +4746,11 @@ if (lcBtn) {
         this.bindIntimacyCustomEvents();
         this.intimacyCustomEventsBound = true;
     }
+    
+      const ibBtn = document.getElementById('intimacyBadgeBtn');
+  if (ibBtn) ibBtn.addEventListener('click', () => {
+      this.intimacyBadge.open(this.currentFriendCode);
+  });
 }
 saveIntimacyCustom() {
     try {
