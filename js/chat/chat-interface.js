@@ -647,6 +647,33 @@ if (this.luckyCharm) {
       if (this.intimacyBadge) {
       systemPrompt += this.intimacyBadge.getAIContextInfo(this.currentFriendCode);
   }
+      systemPrompt += `
+
+【消息渲染能力】
+你可以在回复中使用以下标记来控制渲染方式：
+
+1. 普通代码块（只展示代码，不渲染）：
+   \`\`\`html
+   <div>...</div>
+   \`\`\`
+
+2. 渲染卡片（直接渲染成可视效果，用于发送邀请卡片、小卡片等）：
+   [RENDER]
+   <div style="...">你想展示的内容</div>
+   [/RENDER]
+
+3. 气泡样式更新（CSS会直接应用到对话气泡，并填入设置框）：
+   [CSS_BUBBLE]
+   .message-ai .message-bubble { background: #xxx; }
+   [/CSS_BUBBLE]
+
+说明：
+- 不需要渲染的代码/HTML示例，用普通代码块
+- 想展示视觉效果的卡片，用 [RENDER]
+- 如果你想帮用户美化气泡样式，用 [CSS_BUBBLE]，会自动应用
+- 可以在同一条消息里混合使用文字、代码块、[RENDER]卡片
+`;
+
 
             console.log('🌐 开始调用API...');
             const result = await this.apiManager.callAI(recentMessages, systemPrompt);
@@ -872,7 +899,7 @@ div.innerHTML = `
             
             <div class="message-content">
                 <div class="message-bubble">
-                    <div class="message-text">${message.isHtml ? message.text : this.escapeHtml(message.text)}</div>
+                    <div class="message-text">${message.isHtml ? message.text : this.renderMessageContent(message.text)}</div>
                 </div>
                 <div class="message-time">${time}</div>
             </div>
@@ -949,6 +976,89 @@ div.innerHTML = `
         div.textContent = text;
         return div.innerHTML;
     }
+    
+    renderMessageContent(text) {
+    if (!text) return '';
+
+    // ── 先处理 [CSS_BUBBLE]...[/CSS_BUBBLE] ──────────────────────
+    // 应用到气泡CSS框并生成一个"已应用"的提示chip
+    text = text.replace(/\[CSS_BUBBLE\]([\s\S]*?)\[\/CSS_BUBBLE\]/g, (_, css) => {
+        const trimmed = css.trim();
+        // 填入textarea
+        const ta = document.getElementById('bubbleCustomCss');
+        if (ta) ta.value = trimmed;
+        // 应用CSS（保存）
+        if (typeof this.applyCustomBubbleCss === 'function') {
+            this.applyCustomBubbleCss(trimmed, true);
+        }
+        // 替换成一个可视化提示chip（不显示原始CSS代码）
+        return `<div class="msg-css-applied-chip">✦ 气泡样式已更新，去设置里查看效果</div>`;
+    });
+
+    // ── 分段解析：把文本切成「普通段 / 代码块 / RENDER块」────────
+    const segments = [];
+    // 匹配 ```lang\n...\n``` 和 [RENDER]...[/RENDER]
+    const pattern = /(\[RENDER\][\s\S]*?\[\/RENDER\]|```[\s\S]*?```)/g;
+    let lastIndex = 0;
+    let match;
+
+    while ((match = pattern.exec(text)) !== null) {
+        // 普通文本段
+        if (match.index > lastIndex) {
+            segments.push({ type: 'text', content: text.slice(lastIndex, match.index) });
+        }
+        const raw = match[0];
+        if (raw.startsWith('[RENDER]')) {
+            // 取 [RENDER] 和 [/RENDER] 之间的内容
+            const inner = raw.slice(8, raw.length - 9).trim();
+            segments.push({ type: 'render', content: inner });
+        } else {
+            // 代码块：```lang\n...\n```
+            const lines = raw.slice(3, raw.length - 3).split('\n');
+            const lang = lines[0].trim() || '';
+            const code = lines.slice(1).join('\n').trimEnd();
+            segments.push({ type: 'code', lang, content: code });
+        }
+        lastIndex = pattern.lastIndex;
+    }
+    // 剩余普通文本
+    if (lastIndex < text.length) {
+        segments.push({ type: 'text', content: text.slice(lastIndex) });
+    }
+
+    // ── 拼接 HTML ────────────────────────────────────────────────
+    return segments.map(seg => {
+        if (seg.type === 'text') {
+            // 普通文本：转义 + 换行转 <br>
+            return `<span>${this.escapeHtml(seg.content).replace(/\n/g, '<br>')}</span>`;
+        }
+
+        if (seg.type === 'render') {
+            // [RENDER] 块：直接渲染 HTML，加一圈容器
+            return `<div class="msg-render-card">${seg.content}</div>`;
+        }
+
+        if (seg.type === 'code') {
+            // 代码块：展示代码，带语言标签和复制按钮
+            const escapedCode = this.escapeHtml(seg.content);
+            const uid = 'code_' + Math.random().toString(36).slice(2, 8);
+            return `
+                <div class="msg-code-block">
+                    <div class="msg-code-header">
+                        <span class="msg-code-lang">${seg.lang || 'code'}</span>
+                        <button class="msg-code-copy" onclick="
+                            navigator.clipboard.writeText(document.getElementById('${uid}').textContent)
+                                .then(()=>{ this.textContent='已复制'; setTimeout(()=>this.textContent='复制',1500); })
+                                .catch(()=>{ this.textContent='复制'; });
+                        ">复制</button>
+                    </div>
+                    <pre class="msg-code-pre"><code id="${uid}">${escapedCode}</code></pre>
+                </div>`;
+        }
+        return '';
+    }).join('');
+}
+
     
     scrollToBottom() {
         const container = document.getElementById('messagesContainer');
