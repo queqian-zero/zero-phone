@@ -872,7 +872,7 @@ div.innerHTML = `
             
             <div class="message-content">
                 <div class="message-bubble">
-                    <div class="message-text">${this.escapeHtml(message.text)}</div>
+                    <div class="message-text">${message.isHtml ? message.text : this.escapeHtml(message.text)}</div>
                 </div>
                 <div class="message-time">${time}</div>
             </div>
