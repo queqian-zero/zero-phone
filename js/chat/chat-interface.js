@@ -983,17 +983,15 @@ div.innerHTML = `
     // ── 先处理 [CSS_BUBBLE]...[/CSS_BUBBLE] ──────────────────────
     // 应用到气泡CSS框并生成一个"已应用"的提示chip
     text = text.replace(/\[CSS_BUBBLE\]([\s\S]*?)\[\/CSS_BUBBLE\]/g, (_, css) => {
-        const trimmed = css.trim();
-        // 填入textarea
-        const ta = document.getElementById('bubbleCustomCss');
-        if (ta) ta.value = trimmed;
-        // 应用CSS（保存）
-        if (typeof this.applyCustomBubbleCss === 'function') {
-            this.applyCustomBubbleCss(trimmed, true);
-        }
-        // 替换成一个可视化提示chip（不显示原始CSS代码）
-        return `<div class="msg-css-applied-chip">✦ 气泡样式已更新，去设置里查看效果</div>`;
-    });
+    const trimmed = css.trim();
+    const ta = document.getElementById('bubbleCustomCss');
+    if (ta) ta.value = trimmed;
+    if (typeof this.applyCustomCss === 'function') {
+        this.applyCustomCss(true);
+    }
+    // 用 [RENDER] 包一层，这样 chip 不会被 escapeHtml 转义
+    return `[RENDER]<div class="msg-css-applied-chip">✦ 气泡样式已更新，去设置里查看效果</div>[/RENDER]`;
+});
 
     // ── 分段解析：把文本切成「普通段 / 代码块 / RENDER块」────────
     const segments = [];
