@@ -25,6 +25,7 @@
     <link rel="stylesheet" href="css/chat/data-management.css">  <!-- ← 新增这行 -->
     <link rel="stylesheet" href="css/chat/lucky-charm.css">
     <link rel="stylesheet" href="css/chat/milestone-timeline.css">
+    <link rel="stylesheet" href="css/chat/intimacy-badge.css">
 </head>
 <body>
     
@@ -748,10 +749,10 @@
                     <div class="intimacy-entry-label">关系绑定</div>
                     <div class="intimacy-entry-badge">待开发</div>
                 </button>
-                <button class="intimacy-entry-btn" onclick="alert('亲密徽章功能开发中...')">
+                <button class="intimacy-entry-btn" id="intimacyBadgeBtn">
                     <div class="intimacy-entry-icon">🏅</div>
                     <div class="intimacy-entry-label">亲密徽章</div>
-                    <div class="intimacy-entry-badge">待开发</div>
+                    <div class="intimacy-entry-badge">Интимность💓</div>
                 </button>
             </div>
             <div class="intimacy-entry-row">
@@ -882,6 +883,130 @@
 </div>
 <!-- ==================== 幸运字符面板结束 ==================== -->
 
+<!-- ==================== 亲密徽章面板 ==================== -->
+<div id="ibPanel" style="display:none;">
+    <div class="ib-bg" id="ib-bg"></div>
+    <div class="ib-content">
+
+        <!-- 顶部栏 -->
+        <div class="ib-top-bar">
+            <button class="ib-back-btn" id="ib-back-btn">‹</button>
+            <span class="ib-panel-title">亲密徽章</span>
+            <button class="ib-custom-btn" id="ib-custom-btn">背景</button>
+        </div>
+
+        <!-- 解锁统计 -->
+        <div class="ib-stats-bar">
+            <span class="ib-stats-label">已解锁</span>
+            <span class="ib-stats-count" id="ib-unlocked-count">0</span>
+            <span class="ib-stats-total" id="ib-total-count">/ 9</span>
+            <span class="ib-stats-label" style="margin-left:4px;">个徽章</span>
+        </div>
+
+        <!-- 徽章网格 -->
+        <div class="ib-badges-section">
+            <div id="ib-badges-wrap">
+                <!-- 由 JS 渲染 -->
+            </div>
+        </div>
+
+    </div>
+</div>
+<!-- ==================== 亲密徽章面板结束 ==================== -->
+
+
+<!-- ==================== 亲密徽章·徽章详情弹窗 ==================== -->
+<div class="ib-modal" id="ibDetailModal">
+    <div class="ib-modal-overlay" id="ibDetailOverlay"></div>
+    <div class="ib-modal-dialog">
+        <div class="ib-modal-header">
+            <span class="ib-modal-title">徽章详情</span>
+            <button class="ib-modal-close" id="ibDetailClose">×</button>
+        </div>
+        <div class="ib-modal-body">
+            <div class="ib-detail-center">
+                <img id="ib-detail-img" src="" style="width:90px;height:90px;object-fit:contain;" onerror="this.style.opacity='0.2'">
+                <div class="ib-detail-name" id="ib-detail-name"></div>
+                <div class="ib-detail-desc" id="ib-detail-desc"></div>
+                <div class="ib-detail-status" id="ib-detail-status"></div>
+            </div>
+            <div class="ib-detail-divider"></div>
+            <div id="ib-detail-actions"></div>
+        </div>
+    </div>
+</div>
+<!-- ==================== 徽章详情弹窗结束 ==================== -->
+
+
+<!-- ==================== 亲密徽章·上传徽章弹窗 ==================== -->
+<div class="ib-modal" id="ibUploadModal">
+    <div class="ib-modal-overlay" id="ibUploadOverlay"></div>
+    <div class="ib-modal-dialog">
+        <div class="ib-modal-header">
+            <span class="ib-modal-title">上传自定义徽章</span>
+            <button class="ib-modal-close" id="ibUploadClose">×</button>
+        </div>
+        <div class="ib-modal-body">
+
+            <div class="ib-form-row">
+                <div class="ib-form-label">徽章名称（必填）</div>
+                <input type="text" class="ib-form-input" id="ib-up-name" placeholder="给这个徽章起个名字">
+            </div>
+
+            <div class="ib-form-row">
+                <div class="ib-form-label">徽章图片（透明底，必填）</div>
+                <div class="ib-upload-preview-wrap">
+                    <img id="ib-up-preview" alt="预览">
+                    <div style="flex:1;display:flex;flex-direction:column;gap:8px;">
+                        <input type="file" id="ib-up-img-file" accept="image/*" style="display:none;">
+                        <button class="ib-btn-outline" id="ib-up-img-btn">📁 从相册选择</button>
+                        <div class="ib-or-divider">或输入URL</div>
+                        <div class="ib-form-row-inline">
+                            <input type="text" class="ib-form-input" id="ib-up-img-url" placeholder="图片链接">
+                            <button class="ib-btn-apply" id="ib-up-img-url-apply">用</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ib-form-row">
+                <div class="ib-form-label">解锁条件说明（必填）</div>
+                <input type="text" class="ib-form-input" id="ib-up-desc" placeholder="比如：互相说100次晚安">
+            </div>
+
+            <button class="ib-btn-primary" id="ib-up-confirm">✓ 添加到徽章库</button>
+        </div>
+    </div>
+</div>
+<!-- ==================== 上传徽章弹窗结束 ==================== -->
+
+
+<!-- ==================== 亲密徽章·背景自定义弹窗 ==================== -->
+<div class="ib-modal" id="ibBgModal">
+    <div class="ib-modal-overlay" id="ibBgOverlay"></div>
+    <div class="ib-modal-dialog">
+        <div class="ib-modal-header">
+            <span class="ib-modal-title">背景自定义</span>
+            <button class="ib-modal-close" id="ibBgClose">×</button>
+        </div>
+        <div class="ib-modal-body">
+            <div class="ib-form-row">
+                <div class="ib-form-label">图片 URL</div>
+                <div class="ib-form-row-inline">
+                    <input type="text" class="ib-form-input" id="ib-bg-url" placeholder="粘贴图片链接">
+                    <button class="ib-btn-apply" id="ib-bg-url-apply">应用</button>
+                </div>
+            </div>
+            <div class="ib-or-divider">— 或 —</div>
+            <div class="ib-form-row">
+                <input type="file" id="ib-bg-file" accept="image/*" style="display:none;">
+                <button class="ib-btn-outline" id="ib-bg-upload">📁 从相册选择</button>
+            </div>
+            <button class="ib-btn-danger" id="ib-bg-clear">清除背景</button>
+        </div>
+    </div>
+</div>
+<!-- ==================== 背景自定义弹窗结束 ==================== -->
 
 <!-- ==================== 幸运字符·背景自定义弹窗 ==================== -->
 <div class="lc-modal" id="lcCustomModal">
@@ -1455,6 +1580,7 @@
 <script src="js/chat/storage.js"></script>
 <script src="js/chat/lucky-charm.js"></script>
 <script src="js/chat/milestone-timeline.js"></script>
+<script src="js/chat/intimacy-badge.js"></script>
 <script src="js/core/api-manager.js"></script>  <!-- ← 新增这行！ -->
 <script src="js/chat/chat-interface.js"></script>
 <script src="js/chat/chat-app.js"></script>
