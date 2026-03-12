@@ -1461,3 +1461,56 @@
 .lc-card-worn-badge.ai-worn {
     background: rgba(26,95,154,0.85);
 }
+
+<!-- ============================================================
+   CSS 追加到 intimacy-modules.css 末尾
+   ============================================================ -->
+<style>
+/* ── 寄语只读样式 ── */
+.liuyan-readonly-text {
+    font-size: 14px;
+    color: rgba(255,255,255,0.85);
+    line-height: 1.8;
+    background: rgba(255,255,255,0.04);
+    border-radius: 10px;
+    padding: 12px;
+    white-space: pre-wrap;
+    margin-bottom: 8px;
+}
+.liuyan-delete-btn {
+    background: rgba(200,60,60,0.12);
+    border: 1px solid rgba(200,60,60,0.3);
+    border-radius: 8px;
+    color: rgba(255,150,150,0.8);
+    font-size: 12px;
+    padding: 6px 14px;
+    cursor: pointer;
+    width: 100%;
+    text-align: center;
+}
+.liuyan-delete-btn:hover {
+    background: rgba(200,60,60,0.22);
+}
+
+/* ── 聊天框里渲染的邀请卡 ── */
+.chat-rel-invite-wrap {
+    border-radius: 12px;
+    overflow: hidden;
+    max-width: 300px;
+}
+.chat-rel-invite-label {
+    font-size: 12px;
+    color: rgba(255,255,255,0.5);
+    padding: 8px 12px 4px;
+    background: rgba(0,0,0,0.3);
+}
+.chat-rel-invite-desc {
+    font-size: 14px;
+    color: rgba(255,255,255,0.85);
+    padding: 4px 12px 10px;
+    background: rgba(0,0,0,0.3);
+}
+.chat-rel-invite-card {
+    /* 邀请卡 HTML 渲染区域 */
+}
+</style>
