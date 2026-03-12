@@ -573,8 +573,13 @@ class LuckyCharmManager {
         const uploadBtn = document.getElementById('lc-upload-charm-btn');
         if (uploadBtn) uploadBtn.addEventListener('click', () => this._openUploadModal());
 
+        // 打开字符库管理弹窗
+        const libraryBtn = document.getElementById('lc-library-btn');
+        if (libraryBtn) libraryBtn.addEventListener('click', () => this._openLibraryModal());
+
         this._bindCustomModalEvents();
         this._bindUploadModalEvents();
+        this._bindLibraryModalEvents();
     }
 
     // ---- 自定义背景弹窗 ----
@@ -697,7 +702,78 @@ class LuckyCharmManager {
         });
     }
 
-    // ==================== 工具方法 ====================
+    // ---- 字符库管理弹窗 ----
+
+    _openLibraryModal() {
+        const m = document.getElementById('lcLibraryModal');
+        if (m) {
+            m.style.display = 'flex';
+            this._renderLibrary();
+        }
+    }
+
+    _closeLibraryModal() {
+        const m = document.getElementById('lcLibraryModal');
+        if (m) m.style.display = 'none';
+    }
+
+    _renderLibrary() {
+        const wrap = document.getElementById('lc-library-list');
+        if (!wrap) return;
+        const data = this._load(this.friendCode);
+        const customs = data.customCharms || [];
+
+        if (customs.length === 0) {
+            wrap.innerHTML = `<div class="lc-library-empty">还没有上传过自定义字符～</div>`;
+            return;
+        }
+
+        wrap.innerHTML = customs.map(charm => {
+            const isDrawn = data.userDrawnIds.includes(charm.id);
+            const isEquipped = data.equippedCharmId === charm.id;
+            return `
+                <div class="lc-library-item" id="lc-lib-item-${charm.id}">
+                    <img src="${charm.imagePath}" class="lc-library-img" onerror="this.style.opacity='0.2'">
+                    <div class="lc-library-info">
+                        <div class="lc-library-name">${charm.name}</div>
+                        <div class="lc-library-tags">
+                            ${isDrawn ? '<span class="lc-lib-tag lc-lib-tag-drawn">已抽到</span>' : '<span class="lc-lib-tag">未抽到</span>'}
+                            ${isEquipped ? '<span class="lc-lib-tag lc-lib-tag-equipped">佩戴中</span>' : ''}
+                            ${charm.customSymbol ? `<span class="lc-lib-tag">符号 ${charm.customSymbol}</span>` : ''}
+                        </div>
+                    </div>
+                    <button class="lc-library-del-btn" onclick="window.LuckyCharm._confirmDeleteCustom('${charm.id}', '${charm.name.replace(/'/g, "\\'")}')">删除</button>
+                </div>`;
+        }).join('');
+    }
+
+    _confirmDeleteCustom(charmId, charmName) {
+        const ok = window.confirm(`确定删除「${charmName}」吗？\n（已抽到的记录和点亮进度也会一起清除）`);
+        if (ok) {
+            this.deleteCustomCharm(charmId);
+            const item = document.getElementById(`lc-lib-item-${charmId}`);
+            if (item) item.remove();
+            const data = this._load(this.friendCode);
+            if ((data.customCharms || []).length === 0) {
+                const wrap = document.getElementById('lc-library-list');
+                if (wrap) wrap.innerHTML = `<div class="lc-library-empty">还没有上传过自定义字符～</div>`;
+            }
+        }
+    }
+
+    _bindLibraryModalEvents() {
+        const overlay = document.getElementById('lcLibraryOverlay');
+        if (overlay) overlay.addEventListener('click', () => this._closeLibraryModal());
+        const close = document.getElementById('lcLibraryClose');
+        if (close) close.addEventListener('click', () => this._closeLibraryModal());
+        const uploadFromLib = document.getElementById('lc-library-upload-btn');
+        if (uploadFromLib) uploadFromLib.addEventListener('click', () => {
+            this._closeLibraryModal();
+            this._openUploadModal();
+        });
+    }
+
+        // ==================== 工具方法 ====================
 
     _compressAndReadImage(file, callback) {
         const reader = new FileReader();
