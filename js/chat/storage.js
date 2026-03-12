@@ -734,32 +734,48 @@ getLuckyCharmData() {
     } catch(e) { return this._defaultLuckyCharmData(); }
 }
 
+/* ============================================================
+   storage.js 补丁 — 只需替换 _defaultLuckyCharmData 这一个方法
+   找到原来的 _defaultLuckyCharmData() { ... } 整体替换成下面这个
+   ============================================================ */
+
 _defaultLuckyCharmData() {
     return {
         charms: [
-            { id:'beauty',    name:'美丽', isBuiltin:true, img:'assets/images/lucky-chars/luck-beautiful.png' },
-            { id:'cherish',   name:'珍惜', isBuiltin:true, img:'assets/images/lucky-chars/luck-cherish.png' },
-            { id:'destiny',   name:'缘分', isBuiltin:true, img:'assets/images/lucky-chars/luck-destiny.png' },
-            { id:'dreamland', name:'梦境', isBuiltin:true, img:'assets/images/lucky-chars/luck-dreamland.png' },
-            { id:'eternal',   name:'永恒', isBuiltin:true, img:'assets/images/lucky-chars/luck-eternal.png' },
-            { id:'exclusive', name:'专属', isBuiltin:true, img:'assets/images/lucky-chars/luck-exclusive.png' },
-            { id:'future',    name:'未来', isBuiltin:true, img:'assets/images/lucky-chars/luck-future.png' },
-            { id:'guardian',  name:'守护', isBuiltin:true, img:'assets/images/lucky-chars/luck-guardian.png' },
-            { id:'happiness', name:'幸福', isBuiltin:true, img:'assets/images/lucky-chars/luck-happiness.png' },
-            { id:'meet-you',  name:'遇见', isBuiltin:true, img:'assets/images/lucky-chars/luck-meet-you.png' },
-            { id:'merriment', name:'欢愉', isBuiltin:true, img:'assets/images/lucky-chars/luck-merriment.png' },
-            { id:'mine',      name:'我的', isBuiltin:true, img:'assets/images/lucky-chars/luck-mine.png' },
-            { id:'only',      name:'唯一', isBuiltin:true, img:'assets/images/lucky-chars/luck-only.png' },
-            { id:'sanctuary', name:'净土', isBuiltin:true, img:'assets/images/lucky-chars/luck-sanctuary.png' },
-            { id:'starlight', name:'星光', isBuiltin:true, img:'assets/images/lucky-chars/luck-starlight.png' },
-            { id:'treasure',  name:'宝藏', isBuiltin:true, img:'assets/images/lucky-chars/luck-treasure.png' }
+            { id:'beauty',    name:'美好',   isBuiltin:true, img:'assets/images/lucky-chars/luck-beautiful.png' },
+            { id:'cherish',   name:'珍爱',   isBuiltin:true, img:'assets/images/lucky-chars/luck-cherish.png' },
+            { id:'destiny',   name:'宿命',   isBuiltin:true, img:'assets/images/lucky-chars/luck-destiny.png' },
+            { id:'dreamland', name:'梦境',   isBuiltin:true, img:'assets/images/lucky-chars/luck-dreamland.png' },
+            { id:'eternal',   name:'永恒',   isBuiltin:true, img:'assets/images/lucky-chars/luck-eternal.png' },
+            { id:'exclusive', name:'专属',   isBuiltin:true, img:'assets/images/lucky-chars/luck-exclusive.png' },
+            { id:'future',    name:'未来',   isBuiltin:true, img:'assets/images/lucky-chars/luck-future.png' },
+            { id:'guardian',  name:'守护',   isBuiltin:true, img:'assets/images/lucky-chars/luck-guardian.png' },
+            { id:'happiness', name:'幸福',   isBuiltin:true, img:'assets/images/lucky-chars/luck-happiness.png' },
+            { id:'meet-you',  name:'遇见你', isBuiltin:true, img:'assets/images/lucky-chars/luck-meet-you.png' },
+            { id:'merriment', name:'欢乐',   isBuiltin:true, img:'assets/images/lucky-chars/luck-merriment.png' },
+            { id:'mine',      name:'我的',   isBuiltin:true, img:'assets/images/lucky-chars/luck-mine.png' },
+            { id:'only',      name:'唯一',   isBuiltin:true, img:'assets/images/lucky-chars/luck-only.png' },
+            { id:'sanctuary', name:'庇护所', isBuiltin:true, img:'assets/images/lucky-chars/luck-sanctuary.png' },
+            { id:'starlight', name:'星光',   isBuiltin:true, img:'assets/images/lucky-chars/luck-starlight.png' },
+            { id:'treasure',  name:'珍宝',   isBuiltin:true, img:'assets/images/lucky-chars/luck-treasure.png' }
         ],
-        wearing:      { user: null, ai: null },
-        litProgress:  {},
-        drawHistory:  {},
-        留言Pending:  {}
+        wearing:     { user: null, ai: null },
+        litProgress: {},
+        drawHistory: {},
+        留言Pending: {}
     };
 }
+
+/*
+   注意：如果你已经用过旧版本并且 localStorage 里有数据，
+   名字不会自动更新（因为数据已经存进去了）。
+   如果要强制刷新名字，可以在浏览器控制台里执行：
+   
+   localStorage.removeItem('zero_phone_lucky_charms');
+   
+   然后刷新页面，数据会用新名字重新初始化。
+   （这会清掉之前的抽卡记录和佩戴状态，只在测试阶段用）
+*/
 
 saveLuckyCharmData(data) {
     try { localStorage.setItem('zero_phone_lucky_charms', JSON.stringify(data)); return true; }
