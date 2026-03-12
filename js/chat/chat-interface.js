@@ -637,6 +637,11 @@ if (sparkInfo) {
 if (this.luckyCharm) {
     systemPrompt += this.luckyCharm.getAIContextInfo(this.currentFriendCode);
 }
+    // 注入星迹留痕
+    if (window.MilestoneTimeline) {
+        const mtInfo = window.MilestoneTimeline.getAIContextInfo(this.currentFriendCode);
+        if (mtInfo) systemPrompt += mtInfo;
+    }
 
             console.log('🌐 开始调用API...');
             const result = await this.apiManager.callAI(recentMessages, systemPrompt);
@@ -660,11 +665,13 @@ const sparkMatch = displayText.match(/\[SPARK_TOGGLE:(on|off)\]/);
 if (sparkMatch) {
     sparkTogglePending = sparkMatch[1];
     displayText = displayText.replace(/\[SPARK_TOGGLE:(on|off)\]/g, '').trim();
-    // 检查AI是否要抽幸运字符
+}
+
+// 检查AI是否要抽幸运字符
 if (displayText.includes('[LC_AI_DRAW]')) {
-    const result = this.luckyCharm.aiDrawCharm(this.currentFriendCode);
-    if (result) {
-        console.log('🎴 AI抽到了幸运字符:', result.name);
+    const lcDrawResult = this.luckyCharm.aiDrawCharm(this.currentFriendCode);
+    if (lcDrawResult) {
+        console.log('🎴 AI抽到了幸运字符:', lcDrawResult.name);
     }
     displayText = displayText.replace(/\[LC_AI_DRAW\]/g, '').trim();
 }
@@ -677,6 +684,14 @@ if (lcEquipMatch) {
     console.log('💎 AI选择佩戴:', charmId);
     displayText = displayText.replace(lcEquipMatch[0], '').trim();
 }
+
+// 检查AI是否要写星迹留痕寄语
+const mtNoteMatch = displayText.match(/\[MT_NOTE:([^|]+)\|([^\]]+)\]/);
+if (mtNoteMatch && window.MilestoneTimeline) {
+    const recordId = mtNoteMatch[1].trim();
+    const noteText = mtNoteMatch[2].trim();
+    window.MilestoneTimeline.writeAiNote(this.currentFriendCode, recordId, noteText);
+    displayText = displayText.replace(mtNoteMatch[0], '').trim();
 }
 
 this.addMessage({
@@ -4649,6 +4664,11 @@ loadIntimacyPanel() {
 
     // 应用自定义样式
     this.applyIntimacyCustomStyles();
+    // 渲染星迹留痕
+    if (window.MilestoneTimeline) {
+        window.MilestoneTimeline.render(this.currentFriendCode);
+    }
+
 }
 
 getTodayMessageCount() {
