@@ -285,10 +285,14 @@ class LuckyCharmManager {
 
     // AI侧：由chat-interface.js在AI操作时调用
     aiEquipCharm(friendCode, charmId) {
-        const data = this._load(friendCode);
-        data.equippedCharmId = charmId;
-        this._save(friendCode, data);
+    const data = this._load(friendCode);
+    data.equippedCharmId = charmId;
+    this._save(friendCode, data);
+    // 面板开着就刷新展示
+    if (this.panelEl && this.panelEl.style.display !== 'none') {
+        this._renderEquipped(data);
     }
+}
 
     aiDrawCharm(friendCode) {
         const data = this._load(friendCode);
@@ -836,7 +840,7 @@ class LuckyCharmManager {
             info += '当前未佩戴幸运字符\n';
         }
         if (aiDrawn.length > 0) {
-            info += `你（AI）已抽到：${aiDrawn.map(c => c.name).join('、')}\n`;
+            info += `你（AI）已抽到：${aiDrawn.map(c => `${c.name}(id:${c.id})`).join('、')}\n`;
         }
         info += `你（AI）今日剩余抽次：${remaining}次\n`;
         info += `用户已抽到：${userDrawn.map(c => c.name).join('、') || '暂无'}\n`;

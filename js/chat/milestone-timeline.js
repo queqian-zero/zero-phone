@@ -262,7 +262,7 @@ class MilestoneTimeline {
             const typeCfg = MilestoneTimeline.EVENT_TYPES[rec.type] || {};
             const title = this._buildTitle(rec, typeCfg);
             const dateStr = this._formatDate(rec.date);
-            info += `• ${dateStr} ${title}`;
+            info += `• [ID:${rec.id}] ${dateStr} ${title}`;
             if (rec.userNote) info += `（用户寄语："${rec.userNote.text}"）`;
             if (rec.aiNote)   info += `（你的留言："${rec.aiNote.text}"）`;
             else info += '（你还没有留言）';
