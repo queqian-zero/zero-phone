@@ -788,22 +788,6 @@ if (sparkTogglePending) {
         }
     }
     
-    _renderMessageText(text) {
-    // 检测关系绑定邀请标记，渲染成卡片而不是纯文字
-    const match = text.match(/\[关系绑定邀请\]\n(.+?)\n\n([\s\S]+)/);
-    if (match) {
-        const desc     = this.escapeHtml(match[1]);
-        const htmlCard = match[2]; // 这段是 HTML，直接渲染
-        return `<div class="chat-rel-invite-wrap">
-            <div class="chat-rel-invite-label">💍 关系绑定邀请</div>
-            <div class="chat-rel-invite-desc">${desc}</div>
-            <div class="chat-rel-invite-card">${htmlCard}</div>
-        </div>`;
-    }
-    // 普通消息走原来的转义
-    return this.escapeHtml(text);
-}
-
     createMessageElement(message) {
         const div = document.createElement('div');
         div.className = `message message-${message.type}`;
@@ -837,7 +821,7 @@ div.innerHTML = `
             
             <div class="message-content">
                 <div class="message-bubble">
-                    <div class="message-text">${this._renderMessageText(message.text)}</div>
+                    <div class="message-text">${this.escapeHtml(message.text)}</div>
                 </div>
                 <div class="message-time">${time}</div>
             </div>
