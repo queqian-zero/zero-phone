@@ -23,6 +23,7 @@
     <link rel="stylesheet" href="css/chat/chat-interface.css">
     <link rel="stylesheet" href="css/chat/chat-settings.css">
     <link rel="stylesheet" href="css/chat/data-management.css">  <!-- ← 新增这行 -->
+    <link rel="stylesheet" href="css/chat/lucky-charm.css">
 </head>
 <body>
     
@@ -736,7 +737,7 @@
         </div>
         <div class="intimacy-entries">
             <div class="intimacy-entry-row">
-                <button class="intimacy-entry-btn" onclick="alert('幸运字符功能开发中...')">
+                <button class="intimacy-entry-btn" id="intimacyLuckyCharmBtn">
                     <div class="intimacy-entry-icon">🎲</div>
                     <div class="intimacy-entry-label">幸运字符</div>
                     <div class="intimacy-entry-badge">待开发</div>
@@ -811,6 +812,144 @@
     </div>
 </div>
 <!-- ==================== 亲密关系面板结束 ==================== -->
+
+<!-- ================================================
+  把下面的内容粘贴到 chat-app.html 中
+  位置：<!-- ==================== 亲密关系面板结束 ==================== --> 的后面
+  ================================================ -->
+
+<!-- ==================== 幸运字符面板 ==================== -->
+<div id="lcPanel" style="display:none;">
+    <div class="lc-bg" id="lc-bg"></div>
+    <div class="lc-content">
+
+        <!-- 顶部栏 -->
+        <div class="lc-top-bar">
+            <button class="lc-back-btn" id="lc-back-btn">‹</button>
+            <span class="lc-panel-title">幸运字符</span>
+            <button class="lc-custom-btn" id="lc-custom-btn">背景</button>
+        </div>
+
+        <!-- 当前佩戴展示 -->
+        <div class="lc-equipped-section">
+            <div class="lc-equipped-header">
+                <span class="lc-section-label">正在佩戴</span>
+                <button class="lc-toggle-show-btn" id="lc-toggle-show">关闭展示</button>
+            </div>
+            <div id="lc-equipped-wrap">
+                <!-- 由JS渲染 -->
+            </div>
+        </div>
+
+        <!-- 抽卡区域 -->
+        <div class="lc-draw-section">
+            <div class="lc-draw-header">
+                <span class="lc-section-label">今日抽卡</span>
+                <span class="lc-draw-remaining" id="lc-draw-remaining">今日剩余 3 次</span>
+            </div>
+            <div class="lc-cards-wrap" id="lc-cards-wrap">
+                <!-- 由JS渲染 -->
+            </div>
+        </div>
+
+        <!-- 我的字符 -->
+        <div class="lc-my-charms-section">
+            <div class="lc-my-charms-header">
+                <span class="lc-section-label">我的字符</span>
+                <button class="lc-upload-charm-btn" id="lc-upload-charm-btn">+ 上传</button>
+            </div>
+            <div id="lc-my-charms-wrap">
+                <!-- 由JS渲染 -->
+            </div>
+        </div>
+
+    </div>
+</div>
+<!-- ==================== 幸运字符面板结束 ==================== -->
+
+
+<!-- ==================== 幸运字符·背景自定义弹窗 ==================== -->
+<div class="lc-modal" id="lcCustomModal">
+    <div class="lc-modal-overlay" id="lcCustomOverlay"></div>
+    <div class="lc-modal-dialog">
+        <div class="lc-modal-header">
+            <span class="lc-modal-title">背景自定义</span>
+            <button class="lc-modal-close" id="lcCustomClose">×</button>
+        </div>
+        <div class="lc-modal-body">
+            <div class="lc-form-row">
+                <div class="lc-form-label">图片 URL</div>
+                <div class="lc-form-row-inline">
+                    <input type="text" class="lc-form-input" id="lc-bg-url" placeholder="粘贴图片链接">
+                    <button class="lc-btn-apply" id="lc-bg-url-apply">应用</button>
+                </div>
+            </div>
+            <div class="lc-or-divider">— 或 —</div>
+            <div class="lc-form-row">
+                <div class="lc-form-label">上传图片</div>
+                <input type="file" id="lc-bg-file" accept="image/*" style="display:none;">
+                <button class="lc-btn-outline" id="lc-bg-upload">📁 从相册选择</button>
+            </div>
+            <button class="lc-btn-danger" id="lc-bg-clear">清除背景</button>
+        </div>
+    </div>
+</div>
+<!-- ==================== 背景自定义弹窗结束 ==================== -->
+
+
+<!-- ==================== 幸运字符·上传字符弹窗 ==================== -->
+<div class="lc-modal" id="lcUploadModal">
+    <div class="lc-modal-overlay" id="lcUploadOverlay"></div>
+    <div class="lc-modal-dialog">
+        <div class="lc-modal-header">
+            <span class="lc-modal-title">上传自定义字符</span>
+            <button class="lc-modal-close" id="lcUploadClose">×</button>
+        </div>
+        <div class="lc-modal-body">
+
+            <!-- 字符名称（必填）-->
+            <div class="lc-form-row">
+                <div class="lc-form-label">字符名称（必填）</div>
+                <input type="text" class="lc-form-input" id="lc-upload-name" placeholder="给字符起个名字，如「温柔warm」">
+            </div>
+
+            <!-- 字符图片（必填）-->
+            <div class="lc-form-row">
+                <div class="lc-form-label">字符图片（透明底，必填）</div>
+                <div class="lc-upload-preview-wrap">
+                    <img id="lc-upload-preview" alt="预览">
+                    <div style="flex:1; display:flex; flex-direction:column; gap:8px;">
+                        <input type="file" id="lc-upload-img-file" accept="image/*" style="display:none;">
+                        <button class="lc-btn-outline" id="lc-upload-img-btn">📁 从相册选择</button>
+                        <div class="lc-or-divider">或输入URL</div>
+                        <div class="lc-form-row-inline">
+                            <input type="text" class="lc-form-input" id="lc-upload-img-url" placeholder="图片链接">
+                            <button class="lc-btn-apply" id="lc-upload-img-url-apply">用</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 自定义特殊符号（选填）-->
+            <div class="lc-form-row">
+                <div class="lc-form-label">特殊符号（选填，点亮后显示）</div>
+                <input type="text" class="lc-form-input" id="lc-upload-symbol" placeholder="如 ✦ ♡ ★ 或留空">
+            </div>
+
+            <!-- 符号点亮颜色 -->
+            <div class="lc-form-row">
+                <div class="lc-form-label">点亮颜色</div>
+                <div class="lc-color-row">
+                    <input type="color" class="lc-color-input" id="lc-upload-color" value="#ffffff">
+                    <span class="lc-color-hint">字符点亮后的高亮颜色</span>
+                </div>
+            </div>
+
+            <button class="lc-btn-primary" id="lc-upload-confirm">✓ 添加到字符库</button>
+        </div>
+    </div>
+</div>
+<!-- ==================== 上传字符弹窗结束 ==================== -->
 
 <!-- ==================== 续火花设置弹窗 ==================== -->
 <div class="spark-modal" id="sparkModal" style="display:none;">
@@ -1280,6 +1419,7 @@
     
     <!-- JavaScript文件引入 -->
 <script src="js/chat/storage.js"></script>
+<script src="js/chat/lucky-charm.js"></script>
 <script src="js/core/api-manager.js"></script>  <!-- ← 新增这行！ -->
 <script src="js/chat/chat-interface.js"></script>
 <script src="js/chat/chat-app.js"></script>
