@@ -680,3 +680,97 @@
     font-size: 12px;
     color: rgba(255,255,255,0.35);
 }
+
+/* ==================== 字符库管理弹窗 ==================== */
+
+.lc-my-charms-btns {
+    display: flex;
+    gap: 6px;
+}
+
+.lc-library-empty {
+    text-align: center;
+    font-size: 12px;
+    color: rgba(255,255,255,0.25);
+    padding: 24px 0;
+}
+
+.lc-library-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+.lc-library-item:last-child {
+    border-bottom: none;
+}
+
+.lc-library-img {
+    width: 44px;
+    height: 44px;
+    object-fit: contain;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.04);
+    flex-shrink: 0;
+}
+
+.lc-library-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+}
+
+.lc-library-name {
+    font-size: 13px;
+    color: rgba(255,255,255,0.85);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.lc-library-tags {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.lc-lib-tag {
+    font-size: 10px;
+    color: rgba(255,255,255,0.3);
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 6px;
+    padding: 1px 6px;
+}
+
+.lc-lib-tag-drawn {
+    color: rgba(160,220,255,0.7);
+    background: rgba(100,180,255,0.08);
+    border-color: rgba(100,180,255,0.15);
+}
+
+.lc-lib-tag-equipped {
+    color: rgba(200,160,255,0.8);
+    background: rgba(160,100,255,0.1);
+    border-color: rgba(160,100,255,0.2);
+}
+
+.lc-library-del-btn {
+    background: rgba(255,60,60,0.08);
+    border: 1px solid rgba(255,60,60,0.18);
+    border-radius: 8px;
+    color: rgba(255,100,100,0.65);
+    font-size: 12px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-family: inherit;
+    flex-shrink: 0;
+    transition: background 0.15s;
+}
+.lc-library-del-btn:active {
+    background: rgba(255,60,60,0.18);
+}
