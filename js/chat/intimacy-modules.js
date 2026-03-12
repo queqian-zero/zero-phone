@@ -2,6 +2,12 @@
    亲密关系模块 JS v2 — 全量修正版
    js/chat/intimacy-modules.js
    ============================================================ */
+ChatInterface.prototype._lcData = function() {
+    return this.storage.getLuckyCharmData(this.currentFriendCode);
+};
+ChatInterface.prototype._lcSave = function(data) {
+    return this.storage.saveLuckyCharmData(data, this.currentFriendCode);
+};
 
 // ================================================================
 //  共用工具
@@ -190,7 +196,7 @@ ChatInterface.prototype.closeLuckyCharPage = function() {
 };
 
 ChatInterface.prototype._renderLuckyCharPage = function() {
-    const data = this.storage.getLuckyCharmData();
+    const data = this._lcData();
     const today = new Date().toISOString().slice(0, 10);
     const hist  = data.drawHistory[today] || { user: [], ai: [] };
 
@@ -247,7 +253,7 @@ ChatInterface.prototype._prepareTodayCards = function(data, hist, today) {
 };
 
 ChatInterface.prototype._revealCard = function(idx) {
-    const data = this.storage.getLuckyCharmData();
+    const data = this._lcData();
     const today = new Date().toISOString().slice(0, 10);
     if (!data.drawHistory[today]) data.drawHistory[today] = { user: [], ai: [] };
     const hist = data.drawHistory[today];
@@ -271,7 +277,7 @@ ChatInterface.prototype._revealCard = function(idx) {
     }
     card.charm = pickedCharm; // null = 空卡
 
-    this.storage.saveLuckyCharmData(data);
+    this._lcSave(data);
 
     // 翻牌动画
     const slots = document.getElementById('lcDrawSlots');
@@ -293,7 +299,7 @@ ChatInterface.prototype._revealCard = function(idx) {
 
 // AI自动抽牌（每次AI发消息时调用）
 ChatInterface.prototype._aiDrawLuckyChar = function() {
-    const data = this.storage.getLuckyCharmData();
+    const data = this._lcData();
     const today = new Date().toISOString().slice(0, 10);
     if (!data.drawHistory[today]) data.drawHistory[today] = { user: [], ai: [] };
     const hist = data.drawHistory[today];
@@ -301,7 +307,7 @@ ChatInterface.prototype._aiDrawLuckyChar = function() {
 
     // AI每次发消息有35%概率抽到字符
     const gotCharm = Math.random() < 0.35;
-    if (!gotCharm) { hist.ai.push('_empty_'); this.storage.saveLuckyCharmData(data); return; }
+    if (!gotCharm) { hist.ai.push('_empty_'); this._lcSave(data); return; }
 
     const alreadyDrawn = new Set(
         Object.values(data.drawHistory).flatMap(h => h.ai || []).filter(id => id !== '_empty_')
@@ -321,7 +327,7 @@ ChatInterface.prototype._aiDrawLuckyChar = function() {
         }
     }
 
-    this.storage.saveLuckyCharmData(data);
+    this._lcSave(data);
 };
 
 
@@ -413,8 +419,8 @@ ChatInterface.prototype._renderLcGrid = function(data) {
             data.charms = data.charms.filter(c => c.id !== charm.id);
             if (data.wearing.user === charm.id) data.wearing.user = null;
             if (data.wearing.ai   === charm.id) data.wearing.ai   = null;
-            this.storage.saveLuckyCharmData(data);
-            this._renderLcGrid(this.storage.getLuckyCharmData());
+            this._lcSave(data);
+            this._renderLcGrid(this._lcData());
         });
 
         if (isDrawn) card.addEventListener('click', () => this._openLcDetail(charm.id));
@@ -443,7 +449,7 @@ ChatInterface.prototype._lcCharmImgHTML = function(charm, size) {
 };
 
 ChatInterface.prototype._openLcDetail = function(charmId) {
-    const data  = this.storage.getLuckyCharmData();
+    const data  = this._lcData();
     const charm = data.charms.find(c => c.id === charmId);
     if (!charm) return;
     this._lcCurrentCharm = charmId;
@@ -529,28 +535,28 @@ ChatInterface.prototype._bindLuckyCharEvents = function() {
     });
     document.getElementById('lcDetailWearUser')?.addEventListener('click', () => {
         if (!this._lcCurrentCharm) return;
-        const data = this.storage.getLuckyCharmData();
+        const data = this._lcData();
         data.wearing.user = this._lcCurrentCharm;
         const charm = data.charms.find(c => c.id === this._lcCurrentCharm);
         this._addStarTrailEvent('charm_wear', `佩戴幸运字符「${charm?.name||''}」`, this._lcCurrentCharm);
-        this.storage.saveLuckyCharmData(data);
+        this._lcSave(data);
         document.getElementById('luckyCharDetailModal').style.display = 'none';
         this._renderLuckyCharPage();
     });
     document.getElementById('lcDetailWearAi')?.addEventListener('click', () => {
         if (!this._lcCurrentCharm) return;
-        const data = this.storage.getLuckyCharmData();
+        const data = this._lcData();
         data.wearing.ai = this._lcCurrentCharm;
-        this.storage.saveLuckyCharmData(data);
+        this._lcSave(data);
         document.getElementById('luckyCharDetailModal').style.display = 'none';
         this._renderLuckyCharPage();
     });
     document.getElementById('lcDetailUnwear')?.addEventListener('click', () => {
         if (!this._lcCurrentCharm) return;
-        const data = this.storage.getLuckyCharmData();
+        const data = this._lcData();
         if (data.wearing.user === this._lcCurrentCharm) data.wearing.user = null;
         if (data.wearing.ai   === this._lcCurrentCharm) data.wearing.ai   = null;
-        this.storage.saveLuckyCharmData(data);
+        this._lcSave(data);
         document.getElementById('luckyCharDetailModal').style.display = 'none';
         this._renderLuckyCharPage();
     });
@@ -564,11 +570,11 @@ ChatInterface.prototype._saveLcLiuyan = function() {
     if (!this._lcCurrentCharm) return;
     const input = document.getElementById('lcDetailLiuyanUser');
     const text  = input?.value.trim();
-    const data  = this.storage.getLuckyCharmData();
+    const data  = this._lcData();
     if (!data['留言Pending']) data['留言Pending'] = {};
     if (!data['留言Pending'][this._lcCurrentCharm]) data['留言Pending'][this._lcCurrentCharm] = {};
     data['留言Pending'][this._lcCurrentCharm].user = text;
-    this.storage.saveLuckyCharmData(data);
+    this._lcSave(data);
     alert('✅ 留言已保存！');
 };
 
@@ -596,9 +602,9 @@ ChatInterface.prototype._bindLcUploadEvents = function() {
         if (!name) { alert('❌ 请输入字符名称'); return; }
         const src = _img || url;
         if (!src) { alert('❌ 请上传图片或填写图片URL'); return; }
-        const data = this.storage.getLuckyCharmData();
+        const data = this._lcData();
         data.charms.push({ id:'custom_'+Date.now(), name, isBuiltin:false, img:src, litColor:color });
-        this.storage.saveLuckyCharmData(data);
+        this._lcSave(data);
         document.getElementById('luckyCharUploadModal').style.display = 'none';
         _img = null;
         this._renderLuckyCharPage();
@@ -607,7 +613,7 @@ ChatInterface.prototype._bindLcUploadEvents = function() {
 
 // 推进点亮进度（每次AI回复调用）
 ChatInterface.prototype._advanceLuckyCharProgress = function() {
-    const data = this.storage.getLuckyCharmData();
+    const data = this._lcData();
     const wornUser = data.wearing.user;
     const wornAi   = data.wearing.ai;
     const today    = new Date().toISOString().slice(0, 10);
@@ -640,7 +646,7 @@ ChatInterface.prototype._advanceLuckyCharProgress = function() {
                         if (!data['留言Pending']) data['留言Pending'] = {};
                         if (!data['留言Pending'][cid]) data['留言Pending'][cid] = {};
                         data['留言Pending'][cid].ai = msg;
-                        this.storage.saveLuckyCharmData(data);
+                        this._lcSave(data);
                     }
                 });
             }
@@ -649,7 +655,7 @@ ChatInterface.prototype._advanceLuckyCharProgress = function() {
 
     advance(wornUser);
     if (wornAi !== wornUser) advance(wornAi);
-    if (changed) this.storage.saveLuckyCharmData(data);
+    if (changed) this._lcSave(data);
 };
 
 
@@ -733,17 +739,19 @@ ChatInterface.prototype._renderRelPending = function(pending, friendName) {
     const emojis = { bros:'🤜', couple:'💑', besties:'👯', partners:'🤝' };
     const iconHTML = type.img
         ? `<img src="${type.img}" style="width:64px;height:64px;object-fit:contain;">`
-        : `<span style="font-size:48px;">${emojis[pending.typeId]||'💫'}</span>`;
+        : `<span style="font-size:48px;">${emojis[type.id]||'💫'}</span>`;
 
     document.getElementById('relPendingIcon').innerHTML = iconHTML;
     document.getElementById('relPendingTypeName').textContent = type.name;
     document.getElementById('relPendingDesc').textContent = `邀请已发出，等待 ${friendName} 的回应…`;
-    // 显示邀请卡预览
+
     const preview = document.getElementById('relPendingCardPreview');
     if (preview && pending.inviteHtml) {
-        preview.innerHTML = pending.inviteHtml;
+        preview.innerHTML = pending.inviteHtml; // 渲染邀请卡
     }
+    // 没有"TA同意了"按钮，全靠 AI 回复自动判断
 };
+
 
 ChatInterface.prototype._renderRelTypeGrid = function() {
     const grid = document.getElementById('relTypeGrid');
@@ -938,38 +946,31 @@ ChatInterface.prototype._sendRelInvite = function() {
         finalHtml = document.getElementById('relInviteCardPreview')?.innerHTML || '';
     }
 
-    // 存 pending
+    const typeName = this._selectedRelTypeData?.name || this._selectedRelType;
+
+    // 存 pending（邀请卡只在关系绑定页展示，不发到聊天框）
     this._setRelPending({
         typeId:     this._selectedRelType,
-        customName: this._selectedRelTypeData?.name || '',
+        customName: typeName,
         inviteHtml: finalHtml,
         invitedAt:  new Date().toISOString()
     });
+
     document.getElementById('relInviteModal').style.display = 'none';
 
-    // 把邀请卡作为一条用户消息发送到聊天里
-    // chatApp 负责实际发送，这里触发
-    const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
-    const typeName   = this._selectedRelTypeData?.name || this._selectedRelType;
-    const chatMsg    = `[关系绑定邀请]\n我想和你成为「${typeName}」，你愿意吗？\n\n${finalHtml}`;
-
-    // 发到聊天框
-    if (typeof this.sendMessageToChat === 'function') {
-        this.sendMessageToChat(chatMsg, 'user', { isRelInvite: true });
-    } else if (window.chatApp && typeof window.chatApp.addUserMessage === 'function') {
-        window.chatApp.addUserMessage(chatMsg);
-    } else {
-        // fallback: 直接塞到 inputField 并触发发送
-        const inputField = document.getElementById('inputFieldInline') || document.getElementById('inputField');
-        if (inputField) {
-            inputField.value = chatMsg;
-            document.getElementById('userSendBtn')?.click();
-        }
+    // 只发纯文字，AI 自己决定同意/拒绝
+    const plainMsg = `我想和你成为「${typeName}」，你愿意吗？`;
+    const inputField = document.getElementById('inputFieldInline') || document.getElementById('inputField');
+    if (inputField) {
+        inputField.value = plainMsg;
+        const sendBtn = document.getElementById('userSendBtn') || document.getElementById('sendBtn');
+        sendBtn?.click();
     }
 
-    this._renderRelPage(); // 显示 pending 状态
-    this._startWatchingRelResponse(); // 开始监听AI回复
+    this._renderRelPage();
+    this._relWatchActive = true;
 };
+
 
 /* 监听AI回复来判断同意/拒绝 */
 ChatInterface.prototype._startWatchingRelResponse = function() {
@@ -1215,44 +1216,91 @@ ChatInterface.prototype._badgeImgHTML = function(def, size) {
 
 ChatInterface.prototype._openBadgeDetail = function(badgeId) {
     const allDefs = [...this.storage.getBadgeDefinitions(), ...this.storage.getCustomBadges(this.currentFriendCode)];
-    const def = allDefs.find(d=>d.id===badgeId);
+    const def = allDefs.find(d => d.id === badgeId);
     if (!def) return;
     const modal = document.getElementById('badgeDetailModal');
     if (!modal) return;
-    const ul = this.storage.getUnlockedBadges(this.currentFriendCode).find(b=>b.id===badgeId);
-    document.getElementById('badgeDetailImg').innerHTML = this._badgeImgHTML(def, 80);
+    const ul = this.storage.getUnlockedBadges(this.currentFriendCode).find(b => b.id === badgeId);
+
+    document.getElementById('badgeDetailImg').innerHTML    = this._badgeImgHTML(def, 80);
     document.getElementById('badgeDetailName').textContent = def.name;
     document.getElementById('badgeDetailDesc').textContent = def.desc || def.condition || '';
-    document.getElementById('badgeDetailStatus').textContent = ul ? `✦ ${ul.isLimited?'限定版':'已解锁'} · ${new Date(ul.unlockedAt).toLocaleDateString()}` : '🔒 尚未解锁';
-    document.getElementById('badgeDetailStatus').style.color = ul ? '#ffd700' : '#666';
+    const statusEl = document.getElementById('badgeDetailStatus');
+    statusEl.textContent = ul
+        ? `✦ ${ul.isLimited ? '限定版' : '已解锁'} · ${new Date(ul.unlockedAt).toLocaleDateString()}`
+        : '🔒 尚未解锁';
+    statusEl.style.color = ul ? '#ffd700' : '#666';
 
     const liuyanSection = document.getElementById('badgeLiuyanSection');
     if (liuyanSection) {
         liuyanSection.style.display = ul ? 'block' : 'none';
         if (ul) {
             const saved = this._getBadgeLiuyan(badgeId);
-            document.getElementById('badgeLiuyanUser').value = saved.user || '';
-            // AI留言：静默已生成，直接展示
+            this._currentBadgeId = badgeId;
+
+            // AI 寄语：只读，从星迹留痕读取
             const aiEl = document.getElementById('badgeLiuyanAiText');
             if (aiEl) {
                 if (saved.ai) {
                     aiEl.textContent = saved.ai;
                 } else {
                     aiEl.textContent = '（TA的寄语将在解锁后自动生成）';
-                    // 若还没生成，现在生成
                     this._generateAiLiuyan('badge', `解锁了徽章「${def.name}」`).then(msg => {
-                        if (msg) { aiEl.textContent = msg; saved.ai = msg; this._saveBadgeLiuyan(badgeId, saved); }
+                        if (!msg) return;
+                        aiEl.textContent = msg;
+                        this._saveBadgeLiuyan(badgeId, { ai: msg });
                     });
+                }
+            }
+
+            // 我的寄语：写过就只读，未写才显示输入框
+            const userArea = document.getElementById('badgeLiuyanUserArea');
+            const saveBtn  = document.getElementById('badgeLiuyanSave');
+            if (userArea) {
+                if (saved.user) {
+                    userArea.innerHTML = `
+                        <div class="liuyan-readonly-text">${this._esc(saved.user)}</div>
+                        <button class="liuyan-delete-btn" id="badgeLiuyanDeleteBtn">🗑️ 删除我的寄语（可重新写）</button>`;
+                    if (saveBtn) saveBtn.style.display = 'none';
+                    document.getElementById('badgeLiuyanDeleteBtn')?.addEventListener('click', () => {
+                        if (!confirm('确定删除这条寄语吗？')) return;
+                        this._saveBadgeLiuyan(badgeId, { user: '' });
+                        this._openBadgeDetail(badgeId);
+                    });
+                } else {
+                    userArea.innerHTML = `<textarea class="badge-liuyan-input" id="badgeLiuyanUser" placeholder="写下你对这枚徽章的感言…"></textarea>`;
+                    if (saveBtn) saveBtn.style.display = '';
                 }
             }
         }
     }
+
     this._currentBadgeId = badgeId;
     modal.style.display  = 'flex';
 };
 
-ChatInterface.prototype._getBadgeLiuyan  = function(id) { try{const d=localStorage.getItem(`zero_phone_badge_liuyan_${this.currentFriendCode}_${id}`);return d?JSON.parse(d):{}}catch(e){return{};} };
-ChatInterface.prototype._saveBadgeLiuyan = function(id, data) { localStorage.setItem(`zero_phone_badge_liuyan_${this.currentFriendCode}_${id}`,JSON.stringify(data)); };
+
+ChatInterface.prototype._getBadgeLiuyan = function(badgeId) {
+    const events = this.storage.getStarTrailEvents(this.currentFriendCode);
+    const ev = events.find(e => e.type === 'badge_unlock' && e.refId === badgeId);
+    if (ev) return { user: ev.userMessage || '', ai: ev.aiMessage || '', eventId: ev.id };
+    return { user: '', ai: '' };
+};
+
+ChatInterface.prototype._saveBadgeLiuyan = function(badgeId, data) {
+    const events = this.storage.getStarTrailEvents(this.currentFriendCode);
+    const ev = events.find(e => e.type === 'badge_unlock' && e.refId === badgeId);
+    if (ev) {
+        this.storage.updateStarTrailEvent(this.currentFriendCode, ev.id, {
+            userMessage: data.user !== undefined ? data.user : ev.userMessage,
+            aiMessage:   data.ai   !== undefined ? data.ai   : ev.aiMessage
+        });
+    }
+    // 同步刷新星迹留痕区域
+    const section = document.getElementById('starTrailSection');
+    if (section) this._renderStarTrailSection();
+};
+
 
 ChatInterface.prototype._bindBadgeEvents = function() {
     document.getElementById('badgeBackBtn')?.addEventListener('click', () => this.closeBadgePage());
@@ -1262,13 +1310,15 @@ ChatInterface.prototype._bindBadgeEvents = function() {
 
     // 保存我的寄语（AI寄语不需要按钮，已自动生成）
     document.getElementById('badgeLiuyanSave')?.addEventListener('click', () => {
-        if (!this._currentBadgeId) return;
-        const userText = document.getElementById('badgeLiuyanUser')?.value.trim();
-        const saved    = this._getBadgeLiuyan(this._currentBadgeId);
-        saved.user     = userText;
-        this._saveBadgeLiuyan(this._currentBadgeId, saved);
-        alert('✅ 寄语已保存！');
-    });
+    if (!this._currentBadgeId) return;
+    const textarea = document.getElementById('badgeLiuyanUser');
+    const userText = textarea?.value.trim();
+    if (!userText) { alert('❌ 请先写下寄语内容'); return; }
+    const saved = this._getBadgeLiuyan(this._currentBadgeId);
+    this._saveBadgeLiuyan(this._currentBadgeId, { ...saved, user: userText });
+    alert('✅ 寄语已保存！');
+    this._openBadgeDetail(this._currentBadgeId); // 刷新为只读模式
+});
 
     // 自定义徽章弹窗 — 三项都必填
     let _customBadgeImg = null;

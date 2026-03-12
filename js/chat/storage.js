@@ -727,12 +727,16 @@ showChatInList(friendCode) {
 
 // ==================== 幸运字符 ====================
 
-getLuckyCharmData() {
+getLuckyCharmData(friendCode) {
+    const key = friendCode
+        ? `zero_phone_lucky_charms_${friendCode}`
+        : 'zero_phone_lucky_charms';
     try {
-        const d = localStorage.getItem('zero_phone_lucky_charms');
+        const d = localStorage.getItem(key);
         return d ? JSON.parse(d) : this._defaultLuckyCharmData();
     } catch(e) { return this._defaultLuckyCharmData(); }
 }
+
 
 /* ============================================================
    storage.js 补丁 — 只需替换 _defaultLuckyCharmData 这一个方法
@@ -777,10 +781,16 @@ _defaultLuckyCharmData() {
    （这会清掉之前的抽卡记录和佩戴状态，只在测试阶段用）
 */
 
-saveLuckyCharmData(data) {
-    try { localStorage.setItem('zero_phone_lucky_charms', JSON.stringify(data)); return true; }
-    catch(e) { return false; }
+saveLuckyCharmData(data, friendCode) {
+    const key = friendCode
+        ? `zero_phone_lucky_charms_${friendCode}`
+        : 'zero_phone_lucky_charms';
+    try {
+        localStorage.setItem(key, JSON.stringify(data));
+        return true;
+    } catch(e) { return false; }
 }
+
 
 // ==================== 关系绑定 ====================
 
