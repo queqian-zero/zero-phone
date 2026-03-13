@@ -27,6 +27,7 @@
     <link rel="stylesheet" href="css/chat/milestone-timeline.css">
     <link rel="stylesheet" href="css/chat/intimacy-badge.css">
     <link rel="stylesheet" href="css/chat/relationship.css">
+    <link rel="stylesheet" href="css/chat/exchange.css">
 </head>
 <body>
     
@@ -768,11 +769,11 @@
                 </button>
             </div>
             <div class="intimacy-entry-row">
-                <button class="intimacy-entry-btn" onclick="alert('跨次元兑换所功能开发中...')">
-                    <div class="intimacy-entry-icon">🌀</div>
-                    <div class="intimacy-entry-label">跨次元兑换所</div>
-                    <div class="intimacy-entry-badge">待开发</div>
-                </button>
+                <button class="intimacy-entry-btn" id="intimacyExchangeBtn">
+    <div class="intimacy-entry-icon">🌀</div>
+    <div class="intimacy-entry-label">跨次元兑换所</div>
+    <div class="intimacy-entry-badge" id="exBadgeLabel">兑换所</div>
+</button>
                 <button class="intimacy-entry-btn" onclick="alert('岁月胶囊功能开发中...')">
                     <div class="intimacy-entry-icon">⏳</div>
                     <div class="intimacy-entry-label">岁月胶囊</div>
@@ -1596,6 +1597,7 @@
 <script src="js/chat/intimacy-badge.js"></script>
 <script src="js/core/api-manager.js"></script>  <!-- ← 新增这行！ -->
 <script src="js/chat/relationship.js"></script>
+<script src="js/chat/exchange.js"></script>
 <script src="js/chat/chat-interface.js"></script>
 <script src="js/chat/chat-app.js"></script>
     
@@ -2083,6 +2085,96 @@
     </div>
 </div>
 <!-- ==================== 关系绑定面板结束 ==================== -->
+<!-- ==================== 跨次元兑换所面板 ==================== -->
+<!-- 插入位置：relPanel 结束注释之后（line ~2083），tzModal 之前 -->
+
+<div id="exPanel">
+    <div id="ex-bg"></div>
+    <div class="ex-panel-inner">
+
+        <!-- 顶部标题栏 -->
+        <div class="ex-panel-header">
+            <span class="ex-panel-title">🌀 跨次元兑换所</span>
+            <div class="ex-panel-header-right">
+                <button class="ex-bg-btn" id="ex-bg-btn">🖼 背景图</button>
+                <button class="ex-panel-close" id="exPanelClose">×</button>
+            </div>
+        </div>
+
+        <!-- 许愿星余额栏 -->
+        <div id="ex-stars-display">
+            <span class="ex-star-item">⭐ 我的许愿星 <b>0</b></span>
+            <span class="ex-star-sep">·</span>
+            <span class="ex-star-item">✦ TA的许愿星 <b>0</b></span>
+        </div>
+
+        <!-- Tab导航 -->
+        <div class="ex-tabs">
+            <button class="ex-tab-btn ex-tab-active" data-tab="todo">📋 未来的事</button>
+            <button class="ex-tab-btn" data-tab="fund">🪙 亲密基金</button>
+            <button class="ex-tab-btn" data-tab="shop">🛍️ 网购</button>
+            <button class="ex-tab-btn" data-tab="delivery">🥡 外卖</button>
+            <button class="ex-tab-btn" data-tab="letter">✉️ 我们的信</button>
+            <button class="ex-tab-btn" data-tab="starshop">🌟 许愿星小铺</button>
+        </div>
+
+        <!-- 动态内容区（由JS渲染） -->
+        <div id="ex-body"></div>
+
+    </div>
+</div>
+<!-- ==================== 跨次元兑换所面板结束 ==================== -->
+
+<!-- ==================== 添加条目弹窗 ==================== -->
+<div id="exAddModal">
+    <div class="ex-modal-overlay" id="exAddOverlay"></div>
+    <div class="ex-modal-sheet">
+        <div class="ex-modal-header">
+            <span class="ex-modal-title" id="ex-add-modal-title">添加</span>
+            <button class="ex-modal-close" onclick="window.Exchange._closeAddModal()">×</button>
+        </div>
+        <div id="ex-add-modal-form">
+            <!-- 由JS动态填充 -->
+        </div>
+        <button class="ex-modal-confirm-btn" onclick="window.Exchange._submitAddModal()">确认添加</button>
+    </div>
+</div>
+
+<!-- ==================== 打卡弹窗 ==================== -->
+<div id="exCheckinModal">
+    <div class="ex-modal-overlay" onclick="window.Exchange._closeCheckinModal()"></div>
+    <div class="ex-checkin-sheet">
+        <div class="ex-checkin-title">✓ 打卡完成</div>
+        <textarea class="ex-input-textarea" id="ex-checkin-note" placeholder="写点感想（可选）..." style="min-height:70px;"></textarea>
+        <label class="ex-checkin-img-label">
+            📸 上传打卡图片
+            <input type="file" id="ex-checkin-img-input" accept="image/*" style="display:none">
+        </label>
+        <img id="ex-checkin-img-preview" alt="打卡图片">
+        <div class="ex-checkin-btns">
+            <button id="ex-checkin-confirm">✓ 提交打卡</button>
+            <button id="ex-checkin-cancel">取消</button>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== 背景图弹窗 ==================== -->
+<div id="exBgModal">
+    <div class="ex-modal-overlay" onclick="window.Exchange?._closeBgModal()"></div>
+    <div class="ex-bg-sheet">
+        <div class="ex-bg-modal-title">🖼 更换背景图</div>
+        <img id="ex-bg-img-preview" alt="">
+        <label class="ex-attach-label" style="display:block;text-align:center;margin-bottom:10px;">
+            📂 选择图片
+            <input type="file" id="ex-bg-img-input" accept="image/*" style="display:none">
+        </label>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+            <button class="ex-modal-confirm-btn" id="ex-bg-confirm">应用背景图</button>
+            <button id="ex-bg-clear-btn" style="background:rgba(255,80,80,0.08);border:1px solid rgba(255,80,80,0.15);border-radius:14px;color:rgba(255,150,150,0.7);font-size:14px;padding:12px;cursor:pointer;font-family:inherit;">清除背景图</button>
+            <button onclick="window.Exchange?._closeBgModal()" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.09);border-radius:14px;color:rgba(255,255,255,0.4);font-size:14px;padding:12px;cursor:pointer;font-family:inherit;">取消</button>
+        </div>
+    </div>
+</div>
 <!-- ==================== 时区设置弹窗 ==================== -->
 <div id="tzModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:9800;align-items:flex-end;justify-content:center;">
     <div style="position:absolute;inset:0;background:rgba(0,0,0,0.5);" id="tzOverlay"></div>
