@@ -26,6 +26,7 @@
     <link rel="stylesheet" href="css/chat/lucky-charm.css">
     <link rel="stylesheet" href="css/chat/milestone-timeline.css">
     <link rel="stylesheet" href="css/chat/intimacy-badge.css">
+    <link rel="stylesheet" href="css/chat/relationship.css">
 </head>
 <body>
     
@@ -754,11 +755,11 @@
                     <div class="intimacy-entry-label">幸运字符</div>
                     <div class="intimacy-entry-badge">Повезло.🍀</div>
                 </button>
-                <button class="intimacy-entry-btn" onclick="alert('关系绑定功能开发中...')">
-                    <div class="intimacy-entry-icon">💍</div>
-                    <div class="intimacy-entry-label">关系绑定</div>
-                    <div class="intimacy-entry-badge">待开发</div>
-                </button>
+                <button class="intimacy-entry-btn" id="intimacyRelationBtn">
+    <div class="intimacy-entry-icon">💍</div>
+    <div class="intimacy-entry-label">关系绑定</div>
+    <div class="intimacy-entry-badge" id="relBadgeLabel">未绑定</div>
+</button>
                 <button class="intimacy-entry-btn" id="intimacyBadgeBtn">
                     <div class="intimacy-entry-icon">🏅</div>
                     <div class="intimacy-entry-label">亲密徽章</div>
@@ -1592,6 +1593,7 @@
 <script src="js/chat/milestone-timeline.js"></script>
 <script src="js/chat/intimacy-badge.js"></script>
 <script src="js/core/api-manager.js"></script>  <!-- ← 新增这行！ -->
+<script src="js/chat/relationship.js"></script>
 <script src="js/chat/chat-interface.js"></script>
 <script src="js/chat/chat-app.js"></script>
     
@@ -2066,6 +2068,19 @@
     </div>
 </div>
 <!-- ==================== 头像框弹窗结束 ==================== -->
+
+<!-- ==================== 关系绑定面板 ==================== -->
+<div id="relPanel">
+    <div id="relPanelOverlay"></div>
+    <div class="rel-panel-sheet">
+        <div class="rel-panel-header">
+            <span class="rel-panel-title">💍 关系绑定</span>
+            <button class="rel-panel-close" id="relPanelClose">×</button>
+        </div>
+        <div id="relPanelBody"></div>
+    </div>
+</div>
+<!-- ==================== 关系绑定面板结束 ==================== -->
 <!-- ==================== 时区设置弹窗 ==================== -->
 <div id="tzModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:9800;align-items:flex-end;justify-content:center;">
     <div style="position:absolute;inset:0;background:rgba(0,0,0,0.5);" id="tzOverlay"></div>
