@@ -195,6 +195,53 @@ intimacyFontFamily: ''
         
         this.bindMenuItems();
         
+        // 时区设置弹窗
+(function initTzModal() {
+    const settingBtn = document.getElementById('tzSettingBtn');
+    const modal      = document.getElementById('tzModal');
+    const overlay    = document.getElementById('tzOverlay');
+    const closeBtn   = document.getElementById('tzModalClose');
+    const autoBtn    = document.getElementById('tzAutoBtn');
+    const manualBtn  = document.getElementById('tzManualBtn');
+    const offsetInput= document.getElementById('tzOffsetInput');
+    const display    = document.getElementById('tzCurrentDisplay');
+    const label      = document.getElementById('tzCurrentLabel');
+
+    if (!modal || !settingBtn) return;
+
+    function updateDisplay() {
+        if (!window.ZeroTime) return;
+        const txt = window.ZeroTime.getOffsetLabel();
+        if (display) display.textContent = '当前：' + txt;
+        if (label)   label.textContent   = txt;
+    }
+
+    settingBtn.addEventListener('click', () => {
+        modal.style.display = 'flex';
+        updateDisplay();
+    });
+    overlay.addEventListener('click', () => { modal.style.display = 'none'; });
+    closeBtn.addEventListener('click', () => { modal.style.display = 'none'; });
+
+    autoBtn.addEventListener('click', () => {
+        window.ZeroTime?.resetOffset();
+        updateDisplay();
+        modal.style.display = 'none';
+    });
+
+    manualBtn.addEventListener('click', () => {
+        const v = parseFloat(offsetInput.value);
+        if (isNaN(v) || v < -12 || v > 14) {
+            alert('请输入 -12 到 14 之间的数字（支持小数，如 5.5）');
+            return;
+        }
+        window.ZeroTime?.setOffset(v);
+        updateDisplay();
+        modal.style.display = 'none';
+    });
+
+    updateDisplay();
+})();
         this.eventsBound = true;
         console.log('✅ 所有事件绑定完成');
     }
@@ -676,7 +723,12 @@ if (this.luckyCharm) {
 
 
             console.log('🌐 开始调用API...');
-            const result = await this.apiManager.callAI(recentMessages, systemPrompt);
+            const _visionOptions = {
+    enableVision: !!(this.currentFriend?.enableAvatarRecognition && this.currentFriend?.avatar),
+    friendAvatar: this.currentFriend?.avatar || null,
+    userAvatar: null,  // 用户头像暂时为空，后续可扩展
+};
+const result = await this.apiManager.callAI(recentMessages, systemPrompt, _visionOptions);
             
             this.hideTypingIndicator();
             

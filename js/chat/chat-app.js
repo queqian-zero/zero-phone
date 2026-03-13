@@ -410,7 +410,10 @@ calcSparkStatus(friendCode) {
     }
 
     const now = new Date();
-    const totalDays = Math.floor((now - startDate) / 86400000);
+    // 用本地日期差（通过 ZeroTime），避免 UTC 跨天导致天数算错
+    const totalDays = window.ZeroTime
+        ? window.ZeroTime.diffDays(startDate, now)
+        : Math.round((now - startDate) / 86400000);
 
     // 最后一条消息时间
     let lastMsgTime;

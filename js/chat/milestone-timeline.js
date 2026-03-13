@@ -280,10 +280,18 @@ class MilestoneTimeline {
         try {
             const d = new Date(iso);
             const now = new Date();
-            const diffDays = Math.floor((now - d) / (1000 * 60 * 60 * 24));
-            if (diffDays === 0) return '今天';
-            if (diffDays === 1) return '昨天';
-            if (diffDays < 7)  return `${diffDays}天前`;
+            // 用本地日期字符串比较，避免 UTC 跨天问题
+            const toLocal = dt => `${dt.getFullYear()}-${dt.getMonth()}-${dt.getDate()}`;
+            const dLocal   = toLocal(d);
+            const nowLocal = toLocal(now);
+            const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
+            if (dLocal === nowLocal) return '今天';
+            if (dLocal === toLocal(yesterday)) return '昨天';
+            // 超过昨天，算天数差（本地日期）
+            const dMidnight   = new Date(d.getFullYear(),   d.getMonth(),   d.getDate());
+            const nowMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const diffDays = Math.round((nowMidnight - dMidnight) / 86400000);
+            if (diffDays < 7) return `${diffDays}天前`;
             const y = d.getFullYear();
             const m = String(d.getMonth() + 1).padStart(2, '0');
             const day = String(d.getDate()).padStart(2, '0');

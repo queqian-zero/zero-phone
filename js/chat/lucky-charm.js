@@ -120,7 +120,7 @@ class LuckyCharmManager {
     // 检查今日剩余抽次
     _todayRemaining(data, who) {
         const key = who === 'user' ? 'userTodayDraws' : 'aiTodayDraws';
-        const today = new Date().toISOString().slice(0, 10);
+        const today = this._localDateStr(new Date());
         const rec = data[key];
         if (rec.date !== today) return LuckyCharmManager.MAX_DAILY_DRAWS;
         return Math.max(0, LuckyCharmManager.MAX_DAILY_DRAWS - rec.count);
@@ -129,12 +129,17 @@ class LuckyCharmManager {
     // 消耗一次抽次
     _consumeDraw(data, who) {
         const key = who === 'user' ? 'userTodayDraws' : 'aiTodayDraws';
-        const today = new Date().toISOString().slice(0, 10);
+        const today = this._localDateStr(new Date());
         if (data[key].date !== today) {
             data[key] = { date: today, count: 1 };
         } else {
             data[key].count += 1;
         }
+    }
+
+    // 本地日期字符串 yyyy-mm-dd（避免 toISOString 的 UTC 跨天问题）
+    _localDateStr(d) {
+        return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     }
 
     // ==================== 消息通知（每发一条消息调用）====================
