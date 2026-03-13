@@ -276,29 +276,34 @@ class MilestoneTimeline {
     // ==================== 工具方法 ====================
 
     _formatDate(iso) {
-        if (!iso) return '';
-        try {
-            const d = new Date(iso);
-            const now = new Date();
-            // 用本地日期字符串比较，避免 UTC 跨天问题
-            const toLocal = dt => `${dt.getFullYear()}-${dt.getMonth()}-${dt.getDate()}`;
-            const dLocal   = toLocal(d);
-            const nowLocal = toLocal(now);
-            const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
-            if (dLocal === nowLocal) return '今天';
-            if (dLocal === toLocal(yesterday)) return '昨天';
-            // 超过昨天，算天数差（本地日期）
-            const dMidnight   = new Date(d.getFullYear(),   d.getMonth(),   d.getDate());
-            const nowMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-            const diffDays = Math.round((nowMidnight - dMidnight) / 86400000);
+    if (!iso) return '';
+    try {
+        const d = new Date(iso);
+        const now = new Date();
+        if (window.ZeroTime) {
+            const dStr   = window.ZeroTime.dateStr(d);
+            const nowStr = window.ZeroTime.dateStr(now);
+            const yest   = new Date(now); yest.setDate(now.getDate() - 1);
+            const yestStr = window.ZeroTime.dateStr(yest);
+            if (dStr === nowStr)  return '今天';
+            if (dStr === yestStr) return '昨天';
+            const diffDays = window.ZeroTime.diffDays(d, now);
             if (diffDays < 7) return `${diffDays}天前`;
-            const y = d.getFullYear();
-            const m = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            if (y === now.getFullYear()) return `${m}月${day}日`;
-            return `${y}.${m}.${day}`;
-        } catch(e) { return ''; }
-    }
+        } else {
+            const toLocal = dt => `${dt.getFullYear()}-${dt.getMonth()}-${dt.getDate()}`;
+            const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
+            if (toLocal(d) === toLocal(now)) return '今天';
+            if (toLocal(d) === toLocal(yesterday)) return '昨天';
+            const diff = Math.round((new Date(toLocal(now)).getTime() - new Date(toLocal(d)).getTime()) / 86400000);
+            if (diff < 7) return `${diff}天前`;
+        }
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        if (y === now.getFullYear()) return `${m}月${day}日`;
+        return `${y}.${m}.${day}`;
+    } catch(e) { return ''; }
+}
 
     _escapeHtml(str) {
         if (!str) return '';

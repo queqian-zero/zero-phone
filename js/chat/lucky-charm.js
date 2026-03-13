@@ -139,8 +139,9 @@ class LuckyCharmManager {
 
     // 本地日期字符串 yyyy-mm-dd（避免 toISOString 的 UTC 跨天问题）
     _localDateStr(d) {
-        return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    }
+    return window.ZeroTime ? window.ZeroTime.dateStr(d)
+        : `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
 
     // ==================== 消息通知（每发一条消息调用）====================
 
