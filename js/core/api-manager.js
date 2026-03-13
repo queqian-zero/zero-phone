@@ -256,7 +256,7 @@ class APIManager {
      * @param {String} systemPrompt - 系统提示词（人设）
      * @returns {Object} { success, text, tokens, error }
      */
-    async callAI(messages, systemPrompt = '') {
+    async callAI(messages, systemPrompt = '', options = {}) {
         try {
             console.log('🤖 开始调用AI API');
             
@@ -279,7 +279,7 @@ class APIManager {
             });
             
             // 2. 构建请求体（根据不同provider调整格式）
-            const requestBody = this.buildRequestBody(config, messages, systemPrompt);
+            const requestBody = this.buildRequestBody(config, messages, systemPrompt, options);
             
             console.log('📦 请求体:', requestBody);
             
@@ -327,14 +327,47 @@ class APIManager {
     }
     
     // 构建请求体
-    buildRequestBody(config, messages, systemPrompt) {
+    buildRequestBody(config, messages, systemPrompt, options = {}) {
         const { provider, model, maxTokens, temperature } = config;
-        
-        // 转换消息格式
-        const formattedMessages = messages.map(msg => ({
-            role: msg.type === 'user' ? 'user' : 'assistant',
-            content: msg.text
-        }));
+        const { friendAvatar, userAvatar, enableVision } = options;
+
+        // 1. 加时间戳前缀，同角色连续消息合并（加换行分隔）
+        const withTime = messages.map(msg => {
+            const ts = msg.timestamp
+                ? (window.ZeroTime
+                    ? window.ZeroTime.formatFull(new Date(msg.timestamp))
+                    : msg.timestamp.slice(0, 16).replace('T', ' '))
+                : '';
+            const prefix = ts ? '[' + ts + '] ' : '';
+            return {
+                role: msg.type === 'user' ? 'user' : 'assistant',
+                text: prefix + (msg.text || ''),
+            };
+        });
+
+        // 合并连续同角色消息（避免部分 API 不接受连续同角色）
+        const merged = [];
+        for (const m of withTime) {
+            if (merged.length && merged[merged.length - 1].role === m.role) {
+                merged[merged.length - 1].text += '
+' + m.text;
+            } else {
+                merged.push({ role: m.role, text: m.text });
+            }
+        }
+
+        // 2. 构建最终消息列表（含头像视觉识别）
+        const formattedMessages = merged.map((m, idx) => {
+            // 视觉识别：在第一条消息里注入头像图片（如果启用）
+            if (enableVision && idx === 0 && (friendAvatar || userAvatar)) {
+                const parts = [];
+                if (friendAvatar) parts.push({ type: 'image_url', image_url: { url: friendAvatar, detail: 'low' } });
+                if (userAvatar)   parts.push({ type: 'image_url', image_url: { url: userAvatar,   detail: 'low' } });
+                parts.push({ type: 'text', text: m.text });
+                return { role: m.role, content: parts };
+            }
+            return { role: m.role, content: m.text };
+        });
         
         // 根据provider构建不同格式
         switch (provider) {
