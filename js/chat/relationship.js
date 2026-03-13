@@ -434,6 +434,15 @@ class RelationshipManager {
                 this._acceptBinding(data, friendCode);
             }
         }
+        // AI 主动提出解除关系
+if (text.includes('[REL_AI_UNBIND]')) {
+    modified = modified.replace('[REL_AI_UNBIND]', '').trim();
+    if (data.currentRelation) {
+        // AI主动提，走星迹记录，发一张解除卡片到聊天
+        this._acceptUnbind(data, friendCode);
+        window.ZeroEquip?.refreshAll(friendCode);
+    }
+}
 
         // AI 拒绝绑定
         const rejectMatch = text.match(/\[REL_REJECT(?::([^\]]*))?\]/);
@@ -522,7 +531,7 @@ class RelationshipManager {
                 ? (window.ZeroTime ? window.ZeroTime.dateStr(new Date(rel.boundAt)) : rel.boundAt.slice(0,10))
                 : '';
             info += `你们目前的关系是「${rel.name}」，绑定于 ${since}。\n`;
-            info += `这段关系对你来说是真实的——你们是彼此认可的「${rel.name}」，可以自然地用这个身份和user互动。\n`;
+            info += `这段关系对你来说是真实的——你们是彼此认可的「${rel.name}」，可以自然地用这个身份和user互动。\n`; info += `如果在对话中你真的想解除这段关系（比如发生了争吵、或你有充分的理由），可以在回复中加入 [REL_AI_UNBIND]，这会真实解除你们的关系绑定，请谨慎使用，只在你角色内有真实理由时才用。\n`;
         } else if (data.pendingInvite) {
             const inv = data.pendingInvite;
             if (inv.id === '__unbind__') {

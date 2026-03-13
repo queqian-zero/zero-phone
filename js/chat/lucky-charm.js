@@ -873,7 +873,7 @@ class LuckyCharmManager {
         }
         info += `你（AI）今日剩余抽次：${remaining}次\n`;
         info += `用户已抽到：${userDrawn.map(c => c.name).join('、') || '暂无'}\n`;
-        info += '注：你可以自主选择是否抽卡、佩戴哪个字符，或在聊天中自然提及（根据你的人设决定）。如果你决定抽卡，请在回复中包含 [LC_AI_DRAW]；如果你决定佩戴某个字符，请包含 [LC_AI_EQUIP:字符id]。';
+        info += '注：你可以自主选择是否抽卡、佩戴哪个字符，或在聊天中自然提及（根据你的人设决定）。如果你决定抽卡，请在回复中包含 [LC_AI_DRAW]；如果你决定佩戴某个字符，请包含 [LC_AI_EQUIP:字符id]；如果你决定取消佩戴当前字符，请包含 [LC_AI_UNEQUIP]。';
 
         return info;
     }

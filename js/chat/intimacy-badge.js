@@ -787,6 +787,8 @@ class IntimacyBadgeManager {
         if (hints.length > 0) info += `进度中：${hints.slice(0, 2).join('，')}\n`;
 
         info += '注：你可以自然地聊到徽章，比如提到快要解锁某个、或庆祝解锁了某个。根据你的人设决定要不要提，不要刻意。';
+        info +=
+          '如果你想取消佩戴当前徽章，请包含 [IB_AI_UNEQUIP]。';
         return info;
     }
 }

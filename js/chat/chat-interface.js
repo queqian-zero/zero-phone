@@ -776,6 +776,24 @@ if (lcEquipMatch) {
     displayText = displayText.replace(lcEquipMatch[0], '').trim();
 }
 
+// 检查AI是否要取消佩戴字符
+if (displayText.includes('[LC_AI_UNEQUIP]')) {
+    const d = this.luckyCharm._load(this.currentFriendCode);
+    d.equippedCharmId = null;
+    this.luckyCharm._save(this.currentFriendCode, d);
+    window.ZeroEquip?.refreshAll(this.currentFriendCode);
+    displayText = displayText.replace(/\[LC_AI_UNEQUIP\]/g, '').trim();
+}
+
+// 检查AI是否要取消佩戴徽章
+if (displayText.includes('[IB_AI_UNEQUIP]')) {
+    const d = this.intimacyBadge._load(this.currentFriendCode);
+    d.equippedBadgeId = null;
+    this.intimacyBadge._save(this.currentFriendCode, d);
+    window.ZeroEquip?.refreshAll(this.currentFriendCode);
+    displayText = displayText.replace(/\[IB_AI_UNEQUIP\]/g, '').trim();
+}
+
 // 检查AI是否要写星迹留痕寄语
 const mtNoteMatch = displayText.match(/\[MT_NOTE:([^|]+)\|([^\]]+)\]/);
 if (mtNoteMatch && window.MilestoneTimeline) {
