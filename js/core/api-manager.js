@@ -349,8 +349,7 @@ class APIManager {
         const merged = [];
         for (const m of withTime) {
             if (merged.length && merged[merged.length - 1].role === m.role) {
-                merged[merged.length - 1].text += '
-' + m.text;
+                merged[merged.length - 1].text += '\n' + m.text;
             } else {
                 merged.push({ role: m.role, text: m.text });
             }
