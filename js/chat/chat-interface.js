@@ -8,6 +8,8 @@ class ChatInterface {
 window.LuckyCharm = this.luckyCharm; // 供HTML的onclick访问
   this.intimacyBadge = new IntimacyBadgeManager(this);
   window.IntimacyBadge = this.intimacyBadge;
+  this.relationship = new RelationshipManager(this);
+window.Relationship = this.relationship;
         this.apiManager = new APIManager();
         this.currentFriendCode = null;
         this.currentFriend = null;
@@ -694,6 +696,9 @@ if (this.luckyCharm) {
       if (this.intimacyBadge) {
       systemPrompt += this.intimacyBadge.getAIContextInfo(this.currentFriendCode);
   }
+      if (this.relationship) {
+    systemPrompt += this.relationship.getAIContextInfo(this.currentFriendCode);
+}
       systemPrompt += `
 
 【消息渲染能力】
@@ -776,6 +781,10 @@ if (mtNoteMatch && window.MilestoneTimeline) {
     const noteText = mtNoteMatch[2].trim();
     window.MilestoneTimeline.writeAiNote(this.currentFriendCode, recordId, noteText);
     displayText = displayText.replace(mtNoteMatch[0], '').trim();
+}
+    // 关系绑定指令
+if (this.relationship && this.currentFriendCode) {
+    displayText = this.relationship.handleAIReply(displayText, this.currentFriendCode);
 }
 
 this.addMessage({
@@ -4836,7 +4845,12 @@ loadIntimacyPanel() {
     if (window.MilestoneTimeline) {
         window.MilestoneTimeline.render(this.currentFriendCode);
     }
-
+    // 刷新关系绑定徽章
+const relBadge = document.getElementById('relBadgeLabel');
+if (relBadge && this.relationship) {
+    const rel = this.relationship.getCurrentRelation(this.currentFriendCode);
+    relBadge.textContent = rel ? `「${rel.name}」` : '未绑定';
+}
 }
 
 getTodayMessageCount() {
@@ -4911,6 +4925,10 @@ if (lcBtn) {
   if (ibBtn) ibBtn.addEventListener('click', () => {
       this.intimacyBadge.open(this.currentFriendCode);
   });
+  const relBtn = document.getElementById('intimacyRelationBtn');
+if (relBtn) relBtn.addEventListener('click', () => {
+    this.relationship.open(this.currentFriendCode);
+});
 }
 saveIntimacyCustom() {
     try {
