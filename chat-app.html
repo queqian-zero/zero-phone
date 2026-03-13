@@ -113,6 +113,7 @@
         <button class="chat-back-btn" id="chatBackBtn">←</button>
         <div class="chat-friend-name" id="chatFriendName">
             <span>加载中...</span>
+            <div id="zeChatHeaderChips" style="display:none;flex-wrap:wrap;gap:4px;margin-top:3px;"></div>
         </div>
         <button class="offline-toggle" id="offlineToggle" title="线下模式">🔴</button>
         <button class="chat-settings-btn" id="chatSettingsBtn" title="聊天设置">⚙️</button>
@@ -1587,6 +1588,7 @@
     </div>
     
     <!-- JavaScript文件引入 -->
+<script src="js/chat/zero-equip.js"></script>
 <script src="js/chat/zero-time.js"></script>  <!-- 第一个！其他模块都依赖它 -->
 <script src="js/chat/storage.js"></script>
 <script src="js/chat/lucky-charm.js"></script>
