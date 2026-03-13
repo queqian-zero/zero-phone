@@ -1126,3 +1126,16 @@ addFriendByCode() {
 // 初始化
 const chatApp = new ChatApp();
 window.chatApp = chatApp;
+
+// 预初始化亲密模块管理器
+// 让消息列表刷新时就能读到佩戴状态，不需要先进一次聊天界面
+// getEquippedChip() 只读 localStorage，传一个最小存根即可
+(function _preInitManagers() {
+    const stub = { storage: chatApp.storage, addMessage: () => {}, currentFriendCode: null };
+    if (typeof LuckyCharmManager   !== 'undefined' && !window.LuckyCharm)
+        window.LuckyCharm   = new LuckyCharmManager(stub);
+    if (typeof IntimacyBadgeManager !== 'undefined' && !window.IntimacyBadge)
+        window.IntimacyBadge = new IntimacyBadgeManager(stub);
+    if (typeof RelationshipManager  !== 'undefined' && !window.Relationship)
+        window.Relationship  = new RelationshipManager(stub);
+})();
