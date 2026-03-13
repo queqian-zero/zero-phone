@@ -10,6 +10,8 @@ window.LuckyCharm = this.luckyCharm; // 供HTML的onclick访问
   window.IntimacyBadge = this.intimacyBadge;
   this.relationship = new RelationshipManager(this);
 window.Relationship = this.relationship;
+  this.exchange = new ExchangeManager(this);
+window.Exchange = this.exchange;
         this.apiManager = new APIManager();
         this.currentFriendCode = null;
         this.currentFriend = null;
@@ -701,6 +703,9 @@ if (this.luckyCharm) {
       if (this.relationship) {
     systemPrompt += this.relationship.getAIContextInfo(this.currentFriendCode);
 }
+    if (this.exchange) {
+    systemPrompt += this.exchange.getAIContextInfo(this.currentFriendCode);
+}
       systemPrompt += `
 
 【消息渲染能力】
@@ -805,6 +810,9 @@ if (mtNoteMatch && window.MilestoneTimeline) {
     // 关系绑定指令
 if (this.relationship && this.currentFriendCode) {
     displayText = this.relationship.handleAIReply(displayText, this.currentFriendCode);
+}
+if (this.exchange && this.currentFriendCode) {
+    displayText = this.exchange.handleAIReply(displayText, this.currentFriendCode);
 }
 
 this.addMessage({
@@ -4881,6 +4889,12 @@ if (ibBadge && this.intimacyBadge) {
     const chip = this.intimacyBadge.getEquippedChip(this.currentFriendCode);
     ibBadge.textContent = chip ? `✦ ${chip.label}` : 'Интимность💓';
 }
+const exBadge = document.getElementById('exBadgeLabel');
+if (exBadge && this.exchange) {
+    const data = this.exchange._load(this.currentFriendCode);
+    const active = (data.items || []).filter(i => i.status === 'active').length;
+    exBadge.textContent = active ? `${active} 项活跃` : '兑换所';
+}
 }
 
 getTodayMessageCount() {
@@ -4959,6 +4973,33 @@ if (lcBtn) {
 if (relBtn) relBtn.addEventListener('click', () => {
     this.relationship.open(this.currentFriendCode);
 });
+  const exBtn = document.getElementById('intimacyExchangeBtn');
+if (exBtn) exBtn.addEventListener('click', () => {
+    this.exchange.open(this.currentFriendCode);
+});
+// 背景图弹窗事件
+const exBgInput = document.getElementById('ex-bg-img-input');
+if (exBgInput) exBgInput.addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+        const preview = document.getElementById('ex-bg-img-preview');
+        if (preview) { preview.src = ev.target.result; preview.style.display = 'block'; }
+        window.Exchange._pendingBgSrc = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+});
+const exBgConfirm = document.getElementById('ex-bg-confirm');
+if (exBgConfirm) exBgConfirm.addEventListener('click', () => {
+    if (window.Exchange?._pendingBgSrc) {
+        window.Exchange.setBgImage(window.Exchange._pendingBgSrc);
+        window.Exchange._closeBgModal();
+        window.Exchange._pendingBgSrc = null;
+    }
+});
+const exAddOverlay = document.getElementById('exAddOverlay');
+if (exAddOverlay) exAddOverlay.addEventListener('click', () => window.Exchange?._closeAddModal());
 }
 saveIntimacyCustom() {
     try {
