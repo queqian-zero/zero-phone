@@ -360,9 +360,15 @@ class APIManager {
             // 视觉识别：在第一条消息里注入头像图片（如果启用）
             if (enableVision && idx === 0 && (friendAvatar || userAvatar)) {
                 const parts = [];
-                if (friendAvatar) parts.push({ type: 'image_url', image_url: { url: friendAvatar, detail: 'low' } });
-                if (userAvatar)   parts.push({ type: 'image_url', image_url: { url: userAvatar,   detail: 'low' } });
-                parts.push({ type: 'text', text: m.text });
+                if (friendAvatar) {
+    parts.push({ type: 'text', text: '【这是你自己的头像】' });
+    parts.push({ type: 'image_url', image_url: { url: friendAvatar, detail: 'low' } });
+}
+if (userAvatar) {
+    parts.push({ type: 'text', text: '【这是user的头像】' });
+    parts.push({ type: 'image_url', image_url: { url: userAvatar, detail: 'low' } });
+}
+parts.push({ type: 'text', text: m.text });
                 return { role: m.role, content: parts };
             }
             return { role: m.role, content: m.text };
