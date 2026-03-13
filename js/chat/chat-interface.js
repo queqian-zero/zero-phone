@@ -4847,11 +4847,21 @@ loadIntimacyPanel() {
     if (window.MilestoneTimeline) {
         window.MilestoneTimeline.render(this.currentFriendCode);
     }
-    // 刷新关系绑定徽章
+    // 三个按钮 badge 实时刷新
 const relBadge = document.getElementById('relBadgeLabel');
 if (relBadge && this.relationship) {
     const rel = this.relationship.getCurrentRelation(this.currentFriendCode);
     relBadge.textContent = rel ? `「${rel.name}」` : '未绑定';
+}
+const lcBadge = document.getElementById('lcBadgeLabel');
+if (lcBadge && this.luckyCharm) {
+    const chip = this.luckyCharm.getEquippedChip(this.currentFriendCode);
+    lcBadge.textContent = chip ? `✦ ${chip.label}` : 'Повезло.🍀';
+}
+const ibBadge = document.getElementById('ibBadgeLabel');
+if (ibBadge && this.intimacyBadge) {
+    const chip = this.intimacyBadge.getEquippedChip(this.currentFriendCode);
+    ibBadge.textContent = chip ? `✦ ${chip.label}` : 'Интимность💓';
 }
 }
 

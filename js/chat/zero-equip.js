@@ -127,6 +127,11 @@ window.ZeroEquip = {
     // ══════════════════════════════════════
     refreshAll(friendCode) {
         this.refreshChatHeader(friendCode);
-        this.refreshChatListItem(friendCode);
+        // 触发列表完整重渲染（读最新 localStorage 数据）
+        if (window.chatApp?.renderChatList) {
+            window.chatApp.renderChatList();
+        } else {
+            this.refreshChatListItem(friendCode);
+        }
     },
 };
