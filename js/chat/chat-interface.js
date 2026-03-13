@@ -1342,13 +1342,30 @@ if (exportDataBtn) {
             console.warn('⚠️ 没有当前好友编码');
             return;
         }
+
+        // 每次切换聊天先重置为默认值，避免上一个聊天的设置污染新聊天
+        const defaults = {
+            aiRecognizeImage: true, chatPin: false, hideToken: false,
+            autoSummary: true, summaryInterval: 20, contextMessages: 20,
+            timeAwareness: true, chatWallpaper: 'default', bubbleStyle: 'default',
+            avatarShape: 'circle', avatarBorderRadius: 50,
+            avatarFrameType: 'none', avatarFrameSrc: '',
+            avatarFrameOffsetX: 0, avatarFrameOffsetY: 0, avatarFrameScale: 100,
+            avatarFrameCss: '', userAvatarFrameType: 'none', userAvatarFrameSrc: '',
+            userAvatarFrameOffsetX: 0, userAvatarFrameOffsetY: 0, userAvatarFrameScale: 100,
+            sparkEnabled: true, sparkStartDate: '', sparkExtinguishDays: 1,
+            sparkIcon: '', sparkExtinguishedIcon: '',
+            intimacyBg: '', intimacyTextColor: '#ffffff',
+            intimacyFontUrl: '', intimacyFontFamily: '',
+        };
         
         const savedSettings = this.storage.getChatSettings(this.currentFriendCode);
         
         if (savedSettings) {
-            this.settings = { ...this.settings, ...savedSettings };
+            this.settings = { ...defaults, ...savedSettings };
             console.log('✅ 加载的设置:', this.settings);
         } else {
+            this.settings = { ...defaults };
             console.log('ℹ️ 使用默认设置');
         }
         

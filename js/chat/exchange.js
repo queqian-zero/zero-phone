@@ -116,11 +116,32 @@ class ExchangeManager {
         bg.style.backgroundImage = data.bgImage ? `url('${data.bgImage}')` : '';
     }
 
+    // 压缩图片（最长边≤800px，质量0.45），返回 Promise<dataURL>
+    _compressImage(src, maxSize = 800, quality = 0.45) {
+        return new Promise(resolve => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let w = img.naturalWidth, h = img.naturalHeight;
+                if (w > h) { if (w > maxSize) { h = h * maxSize / w; w = maxSize; } }
+                else       { if (h > maxSize) { w = w * maxSize / h; h = maxSize; } }
+                canvas.width = Math.round(w);
+                canvas.height = Math.round(h);
+                canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                resolve(canvas.toDataURL('image/jpeg', quality));
+            };
+            img.onerror = () => resolve(src);
+            img.src = src;
+        });
+    }
+
     setBgImage(src) {
-        const data = this._load(this.friendCode);
-        data.bgImage = src;
-        this._save(this.friendCode, data);
-        this._applyBg(data);
+        this._compressImage(src, 800, 0.45).then(compressed => {
+            const data = this._load(this.friendCode);
+            data.bgImage = compressed;
+            this._save(this.friendCode, data);
+            this._applyBg(data);
+        });
     }
 
     clearBgImage() {
@@ -621,7 +642,22 @@ class ExchangeManager {
 
             <div class="ex-starshop-decor-section">
                 <div class="ex-group-header">🎨 小铺装修</div>
-                <textarea class="ex-decor-input" id="ex-decor-css-input" placeholder="在这里输入CSS代码装修小铺...">${data.shopDecorUser || ''}</textarea>
+                <div class="ex-decor-classnames">
+                    <div class="ex-decor-classnames-title">📋 可用类名（复制给AI或粘贴到装修框）</div>
+                    <div class="ex-decor-classnames-grid">
+                        <code>#ex-starshop-wrap</code><span>整个小铺容器</span>
+                        <code>.ex-starshop-user-shelf</code><span>TA上架的货架区</span>
+                        <code>.ex-starshop-ai-shelf</code><span>我上架的货架区</span>
+                        <code>.ex-shop-item</code><span>每张愿望卡片</span>
+                        <code>.ex-shop-item-content</code><span>卡片内容文字</span>
+                        <code>.ex-shop-price</code><span>许愿星价格标签</span>
+                        <code>.ex-shop-buy-btn</code><span>兑换按钮</span>
+                        <code>.ex-group-header</code><span>分区标题</span>
+                        <code>.ex-starshop-title</code><span>小铺大标题</span>
+                        <code>.ex-star-balance</code><span>余额显示</span>
+                    </div>
+                </div>
+                <textarea class="ex-decor-input" id="ex-decor-css-input" placeholder="在这里输入CSS代码装修小铺，或请AI写好后粘贴进来...">${data.shopDecorUser || ''}</textarea>
                 <button class="ex-decor-apply-btn" id="ex-decor-apply-btn">应用装修</button>
             </div>
         </div>`;
@@ -684,27 +720,35 @@ class ExchangeManager {
         if (!m || !m._itemId) return;
         const noteEl = document.getElementById('ex-checkin-note');
         const note = noteEl ? noteEl.value.trim() : '';
-        const img  = this._checkinImgSrc || '';
-
-        const data = this._load(this.friendCode);
-        const item = data.items.find(i => i.id === m._itemId);
-        if (!item) return;
-        item.status = 'done';
-        item.doneAt = new Date().toISOString();
-        item.doneNote = note;
-        item.doneImg  = img;
-        this._save(this.friendCode, data);
-        this._closeCheckinModal();
-        this._notifyComplete(item);
-        if (window.MilestoneTimeline) {
-            window.MilestoneTimeline.addRecord(this.friendCode, {
-                type: 'exchange_done',
-                date: new Date().toISOString(),
-                payload: { module: item.module, content: item.content.slice(0, 30), note },
-            });
+        // 压缩打卡图片再存
+        const doSubmit = (img) => {
+            const data = this._load(this.friendCode);
+            const item = data.items.find(i => i.id === m._itemId);
+            if (!item) return;
+            item.status = 'done';
+            item.doneAt = new Date().toISOString();
+            item.doneNote = note;
+            item.doneImg  = img;
+            this._save(this.friendCode, data);
+            this._closeCheckinModal();
+            this._notifyComplete(item);
+            if (window.MilestoneTimeline) {
+                window.MilestoneTimeline.addRecord(this.friendCode, {
+                    type: 'exchange_done',
+                    date: new Date().toISOString(),
+                    payload: { module: item.module, content: item.content.slice(0, 30), note },
+                });
+            }
+            this._renderTab(this.activeTab, data);
+            this._showToast('✓ 打卡成功！');
+        };
+        const rawImg = this._checkinImgSrc || '';
+        if (rawImg) {
+            this._compressImage(rawImg, 600, 0.5).then(doSubmit);
+        } else {
+            doSubmit('');
         }
-        this._renderTab(this.activeTab, data);
-        this._showToast('✓ 打卡成功！');
+        return; // 下面旧逻辑跳过
     }
 
     // ═══════════════════════════════════════════════════
