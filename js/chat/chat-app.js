@@ -350,6 +350,10 @@ if (spark.status === 'active') {
     sparkHTML = `<span class="chat-list-spark extinguished">${icon} 已熄灭</span>`;
 }
 
+    // 佩戴芯片
+    const chips = window.ZeroEquip?.getChips(friend.code) || [];
+    const chipsHTML = chips.length ? window.ZeroEquip.renderChipsHTML(chips, 'sm') : '';
+
 return `
     <div class="chat-list-item ${pinned}" data-code="${friend.code}">
         <div class="chat-list-avatar">${avatarContent}</div>
@@ -359,6 +363,7 @@ return `
                 ${sparkHTML}
                 <span class="chat-list-time">${timeStr}</span>
             </div>
+            ${chipsHTML ? `<div class="ze-chips-row" style="display:flex;flex-wrap:wrap;gap:4px;margin:3px 0 2px;">${chipsHTML}</div>` : `<div class="ze-chips-row" style="display:none;"></div>`}
             <div class="chat-list-preview">${this.escapeHtml(preview)}</div>
         </div>
     </div>`;

@@ -302,6 +302,8 @@ intimacyFontFamily: ''
             this.originalFriendName = displayName;
             console.log('✅ 设置好友名称:', displayName);
         }
+        // 刷新佩戴芯片
+        setTimeout(() => window.ZeroEquip?.refreshChatHeader(friendCode), 50);
         
         const chat = this.storage.getChatByFriendCode(friendCode);
         

@@ -110,7 +110,8 @@ class IntimacyBadgeManager {
 
     _defaultData() {
         return {
-            unlocked: {},           // { badgeId: { unlockedAt, isLimited } }
+            unlocked: {},
+            equippedBadgeId: null,  // 当前佩戴的徽章id           // { badgeId: { unlockedAt, isLimited } }
             valentineYears: [],     // 已解锁心动限定的年份
             customBadges: [],       // 自定义徽章列表
             bgImage: '',
@@ -511,14 +512,24 @@ class IntimacyBadgeManager {
             statusEl.className = 'ib-detail-status ib-detail-status-off';
         }
 
-        // 自定义徽章显示手动解锁/删除按钮
+        // 佩戴按钮（已解锁才显示）+ 自定义徽章的管理按钮
         const actionsEl = document.getElementById('ib-detail-actions');
+        const data2 = this._load(this.friendCode);
+        const isEquipped = data2.equippedBadgeId === badgeId;
+        let equipBtn = '';
+        if (isUnlocked) {
+            if (isEquipped) {
+                equipBtn = `<button class="ib-detail-btn ib-detail-btn-equip ib-detail-btn-equip-on" onclick="window.IntimacyBadge.equipBadge('${badgeId}')">已佩戴 · 点击取消</button>`;
+            } else {
+                equipBtn = `<button class="ib-detail-btn ib-detail-btn-equip" onclick="window.IntimacyBadge.equipBadge('${badgeId}')">佩戴徽章</button>`;
+            }
+        }
         if (!badge.isBuiltin) {
-            actionsEl.innerHTML = `
+            actionsEl.innerHTML = equipBtn + `
                 ${!isUnlocked ? `<button class="ib-detail-btn ib-detail-btn-unlock" onclick="window.IntimacyBadge.unlockCustomBadge('${badgeId}'); window.IntimacyBadge._closeDetailModal();">手动解锁</button>` : ''}
                 <button class="ib-detail-btn ib-detail-btn-delete" onclick="window.IntimacyBadge.deleteCustomBadge('${badgeId}'); window.IntimacyBadge._closeDetailModal();">删除徽章</button>`;
         } else {
-            actionsEl.innerHTML = '';
+            actionsEl.innerHTML = equipBtn;
         }
 
         modal.style.display = 'flex';
@@ -692,6 +703,47 @@ class IntimacyBadgeManager {
         };
         reader.readAsDataURL(file);
     }
+
+    // ==================== 佩戴徽章 ====================
+
+    equipBadge(badgeId) {
+        const data = this._load(this.friendCode);
+        if (data.equippedBadgeId === badgeId) {
+            // 取消佩戴 → 确认弹窗
+            const badge = this._getAllBadges(data).find(b => b.id === badgeId);
+            window.ZeroEquip?.confirmUnequip(badge?.name || badgeId, () => {
+                const d2 = this._load(this.friendCode);
+                d2.equippedBadgeId = null;
+                this._save(this.friendCode, d2);
+                this._renderBadges(d2);
+                this._closeDetailModal();
+                window.ZeroEquip?.refreshAll(this.friendCode);
+            });
+        } else {
+            data.equippedBadgeId = badgeId;
+            this._save(this.friendCode, data);
+            const badge = this._getAllBadges(data).find(b => b.id === badgeId);
+            this._showToast(`已佩戴「${badge?.name || badgeId}」`);
+            this._renderBadges(data);
+            this._closeDetailModal();
+            window.ZeroEquip?.refreshAll(this.friendCode);
+        }
+    }
+
+    // 供 ZeroEquip 调用：返回当前佩戴的芯片
+    getEquippedChip(friendCode) {
+        const data = this._load(friendCode);
+        if (!data.equippedBadgeId) return null;
+        const badge = this._getAllBadges(data).find(b => b.id === data.equippedBadgeId);
+        if (!badge || !data.unlocked[data.equippedBadgeId]) return null;
+        return {
+            type: 'badge',
+            img: badge.imagePath || null,
+            imgFallback: '🏅',
+            label: badge.name,
+        };
+    }
+
 
     _showToast(msg) {
         let t = document.getElementById('ibToast');

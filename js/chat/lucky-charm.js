@@ -266,10 +266,17 @@ class LuckyCharmManager {
             return;
         }
         if (data.equippedCharmId === charmId) {
-            // 再点一次=取消佩戴
-            data.equippedCharmId = null;
-            this._save(this.friendCode, data);
-            this._showToast('已取消佩戴');
+            // 取消佩戴 → 确认弹窗
+            const charm = this._getAllCharms(data).find(c => c.id === charmId);
+            window.ZeroEquip?.confirmUnequip(charm?.name || charmId, () => {
+                const d2 = this._load(this.friendCode);
+                d2.equippedCharmId = null;
+                this._save(this.friendCode, d2);
+                this._renderEquipped(d2);
+                this._renderMyCharms(d2);
+                window.ZeroEquip?.refreshAll(this.friendCode);
+            });
+            return;
         } else {
             data.equippedCharmId = charmId;
             this._save(this.friendCode, data);
@@ -278,6 +285,7 @@ class LuckyCharmManager {
         }
         this._renderEquipped(data);
         this._renderMyCharms(data);
+        window.ZeroEquip?.refreshAll(this.friendCode);
     }
 
     toggleShowEquipped() {
@@ -807,6 +815,21 @@ class LuckyCharmManager {
         };
         reader.readAsDataURL(file);
     }
+
+    // 供 ZeroEquip 调用：返回当前佩戴的芯片数据
+    getEquippedChip(friendCode) {
+        const data = this._load(friendCode);
+        if (!data.equippedCharmId || !data.userShowEquipped) return null;
+        const charm = this._getAllCharms(data).find(c => c.id === data.equippedCharmId);
+        if (!charm) return null;
+        return {
+            type: 'charm',
+            img: charm.imagePath || null,
+            imgFallback: '🎲',
+            label: charm.name,
+        };
+    }
+
 
     _showToast(msg) {
         let toast = document.getElementById('lcToast');

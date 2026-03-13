@@ -52,6 +52,7 @@ class RelationshipManager {
             pendingInvite: null,     // { id, name, img, isCustom, sentAt }
             history: [],             // [{ id, name, boundAt, unboundAt? }]
             customRelations: [],     // 上传的自定义关系 [{ id, name, imgData }]
+            showRelBadge: true,      // 是否展示关系标识芯片
         };
     }
 
@@ -178,6 +179,7 @@ class RelationshipManager {
                 <div class="rel-bound-name">「${rel.name}」</div>
                 <div class="rel-bound-since">与${friendName}成为${rel.name}于 ${boundDate}</div>
                 <button class="rel-change-btn" id="relChangeBtn">更换关系</button>
+                <button class="rel-equip-toggle-btn" id="relEquipToggleBtn">${data.showRelBadge !== false ? '取消展示标识' : '展示关系标识'}</button>
                 <button class="rel-unbind-btn" id="relUnbindBtn">解除关系</button>
                 ${data.customRelations.length ? `<div class="rel-custom-list">${customList}</div>` : ''}
             </div>
@@ -242,6 +244,29 @@ class RelationshipManager {
                 data.currentRelation = null;
                 this._save(this.friendCode, data);
                 this._render();
+            });
+        }
+
+        // 关系标识展示切换
+        const equipToggleBtn = document.getElementById('relEquipToggleBtn');
+        if (equipToggleBtn) {
+            equipToggleBtn.addEventListener('click', () => {
+                if (data.showRelBadge !== false) {
+                    // 当前展示中 → 确认取消
+                    const relName = data.currentRelation?.name || '关系标识';
+                    window.ZeroEquip?.confirmUnequip(relName, () => {
+                        const d2 = this._load(this.friendCode);
+                        d2.showRelBadge = false;
+                        this._save(this.friendCode, d2);
+                        window.ZeroEquip?.refreshAll(this.friendCode);
+                        this._render();
+                    });
+                } else {
+                    data.showRelBadge = true;
+                    this._save(this.friendCode, data);
+                    window.ZeroEquip?.refreshAll(this.friendCode);
+                    this._render();
+                }
             });
         }
 
@@ -448,7 +473,9 @@ class RelationshipManager {
         // 存到历史
         data.history.push({ id: inv.id, name: relName, boundAt: data.currentRelation.boundAt });
         data.pendingInvite = null;
+        data.showRelBadge = true;
         this._save(friendCode, data);
+        window.ZeroEquip?.refreshAll(friendCode);
 
         // 写星迹
         if (window.MilestoneTimeline) {
@@ -512,6 +539,21 @@ class RelationshipManager {
         }
 
         return info;
+    }
+
+    // 供 ZeroEquip 调用：返回当前佩戴的芯片
+    getEquippedChip(friendCode) {
+        const data = this._load(friendCode);
+        if (!data.currentRelation || data.showRelBadge === false) return null;
+        const rel = data.currentRelation;
+        const builtin = RelationshipManager.BUILTIN_RELATIONS.find(r => r.id === rel.id);
+        const img = rel.imgData || (builtin ? RelationshipManager.IMG_BASE + builtin.file : null);
+        return {
+            type: 'rel',
+            img,
+            imgFallback: '💍',
+            label: rel.name,
+        };
     }
 
     // ==================== 获取当前关系（供外部查询）====================
