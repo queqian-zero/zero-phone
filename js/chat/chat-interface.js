@@ -1342,7 +1342,7 @@ if (exportDataBtn) {
             console.warn('⚠️ 没有当前好友编码');
             return;
         }
-
+        
         // 每次切换聊天先重置为默认值，避免上一个聊天的设置污染新聊天
         const defaults = {
             aiRecognizeImage: true, chatPin: false, hideToken: false,
@@ -1358,16 +1358,15 @@ if (exportDataBtn) {
             intimacyBg: '', intimacyTextColor: '#ffffff',
             intimacyFontUrl: '', intimacyFontFamily: '',
         };
-        
-        const savedSettings = this.storage.getChatSettings(this.currentFriendCode);
-        
-        if (savedSettings) {
-            this.settings = { ...defaults, ...savedSettings };
-            console.log('✅ 加载的设置:', this.settings);
-        } else {
-            this.settings = { ...defaults };
-            console.log('ℹ️ 使用默认设置');
-        }
+
+        const savedSettings = this.storage.getChatSettings(this.currentFriendCode) || {};
+        let imgSettings = {};
+        try {
+            const raw = localStorage.getItem(`zero_phone_chat_img_${this.currentFriendCode}`);
+            if (raw) imgSettings = JSON.parse(raw);
+        } catch(e) {}
+        this.settings = { ...defaults, ...savedSettings, ...imgSettings };
+        console.log('✅ 加载的设置:', this.settings);
         
         this.applySettingsToUI();
         
@@ -1401,20 +1400,21 @@ if (this.settings.avatarFrameCss) {
     }
     
     saveSettings() {
-        console.log('💾 保存聊天设置');
-        
         if (!this.currentFriendCode) {
             console.warn('⚠️ 没有当前好友编码');
             return;
         }
-        
-        const success = this.storage.saveChatSettings(this.currentFriendCode, this.settings);
-        
-        if (success) {
-            console.log('✅ 设置保存成功:', this.settings);
-        } else {
-            console.error('❌ 设置保存失败');
-        }
+        const fc = this.currentFriendCode;
+
+        // base64图片字段单独存，防止主设置JSON过大导致存储失败
+        const { avatarFrameSrc, userAvatarFrameSrc, sparkIcon, sparkExtinguishedIcon, ...smallSettings } = this.settings;
+        try {
+            localStorage.setItem(`zero_phone_chat_img_${fc}`, JSON.stringify({ avatarFrameSrc, userAvatarFrameSrc, sparkIcon, sparkExtinguishedIcon }));
+        } catch(e) {}
+
+        const success = this.storage.saveChatSettings(fc, smallSettings);
+        if (success) console.log('✅ 设置保存成功:', smallSettings);
+        else console.error('❌ 设置保存失败');
     }
     
     applySettingsToUI() {

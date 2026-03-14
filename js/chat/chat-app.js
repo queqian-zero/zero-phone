@@ -1138,4 +1138,6 @@ window.chatApp = chatApp;
         window.IntimacyBadge = new IntimacyBadgeManager(stub);
     if (typeof RelationshipManager  !== 'undefined' && !window.Relationship)
         window.Relationship  = new RelationshipManager(stub);
+        // ← 加这一行：模块就绪后重新渲染列表
+    chatApp.renderChatList();
 })();

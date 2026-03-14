@@ -642,9 +642,16 @@ class ExchangeManager {
 
             <div class="ex-starshop-decor-section">
                 <div class="ex-group-header">🎨 小铺装修</div>
-                <div class="ex-decor-classnames">
-                    <div class="ex-decor-classnames-title">📋 可用类名（复制给AI或粘贴到装修框）</div>
-                    <div class="ex-decor-classnames-grid">
+
+                <!-- 可折叠类名参考 -->
+                <div class="ex-decor-classnames-wrap">
+                    <button class="ex-decor-classnames-toggle" onclick="
+                        const body = this.nextElementSibling;
+                        const isOpen = body.style.display !== 'none';
+                        body.style.display = isOpen ? 'none' : 'grid';
+                        this.textContent = isOpen ? '📋 展开类名参考（给AI看 / 自己用）' : '📋 收起类名参考';
+                    ">📋 展开类名参考（给AI看 / 自己用）</button>
+                    <div class="ex-decor-classnames-grid" style="display:none;">
                         <code>#ex-starshop-wrap</code><span>整个小铺容器</span>
                         <code>.ex-starshop-user-shelf</code><span>TA上架的货架区</span>
                         <code>.ex-starshop-ai-shelf</code><span>我上架的货架区</span>
@@ -652,11 +659,18 @@ class ExchangeManager {
                         <code>.ex-shop-item-content</code><span>卡片内容文字</span>
                         <code>.ex-shop-price</code><span>许愿星价格标签</span>
                         <code>.ex-shop-buy-btn</code><span>兑换按钮</span>
+                        <code>.ex-shop-actions</code><span>卡片操作按钮区</span>
+                        <code>.ex-shop-done</code><span>已兑换的卡片</span>
                         <code>.ex-group-header</code><span>分区标题</span>
                         <code>.ex-starshop-title</code><span>小铺大标题</span>
                         <code>.ex-star-balance</code><span>余额显示</span>
+                        <code>.ex-starshop-header</code><span>小铺顶栏</span>
+                        <code>.ex-decor-input</code><span>装修CSS输入框</span>
+                        <code>.ex-decor-apply-btn</code><span>应用装修按钮</span>
+                        <code>.ex-add-btn</code><span>上架新愿望按钮</span>
                     </div>
                 </div>
+
                 <textarea class="ex-decor-input" id="ex-decor-css-input" placeholder="在这里输入CSS代码装修小铺，或请AI写好后粘贴进来...">${data.shopDecorUser || ''}</textarea>
                 <button class="ex-decor-apply-btn" id="ex-decor-apply-btn">应用装修</button>
             </div>
