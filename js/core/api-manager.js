@@ -256,7 +256,7 @@ class APIManager {
      * @param {String} systemPrompt - 系统提示词（人设）
      * @returns {Object} { success, text, tokens, error }
      */
-    async callAI(messages, systemPrompt = '', options = {}) {
+    async callAI(messages, systemPrompt = '') {
         try {
             console.log('🤖 开始调用AI API');
             
@@ -279,7 +279,7 @@ class APIManager {
             });
             
             // 2. 构建请求体（根据不同provider调整格式）
-            const requestBody = this.buildRequestBody(config, messages, systemPrompt, options);
+            const requestBody = this.buildRequestBody(config, messages, systemPrompt);
             
             console.log('📦 请求体:', requestBody);
             
@@ -327,127 +327,60 @@ class APIManager {
     }
     
     // 构建请求体
-    buildRequestBody(config, messages, systemPrompt, options = {}) {
+    buildRequestBody(config, messages, systemPrompt) {
         const { provider, model, maxTokens, temperature } = config;
-        const { aiAvatar, userAvatar } = options;
-
-        // Feature 5: 给每条消息加上发送时间戳
-        // Feature 1: 保留每条消息独立，同角色连续消息用分隔线合并（API要求交替角色）
+        
+        // 转换消息格式
         const formattedMessages = messages.map(msg => ({
             role: msg.type === 'user' ? 'user' : 'assistant',
-            content: msg.timestamp
-                ? `[${this.formatMsgTimestamp(msg.timestamp)}]\n${msg.text}`
-                : msg.text
+            content: msg.text
         }));
-
-        // Feature 1: 合并连续同角色消息，保持"一条一条"感
-        const mergedMessages = [];
-        for (const msg of formattedMessages) {
-            const last = mergedMessages[mergedMessages.length - 1];
-            if (last && last.role === msg.role) {
-                last.content += `\n\n[下一条消息]\n${msg.content}`;
-            } else {
-                mergedMessages.push({ role: msg.role, content: msg.content });
-            }
-        }
-
-        // Feature 2: 构建头像视觉注入消息
-        const buildVisionTurn = (targetRole, oppositeRole, replyText) => {
-            if (!aiAvatar && !userAvatar) return null;
-            return {
-                visionUserMsg: { role: targetRole },
-                visionAssistMsg: { role: oppositeRole, content: replyText }
-            };
-        };
-
+        
+        // 根据provider构建不同格式
         switch (provider) {
-            case 'google': {
-                const contents = mergedMessages.map(msg => ({
-                    role: msg.role === 'assistant' ? 'model' : 'user',
-                    parts: [{ text: msg.content }]
-                }));
-
-                // Feature 2: 在开头注入头像视觉
-                if (aiAvatar || userAvatar) {
-                    const parts = [{ text: '以下是对话双方的头像。第一张是你（AI）的头像，第二张是user的头像：' }];
-                    if (aiAvatar) {
-                        const img = this.extractImageData(aiAvatar);
-                        if (img) parts.push({ inline_data: { mime_type: img.mimeType, data: img.base64 } });
-                    }
-                    if (userAvatar) {
-                        const img = this.extractImageData(userAvatar);
-                        if (img) parts.push({ inline_data: { mime_type: img.mimeType, data: img.base64 } });
-                    }
-                    contents.unshift({ role: 'user', parts });
-                    contents.splice(1, 0, { role: 'model', parts: [{ text: '好的，我已经看到了我们双方的头像。' }] });
-                }
-
+            case 'google':
+                // Google Gemini格式
                 return {
-                    contents,
-                    systemInstruction: systemPrompt ? { parts: [{ text: systemPrompt }] } : undefined,
-                    generationConfig: { temperature, maxOutputTokens: maxTokens }
+                    contents: formattedMessages.map(msg => ({
+                        role: msg.role === 'assistant' ? 'model' : 'user',
+                        parts: [{ text: msg.content }]
+                    })),
+                    systemInstruction: systemPrompt ? {
+                        parts: [{ text: systemPrompt }]
+                    } : undefined,
+                    generationConfig: {
+                        temperature: temperature,
+                        maxOutputTokens: maxTokens
+                    }
                 };
-            }
-
-            case 'anthropic': {
-                let anthropicMessages = mergedMessages.map(m => ({
-                    role: m.role,
-                    content: m.content
-                }));
-
-                // Feature 2: 在开头注入头像视觉
-                if (aiAvatar || userAvatar) {
-                    const content = [{ type: 'text', text: '以下是对话双方的头像。第一张是你（AI）的头像，第二张是user的头像：' }];
-                    if (aiAvatar) {
-                        const img = this.extractImageData(aiAvatar);
-                        if (img) content.push({ type: 'image', source: { type: 'base64', media_type: img.mimeType, data: img.base64 } });
-                    }
-                    if (userAvatar) {
-                        const img = this.extractImageData(userAvatar);
-                        if (img) content.push({ type: 'image', source: { type: 'base64', media_type: img.mimeType, data: img.base64 } });
-                    }
-                    anthropicMessages.unshift({ role: 'user', content });
-                    anthropicMessages.splice(1, 0, { role: 'assistant', content: '好的，我已经看到了我们双方的头像。' });
-                }
-
+                
+            case 'anthropic':
+                // Anthropic Claude格式
                 return {
-                    model,
+                    model: model,
                     max_tokens: maxTokens,
-                    temperature,
+                    temperature: temperature,
                     system: systemPrompt,
-                    messages: anthropicMessages
+                    messages: formattedMessages
                 };
-            }
-
-            default: {
-                // OpenAI / SiliconFlow / 自定义
+                
+            default:
+                // OpenAI / SiliconFlow / 自定义（通用格式）
                 const allMessages = [];
                 if (systemPrompt) {
-                    allMessages.push({ role: 'system', content: systemPrompt });
+                    allMessages.push({
+                        role: 'system',
+                        content: systemPrompt
+                    });
                 }
-
-                // Feature 2: 在对话历史开头注入头像视觉
-                if (aiAvatar || userAvatar) {
-                    const content = [{ type: 'text', text: '以下是对话双方的头像。第一张是你（AI）的头像，第二张是user的头像：' }];
-                    if (aiAvatar) {
-                        content.push({ type: 'image_url', image_url: { url: aiAvatar } });
-                    }
-                    if (userAvatar) {
-                        content.push({ type: 'image_url', image_url: { url: userAvatar } });
-                    }
-                    allMessages.push({ role: 'user', content });
-                    allMessages.push({ role: 'assistant', content: '好的，我已经看到了我们双方的头像。' });
-                }
-
-                allMessages.push(...mergedMessages);
-
+                allMessages.push(...formattedMessages);
+                
                 return {
-                    model,
+                    model: model,
                     messages: allMessages,
                     max_tokens: maxTokens,
-                    temperature
+                    temperature: temperature
                 };
-            }
         }
     }
     
@@ -570,33 +503,6 @@ class APIManager {
         }
         
         return message;
-    }
-    // ==================== 消息处理工具 ====================
-
-    // Feature 5: 格式化消息时间戳（供AI阅读）
-    formatMsgTimestamp(isoString) {
-        try {
-            const d = new Date(isoString);
-            const year = d.getFullYear();
-            const month = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            const h = String(d.getHours()).padStart(2, '0');
-            const m = String(d.getMinutes()).padStart(2, '0');
-            const s = String(d.getSeconds()).padStart(2, '0');
-            const weeks = ['日','一','二','三','四','五','六'];
-            const week = weeks[d.getDay()];
-            return `${year}年${month}月${day}日 星期${week} ${h}:${m}:${s}`;
-        } catch(e) {
-            return '';
-        }
-    }
-
-    // Feature 2: 从data URL中提取base64和mimeType
-    extractImageData(dataUrl) {
-        if (!dataUrl) return null;
-        const match = dataUrl.match(/^data:(image\/[a-z+]+);base64,(.+)$/);
-        if (!match) return null;
-        return { mimeType: match[1], base64: match[2] };
     }
 }
 
