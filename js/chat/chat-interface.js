@@ -45,6 +45,7 @@ class ChatInterface {
     
     init() {
         console.log('🚀 ChatInterface init() 开始');
+        this._injectRenderStyles();
         this.bindEvents();
         console.log('✅ ChatInterface 初始化完成');
     }
@@ -608,6 +609,24 @@ class ChatInterface {
                 console.log('🕐 时间感知已开启，添加时间信息');
             }
             
+            // Feature 2: 头像视觉开关
+            if (!this.settings.aiRecognizeImage) {
+                systemPrompt += '\n\n【头像视觉：已关闭】你目前无法看到自己（AI）和对方（user）的头像，你清楚地知道这一点，不要假装自己看到了头像。';
+            }
+
+            // Feature 4: 告知AI气泡代码类名
+            systemPrompt += `\n\n【气泡CSS代码规范（仅当你主动发送聊天气泡样式代码时参考）】
+可用的CSS类名：
+- .message — 每条消息最外层容器
+- .message-ai — AI消息外层容器（你的消息）
+- .message-user — 用户消息外层容器
+- .message-avatar — 头像容器
+- .message-content — 消息内容区域
+- .message-bubble — 消息气泡本体（最常用）
+- .message-text — 消息文字区域
+- .message-time — 时间戳文字
+如果你决定发送气泡CSS代码，请将代码包裹在 \`\`\`bubble-css 代码块中，这样用户可以直接预览或保存效果。
+如果你决定发送HTML代码并希望对方直接看到渲染效果，请使用 \`\`\`html-render 代码块；如果只让对方看代码，使用普通 \`\`\`html 代码块。`;
             console.log('👤 最终系统提示:', systemPrompt.substring(0, 100), '...');
             
             // 偶尔报备记忆清理（AI有概率自然提到）
@@ -617,7 +636,14 @@ if (this._pendingMemoryReport) {
 }
             
             console.log('🌐 开始调用API...');
-            const result = await this.apiManager.callAI(recentMessages, systemPrompt);
+            // Feature 2: 获取头像数据（开启时传给API做视觉识别）
+            const aiAvatarData = this.settings.aiRecognizeImage ? (this.currentFriend?.avatar || null) : null;
+            const userAvatarData = this.settings.aiRecognizeImage ? (this.storage.getUserSettings()?.userAvatar || null) : null;
+
+            const result = await this.apiManager.callAI(recentMessages, systemPrompt, {
+                aiAvatar: aiAvatarData,
+                userAvatar: userAvatarData
+            });
             
             this.hideTypingIndicator();
             
@@ -803,6 +829,8 @@ div.innerHTML = `
             });
         }
         
+        // Feature 3 & 4: 检测可渲染内容，添加切换按钮
+        this._enhanceMessageWithRenderToggles(div, message.text);
         console.log('🎨 创建消息元素:', message.type);
         return div;
     }
@@ -859,6 +887,183 @@ div.innerHTML = `
         return date.getDate() === yesterday.getDate() &&
                date.getMonth() === yesterday.getMonth() &&
                date.getFullYear() === yesterday.getFullYear();
+    }
+    
+    // ==================== Feature 3 & 4: 渲染增强 ====================
+
+    // 注入渲染按钮样式（只注入一次）
+    _injectRenderStyles() {
+        if (document.getElementById('renderToggleStyles')) return;
+        const style = document.createElement('style');
+        style.id = 'renderToggleStyles';
+        style.textContent = `
+            .render-btn-row {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 4px;
+                margin-top: 6px;
+            }
+            .render-toggle-btn {
+                padding: 3px 10px;
+                font-size: 11px;
+                border-radius: 10px;
+                border: 1px solid rgba(255,255,255,0.25);
+                background: rgba(255,255,255,0.08);
+                color: rgba(255,255,255,0.75);
+                cursor: pointer;
+                white-space: nowrap;
+                transition: background 0.2s;
+            }
+            .render-toggle-btn:hover {
+                background: rgba(255,255,255,0.18);
+            }
+            .render-toggle-btn.active {
+                background: rgba(255,255,255,0.2);
+                border-color: rgba(255,255,255,0.5);
+            }
+            .render-iframe {
+                width: 100%;
+                min-height: 80px;
+                max-height: 420px;
+                border: 1px solid rgba(255,255,255,0.15);
+                border-radius: 6px;
+                margin-top: 6px;
+                background: #fff;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    // 检测消息中的可渲染内容并添加操作按钮
+    _enhanceMessageWithRenderToggles(msgEl, rawText) {
+        const bubbleEl = msgEl.querySelector('.message-bubble');
+        if (!bubbleEl) return;
+
+        // 检测 ```html-render 块（AI选择渲染）
+        const htmlRenderMatch = rawText.match(/```html-render\n?([\s\S]+?)```/i);
+        // 检测 ```html 块（默认代码视图）
+        const htmlCodeMatch = rawText.match(/```html\n?([\s\S]+?)```/i);
+        // 检测 ```bubble-css 块
+        const bubbleCssMatch = rawText.match(/```bubble-css\n?([\s\S]+?)```/i);
+        // 检测裸HTML（不在代码块内，但看起来像HTML结构）
+        const hasRawHtml = !htmlRenderMatch && !htmlCodeMatch && /<[a-z][^>]*>[\s\S]*<\/[a-z]+>/i.test(rawText);
+
+        const htmlCode = htmlRenderMatch ? htmlRenderMatch[1].trim()
+                       : htmlCodeMatch   ? htmlCodeMatch[1].trim()
+                       : hasRawHtml      ? rawText.trim()
+                       : null;
+
+        const defaultRendered = !!htmlRenderMatch; // ```html-render 默认渲染，其他默认代码
+
+        const textEl = bubbleEl.querySelector('.message-text');
+        const btnRow = document.createElement('div');
+        btnRow.className = 'render-btn-row';
+
+        // ----- HTML渲染切换 -----
+        if (htmlCode) {
+            let isRendered = defaultRendered;
+
+            const iframe = document.createElement('iframe');
+            iframe.className = 'render-iframe';
+            iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin');
+            iframe.style.display = isRendered ? 'block' : 'none';
+            if (isRendered) {
+                iframe.srcdoc = htmlCode;
+                if (textEl) textEl.style.display = 'none';
+            }
+
+            const toggleBtn = document.createElement('button');
+            toggleBtn.className = 'render-toggle-btn' + (isRendered ? ' active' : '');
+            toggleBtn.textContent = isRendered ? '📄 查看代码' : '🌐 渲染HTML';
+
+            toggleBtn.addEventListener('click', () => {
+                isRendered = !isRendered;
+                if (isRendered) {
+                    iframe.srcdoc = htmlCode;
+                    iframe.style.display = 'block';
+                    if (textEl) textEl.style.display = 'none';
+                    toggleBtn.textContent = '📄 查看代码';
+                    toggleBtn.classList.add('active');
+                } else {
+                    iframe.style.display = 'none';
+                    if (textEl) textEl.style.display = '';
+                    toggleBtn.textContent = '🌐 渲染HTML';
+                    toggleBtn.classList.remove('active');
+                }
+            });
+
+            btnRow.appendChild(toggleBtn);
+            bubbleEl.appendChild(btnRow);
+            bubbleEl.appendChild(iframe);
+            return; // HTML和bubble-css不同时处理，避免混乱
+        }
+
+        // ----- 气泡CSS预览/保存 -----
+        if (bubbleCssMatch) {
+            const cssCode = bubbleCssMatch[1].trim();
+            let isPreviewing = false;
+
+            const previewBtn = document.createElement('button');
+            previewBtn.className = 'render-toggle-btn';
+            previewBtn.textContent = '🎨 预览气泡';
+
+            const saveBtn = document.createElement('button');
+            saveBtn.className = 'render-toggle-btn';
+            saveBtn.textContent = '💾 保存效果';
+
+            previewBtn.addEventListener('click', () => {
+                isPreviewing = !isPreviewing;
+                if (isPreviewing) {
+                    this._applyTempBubbleCss(cssCode);
+                    previewBtn.textContent = '❌ 取消预览';
+                    previewBtn.classList.add('active');
+                } else {
+                    this._removeTempBubbleCss();
+                    previewBtn.textContent = '🎨 预览气泡';
+                    previewBtn.classList.remove('active');
+                }
+            });
+
+            saveBtn.addEventListener('click', () => {
+                this._removeTempBubbleCss();
+                isPreviewing = false;
+                previewBtn.textContent = '🎨 预览气泡';
+                previewBtn.classList.remove('active');
+
+                this.settings.customBubbleCss = (this.settings.customBubbleCss || '') + '\n' + cssCode;
+                this.saveSettings();
+
+                // 写入页面
+                let styleTag = document.getElementById('customBubbleCssTag');
+                if (!styleTag) {
+                    styleTag = document.createElement('style');
+                    styleTag.id = 'customBubbleCssTag';
+                    document.head.appendChild(styleTag);
+                }
+                styleTag.textContent = this.settings.customBubbleCss;
+                saveBtn.textContent = '✅ 已保存';
+                setTimeout(() => { saveBtn.textContent = '💾 保存效果'; }, 2000);
+            });
+
+            btnRow.appendChild(previewBtn);
+            btnRow.appendChild(saveBtn);
+            bubbleEl.appendChild(btnRow);
+        }
+    }
+
+    _applyTempBubbleCss(css) {
+        let el = document.getElementById('tempBubbleCssTag');
+        if (!el) {
+            el = document.createElement('style');
+            el.id = 'tempBubbleCssTag';
+            document.head.appendChild(el);
+        }
+        el.textContent = css;
+    }
+
+    _removeTempBubbleCss() {
+        const el = document.getElementById('tempBubbleCssTag');
+        if (el) el.remove();
     }
     
     escapeHtml(text) {
