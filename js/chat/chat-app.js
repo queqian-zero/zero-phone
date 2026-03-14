@@ -42,13 +42,6 @@ class ChatApp {
         });
         
         console.log('✅ 聊天APP初始化完成');
-        
-        // Bug7修复：从后台恢复时重新渲染聊天列表
-        document.addEventListener('visibilitychange', () => {
-            if (!document.hidden && this.currentPage === 'chatListPage') {
-                this.renderChatList();
-            }
-        });
     }
     
     // 切换页面
