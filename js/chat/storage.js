@@ -456,25 +456,6 @@ deleteMemoryFragment(friendCode, fragmentId) {
         return false;
     }
 }
-
-    // ==================== 亲密关系相关 ====================
-
-getIntimacyData(friendCode) {
-    const chat = this.getChatByFriendCode(friendCode);
-    return chat?.intimacyData || { totalRounds: 0 };
-}
-
-updateIntimacyData(friendCode, updates) {
-    try {
-        const chats = this.getChats();
-        const chat = chats.find(c => c.friendCode === friendCode);
-        if (!chat) return false;
-        if (!chat.intimacyData) chat.intimacyData = { totalRounds: 0 };
-        chat.intimacyData = { ...chat.intimacyData, ...updates };
-        this.saveData(this.KEYS.CHATS, chats);
-        return true;
-    } catch(e) { return false; }
-}
     
     // 获取某个好友的聊天记录
     getChatByFriendCode(friendCode) {
@@ -691,37 +672,7 @@ setMessages(friendCode, messages) {
         console.log('记忆:', this.getData(this.KEYS.MEMORIES));
         console.log('用户:', this.getUserSettings());
     }
-    
-    // ==================== 聊天列表隐藏相关 ====================
-
-// 从聊天列表隐藏（不删消息）
-hideChatFromList(friendCode) {
-    try {
-        const chats = this.getChats();
-        const chat = chats.find(c => c.friendCode === friendCode);
-        if (!chat) return false;
-        chat.hiddenFromList = true;
-        this.saveData(this.KEYS.CHATS, chats);
-        return true;
-    } catch(e) { return false; }
 }
-
-// 恢复显示
-showChatInList(friendCode) {
-    try {
-        const chats = this.getChats();
-        const chat = chats.find(c => c.friendCode === friendCode);
-        if (!chat) return false;
-        chat.hiddenFromList = false;
-        this.saveData(this.KEYS.CHATS, chats);
-        return true;
-    } catch(e) { return false; }
-}
-// ==================== 聊天列表隐藏相关 ====================
-
-}
-
-
 
 // 导出（全局使用）
 window.StorageManager = StorageManager;

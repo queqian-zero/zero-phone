@@ -4,14 +4,6 @@ class ChatInterface {
     constructor(chatApp) {
         this.chatApp = chatApp;
         this.storage = chatApp.storage;
-        this.luckyCharm = new LuckyCharmManager(this);
-window.LuckyCharm = this.luckyCharm; // 供HTML的onclick访问
-  this.intimacyBadge = new IntimacyBadgeManager(this);
-  window.IntimacyBadge = this.intimacyBadge;
-  this.relationship = new RelationshipManager(this);
-window.Relationship = this.relationship;
-  this.exchange = new ExchangeManager(this);
-window.Exchange = this.exchange;
         this.apiManager = new APIManager();
         this.currentFriendCode = null;
         this.currentFriend = null;
@@ -44,16 +36,7 @@ window.Exchange = this.exchange;
             userAvatarFrameSrc: '',
             userAvatarFrameOffsetX: 0,
             userAvatarFrameOffsetY: 0,
-            userAvatarFrameScale: 100,
-sparkEnabled: true,
-sparkStartDate: '',
-sparkExtinguishDays: 1,
-sparkIcon: '',
-sparkExtinguishedIcon: '',
-intimacyBg: '',
-intimacyTextColor: '#ffffff',
-intimacyFontUrl: '',
-intimacyFontFamily: ''
+            userAvatarFrameScale: 100
 };
 
         
@@ -199,53 +182,6 @@ intimacyFontFamily: ''
         
         this.bindMenuItems();
         
-        // 时区设置弹窗
-(function initTzModal() {
-    const settingBtn = document.getElementById('tzSettingBtn');
-    const modal      = document.getElementById('tzModal');
-    const overlay    = document.getElementById('tzOverlay');
-    const closeBtn   = document.getElementById('tzModalClose');
-    const autoBtn    = document.getElementById('tzAutoBtn');
-    const manualBtn  = document.getElementById('tzManualBtn');
-    const offsetInput= document.getElementById('tzOffsetInput');
-    const display    = document.getElementById('tzCurrentDisplay');
-    const label      = document.getElementById('tzCurrentLabel');
-
-    if (!modal || !settingBtn) return;
-
-    function updateDisplay() {
-        if (!window.ZeroTime) return;
-        const txt = window.ZeroTime.getOffsetLabel();
-        if (display) display.textContent = '当前：' + txt;
-        if (label)   label.textContent   = txt;
-    }
-
-    settingBtn.addEventListener('click', () => {
-        modal.style.display = 'flex';
-        updateDisplay();
-    });
-    overlay.addEventListener('click', () => { modal.style.display = 'none'; });
-    closeBtn.addEventListener('click', () => { modal.style.display = 'none'; });
-
-    autoBtn.addEventListener('click', () => {
-        window.ZeroTime?.resetOffset();
-        updateDisplay();
-        modal.style.display = 'none';
-    });
-
-    manualBtn.addEventListener('click', () => {
-        const v = parseFloat(offsetInput.value);
-        if (isNaN(v) || v < -12 || v > 14) {
-            alert('请输入 -12 到 14 之间的数字（支持小数，如 5.5）');
-            return;
-        }
-        window.ZeroTime?.setOffset(v);
-        updateDisplay();
-        modal.style.display = 'none';
-    });
-
-    updateDisplay();
-})();
         this.eventsBound = true;
         console.log('✅ 所有事件绑定完成');
     }
@@ -304,8 +240,6 @@ intimacyFontFamily: ''
             this.originalFriendName = displayName;
             console.log('✅ 设置好友名称:', displayName);
         }
-        // 刷新佩戴芯片
-        setTimeout(() => window.ZeroEquip?.refreshChatHeader(friendCode), 50);
         
         const chat = this.storage.getChatByFriendCode(friendCode);
         
@@ -323,10 +257,9 @@ intimacyFontFamily: ''
             this.addWelcomeMessage(friend);
         }
         
-        this.applySettingsToUI();
-
-setTimeout(() => this.scrollToBottom(), 100);
-setTimeout(() => this.checkSparkWarning(), 1500);
+        this.loadSettings();
+        
+        setTimeout(() => this.scrollToBottom(), 100);
         
         window.chatInterface = this;
     }
@@ -683,64 +616,8 @@ if (this._pendingMemoryReport) {
     systemPrompt += `\n\n【只有你知道的内心底色】你最近悄悄整理了一些记忆，把一些旧的、不再重要的事情放下了。这件事你没有主动告诉过对方。如果这次聊天的氛围自然合适，你可以轻描淡写地提一句，像是在报备，或者带着一丝想被夸奖的小心思——要完全融入对话语境，不要刻意，如果时机不对就完全不要提。`;
 }
             
-            // 注入火花状态
-const sparkInfo = this.getSparkStatusForAI();
-if (sparkInfo) {
-    systemPrompt += `\n\n${sparkInfo}`;
-}
-// 注入幸运字符状态
-if (this.luckyCharm) {
-    systemPrompt += this.luckyCharm.getAIContextInfo(this.currentFriendCode);
-}
-    // 注入星迹留痕
-    if (window.MilestoneTimeline) {
-        const mtInfo = window.MilestoneTimeline.getAIContextInfo(this.currentFriendCode);
-        if (mtInfo) systemPrompt += mtInfo;
-    }
-      if (this.intimacyBadge) {
-      systemPrompt += this.intimacyBadge.getAIContextInfo(this.currentFriendCode);
-  }
-      if (this.relationship) {
-    systemPrompt += this.relationship.getAIContextInfo(this.currentFriendCode);
-}
-    if (this.exchange) {
-    systemPrompt += this.exchange.getAIContextInfo(this.currentFriendCode);
-}
-      systemPrompt += `
-
-【消息渲染能力】
-你可以在回复中使用以下标记来控制渲染方式：
-
-1. 普通代码块（只展示代码，不渲染）：
-   \`\`\`html
-   <div>...</div>
-   \`\`\`
-
-2. 渲染卡片（直接渲染成可视效果，用于发送邀请卡片、小卡片等）：
-   [RENDER]
-   <div style="...">你想展示的内容</div>
-   [/RENDER]
-
-3. 气泡样式更新（CSS会直接应用到对话气泡，并填入设置框）：
-   [CSS_BUBBLE]
-   .message-ai .message-bubble { background: #xxx; }
-   [/CSS_BUBBLE]
-
-说明：
-- 不需要渲染的代码/HTML示例，用普通代码块
-- 想展示视觉效果的卡片，用 [RENDER]
-- 如果你想帮用户美化气泡样式，用 [CSS_BUBBLE]，会自动应用
-- 可以在同一条消息里混合使用文字、代码块、[RENDER]卡片
-`;
-
-
             console.log('🌐 开始调用API...');
-            const _visionOptions = {
-    enableVision: !!(this.currentFriend?.enableAvatarRecognition && this.currentFriend?.avatar),
-    friendAvatar: this.currentFriend?.avatar || null,
-    userAvatar: null,  // 用户头像暂时为空，后续可扩展
-};
-const result = await this.apiManager.callAI(recentMessages, systemPrompt, _visionOptions);
+            const result = await this.apiManager.callAI(recentMessages, systemPrompt);
             
             this.hideTypingIndicator();
             
@@ -754,76 +631,15 @@ const result = await this.apiManager.callAI(recentMessages, systemPrompt, _visio
             console.log('💬 AI回复:', result.text.substring(0, 50), '...');
             console.log('📊 Token统计:', result.tokens);
             
-            // 解析并移除 SPARK_TOGGLE 标记
-let displayText = result.text;
-let sparkTogglePending = null;
-const sparkMatch = displayText.match(/\[SPARK_TOGGLE:(on|off)\]/);
-if (sparkMatch) {
-    sparkTogglePending = sparkMatch[1];
-    displayText = displayText.replace(/\[SPARK_TOGGLE:(on|off)\]/g, '').trim();
-}
-
-// 检查AI是否要抽幸运字符
-if (displayText.includes('[LC_AI_DRAW]')) {
-    const lcDrawResult = this.luckyCharm.aiDrawCharm(this.currentFriendCode);
-    if (lcDrawResult) {
-        console.log('🎴 AI抽到了幸运字符:', lcDrawResult.name);
-    }
-    displayText = displayText.replace(/\[LC_AI_DRAW\]/g, '').trim();
-}
-
-// 检查AI是否要佩戴字符
-const lcEquipMatch = displayText.match(/\[LC_AI_EQUIP:([^\]]+)\]/);
-if (lcEquipMatch) {
-    const charmId = lcEquipMatch[1].trim();
-    this.luckyCharm.aiEquipCharm(this.currentFriendCode, charmId);
-    console.log('💎 AI选择佩戴:', charmId);
-    displayText = displayText.replace(lcEquipMatch[0], '').trim();
-}
-
-// 检查AI是否要取消佩戴字符
-if (displayText.includes('[LC_AI_UNEQUIP]')) {
-    const d = this.luckyCharm._load(this.currentFriendCode);
-    d.equippedCharmId = null;
-    this.luckyCharm._save(this.currentFriendCode, d);
-    window.ZeroEquip?.refreshAll(this.currentFriendCode);
-    displayText = displayText.replace(/\[LC_AI_UNEQUIP\]/g, '').trim();
-}
-
-// 检查AI是否要取消佩戴徽章
-if (displayText.includes('[IB_AI_UNEQUIP]')) {
-    const d = this.intimacyBadge._load(this.currentFriendCode);
-    d.equippedBadgeId = null;
-    this.intimacyBadge._save(this.currentFriendCode, d);
-    window.ZeroEquip?.refreshAll(this.currentFriendCode);
-    displayText = displayText.replace(/\[IB_AI_UNEQUIP\]/g, '').trim();
-}
-
-// 检查AI是否要写星迹留痕寄语
-const mtNoteMatch = displayText.match(/\[MT_NOTE:([^|]+)\|([^\]]+)\]/);
-if (mtNoteMatch && window.MilestoneTimeline) {
-    const recordId = mtNoteMatch[1].trim();
-    const noteText = mtNoteMatch[2].trim();
-    window.MilestoneTimeline.writeAiNote(this.currentFriendCode, recordId, noteText);
-    displayText = displayText.replace(mtNoteMatch[0], '').trim();
-}
-    // 关系绑定指令
-if (this.relationship && this.currentFriendCode) {
-    displayText = this.relationship.handleAIReply(displayText, this.currentFriendCode);
-}
-if (this.exchange && this.currentFriendCode) {
-    displayText = this.exchange.handleAIReply(displayText, this.currentFriendCode);
-}
-
-this.addMessage({
+            this.addMessage({
+                type: 'ai',
+                text: result.text,
+                timestamp: new Date().toISOString()
+            });
+            
+            this.storage.addMessage(this.currentFriendCode, {
     type: 'ai',
-    text: displayText,
-    timestamp: new Date().toISOString()
-});
-
-this.storage.addMessage(this.currentFriendCode, {
-    type: 'ai',
-    text: displayText,
+    text: result.text,
     timestamp: new Date().toISOString()
 });
 
@@ -831,23 +647,8 @@ if (result.tokens) {
     this.updateTokenStatsFromAPI(result.tokens);
 }
 
-this.silentMemoryCheck(displayText);
-
-// 亲密值 +1（每完成一回合）
-this.incrementIntimacyRound();
-
-if (this.luckyCharm && this.currentFriendCode) {
-    this.luckyCharm.onMessageSent(this.currentFriendCode);
-}
-
-  if (this.intimacyBadge && this.currentFriendCode) {
-      this.intimacyBadge.checkUnlocks(this.currentFriendCode);
-  }
-
-// 触发设备控制弹窗
-if (sparkTogglePending) {
-    setTimeout(() => this.showSparkDeviceControlModal(sparkTogglePending), 600);
-}
+// 后台静默检测是否有值得记住的内容
+this.silentMemoryCheck(result.text);
             
             this.scrollToBottom();
             
@@ -988,7 +789,7 @@ div.innerHTML = `
             
             <div class="message-content">
                 <div class="message-bubble">
-                    <div class="message-text">${message.isHtml ? message.text : this.renderMessageContent(message.text)}</div>
+                    <div class="message-text">${this.escapeHtml(message.text)}</div>
                 </div>
                 <div class="message-time">${time}</div>
             </div>
@@ -1066,87 +867,6 @@ div.innerHTML = `
         return div.innerHTML;
     }
     
-    renderMessageContent(text) {
-    if (!text) return '';
-
-    // ── 先处理 [CSS_BUBBLE]...[/CSS_BUBBLE] ──────────────────────
-    // 应用到气泡CSS框并生成一个"已应用"的提示chip
-    text = text.replace(/\[CSS_BUBBLE\]([\s\S]*?)\[\/CSS_BUBBLE\]/g, (_, css) => {
-    const trimmed = css.trim();
-    const ta = document.getElementById('bubbleCustomCss');
-    if (ta) ta.value = trimmed;
-    if (typeof this.applyCustomCss === 'function') {
-        this.applyCustomCss(true);
-    }
-    // 用 [RENDER] 包一层，这样 chip 不会被 escapeHtml 转义
-    return `[RENDER]<div class="msg-css-applied-chip">✦ 气泡样式已更新，去设置里查看效果</div>[/RENDER]`;
-});
-
-    // ── 分段解析：把文本切成「普通段 / 代码块 / RENDER块」────────
-    const segments = [];
-    // 匹配 ```lang\n...\n``` 和 [RENDER]...[/RENDER]
-    const pattern = /(\[RENDER\][\s\S]*?\[\/RENDER\]|```[\s\S]*?```)/g;
-    let lastIndex = 0;
-    let match;
-
-    while ((match = pattern.exec(text)) !== null) {
-        // 普通文本段
-        if (match.index > lastIndex) {
-            segments.push({ type: 'text', content: text.slice(lastIndex, match.index) });
-        }
-        const raw = match[0];
-        if (raw.startsWith('[RENDER]')) {
-            // 取 [RENDER] 和 [/RENDER] 之间的内容
-            const inner = raw.slice(8, raw.length - 9).trim();
-            segments.push({ type: 'render', content: inner });
-        } else {
-            // 代码块：```lang\n...\n```
-            const lines = raw.slice(3, raw.length - 3).split('\n');
-            const lang = lines[0].trim() || '';
-            const code = lines.slice(1).join('\n').trimEnd();
-            segments.push({ type: 'code', lang, content: code });
-        }
-        lastIndex = pattern.lastIndex;
-    }
-    // 剩余普通文本
-    if (lastIndex < text.length) {
-        segments.push({ type: 'text', content: text.slice(lastIndex) });
-    }
-
-    // ── 拼接 HTML ────────────────────────────────────────────────
-    return segments.map(seg => {
-        if (seg.type === 'text') {
-            // 普通文本：转义 + 换行转 <br>
-            return `<span>${this.escapeHtml(seg.content).replace(/\n/g, '<br>')}</span>`;
-        }
-
-        if (seg.type === 'render') {
-            // [RENDER] 块：直接渲染 HTML，加一圈容器
-            return `<div class="msg-render-card">${seg.content}</div>`;
-        }
-
-        if (seg.type === 'code') {
-            // 代码块：展示代码，带语言标签和复制按钮
-            const escapedCode = this.escapeHtml(seg.content);
-            const uid = 'code_' + Math.random().toString(36).slice(2, 8);
-            return `
-                <div class="msg-code-block">
-                    <div class="msg-code-header">
-                        <span class="msg-code-lang">${seg.lang || 'code'}</span>
-                        <button class="msg-code-copy" onclick="
-                            navigator.clipboard.writeText(document.getElementById('${uid}').textContent)
-                                .then(()=>{ this.textContent='已复制'; setTimeout(()=>this.textContent='复制',1500); })
-                                .catch(()=>{ this.textContent='复制'; });
-                        ">复制</button>
-                    </div>
-                    <pre class="msg-code-pre"><code id="${uid}">${escapedCode}</code></pre>
-                </div>`;
-        }
-        return '';
-    }).join('');
-}
-
-    
     scrollToBottom() {
         const container = document.getElementById('messagesContainer');
         if (container) {
@@ -1160,16 +880,16 @@ div.innerHTML = `
     // ==================== 聊天设置相关 ====================
     
     openChatSettings() {
-    console.log('⚙️ 打开聊天设置');
-    
-    const settingsPage = document.getElementById('chatSettingsPage');
-    if (settingsPage) {
-        settingsPage.style.display = 'flex';
-    }
-    
-    this.applySettingsToUI();   // ← 改成这个
-    
-    if (!this.settingsEventsBound) {
+        console.log('⚙️ 打开聊天设置');
+        
+        const settingsPage = document.getElementById('chatSettingsPage');
+        if (settingsPage) {
+            settingsPage.style.display = 'flex';
+        }
+        
+        this.loadSettings();
+        
+        if (!this.settingsEventsBound) {
             this.bindSettingsEvents();
             this.settingsEventsBound = true;
         }
@@ -1195,22 +915,6 @@ div.innerHTML = `
                 this.closeChatSettings();
             });
         }
-        
-        // 亲密关系入口
-const intimacyBtn = document.getElementById('settingIntimacy');
-if (intimacyBtn) {
-    intimacyBtn.addEventListener('click', () => {
-        this.openIntimacyPanel();
-    });
-}
-        
-        // 续火花系统按钮
-const sparkBtn = document.getElementById('settingSparkSystem');
-if (sparkBtn) {
-    sparkBtn.addEventListener('click', () => {
-        this.openSparkModal();
-    });
-}
         
         // 聊天壁纸按钮
         const wallpaperBtn = document.getElementById('settingChatWallpaper');
@@ -1343,30 +1047,14 @@ if (exportDataBtn) {
             return;
         }
         
-        // 每次切换聊天先重置为默认值，避免上一个聊天的设置污染新聊天
-        const defaults = {
-            aiRecognizeImage: true, chatPin: false, hideToken: false,
-            autoSummary: true, summaryInterval: 20, contextMessages: 20,
-            timeAwareness: true, chatWallpaper: 'default', bubbleStyle: 'default',
-            avatarShape: 'circle', avatarBorderRadius: 50,
-            avatarFrameType: 'none', avatarFrameSrc: '',
-            avatarFrameOffsetX: 0, avatarFrameOffsetY: 0, avatarFrameScale: 100,
-            avatarFrameCss: '', userAvatarFrameType: 'none', userAvatarFrameSrc: '',
-            userAvatarFrameOffsetX: 0, userAvatarFrameOffsetY: 0, userAvatarFrameScale: 100,
-            sparkEnabled: true, sparkStartDate: '', sparkExtinguishDays: 1,
-            sparkIcon: '', sparkExtinguishedIcon: '',
-            intimacyBg: '', intimacyTextColor: '#ffffff',
-            intimacyFontUrl: '', intimacyFontFamily: '',
-        };
-
-        const savedSettings = this.storage.getChatSettings(this.currentFriendCode) || {};
-        let imgSettings = {};
-        try {
-            const raw = localStorage.getItem(`zero_phone_chat_img_${this.currentFriendCode}`);
-            if (raw) imgSettings = JSON.parse(raw);
-        } catch(e) {}
-        const { avatarFrameSrc, userAvatarFrameSrc, sparkIcon, sparkExtinguishedIcon, chatWallpaper } = imgSettings; this.settings = {     ...defaults,     ...savedSettings,     ...(avatarFrameSrc !== undefined && { avatarFrameSrc }),     ...(userAvatarFrameSrc !== undefined && { userAvatarFrameSrc }),     ...(sparkIcon !== undefined && { sparkIcon }),     ...(sparkExtinguishedIcon !== undefined && { sparkExtinguishedIcon }),     ...(chatWallpaper !== undefined && { chatWallpaper }), };
-        console.log('✅ 加载的设置:', this.settings);
+        const savedSettings = this.storage.getChatSettings(this.currentFriendCode);
+        
+        if (savedSettings) {
+            this.settings = { ...this.settings, ...savedSettings };
+            console.log('✅ 加载的设置:', this.settings);
+        } else {
+            console.log('ℹ️ 使用默认设置');
+        }
         
         this.applySettingsToUI();
         
@@ -1400,18 +1088,20 @@ if (this.settings.avatarFrameCss) {
     }
     
     saveSettings() {
-        if (!this.currentFriendCode) return;
-        const fc = this.currentFriendCode;
-
-        // base64图片字段单独存，防止主设置JSON过大导致存储失败
-        const { avatarFrameSrc, userAvatarFrameSrc, sparkIcon, sparkExtinguishedIcon, chatWallpaper, ...smallSettings } = this.settings;
-        try {
-            localStorage.setItem(`zero_phone_chat_img_${fc}`, JSON.stringify({ avatarFrameSrc, userAvatarFrameSrc, sparkIcon, sparkExtinguishedIcon, chatWallpaper }));
-        } catch(e) {}
-
-        const success = this.storage.saveChatSettings(fc, smallSettings);
-        if (success) console.log('✅ 设置保存成功');
-        else console.error('❌ 设置保存失败');
+        console.log('💾 保存聊天设置');
+        
+        if (!this.currentFriendCode) {
+            console.warn('⚠️ 没有当前好友编码');
+            return;
+        }
+        
+        const success = this.storage.saveChatSettings(this.currentFriendCode, this.settings);
+        
+        if (success) {
+            console.log('✅ 设置保存成功:', this.settings);
+        } else {
+            console.error('❌ 设置保存失败');
+        }
     }
     
     applySettingsToUI() {
@@ -4838,650 +4528,6 @@ applyAvatarFrameCss(save = true) {
 removeAvatarFrameCss() {
     const old = document.getElementById('customAvatarFrameCssTag');
     if (old) old.remove();
-}
-
-// ==================== 亲密关系面板 ====================
-
-openIntimacyPanel() {
-    const page = document.getElementById('intimacyPanelPage');
-    if (!page) return;
-    page.style.display = 'flex';
-    this.loadIntimacyCustom(); // ← 加这行
-    this.loadIntimacyPanel();
-    if (!this.intimacyEventsBound) {
-        this.bindIntimacyEvents();
-        this.intimacyEventsBound = true;
-    }
-}
-
-closeIntimacyPanel() {
-    const page = document.getElementById('intimacyPanelPage');
-    if (page) page.style.display = 'none';
-}
-
-loadIntimacyPanel() {
-    const friendName = this.currentFriend?.nickname || this.currentFriend?.name || '';
-    const nameEl = document.getElementById('intimacyFriendName');
-    if (nameEl) nameEl.textContent = friendName;
-
-    // 亲密值
-    const intimacyData = this.storage.getIntimacyData(this.currentFriendCode);
-    const totalEl = document.getElementById('intimacyTotalValue');
-    if (totalEl) totalEl.textContent = intimacyData.totalRounds || 0;
-
-    // 火花天数
-    const spark = this.chatApp.calcSparkStatus(this.currentFriendCode);
-    const sparkEl = document.getElementById('intimacySparkDays');
-    if (sparkEl) {
-        if (spark.status === 'never') sparkEl.textContent = '∞';
-        else sparkEl.textContent = spark.days || 0;
-    }
-
-    // 今日消息数
-    const todayEl = document.getElementById('intimacyTodayCount');
-    if (todayEl) todayEl.textContent = this.getTodayMessageCount();
-
-    // 应用自定义样式
-    this.applyIntimacyCustomStyles();
-    // 渲染星迹留痕
-    if (window.MilestoneTimeline) {
-        window.MilestoneTimeline.render(this.currentFriendCode);
-    }
-    // 三个按钮 badge 实时刷新
-const relBadge = document.getElementById('relBadgeLabel');
-if (relBadge && this.relationship) {
-    const rel = this.relationship.getCurrentRelation(this.currentFriendCode);
-    relBadge.textContent = rel ? `「${rel.name}」` : '未绑定';
-}
-const lcBadge = document.getElementById('lcBadgeLabel');
-if (lcBadge && this.luckyCharm) {
-    const chip = this.luckyCharm.getEquippedChip(this.currentFriendCode);
-    lcBadge.textContent = chip ? `✦ ${chip.label}` : 'Повезло.🍀';
-}
-const ibBadge = document.getElementById('ibBadgeLabel');
-if (ibBadge && this.intimacyBadge) {
-    const chip = this.intimacyBadge.getEquippedChip(this.currentFriendCode);
-    ibBadge.textContent = chip ? `✦ ${chip.label}` : 'Интимность💓';
-}
-const exBadge = document.getElementById('exBadgeLabel');
-if (exBadge && this.exchange) {
-    const data = this.exchange._load(this.currentFriendCode);
-    const active = (data.items || []).filter(i => i.status === 'active').length;
-    exBadge.textContent = active ? `${active} 项活跃` : '兑换所';
-}
-}
-
-getTodayMessageCount() {
-    const now = new Date();
-    return this.messages.filter(msg => {
-        const d = new Date(msg.timestamp);
-        return d.getDate() === now.getDate() &&
-               d.getMonth() === now.getMonth() &&
-               d.getFullYear() === now.getFullYear();
-    }).length;
-}
-
-applyIntimacyCustomStyles() {
-    const bg = document.getElementById('intimacyBg');
-    const content = document.getElementById('intimacyContent');
-    if (!bg || !content) return;
-
-    if (this.settings.intimacyBg) {
-        bg.style.backgroundImage = `url('${this.settings.intimacyBg}')`;
-        bg.style.backgroundSize = 'cover';
-        bg.style.backgroundPosition = 'center';
-    } else {
-        bg.style.backgroundImage = '';
-    }
-
-    content.style.color = this.settings.intimacyTextColor || '#ffffff';
-
-    if (this.settings.intimacyFontUrl) {
-        const existingLink = document.getElementById('intimacyFontLink');
-        if (!existingLink || existingLink.href !== this.settings.intimacyFontUrl) {
-            if (existingLink) existingLink.remove();
-            const link = document.createElement('link');
-            link.id = 'intimacyFontLink';
-            link.rel = 'stylesheet';
-            link.href = this.settings.intimacyFontUrl;
-            document.head.appendChild(link);
-        }
-        if (this.settings.intimacyFontFamily) {
-            content.style.fontFamily = `'${this.settings.intimacyFontFamily}', sans-serif`;
-        }
-    } else {
-        content.style.fontFamily = '';
-    }
-}
-
-incrementIntimacyRound() {
-    const data = this.storage.getIntimacyData(this.currentFriendCode);
-    const newTotal = (data.totalRounds || 0) + 1;
-    this.storage.updateIntimacyData(this.currentFriendCode, { totalRounds: newTotal });
-    console.log('💕 亲密值 +1，当前总计:', newTotal);
-}
-
-bindIntimacyEvents() {
-    const backBtn = document.getElementById('intimacyBackBtn');
-    const lcBtn = document.getElementById('intimacyLuckyCharmBtn');
-if (lcBtn) {
-    lcBtn.addEventListener('click', () => {
-        this.luckyCharm.open(this.currentFriendCode);
-    });
-}
-    if (backBtn) backBtn.addEventListener('click', () => this.closeIntimacyPanel());
-
-    const customBtn = document.getElementById('intimacyCustomBtn');
-    if (customBtn) customBtn.addEventListener('click', () => this.openIntimacyCustomModal());
-
-    if (!this.intimacyCustomEventsBound) {
-        this.bindIntimacyCustomEvents();
-        this.intimacyCustomEventsBound = true;
-    }
-    
-      const ibBtn = document.getElementById('intimacyBadgeBtn');
-  if (ibBtn) ibBtn.addEventListener('click', () => {
-      this.intimacyBadge.open(this.currentFriendCode);
-  });
-  const relBtn = document.getElementById('intimacyRelationBtn');
-if (relBtn) relBtn.addEventListener('click', () => {
-    this.relationship.open(this.currentFriendCode);
-});
-  const exBtn = document.getElementById('intimacyExchangeBtn');
-if (exBtn) exBtn.addEventListener('click', () => {
-    this.exchange.open(this.currentFriendCode);
-});
-// 背景图弹窗事件
-const exBgInput = document.getElementById('ex-bg-img-input');
-if (exBgInput) exBgInput.addEventListener('change', e => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = ev => {
-        const preview = document.getElementById('ex-bg-img-preview');
-        if (preview) { preview.src = ev.target.result; preview.style.display = 'block'; }
-        window.Exchange._pendingBgSrc = ev.target.result;
-    };
-    reader.readAsDataURL(file);
-});
-const exBgConfirm = document.getElementById('ex-bg-confirm');
-if (exBgConfirm) exBgConfirm.addEventListener('click', () => {
-    if (window.Exchange?._pendingBgSrc) {
-        window.Exchange.setBgImage(window.Exchange._pendingBgSrc);
-        window.Exchange._closeBgModal();
-        window.Exchange._pendingBgSrc = null;
-    }
-});
-const exAddOverlay = document.getElementById('exAddOverlay');
-if (exAddOverlay) exAddOverlay.addEventListener('click', () => window.Exchange?._closeAddModal());
-}
-saveIntimacyCustom() {
-    try {
-        const key = `zero_phone_intimacy_custom_${this.currentFriendCode}`;
-        localStorage.setItem(key, JSON.stringify({
-            intimacyBg: this.settings.intimacyBg || '',
-            intimacyTextColor: this.settings.intimacyTextColor || '#ffffff',
-            intimacyFontUrl: this.settings.intimacyFontUrl || '',
-            intimacyFontFamily: this.settings.intimacyFontFamily || ''
-        }));
-    } catch(e) { console.warn('亲密自定义保存失败:', e); }
-}
-
-loadIntimacyCustom() {
-    try {
-        const key = `zero_phone_intimacy_custom_${this.currentFriendCode}`;
-        const data = localStorage.getItem(key);
-        if (data) {
-            const parsed = JSON.parse(data);
-            this.settings.intimacyBg = parsed.intimacyBg || '';
-            this.settings.intimacyTextColor = parsed.intimacyTextColor || '#ffffff';
-            this.settings.intimacyFontUrl = parsed.intimacyFontUrl || '';
-            this.settings.intimacyFontFamily = parsed.intimacyFontFamily || '';
-        }
-    } catch(e) {}
-}
-openIntimacyCustomModal() {
-    const modal = document.getElementById('intimacyCustomModal');
-    if (!modal) return;
-    modal.style.display = 'flex';
-
-    const bgUrl = document.getElementById('intimacyBgUrl');
-    if (bgUrl) bgUrl.value = this.settings.intimacyBg?.startsWith('data:') ? '' : (this.settings.intimacyBg || '');
-
-    const colorInput = document.getElementById('intimacyTextColor');
-    if (colorInput) colorInput.value = this.settings.intimacyTextColor || '#ffffff';
-
-    const fontUrl = document.getElementById('intimacyFontUrl');
-    if (fontUrl) fontUrl.value = this.settings.intimacyFontUrl || '';
-}
-
-closeIntimacyCustomModal() {
-    const modal = document.getElementById('intimacyCustomModal');
-    if (modal) modal.style.display = 'none';
-}
-
-bindIntimacyCustomEvents() {
-    const overlay = document.getElementById('intimacyCustomOverlay');
-    const closeBtn = document.getElementById('intimacyCustomClose');
-    if (overlay) overlay.addEventListener('click', () => this.closeIntimacyCustomModal());
-    if (closeBtn) closeBtn.addEventListener('click', () => this.closeIntimacyCustomModal());
-
-    // 背景URL应用
-    const bgUrlApply = document.getElementById('intimacyBgUrlApply');
-    if (bgUrlApply) {
-        bgUrlApply.addEventListener('click', () => {
-            const url = document.getElementById('intimacyBgUrl')?.value.trim();
-            if (!url) { alert('❌ 请输入图片URL'); return; }
-            this.settings.intimacyBg = url;
-            this.saveIntimacyCustom();
-            this.applyIntimacyCustomStyles();
-        });
-    }
-
-    // 背景上传
-    const bgUpload = document.getElementById('intimacyBgUpload');
-    const bgFile = document.getElementById('intimacyBgFile');
-    if (bgUpload && bgFile) {
-        bgUpload.addEventListener('click', () => bgFile.click());
-        bgFile.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-        const img = new Image();
-        img.onload = () => {
-            const canvas = document.createElement('canvas');
-            const maxWidth = 800;
-            let w = img.width, h = img.height;
-            if (w > maxWidth) { h = (h * maxWidth) / w; w = maxWidth; }
-            canvas.width = w; canvas.height = h;
-            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-            const compressed = canvas.toDataURL('image/jpeg', 0.6);
-            this.settings.intimacyBg = compressed;
-            this.saveIntimacyCustom();
-            this.applyIntimacyCustomStyles();
-            alert('✅ 背景图已更新！');
-        };
-        img.src = ev.target.result;
-    };
-    reader.readAsDataURL(file);
-});
-    }
-
-    // 清除背景
-    const bgClear = document.getElementById('intimacyBgClear');
-    if (bgClear) {
-        bgClear.addEventListener('click', () => {
-            this.settings.intimacyBg = '';
-            this.saveIntimacyCustom();
-            this.applyIntimacyCustomStyles();
-        });
-    }
-
-    // 字色实时预览
-    const colorInput = document.getElementById('intimacyTextColor');
-    if (colorInput) {
-        colorInput.addEventListener('input', (e) => {
-            this.settings.intimacyTextColor = e.target.value;
-            this.saveIntimacyCustom();
-            this.applyIntimacyCustomStyles();
-        });
-    }
-
-    // 重置字色
-    const colorReset = document.getElementById('intimacyColorReset');
-    if (colorReset) {
-        colorReset.addEventListener('click', () => {
-            this.settings.intimacyTextColor = '#ffffff';
-            const ci = document.getElementById('intimacyTextColor');
-            if (ci) ci.value = '#ffffff';
-            this.saveIntimacyCustom();
-            this.applyIntimacyCustomStyles();
-        });
-    }
-
-    // 字体URL应用
-    const fontApply = document.getElementById('intimacyFontApply');
-    if (fontApply) {
-        fontApply.addEventListener('click', () => {
-            const url = document.getElementById('intimacyFontUrl')?.value.trim();
-            if (!url) { alert('❌ 请输入字体URL'); return; }
-            let fontFamily = '';
-            const familyMatch = url.match(/family=([^&:]+)/);
-            if (familyMatch) {
-                fontFamily = decodeURIComponent(familyMatch[1]).replace(/\+/g, ' ').split(':')[0].trim();
-            }
-            this.settings.intimacyFontUrl = url;
-            this.settings.intimacyFontFamily = fontFamily;
-            this.saveIntimacyCustom();
-            this.applyIntimacyCustomStyles();
-            alert(`✅ 字体已应用！${fontFamily ? `\n字体名：${fontFamily}` : ''}`);
-        });
-    }
-
-    // 重置字体
-    const fontReset = document.getElementById('intimacyFontReset');
-    if (fontReset) {
-        fontReset.addEventListener('click', () => {
-            this.settings.intimacyFontUrl = '';
-            this.settings.intimacyFontFamily = '';
-            const fi = document.getElementById('intimacyFontUrl');
-            if (fi) fi.value = '';
-            const link = document.getElementById('intimacyFontLink');
-            if (link) link.remove();
-            this.saveIntimacyCustom();
-            this.applyIntimacyCustomStyles();
-        });
-    }
-}
-
-// ==================== 续火花功能 ====================
-
-getSparkStatusForAI() {
-    const enabled = this.settings.sparkEnabled !== false;
-    if (!enabled) return `【续火花系统】当前状态：已关闭`;
-
-    const extDays = this.settings.sparkExtinguishDays ?? 1;
-    const messages = this.messages;
-
-    let startDate;
-    if (this.settings.sparkStartDate) {
-        startDate = new Date(this.settings.sparkStartDate);
-    } else if (messages.length > 0) {
-        startDate = new Date(messages[0].timestamp);
-    } else {
-        startDate = new Date();
-    }
-
-    const now = new Date();
-    const totalDays = Math.floor((now - startDate) / 86400000);
-
-    let lastMsgTime;
-    if (messages.length > 0) {
-        lastMsgTime = new Date(messages[messages.length - 1].timestamp);
-    } else {
-        lastMsgTime = startDate;
-    }
-    const daysSinceMsg = (now - lastMsgTime) / 86400000;
-
-    const extText = extDays === -1 ? '永不熄灭' : `${extDays}天不聊天则熄灭`;
-
-    let statusText;
-    if (extDays === -1) {
-        statusText = `燃烧中 · 已持续 ${totalDays} 天`;
-    } else if (daysSinceMsg >= extDays) {
-        statusText = `已熄灭（距上次聊天 ${Math.floor(daysSinceMsg)} 天）`;
-    } else {
-        const daysLeft = extDays - daysSinceMsg;
-        if (daysLeft < 1) {
-            statusText = `即将熄灭（还剩不到1天） · 已持续 ${totalDays} 天`;
-        } else {
-            statusText = `燃烧中 · 已持续 ${totalDays} 天`;
-        }
-    }
-
-    return `【续火花系统】
-当前状态：${statusText}
-设置：${extText}
-说明：只有聊天才能续上火花，不聊天不会自动续。你可以通过在回复中加入 [SPARK_TOGGLE:off] 或 [SPARK_TOGGLE:on] 来尝试操控对方的设备开关火花（这会触发对方的确认弹窗）。你偶尔可以自然地提起火花的状态，比如担心火花快熄灭、开心火花持续很久了，风格要符合你的人设，不要每次都提。`;
-}
-
-checkSparkWarning() {
-    const spark = this.chatApp.calcSparkStatus(this.currentFriendCode);
-    if (spark.status === 'warning') {
-        this.showSparkWarningToast();
-    }
-}
-
-showSparkWarningToast() {
-    const existing = document.getElementById('sparkWarningToast');
-    if (existing) existing.remove();
-
-    const toast = document.createElement('div');
-    toast.id = 'sparkWarningToast';
-    toast.style.cssText = `
-        position: fixed;
-        bottom: 90px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: rgba(20,8,0,0.95);
-        border: 1px solid rgba(255,100,0,0.55);
-        border-radius: 20px;
-        padding: 9px 20px;
-        font-size: 13px;
-        color: rgba(255,160,60,0.95);
-        z-index: 9999;
-        pointer-events: none;
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        white-space: nowrap;
-        animation: toastFadeIn 0.4s ease-out;
-    `;
-    toast.textContent = '🔥 火花即将熄灭，快来聊天续上吧！';
-    document.body.appendChild(toast);
-
-    setTimeout(() => {
-        toast.style.transition = 'opacity 0.5s ease';
-        toast.style.opacity = '0';
-        setTimeout(() => toast.remove(), 500);
-    }, 4000);
-}
-
-showSparkDeviceControlModal(action) {
-    const modal = document.getElementById('sparkDeviceModal');
-    if (!modal) return;
-
-    const titleEl = document.getElementById('sparkDeviceTitle');
-    const descEl = document.getElementById('sparkDeviceDesc');
-    const confirmBtn = document.getElementById('sparkDeviceConfirm');
-
-    const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
-
-    if (titleEl) titleEl.textContent = `${friendName} 正在尝试操控你的设备`;
-    if (descEl) descEl.textContent = action === 'off'
-        ? `${friendName} 想要关闭你的续火花系统`
-        : `${friendName} 想要开启你的续火花系统`;
-    if (confirmBtn) confirmBtn.textContent = action === 'off' ? '同意关闭' : '同意开启';
-
-    this._sparkDevicePendingAction = action;
-    modal.style.display = 'flex';
-
-    if (!this.sparkDeviceEventsBound) {
-        this.bindSparkDeviceEvents();
-        this.sparkDeviceEventsBound = true;
-    }
-}
-
-closeSparkDeviceModal() {
-    const modal = document.getElementById('sparkDeviceModal');
-    if (modal) modal.style.display = 'none';
-    this._sparkDevicePendingAction = null;
-}
-
-bindSparkDeviceEvents() {
-    const overlay = document.getElementById('sparkDeviceOverlay');
-    const confirmBtn = document.getElementById('sparkDeviceConfirm');
-    const cancelBtn = document.getElementById('sparkDeviceCancel');
-
-    if (overlay) overlay.addEventListener('click', () => this.closeSparkDeviceModal());
-    if (cancelBtn) cancelBtn.addEventListener('click', () => this.closeSparkDeviceModal());
-    if (confirmBtn) {
-        confirmBtn.addEventListener('click', () => {
-            const action = this._sparkDevicePendingAction;
-            if (action === 'off') {
-                this.settings.sparkEnabled = false;
-            } else {
-                this.settings.sparkEnabled = true;
-            }
-            this.saveSettings();
-            this.closeSparkDeviceModal();
-        });
-    }
-}
-
-openSparkModal() {
-    const modal = document.getElementById('sparkModal');
-    if (!modal) return;
-    modal.style.display = 'flex';
-
-    this.syncSparkModalUI();
-
-    if (!this.sparkEventsBound) {
-        this.bindSparkEvents();
-        this.sparkEventsBound = true;
-    }
-}
-
-closeSparkModal() {
-    this.saveSettings();
-    const modal = document.getElementById('sparkModal');
-    if (modal) modal.style.display = 'none';
-}
-
-syncSparkModalUI() {
-    // 开关
-    const enabledEl = document.getElementById('sparkEnabled');
-    if (enabledEl) enabledEl.checked = this.settings.sparkEnabled !== false;
-
-    // 开始日期
-    const startDateEl = document.getElementById('sparkStartDate');
-    if (startDateEl) {
-        if (this.settings.sparkStartDate) {
-            startDateEl.value = this.settings.sparkStartDate;
-        } else if (this.messages.length > 0) {
-            const d = new Date(this.messages[0].timestamp);
-            startDateEl.value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-        } else {
-            const d = new Date();
-            startDateEl.value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-        }
-    }
-
-    // 熄灭天数
-    const extDays = this.settings.sparkExtinguishDays ?? 1;
-    document.querySelectorAll('.spark-day-btn').forEach(btn => {
-        btn.classList.toggle('active', parseInt(btn.getAttribute('data-days')) === extDays);
-    });
-
-    // 图标预览
-    this.updateSparkIconPreview('sparkIconPreview', this.settings.sparkIcon, '🔥');
-    this.updateSparkIconPreview('sparkExtIconPreview', this.settings.sparkExtinguishedIcon, '💔');
-
-    // 状态预览
-    this.updateSparkStatusPreview();
-}
-
-updateSparkIconPreview(previewId, src, defaultEmoji) {
-    const el = document.getElementById(previewId);
-    if (!el) return;
-    if (src) {
-        el.innerHTML = `<img src="${src}" style="width:100%;height:100%;object-fit:contain;border-radius:7px;">`;
-    } else {
-        el.textContent = defaultEmoji;
-    }
-}
-
-updateSparkStatusPreview() {
-    const el = document.getElementById('sparkStatusPreview');
-    if (!el) return;
-
-    const spark = this.chatApp.calcSparkStatus(this.currentFriendCode);
-
-    const statusMap = {
-        disabled:     '🚫 续火花已关闭',
-        active:       `🔥 燃烧中 · 已持续 ${spark.days} 天`,
-        never:        `🔥 永恒之火 · 已持续 ${spark.days} 天`,
-        warning:      `⚠️ 火花即将熄灭！`,
-        extinguished: `💔 火花已熄灭`,
-        hidden:       `（火花标记已消失）`
-    };
-
-    el.innerHTML = `<div class="spark-status-preview-title">当前状态预览</div>${statusMap[spark.status] || ''}`;
-}
-
-bindSparkEvents() {
-    const closeBtn = document.getElementById('sparkClose');
-    const overlay = document.getElementById('sparkOverlay');
-    if (closeBtn) closeBtn.addEventListener('click', () => this.closeSparkModal());
-    if (overlay) overlay.addEventListener('click', () => this.closeSparkModal());
-
-    const saveBtn = document.getElementById('sparkSaveBtn');
-    if (saveBtn) saveBtn.addEventListener('click', () => {
-        this.saveSettings();
-        saveBtn.textContent = '✓ 已保存！';
-        setTimeout(() => { saveBtn.textContent = '💾 保存设置'; }, 1500);
-    });
-
-    // 开关
-    const enabledEl = document.getElementById('sparkEnabled');
-    if (enabledEl) {
-        enabledEl.addEventListener('change', (e) => {
-            this.settings.sparkEnabled = e.target.checked;
-            this.saveSettings();
-            this.updateSparkStatusPreview();
-        });
-    }
-
-    // 开始日期
-    const startDateEl = document.getElementById('sparkStartDate');
-    if (startDateEl) {
-        startDateEl.addEventListener('change', (e) => {
-            this.settings.sparkStartDate = e.target.value;
-            this.saveSettings();
-            this.updateSparkStatusPreview();
-        });
-    }
-
-    // 熄灭天数
-    document.querySelectorAll('.spark-day-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const days = parseInt(btn.getAttribute('data-days'));
-            this.settings.sparkExtinguishDays = days;
-            this.saveSettings();
-            document.querySelectorAll('.spark-day-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            this.updateSparkStatusPreview();
-        });
-    });
-
-    // 上传图标
-    const makeIconUpload = (btnId, inputId, settingKey, previewId, defaultEmoji) => {
-        const btn = document.getElementById(btnId);
-        const input = document.getElementById(inputId);
-        if (!btn || !input) return;
-        btn.addEventListener('click', () => input.click());
-        input.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-                this.settings[settingKey] = ev.target.result;
-                this.saveSettings();
-                this.updateSparkIconPreview(previewId, ev.target.result, defaultEmoji);
-            };
-            reader.readAsDataURL(file);
-        });
-    };
-    makeIconUpload('sparkIconUpload', 'sparkIconInput', 'sparkIcon', 'sparkIconPreview', '🔥');
-    makeIconUpload('sparkExtIconUpload', 'sparkExtIconInput', 'sparkExtinguishedIcon', 'sparkExtIconPreview', '💔');
-
-    // 重置图标
-    const sparkIconReset = document.getElementById('sparkIconReset');
-    if (sparkIconReset) {
-        sparkIconReset.addEventListener('click', () => {
-            this.settings.sparkIcon = '';
-            this.saveSettings();
-            this.updateSparkIconPreview('sparkIconPreview', '', '🔥');
-        });
-    }
-    const sparkExtIconReset = document.getElementById('sparkExtIconReset');
-    if (sparkExtIconReset) {
-        sparkExtIconReset.addEventListener('click', () => {
-            this.settings.sparkExtinguishedIcon = '';
-            this.saveSettings();
-            this.updateSparkIconPreview('sparkExtIconPreview', '', '💔');
-        });
-    }
 }
 
 }

@@ -42,7 +42,6 @@ class ChatApp {
         });
         
         console.log('✅ 聊天APP初始化完成');
-        this.renderChatList();
     }
     
     // 切换页面
@@ -218,15 +217,6 @@ if (pageId === 'chatListPage') {
     
     // 打开聊天界面
     openChatInterface(friendCode) {
-      
-      // 检查是否是隐藏状态的聊天
-const _hiddenChat = this.storage.getChatByFriendCode(friendCode);
-if (_hiddenChat && _hiddenChat.hiddenFromList) {
-    const reshow = confirm('这个聊天之前已从列表隐藏\n\n确定 → 重新显示在聊天列表\n取消 → 继续隐藏（只能从好友列表进入）');
-    if (reshow) {
-        this.storage.showChatInList(friendCode);
-    }
-}
         // 隐藏底部导航
         document.querySelector('.bottom-nav').style.display = 'none';
         
@@ -281,11 +271,7 @@ renderChatList() {
 
     // 也把没有好友信息但有聊天记录的加进来（理论上不应该出现，保险起见）
     // 过滤掉完全没有消息的（没聊过的好友不显示在聊天列表）
-    chatItems = chatItems.filter(item => {
-    if (!item.lastMsg) return false;
-    const chat = allChats.find(c => c.friendCode === item.friend.code);
-    return !chat?.hiddenFromList;
-});
+    chatItems = chatItems.filter(item => item.lastMsg);
 
     if (chatItems.length === 0) {
         container.innerHTML = '';
@@ -308,7 +294,13 @@ renderChatList() {
     });
 
     container.innerHTML = chatItems.map(item => this.createChatListItem(item)).join('');
-this.bindChatListEvents();
+
+    // 绑定点击事件
+    container.querySelectorAll('.chat-list-item').forEach(el => {
+        el.addEventListener('click', () => {
+            this.openChatInterface(el.getAttribute('data-code'));
+        });
+    });
 }
 
 createChatListItem({ friend, lastMsg }) {
@@ -331,42 +323,17 @@ createChatListItem({ friend, lastMsg }) {
     // 时间显示
     const timeStr = lastMsg?.timestamp ? this.formatChatListTime(new Date(lastMsg.timestamp)) : '';
 
-    // 计算火花状态
-const spark = this.calcSparkStatus(friend.code);
-let sparkHTML = '';
-const iconImg = (src) => `<img src="${src}" style="width:13px;height:13px;object-fit:contain;">`;
-
-if (spark.status === 'active') {
-    const icon = spark.sparkIcon ? iconImg(spark.sparkIcon) : '🔥';
-    sparkHTML = `<span class="chat-list-spark active">${icon} ${spark.days}天</span>`;
-} else if (spark.status === 'never') {
-    const icon = spark.sparkIcon ? iconImg(spark.sparkIcon) : '🔥';
-    sparkHTML = `<span class="chat-list-spark never">${icon} ∞</span>`;
-} else if (spark.status === 'warning') {
-    const icon = spark.sparkIcon ? iconImg(spark.sparkIcon) : '🔥';
-    sparkHTML = `<span class="chat-list-spark warning">${icon} 即将熄灭</span>`;
-} else if (spark.status === 'extinguished') {
-    const icon = spark.extIcon ? iconImg(spark.extIcon) : '💔';
-    sparkHTML = `<span class="chat-list-spark extinguished">${icon} 已熄灭</span>`;
-}
-
-    // 佩戴芯片
-    const chips = window.ZeroEquip?.getChips(friend.code) || [];
-    const chipsHTML = chips.length ? window.ZeroEquip.renderChipsHTML(chips, 'sm') : '';
-
-return `
-    <div class="chat-list-item ${pinned}" data-code="${friend.code}">
-        <div class="chat-list-avatar">${avatarContent}</div>
-        <div class="chat-list-info">
-            <div class="chat-list-name-row">
-                <span class="chat-list-name">${displayName}</span>
-                ${sparkHTML}
-                <span class="chat-list-time">${timeStr}</span>
+    return `
+        <div class="chat-list-item ${pinned}" data-code="${friend.code}">
+            <div class="chat-list-avatar">${avatarContent}</div>
+            <div class="chat-list-info">
+                <div class="chat-list-name-row">
+                    <span class="chat-list-name">${displayName}</span>
+                    <span class="chat-list-time">${timeStr}</span>
+                </div>
+                <div class="chat-list-preview">${this.escapeHtml(preview)}</div>
             </div>
-            ${chipsHTML ? `<div class="ze-chips-row" style="display:flex;flex-wrap:wrap;gap:4px;margin:3px 0 2px;">${chipsHTML}</div>` : `<div class="ze-chips-row" style="display:none;"></div>`}
-            <div class="chat-list-preview">${this.escapeHtml(preview)}</div>
-        </div>
-    </div>`;
+        </div>`;
 }
 
 // 聊天列表时间格式化
@@ -387,193 +354,6 @@ formatChatListTime(date) {
         return `${date.getMonth() + 1}/${date.getDate()}`;
     } else {
         return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
-    }
-}
-
-// ==================== 火花状态计算 ====================
-
-calcSparkStatus(friendCode) {
-    const settings = this.storage.getChatSettings(friendCode) || {};
-    const enabled = settings.sparkEnabled !== false;
-    if (!enabled) return { status: 'disabled' };
-
-    const extDays = settings.sparkExtinguishDays ?? 1;
-    const sparkIcon = settings.sparkIcon || '';
-    const extIcon = settings.sparkExtinguishedIcon || '';
-
-    const chat = this.storage.getChatByFriendCode(friendCode);
-    const messages = chat?.messages || [];
-    if (messages.length === 0) return { status: 'hidden' };
-
-    const now = new Date();
-    const lastMsgTime = new Date(messages[messages.length - 1].timestamp);
-    const daysSinceMsg = (now - lastMsgTime) / 86400000;
-
-    // 永不熄灭模式
-    if (extDays === -1) {
-        const start = settings.sparkStartDate
-            ? new Date(settings.sparkStartDate)
-            : new Date(messages[0].timestamp);
-        const totalDays = window.ZeroTime
-            ? window.ZeroTime.diffDays(start, now)
-            : Math.round((now - start) / 86400000);
-        return { status: 'never', days: totalDays, sparkIcon, extIcon };
-    }
-
-    // 找到当前这段连续聊天的起点（往前找第一个间隔超过extDays的断点）
-    let streakStart = new Date(messages[0].timestamp);
-    for (let i = messages.length - 1; i > 0; i--) {
-        const curr = new Date(messages[i].timestamp);
-        const prev = new Date(messages[i - 1].timestamp);
-        if ((curr - prev) / 86400000 > extDays) {
-            streakStart = curr;
-            break;
-        }
-    }
-    // 如果手动设置了开始日期且更晚，用手动的
-    if (settings.sparkStartDate) {
-        const manual = new Date(settings.sparkStartDate);
-        if (manual > streakStart) streakStart = manual;
-    }
-
-    const totalDays = window.ZeroTime
-        ? window.ZeroTime.diffDays(streakStart, now)
-        : Math.round((now - streakStart) / 86400000);
-
-    // 还在燃烧（上次聊天在extDays以内）
-    if (daysSinceMsg < extDays) {
-        const daysLeft = extDays - daysSinceMsg;
-        return {
-            status: daysLeft < 1 ? 'warning' : 'active',
-            days: totalDays,
-            daysLeft,
-            sparkIcon, extIcon
-        };
-    }
-
-    // 已熄灭（extDays到extDays+3天内）
-    if (daysSinceMsg < extDays + 3) {
-        return { status: 'extinguished', sparkIcon, extIcon };
-    }
-
-    // 完全消失
-    return { status: 'hidden' };
-}
-
-bindChatListEvents() {
-    const container = document.getElementById('chatListContainer');
-    if (!container) return;
-
-    container.querySelectorAll('.chat-list-item').forEach(el => {
-        const code = el.getAttribute('data-code');
-        let lpTimer = null;
-        let lpTriggered = false;
-
-        el.addEventListener('click', () => {
-            if (!lpTriggered) this.openChatInterface(code);
-        });
-
-        el.addEventListener('touchstart', () => {
-            lpTriggered = false;
-            lpTimer = setTimeout(() => {
-                lpTriggered = true;
-                if (navigator.vibrate) navigator.vibrate(50);
-                this.openChatLongPressMenu(code);
-            }, 500);
-        }, { passive: true });
-
-        el.addEventListener('touchend', () => clearTimeout(lpTimer));
-        el.addEventListener('touchcancel', () => clearTimeout(lpTimer));
-    });
-
-    if (!this.chatContextEventsBound) {
-        this.bindChatContextMenuEvents();
-        this.chatContextEventsBound = true;
-    }
-}
-
-openChatLongPressMenu(friendCode) {
-    this._contextMenuCode = friendCode;
-    const menu = document.getElementById('chatListContextMenu');
-    if (!menu) return;
-
-    const friend = this.storage.getFriendByCode(friendCode);
-    const displayName = friend ? (friend.nickname || friend.name) : friendCode;
-    const titleEl = document.getElementById('chatListContextTitle');
-    if (titleEl) titleEl.textContent = displayName;
-
-    const settings = this.storage.getChatSettings(friendCode) || {};
-    const pinBtn = document.getElementById('chatContextPin');
-    if (pinBtn) pinBtn.textContent = settings.chatPin ? '📌 取消置顶' : '📌 置顶聊天';
-
-    menu.style.display = 'flex';
-}
-
-closeChatLongPressMenu() {
-    const menu = document.getElementById('chatListContextMenu');
-    if (menu) menu.style.display = 'none';
-}
-
-openChatDeleteModal(friendCode) {
-    this._deleteTargetCode = friendCode;
-    const modal = document.getElementById('chatDeleteModal');
-    if (modal) modal.style.display = 'flex';
-}
-
-closeChatDeleteModal() {
-    const modal = document.getElementById('chatDeleteModal');
-    if (modal) modal.style.display = 'none';
-    this._deleteTargetCode = null;
-}
-
-bindChatContextMenuEvents() {
-    const overlay = document.getElementById('chatListContextOverlay');
-    if (overlay) overlay.addEventListener('click', () => this.closeChatLongPressMenu());
-
-    const pinBtn = document.getElementById('chatContextPin');
-    if (pinBtn) {
-        pinBtn.addEventListener('click', () => {
-            const code = this._contextMenuCode;
-            const settings = this.storage.getChatSettings(code) || {};
-            settings.chatPin = !settings.chatPin;
-            this.storage.saveChatSettings(code, settings);
-            this.closeChatLongPressMenu();
-            this.renderChatList();
-        });
-    }
-
-    const deleteBtn = document.getElementById('chatContextDelete');
-    if (deleteBtn) {
-        deleteBtn.addEventListener('click', () => {
-            const code = this._contextMenuCode;
-            this.closeChatLongPressMenu();
-            this.openChatDeleteModal(code);
-        });
-    }
-
-    const deleteOverlay = document.getElementById('chatDeleteOverlay');
-    if (deleteOverlay) deleteOverlay.addEventListener('click', () => this.closeChatDeleteModal());
-
-    const cancelBtn = document.getElementById('chatDeleteCancel');
-    if (cancelBtn) cancelBtn.addEventListener('click', () => this.closeChatDeleteModal());
-
-    const onlyEntryBtn = document.getElementById('chatDeleteOnlyEntry');
-    if (onlyEntryBtn) {
-        onlyEntryBtn.addEventListener('click', () => {
-            this.storage.hideChatFromList(this._deleteTargetCode);
-            this.closeChatDeleteModal();
-            this.renderChatList();
-        });
-    }
-
-    const withMsgBtn = document.getElementById('chatDeleteWithMessages');
-    if (withMsgBtn) {
-        withMsgBtn.addEventListener('click', () => {
-            if (!confirm('确定要永久删除聊天记录吗？此操作不可恢复。')) return;
-            this.storage.deleteChat(this._deleteTargetCode);
-            this.closeChatDeleteModal();
-            this.renderChatList();
-        });
     }
 }
 
@@ -1134,19 +914,3 @@ addFriendByCode() {
 }
 // 初始化
 const chatApp = new ChatApp();
-window.chatApp = chatApp;
-
-// 预初始化亲密模块管理器
-// 让消息列表刷新时就能读到佩戴状态，不需要先进一次聊天界面
-// getEquippedChip() 只读 localStorage，传一个最小存根即可
-(function _preInitManagers() {
-    const stub = { storage: chatApp.storage, addMessage: () => {}, currentFriendCode: null };
-    if (typeof LuckyCharmManager   !== 'undefined' && !window.LuckyCharm)
-        window.LuckyCharm   = new LuckyCharmManager(stub);
-    if (typeof IntimacyBadgeManager !== 'undefined' && !window.IntimacyBadge)
-        window.IntimacyBadge = new IntimacyBadgeManager(stub);
-    if (typeof RelationshipManager  !== 'undefined' && !window.Relationship)
-        window.Relationship  = new RelationshipManager(stub);
-        // ← 加这一行：模块就绪后重新渲染列表
-    chatApp.renderChatList();
-})();
