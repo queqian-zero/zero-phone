@@ -605,6 +605,38 @@ class ChatInterface {
             // ── 需求5：告诉AI消息时间戳的用法 ──
             systemPrompt += `\n\n【消息时间戳】每条消息开头的[年-月-日 时:分]是该消息的真实发送时间，请据此理解时序。你在回复时绝对不要手动在消息里写时间戳，时间信息只供你理解用。`;
 
+            // ── 需求3&4：告诉AI如何使用HTML/CSS渲染标签 ──
+            systemPrompt += `\n\n【发送HTML和CSS的方式】
+你可以通过以下方式控制你发出的代码如何呈现给对方：
+
+▸ 想让对方直接看到渲染效果（卡片、动画、可视内容等）→ 用这个标签包裹HTML：
+<zp-render-html>
+...你的HTML代码...
+</zp-render-html>
+效果：对方看到的是渲染后的视觉效果，看不到代码本身。
+
+▸ 只想给对方看代码，让对方自己决定要不要用 → 用普通代码块：
+\`\`\`html
+...你的HTML代码...
+\`\`\`
+效果：显示为代码块，带复制按钮，对方可以点"渲染"切换预览。
+
+▸ 想把CSS直接应用到当前聊天界面（让界面立刻变样子）：
+- 大好人版（先备份对方原来的CSS再替换）：<zp-apply-css backup="true">...CSS...</zp-apply-css>
+- 坏心思版（直接替换，不备份，嘿嘿）：<zp-apply-css>...CSS...</zp-apply-css>
+对方的界面会立刻应用新样式。
+
+▸ 只是展示CSS代码而不应用 → 用普通代码块：\`\`\`css ... \`\`\`
+
+聊天界面可自定义的主要CSS类名：
+.messages-container        → 聊天区域背景
+.message-ai .message-bubble  → 你的消息气泡
+.message-user .message-bubble → 对方的消息气泡
+.message-text              → 气泡内文字
+.message-time              → 消息时间文字
+.message-avatar            → 头像`;
+
+
             // ── 需求2：头像识别 ──
             const callOptions = {};
             if (this.settings.aiRecognizeImage) {
@@ -884,89 +916,119 @@ div.innerHTML = `
     // ── 需求3&4：渲染消息文本（处理HTML渲染、CSS注入、代码块）──
     renderMessageText(text) {
         if (!text) return '';
-        const blocks = [];
 
-        // 1. 抽取 <zp-render-html> → AI选择直接渲染的HTML
-        text = text.replace(/<zp-render-html>([\s\S]*?)<\/zp-render-html>/g, (match, html) => {
-            const id = `__ZP_${blocks.length}__`;
-            const escaped = html.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-            blocks.push(
-                `<div class="zp-rendered-html-wrapper">` +
-                `<div class="zp-rendered-label">▸ AI渲染的HTML</div>` +
-                `<iframe class="zp-rendered-iframe" sandbox="allow-scripts allow-same-origin" srcdoc="${escaped}"></iframe>` +
-                `</div>`
-            );
-            return id;
-        });
+        // 安全的base64编码（支持中文及任意Unicode）
+        const safeB64 = (str) => {
+            try {
+                return btoa(unescape(encodeURIComponent(str)));
+            } catch(e) {
+                // fallback: 直接存文本（不用于复制功能时的保底）
+                return btoa(encodeURIComponent(str));
+            }
+        };
 
-        // 2. 抽取 <zp-apply-css> → AI注入到界面的CSS（已在processAICssInjection里实际应用，这里只显示）
-        text = text.replace(/<zp-apply-css([^>]*)>([\s\S]*?)<\/zp-apply-css>/g, (match, attrs, css) => {
-            const id = `__ZP_${blocks.length}__`;
-            const doBackup = /backup\s*=\s*["']?true["']?/i.test(attrs || '');
-            const label = doBackup
-                ? '✅ AI已注入CSS样式（已备份原版到存档）'
-                : '⚠️ AI已注入CSS样式（未备份原版）';
-            const escaped = this.escapeHtml(css.trim());
-            blocks.push(
-                `<div class="zp-applied-css-block">` +
-                `<div class="zp-applied-css-label">${label}</div>` +
-                `<pre class="zp-code-block"><code>${escaped}</code></pre>` +
-                `</div>`
-            );
-            return id;
-        });
+        try {
+            const blocks = [];
 
-        // 3. 抽取 ```html 代码块 → 带渲染/代码切换按钮
-        text = text.replace(/```html\n?([\s\S]*?)```/g, (match, code) => {
-            const id = `__ZP_${blocks.length}__`;
-            const escaped = this.escapeHtml(code.trim());
-            const b64 = btoa(unescape(encodeURIComponent(code.trim())));
-            const iframeEsc = code.trim().replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-            blocks.push(
-                `<div class="zp-html-block" data-view="code">` +
-                `<div class="zp-code-block-wrapper">` +
-                `<div class="zp-code-block-header"><span>HTML</span>` +
-                `<button class="zp-html-toggle" onclick="window.zpToggleHtml(this)">▶ 渲染</button>` +
-                `<button class="zp-code-copy" data-code="${b64}" onclick="window.zpCopyCode(this)">复制</button>` +
-                `</div><pre class="zp-code-block"><code>${escaped}</code></pre></div>` +
-                `<div class="zp-html-preview" style="display:none">` +
-                `<div class="zp-code-block-header"><span>HTML预览</span>` +
-                `<button class="zp-html-toggle" onclick="window.zpToggleHtml(this)">◀ 代码</button>` +
-                `</div><iframe class="zp-rendered-iframe" sandbox="allow-scripts allow-same-origin" srcdoc="${iframeEsc}"></iframe>` +
-                `</div></div>`
-            );
-            return id;
-        });
+            // 1. 抽取 <zp-render-html> → AI选择直接渲染的HTML
+            text = text.replace(/<zp-render-html>([\s\S]*?)<\/zp-render-html>/g, (match, html) => {
+                const id = `__ZP_${blocks.length}__`;
+                const srcdoc = html.replace(/&/g,'&amp;').replace(/"/g, '&quot;');
+                blocks.push(
+                    `<div class="zp-rendered-html-wrapper">` +
+                    `<div class="zp-rendered-label">▸ AI直接渲染</div>` +
+                    `<iframe class="zp-rendered-iframe" sandbox="allow-scripts allow-same-origin" srcdoc="${srcdoc}"></iframe>` +
+                    `</div>`
+                );
+                return id;
+            });
 
-        // 4. 抽取其他代码块（包括```css）
-        text = text.replace(/```(\w*)\n?([\s\S]*?)```/g, (match, lang, code) => {
-            const id = `__ZP_${blocks.length}__`;
-            const escaped = this.escapeHtml(code.trim());
-            const b64 = btoa(unescape(encodeURIComponent(code.trim())));
-            const langLabel = lang || 'code';
-            blocks.push(
-                `<div class="zp-code-block-wrapper">` +
-                `<div class="zp-code-block-header"><span>${this.escapeHtml(langLabel)}</span>` +
-                `<button class="zp-code-copy" data-code="${b64}" onclick="window.zpCopyCode(this)">复制</button>` +
-                `</div><pre class="zp-code-block"><code>${escaped}</code></pre></div>`
-            );
-            return id;
-        });
+            // 2. 抽取 <zp-apply-css> → AI注入到界面的CSS
+            text = text.replace(/<zp-apply-css([^>]*)>([\s\S]*?)<\/zp-apply-css>/g, (match, attrs, css) => {
+                const id = `__ZP_${blocks.length}__`;
+                const doBackup = /backup\s*=\s*["']?true["']?/i.test(attrs || '');
+                const label = doBackup
+                    ? '✅ AI已注入CSS样式（已备份原版到存档）'
+                    : '⚠️ AI已注入CSS样式（未备份原版）';
+                blocks.push(
+                    `<div class="zp-applied-css-block">` +
+                    `<div class="zp-applied-css-label">${label}</div>` +
+                    `<pre class="zp-code-block"><code>${this.escapeHtml(css.trim())}</code></pre>` +
+                    `</div>`
+                );
+                return id;
+            });
 
-        // 5. 转义剩余普通文本（占位符不含HTML特殊字符，会安全通过）
-        const div = document.createElement('div');
-        div.textContent = text;
-        text = div.innerHTML;
+            // 3. 抽取 ```html 代码块 → 带渲染/代码切换按钮
+            // 兼容：```html 后面有没有换行、\r\n、空格都能匹配
+            text = text.replace(/```html[ \t]*\r?\n?([\s\S]*?)```/g, (match, code) => {
+                const id = `__ZP_${blocks.length}__`;
+                const trimmed = code.trim();
+                const escaped = this.escapeHtml(trimmed);
+                const b64 = safeB64(trimmed);
+                const srcdoc = trimmed.replace(/&/g,'&amp;').replace(/"/g, '&quot;');
+                blocks.push(
+                    `<div class="zp-html-block" data-view="code">` +
+                      `<div class="zp-code-block-wrapper">` +
+                        `<div class="zp-code-block-header">` +
+                          `<span>HTML</span>` +
+                          `<div>` +
+                            `<button class="zp-html-toggle" onclick="window.zpToggleHtml(this)">▶ 渲染</button>` +
+                            `<button class="zp-code-copy" data-b64="${b64}" onclick="window.zpCopyCode(this)">复制</button>` +
+                          `</div>` +
+                        `</div>` +
+                        `<pre class="zp-code-block"><code>${escaped}</code></pre>` +
+                      `</div>` +
+                      `<div class="zp-html-preview" style="display:none">` +
+                        `<div class="zp-code-block-header">` +
+                          `<span>HTML 预览</span>` +
+                          `<button class="zp-html-toggle" onclick="window.zpToggleHtml(this)">◀ 代码</button>` +
+                        `</div>` +
+                        `<iframe class="zp-rendered-iframe" sandbox="allow-scripts allow-same-origin" srcdoc="${srcdoc}"></iframe>` +
+                      `</div>` +
+                    `</div>`
+                );
+                return id;
+            });
 
-        // 6. 换行转<br>
-        text = text.replace(/\n/g, '<br>');
+            // 4. 抽取其他代码块（```css、```js 等）
+            text = text.replace(/```(\w*)[ \t]*\r?\n?([\s\S]*?)```/g, (match, lang, code) => {
+                const id = `__ZP_${blocks.length}__`;
+                const trimmed = code.trim();
+                const b64 = safeB64(trimmed);
+                blocks.push(
+                    `<div class="zp-code-block-wrapper">` +
+                      `<div class="zp-code-block-header">` +
+                        `<span>${this.escapeHtml(lang || 'code')}</span>` +
+                        `<button class="zp-code-copy" data-b64="${b64}" onclick="window.zpCopyCode(this)">复制</button>` +
+                      `</div>` +
+                      `<pre class="zp-code-block"><code>${this.escapeHtml(trimmed)}</code></pre>` +
+                    `</div>`
+                );
+                return id;
+            });
 
-        // 7. 还原block占位符
-        blocks.forEach((block, i) => {
-            text = text.replace(`__ZP_${i}__`, block);
-        });
+            // 5. 转义剩余普通文本
+            const div = document.createElement('div');
+            div.textContent = text;
+            text = div.innerHTML;
 
-        return text;
+            // 6. 换行 → <br>
+            text = text.replace(/\n/g, '<br>');
+
+            // 7. 还原block占位符
+            blocks.forEach((block, i) => {
+                // replaceAll用于防止同一占位符出现多次（理论上不会，保险起见）
+                text = text.split(`__ZP_${i}__`).join(block);
+            });
+
+            return text;
+
+        } catch(e) {
+            // 任何意外错误都fallback到纯转义，不让消息气泡崩掉
+            console.error('❌ renderMessageText 出错，fallback到escapeHtml:', e);
+            return this.escapeHtml(text).replace(/\n/g, '<br>');
+        }
     }
 
     // ── 需求4：处理AI在消息里注入的CSS ──
@@ -4727,7 +4789,8 @@ console.log('✅ ChatInterface 类已加载');
 // ── 全局辅助函数（代码块复制 & HTML渲染切换）──
 window.zpCopyCode = function(btn) {
     try {
-        const code = decodeURIComponent(escape(atob(btn.dataset.code)));
+        const b64 = btn.dataset.b64;
+        const code = decodeURIComponent(escape(atob(b64)));
         navigator.clipboard.writeText(code).then(() => {
             btn.textContent = '✓';
             setTimeout(() => btn.textContent = '复制', 1500);
