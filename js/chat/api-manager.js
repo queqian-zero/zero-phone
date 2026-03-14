@@ -256,7 +256,7 @@ class APIManager {
      * @param {String} systemPrompt - 系统提示词（人设）
      * @returns {Object} { success, text, tokens, error }
      */
-    async callAI(messages, systemPrompt = '') {
+    async callAI(messages, systemPrompt = '', options = {}) {
         try {
             console.log('🤖 开始调用AI API');
             
@@ -279,7 +279,7 @@ class APIManager {
             });
             
             // 2. 构建请求体（根据不同provider调整格式）
-            const requestBody = this.buildRequestBody(config, messages, systemPrompt);
+            const requestBody = this.buildRequestBody(config, messages, systemPrompt, options);
             
             console.log('📦 请求体:', requestBody);
             
@@ -327,82 +327,138 @@ class APIManager {
     }
     
     // 构建请求体
-    buildRequestBody(config, messages, systemPrompt) {
+    buildRequestBody(config, messages, systemPrompt, options = {}) {
         const { provider, model, maxTokens, temperature } = config;
-        
-        // 格式化单条消息内容（带时间戳）
-    const formatMsgContent = (msg) => {
-        if (msg.timestamp) {
-            const d = new Date(msg.timestamp);
-            const year = d.getFullYear();
-            const month = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            const hours = String(d.getHours()).padStart(2, '0');
-            const minutes = String(d.getMinutes()).padStart(2, '0');
-            return `[${year}-${month}-${day} ${hours}:${minutes}] ${msg.text}`;
-        }
-        return msg.text;
-    };
+        const { avatarImages } = options;
 
-    // 合并连续同角色消息，并附带时间戳（修复消息变一大坨 + AI不知道时间）
-    const merged = [];
-    for (const msg of messages) {
-        const role = msg.type === 'user' ? 'user' : 'assistant';
-        const content = formatMsgContent(msg);
-        if (merged.length > 0 && merged[merged.length - 1].role === role) {
-            // 同角色：拼在一起，换行分隔
-            merged[merged.length - 1].content += '\n' + content;
-        } else {
-            merged.push({ role, content });
-        }
-    }
-    const formattedMessages = merged;
-        
+        // ── 需求5：格式化消息时间戳（只供AI看，不显示给用户）──
+        const fmtTime = (iso) => {
+            if (!iso) return '';
+            const d = new Date(iso);
+            const p = n => String(n).padStart(2, '0');
+            return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+        };
+
+        // ── 需求1：保留消息粒度，每条消息独立，加时间戳前缀 ──
+        const formattedMessages = messages.map(msg => ({
+            role: msg.type === 'user' ? 'user' : 'assistant',
+            content: msg.timestamp
+                ? `[${fmtTime(msg.timestamp)}] ${msg.text}`
+                : msg.text
+        }));
+
+        // ── 需求2：构建头像视觉前置消息（各provider格式不同）──
+        // Google格式的头像parts
+        const buildGoogleAvatarContents = () => {
+            if (!avatarImages) return [];
+            const parts = [{ text: '【头像视觉信息】以下是对话双方的头像图片：' }];
+            if (avatarImages.ai) {
+                parts.push({ text: '↓ 这是你自己的头像：' });
+                parts.push({ inline_data: { mime_type: avatarImages.ai.mimeType, data: avatarImages.ai.data } });
+            }
+            if (avatarImages.user) {
+                parts.push({ text: '↓ 这是user的头像：' });
+                parts.push({ inline_data: { mime_type: avatarImages.user.mimeType, data: avatarImages.user.data } });
+            }
+            return [
+                { role: 'user', parts },
+                { role: 'model', parts: [{ text: '好的，我已经看到了双方的头像。' }] }
+            ];
+        };
+
+        // OpenAI格式的头像消息
+        const buildOpenAIAvatarMessages = () => {
+            if (!avatarImages) return [];
+            const content = [{ type: 'text', text: '【头像视觉信息】以下是对话双方的头像图片：' }];
+            if (avatarImages.ai) {
+                content.push({ type: 'image_url', image_url: { url: `data:${avatarImages.ai.mimeType};base64,${avatarImages.ai.data}` } });
+                content.push({ type: 'text', text: '↑ 这是你自己的头像' });
+            }
+            if (avatarImages.user) {
+                content.push({ type: 'image_url', image_url: { url: `data:${avatarImages.user.mimeType};base64,${avatarImages.user.data}` } });
+                content.push({ type: 'text', text: '↑ 这是user的头像' });
+            }
+            return [
+                { role: 'user', content },
+                { role: 'assistant', content: '好的，我已经看到了双方的头像。' }
+            ];
+        };
+
         // 根据provider构建不同格式
         switch (provider) {
-            case 'google':
+            case 'google': {
                 // Google Gemini格式
-                return {
-                    contents: formattedMessages.map(msg => ({
+                const contents = [
+                    ...buildGoogleAvatarContents(),
+                    ...formattedMessages.map(msg => ({
                         role: msg.role === 'assistant' ? 'model' : 'user',
                         parts: [{ text: msg.content }]
-                    })),
-                    systemInstruction: systemPrompt ? {
-                        parts: [{ text: systemPrompt }]
-                    } : undefined,
-                    generationConfig: {
-                        temperature: temperature,
-                        maxOutputTokens: maxTokens
-                    }
-                };
-                
-            case 'anthropic':
-                // Anthropic Claude格式
+                    }))
+                ];
                 return {
-                    model: model,
-                    max_tokens: maxTokens,
-                    temperature: temperature,
-                    system: systemPrompt,
-                    messages: formattedMessages
+                    contents,
+                    systemInstruction: systemPrompt ? { parts: [{ text: systemPrompt }] } : undefined,
+                    generationConfig: { temperature, maxOutputTokens: maxTokens }
                 };
-                
-            default:
+            }
+
+            case 'anthropic': {
+                // ── 需求1：Anthropic不允许连续同角色消息，合并时保留各条时间戳 ──
+                const merged = [];
+                for (const msg of formattedMessages) {
+                    const last = merged[merged.length - 1];
+                    if (last && last.role === msg.role) {
+                        last.content += '\n' + msg.content;
+                    } else {
+                        merged.push({ role: msg.role, content: msg.content });
+                    }
+                }
+
+                // ── 需求2：Anthropic头像注入到第一条user消息 ──
+                if (avatarImages) {
+                    const firstUser = merged.find(m => m.role === 'user');
+                    if (firstUser) {
+                        const parts = [];
+                        if (avatarImages.ai) {
+                            parts.push({ type: 'image', source: { type: 'base64', media_type: avatarImages.ai.mimeType, data: avatarImages.ai.data } });
+                            parts.push({ type: 'text', text: '↑ 你自己的头像' });
+                        }
+                        if (avatarImages.user) {
+                            parts.push({ type: 'image', source: { type: 'base64', media_type: avatarImages.user.mimeType, data: avatarImages.user.data } });
+                            parts.push({ type: 'text', text: '↑ user的头像' });
+                        }
+                        parts.push({ type: 'text', text: firstUser.content });
+                        firstUser.content = parts;
+                    }
+                }
+
+                return {
+                    model,
+                    max_tokens: maxTokens,
+                    temperature,
+                    system: systemPrompt,
+                    messages: merged
+                };
+            }
+
+            default: {
                 // OpenAI / SiliconFlow / 自定义（通用格式）
                 const allMessages = [];
                 if (systemPrompt) {
-                    allMessages.push({
-                        role: 'system',
-                        content: systemPrompt
-                    });
+                    allMessages.push({ role: 'system', content: systemPrompt });
                 }
-                allMessages.push(...formattedMessages);
-                
+                allMessages.push(...buildOpenAIAvatarMessages());
+                allMessages.push(...formattedMessages.map(msg => ({
+                    role: msg.role,
+                    content: msg.content
+                })));
                 return {
-                    model: model,
+                    model,
                     messages: allMessages,
                     max_tokens: maxTokens,
-                    temperature: temperature
+                    temperature
                 };
+            }
         }
     }
     
