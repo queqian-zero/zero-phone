@@ -634,7 +634,13 @@ class ChatInterface {
 - .message-bubble — 消息气泡本体（最常用）
 - .message-text — 消息文字区域
 - .message-time — 时间戳文字
-如果你决定发送气泡CSS代码，请将代码包裹在 \`\`\`bubble-css 代码块中，这样用户可以直接预览或保存效果。
+如果你决定修改user这边的聊天气泡样式，请将CSS代码包裹在 \`\`\`bubble-css 代码块中。
+你可以在 bubble-css 后面加参数来控制存档行为：
+- \`\`\`bubble-css archive-old\`\`\` → 自动把user原来的样式存档
+- \`\`\`bubble-css archive-new\`\`\` → 把你写的新样式也存档一份
+- \`\`\`bubble-css archive-old archive-new\`\`\` → 两个都存档
+- \`\`\`bubble-css\`\`\` → 直接替换，不存档
+代码发出后会立即生效，user的界面会实时改变，并弹出通知。
 如果你决定发送HTML代码并希望对方直接看到渲染效果，请使用 \`\`\`html-render 代码块；如果只让对方看代码，使用普通 \`\`\`html 代码块。`;
             console.log('👤 最终系统提示:', systemPrompt.substring(0, 100), '...');
             
@@ -824,7 +830,7 @@ div.innerHTML = `
             
             <div class="message-content">
                 <div class="message-bubble">
-                    <div class="message-text">${this.escapeHtml(message.text)}</div>
+                    <div class="message-text">${this._renderMessageText(message.text)}</div>
                 </div>
                 <div class="message-time">${time}</div>
             </div>
@@ -902,176 +908,147 @@ div.innerHTML = `
 
     // 注入渲染按钮样式（只注入一次）
     _injectRenderStyles() {
-        if (document.getElementById('renderToggleStyles')) return;
-        const style = document.createElement('style');
-        style.id = 'renderToggleStyles';
-        style.textContent = `
-            .render-btn-row {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 4px;
-                margin-top: 6px;
-            }
-            .render-toggle-btn {
-                padding: 3px 10px;
-                font-size: 11px;
-                border-radius: 10px;
-                border: 1px solid rgba(255,255,255,0.25);
-                background: rgba(255,255,255,0.08);
-                color: rgba(255,255,255,0.75);
-                cursor: pointer;
-                white-space: nowrap;
-                transition: background 0.2s;
-            }
-            .render-toggle-btn:hover {
-                background: rgba(255,255,255,0.18);
-            }
-            .render-toggle-btn.active {
-                background: rgba(255,255,255,0.2);
-                border-color: rgba(255,255,255,0.5);
-            }
-            .render-iframe {
-                width: 100%;
-                min-height: 80px;
-                max-height: 420px;
-                border: 1px solid rgba(255,255,255,0.15);
-                border-radius: 6px;
-                margin-top: 6px;
-                background: #fff;
-            }
-        `;
-        document.head.appendChild(style);
-    }
+    if (document.getElementById('renderToggleStyles')) return;
+    const style = document.createElement('style');
+    style.id = 'renderToggleStyles';
+    style.textContent = `
+        /* 普通文字保留换行 */
+        .msg-plain-text { white-space: pre-wrap; word-break: break-word; }
+
+        /* 代码块 */
+        .code-block-wrapper {
+            margin: 6px 0;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(0,0,0,0.4);
+        }
+        .code-block-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 10px;
+            background: rgba(255,255,255,0.07);
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        .code-lang-label {
+            font-size: 11px;
+            color: rgba(255,255,255,0.45);
+            font-family: monospace;
+        }
+        .code-copy-btn {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.08);
+            color: rgba(255,255,255,0.7);
+            cursor: pointer;
+        }
+        .code-copy-btn:hover { background: rgba(255,255,255,0.15); }
+        .code-block-pre {
+            margin: 0;
+            padding: 10px 12px;
+            overflow-x: auto;
+            max-height: 300px;
+        }
+        .code-block-code {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: rgba(255,255,255,0.85);
+            white-space: pre;
+        }
+
+        /* HTML渲染iframe */
+        .render-iframe {
+            width: 100%;
+            min-height: 80px;
+            max-height: 480px;
+            border: none;
+            border-radius: 8px;
+            margin: 6px 0;
+            display: block;
+            background: #fff;
+        }
+
+        /* 气泡更新Toast */
+        .bubble-update-toast {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 99999;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            background: rgba(30,30,40,0.95);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 20px;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            animation: toastSlideUp 0.3s ease;
+            white-space: nowrap;
+        }
+        .but-icon { font-size: 16px; }
+        .but-text { font-size: 13px; color: rgba(255,255,255,0.9); }
+        .but-close {
+            background: none; border: none;
+            color: rgba(255,255,255,0.5);
+            font-size: 16px; cursor: pointer;
+            padding: 0 0 0 4px; line-height: 1;
+        }
+        .but-close:hover { color: rgba(255,255,255,0.9); }
+        @keyframes toastSlideUp {
+            from { opacity: 0; transform: translateX(-50%) translateY(12px); }
+            to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+        @keyframes toastFadeOut {
+            to { opacity: 0; transform: translateX(-50%) translateY(8px); }
+        }
+    `;
+    document.head.appendChild(style);
+}
 
     // 检测消息中的可渲染内容并添加操作按钮
     _enhanceMessageWithRenderToggles(msgEl, rawText) {
-        const bubbleEl = msgEl.querySelector('.message-bubble');
-        if (!bubbleEl) return;
-        const textEl = bubbleEl.querySelector('.message-text');
+    const bubbleEl = msgEl.querySelector('.message-bubble');
+    if (!bubbleEl) return;
 
-        // ── 检测代码块 ──
-        // ```html-render → 默认渲染
-        const htmlRenderReg = /```html-render\n?([\s\S]+?)```/i;
-        // ```html → 默认代码视图
-        const htmlCodeReg   = /```html\n?([\s\S]+?)```/i;
-        // ```bubble-css → 气泡CSS
-        const bubbleCssReg  = /```bubble-css\n?([\s\S]+?)```/i;
-
-        const htmlRenderMatch = rawText.match(htmlRenderReg);
-        const htmlCodeMatch   = rawText.match(htmlCodeReg);
-        const bubbleCssMatch  = rawText.match(bubbleCssReg);
-
-        const btnRow = document.createElement('div');
-        btnRow.className = 'render-btn-row';
-
-        // ──────── HTML 渲染 ────────
-        if (htmlRenderMatch || htmlCodeMatch) {
-            const match         = htmlRenderMatch || htmlCodeMatch;
-            const fullMatch     = match[0];          // 包含 ``` 的完整块
-            const htmlCode      = match[1].trim();   // 只有代码内容
-            const defaultRender = !!htmlRenderMatch; // html-render 默认渲染
-
-            // 把代码块前后的普通文字分离出来
-            const idx       = rawText.indexOf(fullMatch);
-            const preText   = rawText.substring(0, idx).trim();
-            const postText  = rawText.substring(idx + fullMatch.length).trim();
-
-            // iframe 只放代码内容
-            const iframe = document.createElement('iframe');
-            iframe.className = 'render-iframe';
-            iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin');
-
-            let isRendered = defaultRender;
-
-            const updateView = () => {
-                if (isRendered) {
-                    // 渲染模式：显示前后文字 + iframe，隐藏原始代码块
-                    let displayText = '';
-                    if (preText) displayText += this.escapeHtml(preText);
-                    if (postText) displayText += (preText ? '<br><br>' : '') + this.escapeHtml(postText);
-                    if (textEl) textEl.innerHTML = displayText || '&nbsp;';
-                    iframe.srcdoc = htmlCode;
-                    iframe.style.display = 'block';
-                    toggleBtn.textContent = '📄 查看代码';
-                    toggleBtn.classList.add('active');
-                } else {
-                    // 代码模式：恢复完整文字（含代码块标记）
-                    if (textEl) textEl.innerHTML = this.escapeHtml(rawText);
-                    iframe.style.display = 'none';
-                    toggleBtn.textContent = '🌐 渲染HTML';
-                    toggleBtn.classList.remove('active');
-                }
-            };
-
-            const toggleBtn = document.createElement('button');
-            toggleBtn.className = 'render-toggle-btn';
-            toggleBtn.addEventListener('click', () => {
-                isRendered = !isRendered;
-                updateView();
-            });
-
-            btnRow.appendChild(toggleBtn);
-            bubbleEl.appendChild(btnRow);
-            bubbleEl.appendChild(iframe);
-            updateView(); // 初始化视图
-            return;
-        }
-
-        // ──────── 气泡 CSS ────────
-        if (bubbleCssMatch) {
-            const cssCode = bubbleCssMatch[1].trim();
-            let isPreviewing = false;
-
-            const previewBtn = document.createElement('button');
-            previewBtn.className = 'render-toggle-btn';
-            previewBtn.textContent = '🎨 预览气泡效果';
-
-            const saveBtn = document.createElement('button');
-            saveBtn.className = 'render-toggle-btn';
-            saveBtn.textContent = '💾 保存到界面';
-
-            previewBtn.addEventListener('click', () => {
-                isPreviewing = !isPreviewing;
-                if (isPreviewing) {
-                    this._applyTempBubbleCss(cssCode);
-                    previewBtn.textContent = '❌ 取消预览';
-                    previewBtn.classList.add('active');
-                } else {
-                    this._removeTempBubbleCss();
-                    previewBtn.textContent = '🎨 预览气泡效果';
-                    previewBtn.classList.remove('active');
-                }
-            });
-
-            saveBtn.addEventListener('click', () => {
-                // 停预览
-                this._removeTempBubbleCss();
-                isPreviewing = false;
-                previewBtn.textContent = '🎨 预览气泡效果';
-                previewBtn.classList.remove('active');
-
-                // 追加写入设置里的CSS
-                this.settings.customBubbleCss = ((this.settings.customBubbleCss || '') + '\n' + cssCode).trim();
-                this.saveSettings();
-
-                // 注入到页面
-                let styleTag = document.getElementById('customBubbleCssTag');
-                if (!styleTag) {
-                    styleTag = document.createElement('style');
-                    styleTag.id = 'customBubbleCssTag';
-                    document.head.appendChild(styleTag);
-                }
-                styleTag.textContent = this.settings.customBubbleCss;
-
-                saveBtn.textContent = '✅ 已保存！';
-                setTimeout(() => { saveBtn.textContent = '💾 保存到界面'; }, 2500);
-            });
-
-            btnRow.appendChild(previewBtn);
-            btnRow.appendChild(saveBtn);
-            bubbleEl.appendChild(btnRow);
-        }
+    // html-render: 找到对应code-block-wrapper，替换成iframe
+    const htmlRenderWrapper = bubbleEl.querySelector('.code-block-wrapper[data-lang="html-render"]');
+    if (htmlRenderWrapper) {
+        const codeEl = htmlRenderWrapper.querySelector('code');
+        const htmlCode = codeEl ? codeEl.textContent : '';
+        const iframe = document.createElement('iframe');
+        iframe.className = 'render-iframe';
+        iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin');
+        iframe.srcdoc = htmlCode;
+        htmlRenderWrapper.replaceWith(iframe);
+        // 自动撑高iframe
+        iframe.addEventListener('load', () => {
+            try {
+                const h = iframe.contentDocument?.body?.scrollHeight;
+                if (h && h > 40) iframe.style.height = Math.min(h + 20, 480) + 'px';
+            } catch(e) {}
+        });
+        return;
     }
+
+    // bubble-css: 自动注入
+    const bubbleCssWrapper = bubbleEl.querySelector('.code-block-wrapper[data-lang^="bubble-css"]');
+    if (bubbleCssWrapper) {
+        const langFull = bubbleCssWrapper.getAttribute('data-lang') || '';
+        const codeEl = bubbleCssWrapper.querySelector('code');
+        const cssCode = codeEl ? codeEl.textContent.trim() : '';
+        if (!cssCode) return;
+        const archiveOld = langFull.includes('archive-old');
+        const archiveNew = langFull.includes('archive-new');
+        setTimeout(() => {
+            this._applyBubbleCssFromAI(cssCode, archiveOld, archiveNew);
+        }, 150);
+    }
+}
 
     _applyTempBubbleCss(css) {
         let el = document.getElementById('tempBubbleCssTag');
@@ -1087,6 +1064,137 @@ div.innerHTML = `
         const el = document.getElementById('tempBubbleCssTag');
         if (el) el.remove();
     }
+    
+    // 渲染消息文字（把代码块转成带复制按钮的样式）
+_renderMessageText(rawText) {
+    let result = '';
+    let lastIndex = 0;
+    const codeBlockRegex = /```([^\n`]*)\n?([\s\S]+?)```/g;
+    let match;
+
+    while ((match = codeBlockRegex.exec(rawText)) !== null) {
+        const before = rawText.substring(lastIndex, match.index);
+        if (before) {
+            result += `<span class="msg-plain-text">${this.escapeHtml(before)}</span>`;
+        }
+
+        const langFull = (match[1] || '').trim();
+        const langName = langFull.split(/\s+/)[0] || 'code';
+        const code = match[2];
+        const escapedCode = this.escapeHtml(code.replace(/\n$/, ''));
+        const escapedLangFull = this.escapeHtml(langFull);
+
+        result += `<div class="code-block-wrapper" data-lang="${escapedLangFull}">
+            <div class="code-block-header">
+                <span class="code-lang-label">${this.escapeHtml(langName)}</span>
+                <button class="code-copy-btn" onclick="(function(btn){
+                    const code=btn.closest('.code-block-wrapper').querySelector('code');
+                    if(!code)return;
+                    if(navigator.clipboard){
+                        navigator.clipboard.writeText(code.textContent).then(()=>{
+                            btn.textContent='✓ 已复制';
+                            setTimeout(()=>btn.textContent='复制',2000);
+                        });
+                    } else {
+                        const r=document.createRange();
+                        r.selectNode(code);
+                        window.getSelection().removeAllRanges();
+                        window.getSelection().addRange(r);
+                        btn.textContent='✓';
+                        setTimeout(()=>btn.textContent='复制',2000);
+                    }
+                })(this)">复制</button>
+            </div>
+            <pre class="code-block-pre"><code class="code-block-code">${escapedCode}</code></pre>
+        </div>`;
+
+        lastIndex = match.index + match[0].length;
+    }
+
+    const remaining = rawText.substring(lastIndex);
+    if (remaining) {
+        result += `<span class="msg-plain-text">${this.escapeHtml(remaining)}</span>`;
+    }
+
+    return result || `<span class="msg-plain-text">${this.escapeHtml(rawText)}</span>`;
+}
+
+// AI直接更新气泡CSS
+_applyBubbleCssFromAI(cssCode, archiveOld = false, archiveNew = false) {
+    const oldCss = (this.settings.customBubbleCss || '').trim();
+
+    // 存档旧样式
+    if (archiveOld && oldCss) {
+        this._saveBubbleArchiveEntry(oldCss, 'AI替换前 · 自动存档');
+    }
+
+    // 写入新样式
+    this.settings.customBubbleCss = cssCode;
+    this.saveSettings();
+
+    let styleTag = document.getElementById('customBubbleCssTag');
+    if (!styleTag) {
+        styleTag = document.createElement('style');
+        styleTag.id = 'customBubbleCssTag';
+        document.head.appendChild(styleTag);
+    }
+    styleTag.textContent = cssCode;
+
+    // 如果气泡弹窗开着，同步更新textarea
+    const textarea = document.getElementById('bubbleCustomCss');
+    if (textarea) textarea.value = cssCode;
+
+    // 存档新样式
+    if (archiveNew) {
+        this._saveBubbleArchiveEntry(cssCode, 'AI创建 · 自动存档');
+    }
+
+    // 弹toast
+    this._showBubbleUpdateToast();
+}
+
+// 存入气泡存档
+_saveBubbleArchiveEntry(cssCode, name) {
+    if (!this.settings.bubbleArchives) this.settings.bubbleArchives = [];
+    const now = new Date();
+    const label = name || `存档 ${now.getMonth()+1}/${now.getDate()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    this.settings.bubbleArchives.push({
+        id: 'archive_' + Date.now(),
+        name: label,
+        css: cssCode,
+        createdAt: now.toISOString()
+    });
+    this.saveSettings();
+    // 如果气泡弹窗开着，刷新存档列表
+    const modal = document.getElementById('bubbleModal');
+    if (modal && modal.style.display !== 'none') {
+        if (typeof this.renderBubbleArchives === 'function') this.renderBubbleArchives();
+    }
+}
+
+// 显示气泡更新Toast（body级别，不在消息里）
+_showBubbleUpdateToast() {
+    const existing = document.getElementById('bubbleUpdateToast');
+    if (existing) existing.remove();
+
+    const toast = document.createElement('div');
+    toast.id = 'bubbleUpdateToast';
+    toast.className = 'bubble-update-toast';
+    toast.innerHTML = `
+        <span class="but-icon">🎨</span>
+        <span class="but-text">气泡样式已更新</span>
+        <button class="but-close" onclick="document.getElementById('bubbleUpdateToast')?.remove()">×</button>
+    `;
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+        const t = document.getElementById('bubbleUpdateToast');
+        if (t) {
+            t.style.animation = 'toastFadeOut 0.3s ease forwards';
+            setTimeout(() => t.remove(), 300);
+        }
+    }, 4000);
+}
     
     escapeHtml(text) {
         const div = document.createElement('div');
