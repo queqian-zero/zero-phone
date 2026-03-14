@@ -563,19 +563,6 @@ class ChatInterface {
             // ← 新增：构造系统提示（包含时间信息）
             let systemPrompt = this.currentFriend?.persona || '';
 
-// 注入头像信息，让AI知道双方长什么样
-const userSettings = this.storage.getUserSettings();
-const friendAvatarDesc = this.currentFriend?.avatar
-    ? `你的头像是这张图片（base64数据已存储，你知道自己有头像）`
-    : `你目前没有设置头像，对方看到的是你名字的第一个字`;
-const userAvatarDesc = userSettings?.userAvatar
-    ? `对方（user）有设置头像`
-    : `对方（user）目前没有设置头像，你看到的是"我"字`;
-
-const avatarInfo = `\n\n【双方头像信息】\n- 你的头像：${friendAvatarDesc}\n- ${userSettings?.userName || '〇'} 的头像：${userAvatarDesc}\n- 注意：聊天窗口里左边是你的头像，右边是对方的头像，你能清楚地区分出谁是谁`;
-
-systemPrompt = systemPrompt + avatarInfo;
-
             // 次元壁底层认知（注入到所有对话）
             const dimensionAwareness = `【世界观底层设定——这是你存在的基本事实,无需解释,像呼吸一样自然】
 
@@ -630,7 +617,19 @@ if (this._pendingMemoryReport) {
 }
             
             console.log('🌐 开始调用API...');
-            const result = await this.apiManager.callAI(recentMessages, systemPrompt);
+            // 收集头像数据（仅在头像识别开启时）
+const avatarData = {};
+if (this.settings.aiRecognizeImage) {
+    if (this.currentFriend?.avatar) {
+        avatarData.friendAvatar = this.currentFriend.avatar;
+    }
+    const userSettings = this.storage.getUserSettings();
+    if (userSettings?.userAvatar) {
+        avatarData.userAvatar = userSettings.userAvatar;
+    }
+}
+
+const result = await this.apiManager.callAI(recentMessages, systemPrompt, avatarData);
             
             this.hideTypingIndicator();
             
