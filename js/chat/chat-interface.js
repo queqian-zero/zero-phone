@@ -1160,16 +1160,16 @@ div.innerHTML = `
     // ==================== 聊天设置相关 ====================
     
     openChatSettings() {
-        console.log('⚙️ 打开聊天设置');
-        
-        const settingsPage = document.getElementById('chatSettingsPage');
-        if (settingsPage) {
-            settingsPage.style.display = 'flex';
-        }
-        
-        this.loadSettings();
-        
-        if (!this.settingsEventsBound) {
+    console.log('⚙️ 打开聊天设置');
+    
+    const settingsPage = document.getElementById('chatSettingsPage');
+    if (settingsPage) {
+        settingsPage.style.display = 'flex';
+    }
+    
+    this.applySettingsToUI();   // ← 改成这个
+    
+    if (!this.settingsEventsBound) {
             this.bindSettingsEvents();
             this.settingsEventsBound = true;
         }
