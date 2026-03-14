@@ -5343,6 +5343,7 @@ openSparkModal() {
 }
 
 closeSparkModal() {
+    this.saveSettings();
     const modal = document.getElementById('sparkModal');
     if (modal) modal.style.display = 'none';
 }
@@ -5413,6 +5414,13 @@ bindSparkEvents() {
     const overlay = document.getElementById('sparkOverlay');
     if (closeBtn) closeBtn.addEventListener('click', () => this.closeSparkModal());
     if (overlay) overlay.addEventListener('click', () => this.closeSparkModal());
+
+    const saveBtn = document.getElementById('sparkSaveBtn');
+    if (saveBtn) saveBtn.addEventListener('click', () => {
+        this.saveSettings();
+        saveBtn.textContent = '✓ 已保存！';
+        setTimeout(() => { saveBtn.textContent = '💾 保存设置'; }, 1500);
+    });
 
     // 开关
     const enabledEl = document.getElementById('sparkEnabled');
