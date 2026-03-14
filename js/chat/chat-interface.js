@@ -1365,7 +1365,7 @@ if (exportDataBtn) {
             const raw = localStorage.getItem(`zero_phone_chat_img_${this.currentFriendCode}`);
             if (raw) imgSettings = JSON.parse(raw);
         } catch(e) {}
-        this.settings = { ...defaults, ...savedSettings, ...imgSettings };
+        const { avatarFrameSrc, userAvatarFrameSrc, sparkIcon, sparkExtinguishedIcon, chatWallpaper } = imgSettings; this.settings = {     ...defaults,     ...savedSettings,     ...(avatarFrameSrc !== undefined && { avatarFrameSrc }),     ...(userAvatarFrameSrc !== undefined && { userAvatarFrameSrc }),     ...(sparkIcon !== undefined && { sparkIcon }),     ...(sparkExtinguishedIcon !== undefined && { sparkExtinguishedIcon }),     ...(chatWallpaper !== undefined && { chatWallpaper }), };
         console.log('✅ 加载的设置:', this.settings);
         
         this.applySettingsToUI();
