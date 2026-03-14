@@ -617,19 +617,7 @@ if (this._pendingMemoryReport) {
 }
             
             console.log('🌐 开始调用API...');
-            // 收集头像数据（仅在头像识别开启时）
-const avatarData = {};
-if (this.settings.aiRecognizeImage) {
-    if (this.currentFriend?.avatar) {
-        avatarData.friendAvatar = this.currentFriend.avatar;
-    }
-    const userSettings = this.storage.getUserSettings();
-    if (userSettings?.userAvatar) {
-        avatarData.userAvatar = userSettings.userAvatar;
-    }
-}
-
-const result = await this.apiManager.callAI(recentMessages, systemPrompt, avatarData);
+            const result = await this.apiManager.callAI(recentMessages, systemPrompt);
             
             this.hideTypingIndicator();
             
