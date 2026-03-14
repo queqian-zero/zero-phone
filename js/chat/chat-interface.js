@@ -1400,20 +1400,17 @@ if (this.settings.avatarFrameCss) {
     }
     
     saveSettings() {
-        if (!this.currentFriendCode) {
-            console.warn('⚠️ 没有当前好友编码');
-            return;
-        }
+        if (!this.currentFriendCode) return;
         const fc = this.currentFriendCode;
 
         // base64图片字段单独存，防止主设置JSON过大导致存储失败
-        const { avatarFrameSrc, userAvatarFrameSrc, sparkIcon, sparkExtinguishedIcon, ...smallSettings } = this.settings;
+        const { avatarFrameSrc, userAvatarFrameSrc, sparkIcon, sparkExtinguishedIcon, chatWallpaper, ...smallSettings } = this.settings;
         try {
-            localStorage.setItem(`zero_phone_chat_img_${fc}`, JSON.stringify({ avatarFrameSrc, userAvatarFrameSrc, sparkIcon, sparkExtinguishedIcon }));
+            localStorage.setItem(`zero_phone_chat_img_${fc}`, JSON.stringify({ avatarFrameSrc, userAvatarFrameSrc, sparkIcon, sparkExtinguishedIcon, chatWallpaper }));
         } catch(e) {}
 
         const success = this.storage.saveChatSettings(fc, smallSettings);
-        if (success) console.log('✅ 设置保存成功:', smallSettings);
+        if (success) console.log('✅ 设置保存成功');
         else console.error('❌ 设置保存失败');
     }
     
