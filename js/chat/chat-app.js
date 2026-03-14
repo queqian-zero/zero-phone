@@ -394,7 +394,7 @@ formatChatListTime(date) {
 
 calcSparkStatus(friendCode) {
     const settings = this.storage.getChatSettings(friendCode) || {};
-    const enabled = settings.sparkEnabled !== false; // 默认开启
+    const enabled = settings.sparkEnabled !== false;
     if (!enabled) return { status: 'disabled' };
 
     const extDays = settings.sparkExtinguishDays ?? 1;
@@ -403,37 +403,44 @@ calcSparkStatus(friendCode) {
 
     const chat = this.storage.getChatByFriendCode(friendCode);
     const messages = chat?.messages || [];
-
-    // 开始日期
-    let startDate;
-    if (settings.sparkStartDate) {
-        startDate = new Date(settings.sparkStartDate);
-    } else if (messages.length > 0) {
-        startDate = new Date(messages[0].timestamp);
-    } else {
-        startDate = new Date();
-    }
+    if (messages.length === 0) return { status: 'hidden' };
 
     const now = new Date();
-    // 用本地日期差（通过 ZeroTime），避免 UTC 跨天导致天数算错
-    const totalDays = window.ZeroTime
-        ? window.ZeroTime.diffDays(startDate, now)
-        : Math.round((now - startDate) / 86400000);
-
-    // 最后一条消息时间
-    let lastMsgTime;
-    if (messages.length > 0) {
-        lastMsgTime = new Date(messages[messages.length - 1].timestamp);
-    } else {
-        lastMsgTime = startDate;
-    }
-
+    const lastMsgTime = new Date(messages[messages.length - 1].timestamp);
     const daysSinceMsg = (now - lastMsgTime) / 86400000;
 
+    // 永不熄灭模式
     if (extDays === -1) {
+        const start = settings.sparkStartDate
+            ? new Date(settings.sparkStartDate)
+            : new Date(messages[0].timestamp);
+        const totalDays = window.ZeroTime
+            ? window.ZeroTime.diffDays(start, now)
+            : Math.round((now - start) / 86400000);
         return { status: 'never', days: totalDays, sparkIcon, extIcon };
     }
 
+    // 找到当前这段连续聊天的起点（往前找第一个间隔超过extDays的断点）
+    let streakStart = new Date(messages[0].timestamp);
+    for (let i = messages.length - 1; i > 0; i--) {
+        const curr = new Date(messages[i].timestamp);
+        const prev = new Date(messages[i - 1].timestamp);
+        if ((curr - prev) / 86400000 > extDays) {
+            streakStart = curr;
+            break;
+        }
+    }
+    // 如果手动设置了开始日期且更晚，用手动的
+    if (settings.sparkStartDate) {
+        const manual = new Date(settings.sparkStartDate);
+        if (manual > streakStart) streakStart = manual;
+    }
+
+    const totalDays = window.ZeroTime
+        ? window.ZeroTime.diffDays(streakStart, now)
+        : Math.round((now - streakStart) / 86400000);
+
+    // 还在燃烧（上次聊天在extDays以内）
     if (daysSinceMsg < extDays) {
         const daysLeft = extDays - daysSinceMsg;
         return {
@@ -444,10 +451,12 @@ calcSparkStatus(friendCode) {
         };
     }
 
+    // 已熄灭（extDays到extDays+3天内）
     if (daysSinceMsg < extDays + 3) {
         return { status: 'extinguished', sparkIcon, extIcon };
     }
 
+    // 完全消失
     return { status: 'hidden' };
 }
 

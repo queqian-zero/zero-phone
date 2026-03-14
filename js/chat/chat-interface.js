@@ -323,7 +323,7 @@ intimacyFontFamily: ''
             this.addWelcomeMessage(friend);
         }
         
-        this.loadSettings();
+        this.applySettingsToUI();
 
 setTimeout(() => this.scrollToBottom(), 100);
 setTimeout(() => this.checkSparkWarning(), 1500);
@@ -5227,18 +5227,8 @@ getSparkStatusForAI() {
 }
 
 checkSparkWarning() {
-    if (this.settings.sparkEnabled === false) return;
-    const extDays = this.settings.sparkExtinguishDays ?? 1;
-    if (extDays === -1) return;
-
-    const messages = this.messages;
-    if (messages.length === 0) return;
-
-    const lastMsgTime = new Date(messages[messages.length - 1].timestamp);
-    const daysSinceMsg = (Date.now() - lastMsgTime) / 86400000;
-    const daysLeft = extDays - daysSinceMsg;
-
-    if (daysLeft > 0 && daysLeft < 1) {
+    const spark = this.chatApp.calcSparkStatus(this.currentFriendCode);
+    if (spark.status === 'warning') {
         this.showSparkWarningToast();
     }
 }
