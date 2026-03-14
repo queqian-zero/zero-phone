@@ -41,7 +41,11 @@ class ChatApp {
             });
         });
         
+        // 初始加载时渲染聊天列表
+        this.renderChatList();
+        
         console.log('✅ 聊天APP初始化完成');
+
     }
     
     // 切换页面
