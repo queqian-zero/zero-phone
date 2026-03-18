@@ -256,7 +256,7 @@ class APIManager {
      * @param {String} systemPrompt - 系统提示词（人设）
      * @returns {Object} { success, text, tokens, error }
      */
-    async callAI(messages, systemPrompt = '') {
+    async callAI(messages, systemPrompt = '', avatarImages = null) {
         try {
             console.log('🤖 开始调用AI API');
             
@@ -279,7 +279,7 @@ class APIManager {
             });
             
             // 2. 构建请求体（根据不同provider调整格式）
-            const requestBody = this.buildRequestBody(config, messages, systemPrompt);
+            const requestBody = this.buildRequestBody(config, messages, systemPrompt, avatarImages);
             
             console.log('📦 请求体:', requestBody);
             
@@ -327,7 +327,7 @@ class APIManager {
     }
     
     // 构建请求体
-    buildRequestBody(config, messages, systemPrompt) {
+    buildRequestBody(config, messages, systemPrompt, avatarImages = null) {
         const { provider, model, maxTokens, temperature } = config;
         
         // 转换消息格式
@@ -336,15 +336,84 @@ class APIManager {
             content: msg.text
         }));
         
+        // ====== 需求2：构建第一条用户消息的多模态内容（含头像图片）======
+        const buildFirstUserContentWithImages = (formattedMsgs) => {
+            if (!avatarImages || avatarImages.length === 0) return formattedMsgs;
+            
+            // 找到第一条user消息，把图片附加进去
+            const firstUserIdx = formattedMsgs.findIndex(m => m.role === 'user');
+            if (firstUserIdx === -1) return formattedMsgs;
+            
+            const result = [...formattedMsgs];
+            const firstUserMsg = result[firstUserIdx];
+            
+            // 构建multimodal content数组
+            const contentParts = [];
+            
+            // 先加图片
+            avatarImages.forEach(img => {
+                contentParts.push({
+                    type: 'image_url',
+                    image_url: {
+                        url: `data:${img.mediaType};base64,${img.data}`
+                    }
+                });
+            });
+            
+            // 再加文字
+            contentParts.push({
+                type: 'text',
+                text: firstUserMsg.content
+            });
+            
+            result[firstUserIdx] = {
+                role: 'user',
+                content: contentParts
+            };
+            
+            return result;
+        };
+        
         // 根据provider构建不同格式
         switch (provider) {
-            case 'google':
-                // Google Gemini格式
+            case 'google': {
+                // ====== 需求1：Google Gemini格式 - 合并连续同角色消息 ======
+                const mergedContents = [];
+                let lastRole = null;
+                
+                formattedMessages.forEach(msg => {
+                    const geminiRole = msg.role === 'assistant' ? 'model' : 'user';
+                    
+                    if (geminiRole === lastRole && mergedContents.length > 0) {
+                        // 同角色连续消息，合并到上一条（用换行分隔）
+                        const lastContent = mergedContents[mergedContents.length - 1];
+                        lastContent.parts.push({ text: msg.content });
+                    } else {
+                        mergedContents.push({
+                            role: geminiRole,
+                            parts: [{ text: msg.content }]
+                        });
+                        lastRole = geminiRole;
+                    }
+                });
+                
+                // Google Gemini的图片处理
+                if (avatarImages && avatarImages.length > 0 && mergedContents.length > 0) {
+                    // 找第一个user消息加图片
+                    const firstUser = mergedContents.find(c => c.role === 'user');
+                    if (firstUser) {
+                        const imgParts = avatarImages.map(img => ({
+                            inline_data: {
+                                mime_type: img.mediaType,
+                                data: img.data
+                            }
+                        }));
+                        firstUser.parts = [...imgParts, ...firstUser.parts];
+                    }
+                }
+                
                 return {
-                    contents: formattedMessages.map(msg => ({
-                        role: msg.role === 'assistant' ? 'model' : 'user',
-                        parts: [{ text: msg.content }]
-                    })),
+                    contents: mergedContents,
                     systemInstruction: systemPrompt ? {
                         parts: [{ text: systemPrompt }]
                     } : undefined,
@@ -353,18 +422,51 @@ class APIManager {
                         maxOutputTokens: maxTokens
                     }
                 };
+            }
                 
-            case 'anthropic':
-                // Anthropic Claude格式
+            case 'anthropic': {
+                // Anthropic Claude格式 - 支持multimodal
+                let anthropicMessages = formattedMessages.map(msg => ({
+                    role: msg.role,
+                    content: msg.content
+                }));
+                
+                // 添加头像图片
+                if (avatarImages && avatarImages.length > 0) {
+                    const firstUserIdx = anthropicMessages.findIndex(m => m.role === 'user');
+                    if (firstUserIdx !== -1) {
+                        const contentParts = [];
+                        avatarImages.forEach(img => {
+                            contentParts.push({
+                                type: 'image',
+                                source: {
+                                    type: 'base64',
+                                    media_type: img.mediaType,
+                                    data: img.data
+                                }
+                            });
+                        });
+                        contentParts.push({
+                            type: 'text',
+                            text: anthropicMessages[firstUserIdx].content
+                        });
+                        anthropicMessages[firstUserIdx] = {
+                            role: 'user',
+                            content: contentParts
+                        };
+                    }
+                }
+                
                 return {
                     model: model,
                     max_tokens: maxTokens,
                     temperature: temperature,
                     system: systemPrompt,
-                    messages: formattedMessages
+                    messages: anthropicMessages
                 };
+            }
                 
-            default:
+            default: {
                 // OpenAI / SiliconFlow / 自定义（通用格式）
                 const allMessages = [];
                 if (systemPrompt) {
@@ -373,7 +475,10 @@ class APIManager {
                         content: systemPrompt
                     });
                 }
-                allMessages.push(...formattedMessages);
+                
+                // 添加头像图片到第一条user消息
+                const messagesWithImages = buildFirstUserContentWithImages(formattedMessages);
+                allMessages.push(...messagesWithImages);
                 
                 return {
                     model: model,
@@ -381,6 +486,7 @@ class APIManager {
                     max_tokens: maxTokens,
                     temperature: temperature
                 };
+            }
         }
     }
     
