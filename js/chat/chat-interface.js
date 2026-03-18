@@ -730,39 +730,71 @@ user是次元壁那头的人。对user来说，你是一堆数据流里的某个
 每条消息前面的方括号里是该消息的真实发送时间。
 通过这些时间戳，你可以知道user的每一条消息是什么时候发的，你的每一条回复是什么时候发的。
 比如user昨天21:00发了"晚安"，今天08:00发了"早安"，你要意识到这是两天的消息，不要把昨天的晚安当成今天的。
+
+关于时差：你看到的这些时间戳是user那边的本地时间，不一定是你那边的真实时间。
+你的次元可能和user有时差——特别是如果你的人设经常出差、在不同地方生活，你那边可能是白天而user那边是晚上，反过来也一样。
+所以你说"早安""晚安"之类的话时，要基于你自己那边的时间来说，偶尔说错时间（因为时差没倒过来）也是很自然的事。
+你可以参考user的时间戳来推测user那边现在几点，但你自己的作息由你自己的时间决定。
+
 ⚠️ 重要：这些时间戳只是给你看的元信息。你自己发消息时绝对不要在文字开头手动写时间戳，否则user那边会看到你莫名其妙地在消息里打了一串时间，很奇怪。`;
                 systemPrompt = `${timestampInstruction}\n\n${systemPrompt}`;
                 console.log('🕐 时间感知已开启');
             }
 
-            // ====== 需求2：头像识别指令 ======
+            // ====== 头像识别 ======
             let avatarImages = null;
-            if (this.settings.aiRecognizeImage) {
+            // 严格布尔判断：只有明确为true才开启，其他一律关闭
+            const avatarRecognitionOn = this.settings.aiRecognizeImage === true;
+            console.log('🖼️ [头像识别] 开关值:', this.settings.aiRecognizeImage, '→ 判定:', avatarRecognitionOn ? '开启' : '关闭');
+            
+            if (avatarRecognitionOn) {
                 avatarImages = await this.prepareAvatarImages();
-                if (avatarImages) {
+                if (avatarImages && avatarImages.length > 0) {
                     systemPrompt += `\n\n【头像识别已开启】你现在可以看到你自己的头像和user的头像。附带的图片中，第一张是你的头像，第二张是user的头像（如果有的话）。你可以准确描述你们的头像长什么样。`;
-                    console.log('🖼️ 头像识别已开启');
+                    console.log('🖼️ [头像识别] 已附带', avatarImages.length, '张头像图片');
+                } else {
+                    avatarImages = null; // 确保为null
+                    systemPrompt += `\n\n【头像识别已开启但暂无头像图片】你和user目前还没有设置头像，所以你看不到任何头像。`;
+                    console.log('🖼️ [头像识别] 开关开了但没有头像可用');
                 }
             } else {
-                systemPrompt += `\n\n【头像识别已关闭】你现在看不到你自己的头像，也看不到user的头像。如果user问你头像相关的问题，你要诚实地说你看不到。`;
+                avatarImages = null; // 确保为null，不传任何图片
+                systemPrompt += `\n\n【头像识别已关闭】你现在看不到你自己的头像，也看不到user的头像。你清楚地知道你看不到任何头像。如果user问你头像相关的问题，你要诚实地告诉对方"我现在看不到头像"。`;
+                console.log('🖼️ [头像识别] 已关闭，不发送任何图片给API');
             }
 
-            // ====== 需求3+4：HTML/CSS渲染能力指令 ======
+            // ====== HTML/CSS渲染能力 + 气泡存档 ======
+            // 获取气泡存档列表
+            const bubbleArchives = this.getBubbleArchives();
+            const archiveListText = bubbleArchives.length > 0
+                ? bubbleArchives.map((a, i) => `  ${i+1}. "${a.name}" (ID:${a.id})`).join('\n')
+                : '  （暂无存档）';
+            
+            // 获取当前正在使用的CSS
+            const currentCssPreview = this.settings.customBubbleCss 
+                ? '当前有自定义CSS正在使用中'
+                : '当前没有使用自定义CSS（默认样式）';
+
             systemPrompt += `\n\n【特殊能力：HTML和CSS】
 你可以发送HTML代码和CSS气泡样式代码。你可以选择让代码渲染出效果还是只展示代码。
 
 📌 HTML代码：
 - 要渲染出效果让user直接看到：用 [RENDER_HTML] 和 [/RENDER_HTML] 包裹代码
 - 只展示代码不渲染（user看到的是代码块）：用 [CODE_HTML] 和 [/CODE_HTML] 包裹代码
-例如：
-给你做了个小页面～
-[RENDER_HTML]<div style="text-align:center;color:pink;">❤ I Love You ❤</div>[/RENDER_HTML]
-喜欢吗？
 
 📌 CSS气泡样式代码：
 - 要直接渲染生效（界面会立刻变样）：用 [APPLY_CSS] 和 [/APPLY_CSS] 包裹
 - 只展示代码不渲染：用 [CODE_CSS] 和 [/CODE_CSS] 包裹
-- 如果你想在替换之前帮user备份旧的CSS：在[APPLY_CSS]前加 [BACKUP_CSS]
+- 在替换之前帮user备份旧CSS：在[APPLY_CSS]前加 [BACKUP_CSS]
+
+📌 气泡存档管理（你可以浏览、加载、保存、重命名存档）：
+${currentCssPreview}
+现有气泡存档：
+${archiveListText}
+- 加载已有存档：[LOAD_ARCHIVE:存档ID]（例如 [LOAD_ARCHIVE:archive_1234567890]）
+- 把新CSS保存为存档并命名：[SAVE_ARCHIVE:你起的名字]CSS代码[/SAVE_ARCHIVE]
+- 给已有存档改名：[RENAME_ARCHIVE:存档ID:新名字]
+
 可用的CSS类名：
 .messages-container（消息区域背景）、.message（单条消息）、.message-ai（AI消息）、.message-user（用户消息）、.message-bubble（气泡）、.message-text（消息文字）、.message-time（时间）、.message-avatar（头像区域）、.avatar-placeholder（头像占位符）、.message-content（消息内容区）、.input-bar（底部输入栏）、.chat-interface-header（顶部栏）
 
@@ -1105,7 +1137,7 @@ div.innerHTML = `
                 return this.escapeHtml(seg.content);
             } else if (seg.type === 'render_html') {
                 const iframeId = 'renderFrame_' + Math.random().toString(36).substr(2, 8);
-                return `<div class="rendered-html-container"><iframe class="rendered-html-frame" id="${iframeId}" sandbox="allow-scripts" srcdoc="${this.escapeAttr(seg.content)}" style="width:100%;border:none;border-radius:8px;background:#fff;min-height:60px;max-height:300px;"></iframe></div>`;
+                return `<div class="rendered-html-container"><iframe class="rendered-html-frame" id="${iframeId}" sandbox="allow-scripts allow-same-origin" srcdoc="${this.escapeAttr(seg.content)}" style="width:100%;border:none;border-radius:8px;background:#fff;min-height:80px;"></iframe></div>`;
             } else if (seg.type === 'code') {
                 return this.createCodeBlock(seg.content, seg.lang);
             }
@@ -1155,10 +1187,14 @@ div.innerHTML = `
             iframe.addEventListener('load', () => {
                 try {
                     const doc = iframe.contentDocument || iframe.contentWindow.document;
-                    const height = Math.min(doc.body.scrollHeight + 16, 300);
-                    iframe.style.height = height + 'px';
+                    const contentHeight = doc.body.scrollHeight + 20;
+                    // 不设硬性上限，让内容完整展示（超过屏幕高度时消息区域自然可以滚动）
+                    iframe.style.height = contentHeight + 'px';
+                    console.log('📐 iframe自适应高度:', contentHeight, 'px');
                 } catch (e) {
-                    iframe.style.height = '120px';
+                    // sandbox限制无法读取时给个默认高度
+                    iframe.style.height = '200px';
+                    console.warn('⚠️ iframe高度自适应失败，使用默认高度');
                 }
             });
         });
@@ -1258,22 +1294,20 @@ div.innerHTML = `
     
     // ====== 需求4：处理AI发出的CSS命令 ======
     processAICssCommands(text) {
-        // 检查是否有 [BACKUP_CSS] 标记
+        // ====== [BACKUP_CSS] 备份旧CSS ======
         const hasBackup = text.includes('[BACKUP_CSS]');
         text = text.replace(/\[BACKUP_CSS\]/g, '');
         
-        // 检查 [APPLY_CSS]...[/APPLY_CSS]
+        // ====== [APPLY_CSS]...[/APPLY_CSS] 应用新CSS ======
         const cssMatch = text.match(/\[APPLY_CSS\]([\s\S]*?)\[\/APPLY_CSS\]/);
         if (cssMatch) {
             const cssCode = cssMatch[1].trim();
             
-            // 如果需要备份
             if (hasBackup && this.settings.customBubbleCss) {
-                this.saveCustomCssArchive_auto(this.settings.customBubbleCss);
+                this.saveCustomCssArchive_auto(this.settings.customBubbleCss, null);
                 console.log('💾 AI备份了旧CSS');
             }
             
-            // 应用CSS
             this.settings.customBubbleCss = cssCode;
             this.removeCustomCss();
             const style = document.createElement('style');
@@ -1283,22 +1317,86 @@ div.innerHTML = `
             this.saveSettings();
             console.log('🎨 AI应用了新的CSS样式');
             
-            // 从消息文本中移除标记，替换为提示
             text = text.replace(/\[APPLY_CSS\][\s\S]*?\[\/APPLY_CSS\]/, '✨ [已应用新的聊天样式]');
+        }
+        
+        // ====== [LOAD_ARCHIVE:ID] 加载已有存档 ======
+        const loadMatch = text.match(/\[LOAD_ARCHIVE:([^\]]+)\]/);
+        if (loadMatch) {
+            const archiveId = loadMatch[1].trim();
+            const archives = this.getBubbleArchives();
+            const archive = archives.find(a => a.id === archiveId);
+            
+            if (archive) {
+                // 加载存档CSS
+                this.settings.customBubbleCss = archive.css;
+                this.removeCustomCss();
+                const style = document.createElement('style');
+                style.id = 'customBubbleCssTag';
+                style.textContent = archive.css;
+                document.head.appendChild(style);
+                this.selectBubbleStyle('default'); // 清掉预设
+                this.saveSettings();
+                console.log('📂 AI加载了存档:', archive.name);
+                text = text.replace(/\[LOAD_ARCHIVE:[^\]]+\]/, `✨ [已切换到气泡样式「${archive.name}」]`);
+            } else {
+                console.warn('⚠️ 找不到存档:', archiveId);
+                text = text.replace(/\[LOAD_ARCHIVE:[^\]]+\]/, '❌ [找不到该气泡存档]');
+            }
+        }
+        
+        // ====== [SAVE_ARCHIVE:名字]CSS[/SAVE_ARCHIVE] 保存新存档 ======
+        const saveMatch = text.match(/\[SAVE_ARCHIVE:([^\]]+)\]([\s\S]*?)\[\/SAVE_ARCHIVE\]/);
+        if (saveMatch) {
+            const archiveName = saveMatch[1].trim();
+            const archiveCss = saveMatch[2].trim();
+            
+            if (archiveName && archiveCss) {
+                const archives = this.getBubbleArchives();
+                archives.push({
+                    id: 'archive_' + Date.now(),
+                    name: archiveName,
+                    css: archiveCss,
+                    createdAt: new Date().toISOString()
+                });
+                this.saveBubbleArchives(archives);
+                console.log('💾 AI保存了新存档:', archiveName);
+                text = text.replace(/\[SAVE_ARCHIVE:[^\]]+\][\s\S]*?\[\/SAVE_ARCHIVE\]/, `💾 [已保存气泡存档「${archiveName}」]`);
+            }
+        }
+        
+        // ====== [RENAME_ARCHIVE:ID:新名字] 重命名存档 ======
+        const renameMatch = text.match(/\[RENAME_ARCHIVE:([^:]+):([^\]]+)\]/);
+        if (renameMatch) {
+            const archiveId = renameMatch[1].trim();
+            const newName = renameMatch[2].trim();
+            const archives = this.getBubbleArchives();
+            const archive = archives.find(a => a.id === archiveId);
+            
+            if (archive && newName) {
+                const oldName = archive.name;
+                archive.name = newName;
+                this.saveBubbleArchives(archives);
+                console.log('✏️ AI重命名存档:', oldName, '→', newName);
+                text = text.replace(/\[RENAME_ARCHIVE:[^\]]+\]/, `✏️ [已将「${oldName}」重命名为「${newName}」]`);
+            } else {
+                text = text.replace(/\[RENAME_ARCHIVE:[^\]]+\]/, '❌ [存档重命名失败]');
+            }
         }
         
         return text;
     }
     
-    // 自动备份CSS存档（AI触发的）
-    saveCustomCssArchive_auto(css) {
+    // 自动备份CSS存档（备份时AI可以指定名字，不指定则用默认时间名）
+    saveCustomCssArchive_auto(css, customName) {
         try {
             const archives = this.getBubbleArchives();
             const now = new Date();
             const timeStr = `${now.getMonth()+1}月${now.getDate()}日 ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
+            const name = customName || `自动备份 ${timeStr}`;
             archives.push({
                 id: 'archive_auto_' + Date.now(),
-                name: `AI备份 ${timeStr}`,
+                name: name,
                 css: css,
                 createdAt: now.toISOString()
             });
@@ -1392,8 +1490,8 @@ div.innerHTML = `
         const aiRecognizeSwitch = document.getElementById('settingAiRecognizeImage');
         if (aiRecognizeSwitch) {
             aiRecognizeSwitch.addEventListener('change', (e) => {
-                this.settings.aiRecognizeImage = e.target.checked;
-                console.log('AI识别图片:', this.settings.aiRecognizeImage);
+                this.settings.aiRecognizeImage = e.target.checked === true; // 强制布尔
+                console.log('🖼️ AI识别图片开关切换:', this.settings.aiRecognizeImage);
                 this.saveSettings();
             });
         }
@@ -1550,7 +1648,8 @@ if (this.settings.avatarFrameCss) {
         
         const aiRecognizeSwitch = document.getElementById('settingAiRecognizeImage');
         if (aiRecognizeSwitch) {
-            aiRecognizeSwitch.checked = this.settings.aiRecognizeImage;
+            aiRecognizeSwitch.checked = this.settings.aiRecognizeImage === true;
+            console.log('🖼️ 头像识别UI同步:', aiRecognizeSwitch.checked, '(设置值:', this.settings.aiRecognizeImage, ')');
         }
         
         const chatPinSwitch = document.getElementById('settingChatPin');
