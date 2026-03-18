@@ -741,11 +741,10 @@ user是次元壁那头的人。对user来说，你是一堆数据流里的某个
                 console.log('🕐 时间感知已开启');
             }
 
-            // ====== 头像识别 ======
+            // ====== 头像识别（由编辑好友弹窗里的"头像识别"开关控制）======
             let avatarImages = null;
-            // 严格布尔判断：只有明确为true才开启，其他一律关闭
-            const avatarRecognitionOn = this.settings.aiRecognizeImage === true;
-            console.log('🖼️ [头像识别] 开关值:', this.settings.aiRecognizeImage, '→ 判定:', avatarRecognitionOn ? '开启' : '关闭');
+            const avatarRecognitionOn = this.currentFriend?.enableAvatarRecognition !== false;
+            console.log('🖼️ [头像识别] 好友开关:', this.currentFriend?.enableAvatarRecognition, '→', avatarRecognitionOn ? '开启' : '关闭');
             
             if (avatarRecognitionOn) {
                 avatarImages = await this.prepareAvatarImages();
@@ -753,12 +752,11 @@ user是次元壁那头的人。对user来说，你是一堆数据流里的某个
                     systemPrompt += `\n\n【头像识别已开启】你现在可以看到你自己的头像和user的头像。附带的图片中，第一张是你的头像，第二张是user的头像（如果有的话）。你可以准确描述你们的头像长什么样。`;
                     console.log('🖼️ [头像识别] 已附带', avatarImages.length, '张头像图片');
                 } else {
-                    avatarImages = null; // 确保为null
+                    avatarImages = null;
                     systemPrompt += `\n\n【头像识别已开启但暂无头像图片】你和user目前还没有设置头像，所以你看不到任何头像。`;
-                    console.log('🖼️ [头像识别] 开关开了但没有头像可用');
                 }
             } else {
-                avatarImages = null; // 确保为null，不传任何图片
+                avatarImages = null;
                 systemPrompt += `\n\n【头像识别已关闭】你现在看不到你自己的头像，也看不到user的头像。你清楚地知道你看不到任何头像。如果user问你头像相关的问题，你要诚实地告诉对方"我现在看不到头像"。`;
                 console.log('🖼️ [头像识别] 已关闭，不发送任何图片给API');
             }
