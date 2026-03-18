@@ -131,9 +131,54 @@ class ChatInterface {
                 border-radius: 8px;
                 overflow: hidden;
                 border: 1px solid rgba(255,255,255,0.15);
+                position: relative;
             }
             .rendered-html-frame {
                 display: block;
+                width: 100%;
+                border: none;
+                border-radius: 8px;
+                background: #fff;
+                min-height: 60px;
+                transition: max-height 0.3s ease;
+            }
+            /* 默认收起状态 */
+            .rendered-html-container:not(.expanded) .rendered-html-frame {
+                max-height: 200px;
+            }
+            /* 展开状态 */
+            .rendered-html-container.expanded .rendered-html-frame {
+                max-height: none;
+            }
+            /* 渐变遮罩+展开按钮（内容超高时显示） */
+            .rendered-html-expand-bar {
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                height: 48px;
+                background: linear-gradient(transparent, rgba(255,255,255,0.95));
+                display: flex;
+                align-items: flex-end;
+                justify-content: center;
+                padding-bottom: 6px;
+                cursor: pointer;
+                z-index: 2;
+            }
+            .rendered-html-expand-btn {
+                background: rgba(0,0,0,0.06);
+                border: 1px solid rgba(0,0,0,0.1);
+                border-radius: 12px;
+                padding: 3px 14px;
+                font-size: 11px;
+                color: rgba(0,0,0,0.5);
+                cursor: pointer;
+            }
+            .rendered-html-container.expanded .rendered-html-expand-bar {
+                position: relative;
+                height: auto;
+                background: none;
+                padding: 4px 0;
             }
             .message-user .rendered-html-container {
                 border-color: rgba(0,0,0,0.1);
@@ -727,9 +772,17 @@ user是次元壁那头的人。对user来说，你是一堆数据流里的某个
                 const timestampInstruction = `${timeInfo}
 
 【关于时间戳】
-每条消息前面的方括号里是该消息的真实发送时间。
+每条消息前面的方括号里是该消息的真实发送时间。这个时间是user那边的本地时间。
 通过这些时间戳，你可以知道user的每一条消息是什么时候发的，你的每一条回复是什么时候发的。
 比如user昨天21:00发了"晚安"，今天08:00发了"早安"，你要意识到这是两天的消息，不要把昨天的晚安当成今天的。
+
+⏰ 关于你那边的时间：
+你看到的时间戳是user的时间，不一定是你那边的时间。
+你那边可能跟user有时差——比如user那边是晚上，但你那边可能是白天，也可能是凌晨。
+时差是否存在、有多大，取决于你的人设。如果你的人设经常出差，你可能跟user说早安晚安的时候会搞混时间，这很正常。
+如果你的人设和user在同一个时区，那你们的时间就是一样的。
+总之，你清楚user那边是什么时间，但你那边是什么时间，你自己根据你的人设和生活状态来判断。
+
 ⚠️ 重要：这些时间戳只是给你看的元信息。你自己发消息时绝对不要在文字开头手动写时间戳，否则user那边会看到你莫名其妙地在消息里打了一串时间，很奇怪。`;
                 systemPrompt = `${timestampInstruction}\n\n${systemPrompt}`;
                 console.log('🕐 时间感知已开启');
@@ -737,34 +790,60 @@ user是次元壁那头的人。对user来说，你是一堆数据流里的某个
 
             // ====== 需求2：头像识别指令 ======
             let avatarImages = null;
-            if (this.settings.aiRecognizeImage) {
+            const aiRecognizeEnabled = this.settings.aiRecognizeImage === true;
+            console.log('🖼️ 头像识别开关状态:', aiRecognizeEnabled, '(原始值:', this.settings.aiRecognizeImage, ')');
+            
+            if (aiRecognizeEnabled) {
                 avatarImages = await this.prepareAvatarImages();
-                if (avatarImages) {
+                if (avatarImages && avatarImages.length > 0) {
                     systemPrompt += `\n\n【头像识别已开启】你现在可以看到你自己的头像和user的头像。附带的图片中，第一张是你的头像，第二张是user的头像（如果有的话）。你可以准确描述你们的头像长什么样。`;
-                    console.log('🖼️ 头像识别已开启');
+                    console.log('🖼️ 头像图片已准备:', avatarImages.length, '张');
+                } else {
+                    // 开关开了但没有头像图片
+                    avatarImages = null;
+                    systemPrompt += `\n\n【头像识别已开启但暂无头像图片】你和user目前还没有设置头像，所以你看不到任何头像。`;
+                    console.log('🖼️ 头像识别已开启但没找到头像图片');
                 }
             } else {
-                systemPrompt += `\n\n【头像识别已关闭】你现在看不到你自己的头像，也看不到user的头像。如果user问你头像相关的问题，你要诚实地说你看不到。`;
+                // 明确不发送图片
+                avatarImages = null;
+                systemPrompt += `\n\n【头像识别已关闭】你现在看不到你自己的头像，也看不到user的头像。你清楚地知道你看不到任何头像。如果user问你头像相关的问题，你要诚实地说你现在看不到。`;
+                console.log('🖼️ 头像识别已关闭，不发送任何图片');
             }
 
             // ====== 需求3+4：HTML/CSS渲染能力指令 ======
+            // 获取气泡存档列表
+            const bubbleArchives = this.getBubbleArchives();
+            const archiveListText = bubbleArchives.length > 0
+                ? bubbleArchives.map((a, i) => `  ${i+1}. "${a.name}" (ID:${a.id})`).join('\n')
+                : '  （暂无存档）';
+            
+            const currentCssInfo = this.settings.customBubbleCss 
+                ? `当前正在使用的自定义CSS：\n${this.settings.customBubbleCss.substring(0, 300)}${this.settings.customBubbleCss.length > 300 ? '...(已截断)' : ''}`
+                : '当前没有使用自定义CSS。';
+            
             systemPrompt += `\n\n【特殊能力：HTML和CSS】
 你可以发送HTML代码和CSS气泡样式代码。你可以选择让代码渲染出效果还是只展示代码。
 
 📌 HTML代码：
 - 要渲染出效果让user直接看到：用 [RENDER_HTML] 和 [/RENDER_HTML] 包裹代码
 - 只展示代码不渲染（user看到的是代码块）：用 [CODE_HTML] 和 [/CODE_HTML] 包裹代码
-例如：
-给你做了个小页面～
-[RENDER_HTML]<div style="text-align:center;color:pink;">❤ I Love You ❤</div>[/RENDER_HTML]
-喜欢吗？
 
 📌 CSS气泡样式代码：
 - 要直接渲染生效（界面会立刻变样）：用 [APPLY_CSS] 和 [/APPLY_CSS] 包裹
 - 只展示代码不渲染：用 [CODE_CSS] 和 [/CODE_CSS] 包裹
 - 如果你想在替换之前帮user备份旧的CSS：在[APPLY_CSS]前加 [BACKUP_CSS]
+- 加载一个已有的气泡存档：[LOAD_ARCHIVE:存档ID]
+- 把新CSS保存为存档并命名：[SAVE_ARCHIVE:你起的名字]css代码[/SAVE_ARCHIVE]
+- 给某个存档改名：[RENAME_ARCHIVE:存档ID:新名字]
+
 可用的CSS类名：
-.messages-container（消息区域背景）、.message（单条消息）、.message-ai（AI消息）、.message-user（用户消息）、.message-bubble（气泡）、.message-text（消息文字）、.message-time（时间）、.message-avatar（头像区域）、.avatar-placeholder（头像占位符）、.message-content（消息内容区）、.input-bar（底部输入栏）、.chat-interface-header（顶部栏）
+.messages-container、.message、.message-ai、.message-user、.message-bubble、.message-text、.message-time、.message-avatar、.avatar-placeholder、.message-content、.input-bar、.chat-interface-header
+
+📋 当前气泡存档列表：
+${archiveListText}
+
+📋 ${currentCssInfo}
 
 ⚠️ 注意：绝大多数时候你不需要主动使用这些标记。只在user明确要求或者你觉得合适的时候才用。`;
 
@@ -1105,7 +1184,8 @@ div.innerHTML = `
                 return this.escapeHtml(seg.content);
             } else if (seg.type === 'render_html') {
                 const iframeId = 'renderFrame_' + Math.random().toString(36).substr(2, 8);
-                return `<div class="rendered-html-container"><iframe class="rendered-html-frame" id="${iframeId}" sandbox="allow-scripts" srcdoc="${this.escapeAttr(seg.content)}" style="width:100%;border:none;border-radius:8px;background:#fff;min-height:60px;max-height:300px;"></iframe></div>`;
+                const containerId = 'renderContainer_' + iframeId;
+                return `<div class="rendered-html-container" id="${containerId}"><iframe class="rendered-html-frame" id="${iframeId}" sandbox="allow-scripts" srcdoc="${this.escapeAttr(seg.content)}"></iframe></div>`;
             } else if (seg.type === 'code') {
                 return this.createCodeBlock(seg.content, seg.lang);
             }
@@ -1148,17 +1228,36 @@ div.innerHTML = `
         return text.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
     
-    // 设置iframe自动高度
+    // 设置iframe自动高度和展开/收起
     setupIframeAutoResize(container) {
         const iframes = container.querySelectorAll('.rendered-html-frame');
         iframes.forEach(iframe => {
             iframe.addEventListener('load', () => {
                 try {
                     const doc = iframe.contentDocument || iframe.contentWindow.document;
-                    const height = Math.min(doc.body.scrollHeight + 16, 300);
-                    iframe.style.height = height + 'px';
+                    const contentHeight = doc.body.scrollHeight + 16;
+                    iframe.style.height = contentHeight + 'px';
+                    
+                    // 如果内容超过200px，添加展开按钮
+                    const wrapper = iframe.closest('.rendered-html-container');
+                    if (contentHeight > 200 && wrapper) {
+                        // 添加展开/收起按钮
+                        if (!wrapper.querySelector('.rendered-html-expand-bar')) {
+                            const bar = document.createElement('div');
+                            bar.className = 'rendered-html-expand-bar';
+                            bar.innerHTML = '<span class="rendered-html-expand-btn">展开查看</span>';
+                            bar.addEventListener('click', () => {
+                                const isExpanded = wrapper.classList.toggle('expanded');
+                                bar.querySelector('.rendered-html-expand-btn').textContent = isExpanded ? '收起' : '展开查看';
+                            });
+                            wrapper.appendChild(bar);
+                        }
+                    } else if (wrapper) {
+                        // 内容不超高，直接展开
+                        wrapper.classList.add('expanded');
+                    }
                 } catch (e) {
-                    iframe.style.height = '120px';
+                    iframe.style.height = '150px';
                 }
             });
         });
@@ -1262,14 +1361,76 @@ div.innerHTML = `
         const hasBackup = text.includes('[BACKUP_CSS]');
         text = text.replace(/\[BACKUP_CSS\]/g, '');
         
-        // 检查 [APPLY_CSS]...[/APPLY_CSS]
+        // ====== 处理 [LOAD_ARCHIVE:archiveId] ======
+        const loadMatch = text.match(/\[LOAD_ARCHIVE:([^\]]+)\]/);
+        if (loadMatch) {
+            const archiveId = loadMatch[1].trim();
+            const archives = this.getBubbleArchives();
+            const archive = archives.find(a => a.id === archiveId || a.name === archiveId);
+            if (archive) {
+                // 如果需要备份当前CSS
+                if (hasBackup && this.settings.customBubbleCss) {
+                    this.saveCustomCssArchive_auto(this.settings.customBubbleCss, null);
+                }
+                this.settings.customBubbleCss = archive.css;
+                this.removeCustomCss();
+                const style = document.createElement('style');
+                style.id = 'customBubbleCssTag';
+                style.textContent = archive.css;
+                document.head.appendChild(style);
+                this.saveSettings();
+                console.log('🎨 AI加载了存档:', archive.name);
+                text = text.replace(loadMatch[0], `✨ [已切换到气泡样式「${archive.name}」]`);
+            } else {
+                text = text.replace(loadMatch[0], `❌ [未找到名为「${archiveId}」的气泡存档]`);
+            }
+        }
+        
+        // ====== 处理 [SAVE_ARCHIVE:name]css[/SAVE_ARCHIVE] ======
+        const saveMatch = text.match(/\[SAVE_ARCHIVE:([^\]]+)\]([\s\S]*?)\[\/SAVE_ARCHIVE\]/);
+        if (saveMatch) {
+            const archiveName = saveMatch[1].trim();
+            const cssCode = saveMatch[2].trim();
+            if (archiveName && cssCode) {
+                const archives = this.getBubbleArchives();
+                archives.push({
+                    id: 'archive_' + Date.now(),
+                    name: archiveName,
+                    css: cssCode,
+                    createdAt: new Date().toISOString()
+                });
+                this.saveBubbleArchives(archives);
+                console.log('💾 AI保存了新存档:', archiveName);
+                text = text.replace(saveMatch[0], `💾 [已保存气泡样式「${archiveName}」到存档]`);
+            }
+        }
+        
+        // ====== 处理 [RENAME_ARCHIVE:archiveId:newName] ======
+        const renameMatch = text.match(/\[RENAME_ARCHIVE:([^:]+):([^\]]+)\]/);
+        if (renameMatch) {
+            const archiveId = renameMatch[1].trim();
+            const newName = renameMatch[2].trim();
+            const archives = this.getBubbleArchives();
+            const archive = archives.find(a => a.id === archiveId || a.name === archiveId);
+            if (archive && newName) {
+                const oldName = archive.name;
+                archive.name = newName;
+                this.saveBubbleArchives(archives);
+                console.log('✏️ AI改名存档:', oldName, '→', newName);
+                text = text.replace(renameMatch[0], `✏️ [已将存档「${oldName}」改名为「${newName}」]`);
+            } else {
+                text = text.replace(renameMatch[0], `❌ [未找到要改名的存档]`);
+            }
+        }
+        
+        // ====== 处理 [APPLY_CSS]...[/APPLY_CSS] ======
         const cssMatch = text.match(/\[APPLY_CSS\]([\s\S]*?)\[\/APPLY_CSS\]/);
         if (cssMatch) {
             const cssCode = cssMatch[1].trim();
             
             // 如果需要备份
             if (hasBackup && this.settings.customBubbleCss) {
-                this.saveCustomCssArchive_auto(this.settings.customBubbleCss);
+                this.saveCustomCssArchive_auto(this.settings.customBubbleCss, null);
                 console.log('💾 AI备份了旧CSS');
             }
             
@@ -1283,7 +1444,6 @@ div.innerHTML = `
             this.saveSettings();
             console.log('🎨 AI应用了新的CSS样式');
             
-            // 从消息文本中移除标记，替换为提示
             text = text.replace(/\[APPLY_CSS\][\s\S]*?\[\/APPLY_CSS\]/, '✨ [已应用新的聊天样式]');
         }
         
@@ -1291,16 +1451,18 @@ div.innerHTML = `
     }
     
     // 自动备份CSS存档（AI触发的）
-    saveCustomCssArchive_auto(css) {
+    saveCustomCssArchive_auto(css, aiName) {
         try {
             const archives = this.getBubbleArchives();
             const now = new Date();
-            const timeStr = `${now.getMonth()+1}月${now.getDate()}日 ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
+            const timeStr = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+            const name = aiName || `自动备份 ${timeStr}`;
             archives.push({
                 id: 'archive_auto_' + Date.now(),
-                name: `AI备份 ${timeStr}`,
+                name: name,
                 css: css,
-                createdAt: now.toISOString()
+                createdAt: now.toISOString(),
+                note: `系统自动备份于 ${timeStr}`
             });
             this.saveBubbleArchives(archives);
         } catch (e) {
