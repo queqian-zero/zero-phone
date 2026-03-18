@@ -41,6 +41,9 @@ class ChatApp {
             });
         });
         
+        // 初始化时渲染聊天列表（修复：退掉后台重进后消息条目不显示的bug）
+        this.renderChatList();
+        
         console.log('✅ 聊天APP初始化完成');
     }
     
