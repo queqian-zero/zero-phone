@@ -156,12 +156,13 @@ class ChatInterface {
                 border-radius: 12px;
                 overflow: hidden;
                 border: 1px solid rgba(255,255,255,0.1);
-                background: #fff;
+                background: transparent;
             }
             /* CSS操作系统提示小字 */
             .css-system-message {
                 text-align: center;
-                padding: 6px 0;
+                padding: 2px 0;
+                margin: -4px 0;
             }
             .css-system-message span {
                 font-size: 11px;
@@ -1055,7 +1056,7 @@ this.silentMemoryCheck(result.text);
         div.innerHTML = `
             <div class="standalone-html-sender">${this.escapeHtml(senderName)} 发送了一个页面</div>
             <div class="standalone-html-frame-wrap">
-                <iframe class="rendered-html-frame" id="${iframeId}" sandbox="allow-scripts allow-same-origin" srcdoc="${this.escapeAttr(htmlCode)}" style="width:100%;border:none;border-radius:8px;background:#fff;min-height:80px;"></iframe>
+                <iframe class="rendered-html-frame" id="${iframeId}" sandbox="allow-scripts allow-same-origin" srcdoc="${this.escapeAttr(htmlCode)}" style="width:100%;border:none;border-radius:8px;background:transparent;min-height:80px;"></iframe>
             </div>
         `;
         
@@ -1412,11 +1413,7 @@ div.innerHTML = `
             }
             
             this.settings.customBubbleCss = cssCode;
-            this.removeCustomCss();
-            const style = document.createElement('style');
-            style.id = 'customBubbleCssTag';
-            style.textContent = cssCode;
-            document.head.appendChild(style);
+            this.injectCustomCss(cssCode);
             this.saveSettings();
             console.log('🎨 AI应用了新的CSS样式');
             
@@ -1436,11 +1433,7 @@ div.innerHTML = `
             if (archive) {
                 // 加载存档CSS
                 this.settings.customBubbleCss = archive.css;
-                this.removeCustomCss();
-                const style = document.createElement('style');
-                style.id = 'customBubbleCssTag';
-                style.textContent = archive.css;
-                document.head.appendChild(style);
+                this.injectCustomCss(archive.css);
                 this.selectBubbleStyle('default'); // 清掉预设
                 this.saveSettings();
                 console.log('📂 AI加载了存档:', archive.name);
@@ -1720,13 +1713,7 @@ this.applyWallpaper(this.settings.chatWallpaper || 'default');
 
         // 加载自定义CSS（如果有的话）
         if (this.settings.customBubbleCss) {
-            // 重新注入自定义CSS到页面
-            const oldStyle = document.getElementById('customBubbleCssTag');
-            if (oldStyle) oldStyle.remove();
-            const style = document.createElement('style');
-            style.id = 'customBubbleCssTag';
-            style.textContent = this.settings.customBubbleCss;
-            document.head.appendChild(style);
+            this.injectCustomCss(this.settings.customBubbleCss);
             console.log('✅ 自定义CSS已从设置恢复');
         }
         
@@ -4001,15 +3988,7 @@ compressAndApplyWallpaper(imageData) {
     );
 
         // 先移除旧的自定义style标签
-        this.removeCustomCss();
-
-        if (css) {
-            const style = document.createElement('style');
-            style.id = 'customBubbleCssTag';
-            style.textContent = css;
-            document.head.appendChild(style);
-            console.log('✅ 自定义CSS已应用');
-        }
+        this.injectCustomCss(css);
 
         if (save) {
             this.settings.customBubbleCss = css;
@@ -4026,6 +4005,17 @@ compressAndApplyWallpaper(imageData) {
         if (oldStyle) oldStyle.remove();
         const oldPreview = document.getElementById('customBubbleCssPreviewTag');
         if (oldPreview) oldPreview.remove();
+    }
+    
+    // 统一注入自定义CSS（自动添加字色继承规则）
+    injectCustomCss(css) {
+        this.removeCustomCss();
+        if (!css) return;
+        const style = document.createElement('style');
+        style.id = 'customBubbleCssTag';
+        const colorInheritRule = `\n/* 自动：让自定义CSS的字色生效 */\n.message-ai .message-text, .message-user .message-text { color: inherit !important; }\n`;
+        style.textContent = css + colorInheritRule;
+        document.head.appendChild(style);
     }
 
     // 更新弹窗内预览区域（把用户写的CSS转换成作用在预览区的CSS）

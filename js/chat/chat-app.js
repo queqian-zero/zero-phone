@@ -367,7 +367,7 @@ showChatListContextMenu(friendCode) {
     `;
     menu.innerHTML = `
         <div id="chatListCtxOverlay" style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);"></div>
-        <div style="position:relative;z-index:1;width:90%;max-width:360px;background:#1a1a1a;border-radius:16px 16px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom));animation:ctxSlideUp 0.25s ease-out;">
+        <div style="position:relative;z-index:1;width:100%;background:#1a1a1a;border-radius:16px 16px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom));animation:ctxSlideUp 0.25s ease-out;">
             <div style="text-align:center;font-size:15px;font-weight:600;color:#fff;margin-bottom:16px;">${this.escapeHtml(displayName)}</div>
             <button class="ctx-btn" id="ctxPinChat" style="width:100%;padding:14px;margin-bottom:8px;border:none;border-radius:10px;background:rgba(255,255,255,0.08);color:#fff;font-size:14px;cursor:pointer;">
                 ${isPinned ? '📌 取消置顶' : '📌 置顶聊天'}
