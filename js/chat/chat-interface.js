@@ -579,22 +579,6 @@ class ChatInterface {
             ? (this.settings.flameCustomDeadIconType === 'image')
             : (this.settings.flameCustomIconType === 'image');
         
-        // tab上的图标
-        const tabIcon = document.getElementById('badgeTabIcon');
-        if (tabIcon) {
-            if (flameOff) {
-                tabIcon.textContent = '⚪';
-            } else if (status.icon) {
-                if (isImg) {
-                    tabIcon.innerHTML = `<img src="${status.icon}" style="width:12px;height:12px;object-fit:contain;vertical-align:middle;">`;
-                } else {
-                    tabIcon.textContent = status.icon;
-                }
-            } else {
-                tabIcon.textContent = '⚪';
-            }
-        }
-        
         // 展开内容里的火花条目
         const flameIcon = document.getElementById('badgeFlameIcon');
         const flameText = document.getElementById('badgeFlameText');
