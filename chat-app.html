@@ -114,6 +114,21 @@
         <button class="chat-settings-btn" id="chatSettingsBtn" title="聊天设置">⚙️</button>
     </div>
 
+    <!-- 星痕面板（在Token上方） -->
+    <div class="badge-panel" id="badgePanel">
+        <div class="badge-display" id="badgeDisplay">
+            <span id="badgeSummaryIcon">🔥</span>
+            <span id="badgeSummaryLabel" style="font-size:12px;">星痕</span>
+            <span class="expand-icon">▼</span>
+        </div>
+        <div class="badge-details" id="badgeDetails" style="display: none;">
+            <div class="badge-item" id="badgeFlameItem">
+                <span class="badge-item-icon" id="badgeFlameIcon">🔥</span>
+                <span class="badge-item-text" id="badgeFlameText">连续 0 天</span>
+            </div>
+        </div>
+    </div>
+
     <!-- Token统计 -->
     <div class="token-stats" id="tokenStats">
         <div class="token-display" id="tokenDisplay">
@@ -142,36 +157,6 @@
                 <span>实际消耗:</span>
                 <span id="tokenTotal">0</span>
             </div>
-        </div>
-    </div>
-
-    <!-- 左侧徽章面板（对称token统计） -->
-    <div class="badge-panel" id="badgePanel">
-        <div class="badge-display" id="badgeDisplay">
-            <span id="badgeSummaryIcon">🔥</span>
-            <span class="expand-icon">▼</span>
-        </div>
-        <div class="badge-details" id="badgeDetails" style="display: none;">
-            <!-- 火花 -->
-            <div class="badge-item" id="badgeFlameItem">
-                <span class="badge-item-icon" id="badgeFlameIcon">🔥</span>
-                <span class="badge-item-text" id="badgeFlameText">连续 0 天</span>
-            </div>
-            <!-- 以后：幸运字符 -->
-            <!-- <div class="badge-item" id="badgeLuckyItem">
-                <span class="badge-item-icon">🍀</span>
-                <span class="badge-item-text">幸运字符名</span>
-            </div> -->
-            <!-- 以后：徽章 -->
-            <!-- <div class="badge-item" id="badgeMedalItem">
-                <span class="badge-item-icon">🏅</span>
-                <span class="badge-item-text">徽章名</span>
-            </div> -->
-            <!-- 以后：亲密关系 -->
-            <!-- <div class="badge-item" id="badgeRelationItem">
-                <span class="badge-item-icon">💑</span>
-                <span class="badge-item-text">xx天</span>
-            </div> -->
         </div>
     </div>
 
