@@ -181,7 +181,7 @@ class ChatInterface {
                 border-radius: 10px;
             }
             /* 聊天列表火花图标 */
-            .chat-list-flame { font-size:12px;margin-left:4px;display:inline; }
+            .chat-list-flame { font-size:12px;margin-left:4px;display:inline;vertical-align:middle;line-height:1; }
             /* 统一信息面板 */
             .info-panel {
                 position: absolute;
