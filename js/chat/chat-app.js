@@ -220,6 +220,17 @@ if (pageId === 'chatListPage') {
     
     // 打开聊天界面
     openChatInterface(friendCode) {
+        // 检查这个好友是否被从消息列表隐藏了
+        const chatSettings = this.storage.getChatSettings(friendCode) || {};
+        if (chatSettings.hiddenFromChatList) {
+            const friend = this.storage.getFriendByCode(friendCode);
+            const displayName = friend?.nickname || friend?.name || '该好友';
+            if (confirm(`「${displayName}」的消息条已从消息列表中移除。\n\n要把消息条添加回消息列表吗？`)) {
+                chatSettings.hiddenFromChatList = false;
+                this.storage.saveChatSettings(friendCode, chatSettings);
+            }
+        }
+        
         // 隐藏底部导航
         document.querySelector('.bottom-nav').style.display = 'none';
         
@@ -237,9 +248,9 @@ if (pageId === 'chatListPage') {
         window.chatInterface.loadChat(friendCode);
         
         // 返回时刷新聊天列表
-window.chatInterface._onBackCallback = () => {
-    this.renderChatList();
-};
+        window.chatInterface._onBackCallback = () => {
+            this.renderChatList();
+        };
     }
     
     // 长按好友卡片
@@ -272,9 +283,14 @@ renderChatList() {
         chatItems.push({ friend, chat, lastMsg });
     }
 
-    // 也把没有好友信息但有聊天记录的加进来（理论上不应该出现，保险起见）
     // 过滤掉完全没有消息的（没聊过的好友不显示在聊天列表）
-    chatItems = chatItems.filter(item => item.lastMsg);
+    // 同时过滤掉被用户主动隐藏的
+    chatItems = chatItems.filter(item => {
+        if (!item.lastMsg) return false;
+        const settings = this.storage.getChatSettings(item.friend.code) || {};
+        if (settings.hiddenFromChatList) return false;
+        return true;
+    });
 
     if (chatItems.length === 0) {
         container.innerHTML = '';
@@ -298,11 +314,160 @@ renderChatList() {
 
     container.innerHTML = chatItems.map(item => this.createChatListItem(item)).join('');
 
-    // 绑定点击事件
+    // 绑定点击 + 长按事件
     container.querySelectorAll('.chat-list-item').forEach(el => {
-        el.addEventListener('click', () => {
-            this.openChatInterface(el.getAttribute('data-code'));
+        const code = el.getAttribute('data-code');
+        let longPressTimer = null;
+        let longPressTriggered = false;
+        
+        el.addEventListener('touchstart', () => {
+            longPressTriggered = false;
+            el.classList.add('long-pressing');
+            longPressTimer = setTimeout(() => {
+                longPressTriggered = true;
+                if (navigator.vibrate) navigator.vibrate(50);
+                this.showChatListContextMenu(code);
+            }, 500);
         });
+        
+        el.addEventListener('touchend', () => {
+            el.classList.remove('long-pressing');
+            clearTimeout(longPressTimer);
+            if (!longPressTriggered) {
+                this.openChatInterface(code);
+            }
+        });
+        
+        el.addEventListener('touchcancel', () => {
+            el.classList.remove('long-pressing');
+            clearTimeout(longPressTimer);
+        });
+    });
+}
+
+// ==================== 聊天列表长按菜单 ====================
+
+showChatListContextMenu(friendCode) {
+    console.log('📋 显示聊天列表长按菜单:', friendCode);
+    
+    // 移除旧菜单
+    const old = document.getElementById('chatListContextMenu');
+    if (old) old.remove();
+    
+    const friend = this.storage.getFriendByCode(friendCode);
+    const displayName = friend?.nickname || friend?.name || '未知';
+    const settings = this.storage.getChatSettings(friendCode) || {};
+    const isPinned = settings.chatPin || false;
+    
+    const menu = document.createElement('div');
+    menu.id = 'chatListContextMenu';
+    menu.style.cssText = `
+        position: fixed; top:0; left:0; right:0; bottom:0;
+        z-index: 9999; display:flex; align-items:flex-end; justify-content:center;
+    `;
+    menu.innerHTML = `
+        <div id="chatListCtxOverlay" style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);"></div>
+        <div style="position:relative;z-index:1;width:90%;max-width:360px;background:#1a1a1a;border-radius:16px 16px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom));animation:ctxSlideUp 0.25s ease-out;">
+            <div style="text-align:center;font-size:15px;font-weight:600;color:#fff;margin-bottom:16px;">${this.escapeHtml(displayName)}</div>
+            <button class="ctx-btn" id="ctxPinChat" style="width:100%;padding:14px;margin-bottom:8px;border:none;border-radius:10px;background:rgba(255,255,255,0.08);color:#fff;font-size:14px;cursor:pointer;">
+                ${isPinned ? '📌 取消置顶' : '📌 置顶聊天'}
+            </button>
+            <button class="ctx-btn" id="ctxDeleteChat" style="width:100%;padding:14px;margin-bottom:8px;border:none;border-radius:10px;background:rgba(255,255,255,0.08);color:#ff6b6b;font-size:14px;cursor:pointer;">
+                🗑️ 删除消息条
+            </button>
+            <button class="ctx-btn" id="ctxCancel" style="width:100%;padding:14px;border:none;border-radius:10px;background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.5);font-size:14px;cursor:pointer;">
+                取消
+            </button>
+        </div>
+    `;
+    
+    // 动画
+    if (!document.getElementById('ctxSlideUpAnim')) {
+        const style = document.createElement('style');
+        style.id = 'ctxSlideUpAnim';
+        style.textContent = `@keyframes ctxSlideUp { from{transform:translateY(100%);} to{transform:translateY(0);} }`;
+        document.head.appendChild(style);
+    }
+    
+    document.body.appendChild(menu);
+    
+    // 事件
+    document.getElementById('chatListCtxOverlay').addEventListener('click', () => menu.remove());
+    document.getElementById('ctxCancel').addEventListener('click', () => menu.remove());
+    
+    document.getElementById('ctxPinChat').addEventListener('click', () => {
+        menu.remove();
+        this.toggleChatPin(friendCode);
+    });
+    
+    document.getElementById('ctxDeleteChat').addEventListener('click', () => {
+        menu.remove();
+        this.showDeleteChatOptions(friendCode, displayName);
+    });
+}
+
+// 切换置顶
+toggleChatPin(friendCode) {
+    const settings = this.storage.getChatSettings(friendCode) || {};
+    settings.chatPin = !settings.chatPin;
+    this.storage.saveChatSettings(friendCode, settings);
+    console.log('📌 聊天置顶:', settings.chatPin);
+    this.renderChatList();
+}
+
+// 删除消息条选项
+showDeleteChatOptions(friendCode, displayName) {
+    const old = document.getElementById('chatDeleteOptions');
+    if (old) old.remove();
+    
+    const menu = document.createElement('div');
+    menu.id = 'chatDeleteOptions';
+    menu.style.cssText = `
+        position: fixed; top:0; left:0; right:0; bottom:0;
+        z-index: 9999; display:flex; align-items:center; justify-content:center;
+    `;
+    menu.innerHTML = `
+        <div id="chatDelOverlay" style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);"></div>
+        <div style="position:relative;z-index:1;width:85%;max-width:320px;background:#1a1a1a;border-radius:16px;padding:24px 20px;text-align:center;">
+            <div style="font-size:15px;font-weight:600;color:#fff;margin-bottom:6px;">删除「${this.escapeHtml(displayName)}」的消息条</div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:20px;">从消息列表中移除</div>
+            <button id="chatDelKeepRecords" style="width:100%;padding:13px;margin-bottom:8px;border:none;border-radius:10px;background:rgba(255,255,255,0.08);color:#fff;font-size:14px;cursor:pointer;">
+                仅移除消息条（保留聊天记录）
+            </button>
+            <button id="chatDelClearAll" style="width:100%;padding:13px;margin-bottom:12px;border:none;border-radius:10px;background:rgba(255,60,60,0.15);color:#ff6b6b;font-size:14px;cursor:pointer;">
+                清空聊天记录 + 移除消息条
+            </button>
+            <button id="chatDelCancel" style="width:100%;padding:13px;border:none;border-radius:10px;background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.5);font-size:14px;cursor:pointer;">
+                取消
+            </button>
+        </div>
+    `;
+    
+    document.body.appendChild(menu);
+    
+    document.getElementById('chatDelOverlay').addEventListener('click', () => menu.remove());
+    document.getElementById('chatDelCancel').addEventListener('click', () => menu.remove());
+    
+    // 仅移除消息条（不删聊天记录）
+    document.getElementById('chatDelKeepRecords').addEventListener('click', () => {
+        menu.remove();
+        const settings = this.storage.getChatSettings(friendCode) || {};
+        settings.hiddenFromChatList = true;
+        this.storage.saveChatSettings(friendCode, settings);
+        console.log('🗑️ 消息条已隐藏（保留记录）:', friendCode);
+        this.renderChatList();
+    });
+    
+    // 清空聊天记录 + 移除消息条
+    document.getElementById('chatDelClearAll').addEventListener('click', () => {
+        menu.remove();
+        if (!confirm('⚠️ 确定要清空聊天记录吗？此操作不可撤销！')) return;
+        this.storage.deleteChat(friendCode);
+        const settings = this.storage.getChatSettings(friendCode) || {};
+        settings.hiddenFromChatList = true;
+        this.storage.saveChatSettings(friendCode, settings);
+        console.log('🗑️ 聊天记录已清空 + 消息条已隐藏:', friendCode);
+        this.renderChatList();
     });
 }
 

@@ -125,7 +125,7 @@ class ChatInterface {
             .message-user .code-block-code {
                 color: rgba(0,0,0,0.8);
             }
-            /* 渲染的HTML容器 */
+            /* 渲染的HTML容器（旧的在气泡内的，保留兼容） */
             .rendered-html-container {
                 margin: 8px 0;
                 border-radius: 8px;
@@ -137,6 +137,38 @@ class ChatInterface {
             }
             .message-user .rendered-html-container {
                 border-color: rgba(0,0,0,0.1);
+            }
+            /* 独立HTML渲染块（不在气泡里，全宽展示） */
+            .standalone-html {
+                margin: 8px 0;
+                padding: 0 16px;
+            }
+            .standalone-html-sender {
+                font-size: 11px;
+                color: rgba(255,255,255,0.35);
+                margin-bottom: 4px;
+                padding-left: 2px;
+            }
+            .standalone-html-user .standalone-html-sender {
+                text-align: right;
+            }
+            .standalone-html-frame-wrap {
+                border-radius: 12px;
+                overflow: hidden;
+                border: 1px solid rgba(255,255,255,0.1);
+                background: #fff;
+            }
+            /* CSS操作系统提示小字 */
+            .css-system-message {
+                text-align: center;
+                padding: 6px 0;
+            }
+            .css-system-message span {
+                font-size: 11px;
+                color: rgba(255,255,255,0.35);
+                background: rgba(255,255,255,0.05);
+                padding: 3px 12px;
+                border-radius: 10px;
             }
         `;
         document.head.appendChild(style);
@@ -378,9 +410,11 @@ class ChatInterface {
         
         this.messages.forEach((msg, index) => {
             console.log(`  渲染消息 ${index + 1}:`, msg.type, msg.text.substring(0, 20));
-            const messageEl = this.createMessageElement(msg);
-            messagesList.appendChild(messageEl);
-            this.setupIframeAutoResize(messageEl);
+            const elements = this.createMessageElements(msg);
+            elements.forEach(el => {
+                messagesList.appendChild(el);
+                this.setupIframeAutoResize(el);
+            });
         });
         
         console.log('✅ 消息渲染完成');
@@ -938,10 +972,13 @@ this.silentMemoryCheck(result.text);
             return;
         }
         
-        const messageEl = this.createMessageElement(message);
-        messagesList.appendChild(messageEl);
-        this.setupIframeAutoResize(messageEl);
-        console.log('✅ 消息元素已添加到DOM');
+        // 如果消息包含[RENDER_HTML]，拆分成多个DOM元素
+        const elements = this.createMessageElements(message);
+        elements.forEach(el => {
+            messagesList.appendChild(el);
+            this.setupIframeAutoResize(el);
+        });
+        console.log('✅ 消息元素已添加到DOM,', elements.length, '个部分');
         
         this.messages.push(message);
         
@@ -949,6 +986,80 @@ this.silentMemoryCheck(result.text);
         if (this.settings.autoSummary) {
             this.checkAutoSummary();
         }
+    }
+    
+    // 将一条消息拆成多个DOM元素（文字→气泡，HTML→独立块）
+    createMessageElements(message) {
+        const text = message.text || '';
+        
+        // 检查是否包含[RENDER_HTML]
+        if (!text.includes('[RENDER_HTML]')) {
+            // 没有渲染HTML，返回普通气泡
+            return [this.createMessageElement(message)];
+        }
+        
+        // 按[RENDER_HTML]...[/RENDER_HTML]拆分
+        const parts = [];
+        let remaining = text;
+        const regex = /\[RENDER_HTML\]([\s\S]*?)\[\/RENDER_HTML\]/;
+        
+        while (remaining.length > 0) {
+            const match = remaining.match(regex);
+            if (!match) {
+                if (remaining.trim()) {
+                    parts.push({ type: 'text', content: remaining });
+                }
+                break;
+            }
+            
+            // match前面的文本
+            if (match.index > 0) {
+                const before = remaining.substring(0, match.index);
+                if (before.trim()) {
+                    parts.push({ type: 'text', content: before });
+                }
+            }
+            
+            // HTML部分
+            parts.push({ type: 'html', content: match[1].trim() });
+            
+            remaining = remaining.substring(match.index + match[0].length);
+        }
+        
+        // 为每个部分生成DOM元素
+        const elements = [];
+        const senderName = message.type === 'ai' 
+            ? (this.currentFriend?.nickname || this.currentFriend?.name || 'AI') 
+            : '我';
+        
+        parts.forEach(part => {
+            if (part.type === 'text') {
+                // 文字部分→正常气泡
+                const textMsg = { ...message, text: part.content };
+                elements.push(this.createMessageElement(textMsg));
+            } else if (part.type === 'html') {
+                // HTML部分→独立渲染块（不在气泡里）
+                elements.push(this.createStandaloneHtmlElement(part.content, message.type, senderName));
+            }
+        });
+        
+        return elements.length > 0 ? elements : [this.createMessageElement(message)];
+    }
+    
+    // 创建独立的HTML渲染块（不在气泡里，全宽展示）
+    createStandaloneHtmlElement(htmlCode, msgType, senderName) {
+        const div = document.createElement('div');
+        div.className = `standalone-html standalone-html-${msgType}`;
+        
+        const iframeId = 'renderFrame_' + Math.random().toString(36).substr(2, 8);
+        div.innerHTML = `
+            <div class="standalone-html-sender">${this.escapeHtml(senderName)} 发送了一个页面</div>
+            <div class="standalone-html-frame-wrap">
+                <iframe class="rendered-html-frame" id="${iframeId}" sandbox="allow-scripts allow-same-origin" srcdoc="${this.escapeAttr(htmlCode)}" style="width:100%;border:none;border-radius:8px;background:#fff;min-height:80px;"></iframe>
+            </div>
+        `;
+        
+        return div;
     }
     
     createMessageElement(message) {
@@ -1076,9 +1187,8 @@ div.innerHTML = `
         const segments = [];
         let remaining = text;
         
-        // 定义所有需要匹配的标记模式
+        // 定义所有需要匹配的标记模式（RENDER_HTML已在createMessageElements层处理）
         const patterns = [
-            { regex: /\[RENDER_HTML\]([\s\S]*?)\[\/RENDER_HTML\]/,  type: 'render_html' },
             { regex: /\[CODE_HTML\]([\s\S]*?)\[\/CODE_HTML\]/,      type: 'code_html' },
             { regex: /\[CODE_CSS\]([\s\S]*?)\[\/CODE_CSS\]/,        type: 'code_css' },
             { regex: /\[APPLY_CSS\]([\s\S]*?)\[\/APPLY_CSS\]/,      type: 'code_css' },
@@ -1113,9 +1223,7 @@ div.innerHTML = `
             }
             
             // 处理标记内容
-            if (earliestPattern.type === 'render_html') {
-                segments.push({ type: 'render_html', content: earliest[1].trim() });
-            } else if (earliestPattern.type === 'code_html') {
+            if (earliestPattern.type === 'code_html') {
                 segments.push({ type: 'code', content: earliest[1].trim(), lang: 'html' });
             } else if (earliestPattern.type === 'code_css') {
                 segments.push({ type: 'code', content: earliest[1].trim(), lang: 'css' });
@@ -1133,9 +1241,6 @@ div.innerHTML = `
         return segments.map(seg => {
             if (seg.type === 'text') {
                 return this.escapeHtml(seg.content);
-            } else if (seg.type === 'render_html') {
-                const iframeId = 'renderFrame_' + Math.random().toString(36).substr(2, 8);
-                return `<div class="rendered-html-container"><iframe class="rendered-html-frame" id="${iframeId}" sandbox="allow-scripts allow-same-origin" srcdoc="${this.escapeAttr(seg.content)}" style="width:100%;border:none;border-radius:8px;background:#fff;min-height:80px;"></iframe></div>`;
             } else if (seg.type === 'code') {
                 return this.createCodeBlock(seg.content, seg.lang);
             }
@@ -1315,7 +1420,10 @@ div.innerHTML = `
             this.saveSettings();
             console.log('🎨 AI应用了新的CSS样式');
             
-            text = text.replace(/\[APPLY_CSS\][\s\S]*?\[\/APPLY_CSS\]/, '✨ [已应用新的聊天样式]');
+            text = text.replace(/\[APPLY_CSS\][\s\S]*?\[\/APPLY_CSS\]/, '');
+            // 弹窗 + 系统小字
+            this.showCssToast('✨ 已应用新的聊天样式');
+            this.showCssSystemMessage('✨ 已应用新的聊天样式');
         }
         
         // ====== [LOAD_ARCHIVE:ID] 加载已有存档 ======
@@ -1336,7 +1444,9 @@ div.innerHTML = `
                 this.selectBubbleStyle('default'); // 清掉预设
                 this.saveSettings();
                 console.log('📂 AI加载了存档:', archive.name);
-                text = text.replace(/\[LOAD_ARCHIVE:[^\]]+\]/, `✨ [已切换到气泡样式「${archive.name}」]`);
+                text = text.replace(/\[LOAD_ARCHIVE:[^\]]+\]/, '');
+                this.showCssToast(`✨ 已切换到「${archive.name}」`);
+                this.showCssSystemMessage(`✨ 已切换到气泡样式「${archive.name}」`);
             } else {
                 console.warn('⚠️ 找不到存档:', archiveId);
                 text = text.replace(/\[LOAD_ARCHIVE:[^\]]+\]/, '❌ [找不到该气泡存档]');
@@ -1359,7 +1469,9 @@ div.innerHTML = `
                 });
                 this.saveBubbleArchives(archives);
                 console.log('💾 AI保存了新存档:', archiveName);
-                text = text.replace(/\[SAVE_ARCHIVE:[^\]]+\][\s\S]*?\[\/SAVE_ARCHIVE\]/, `💾 [已保存气泡存档「${archiveName}」]`);
+                text = text.replace(/\[SAVE_ARCHIVE:[^\]]+\][\s\S]*?\[\/SAVE_ARCHIVE\]/, '');
+                this.showCssToast(`💾 已保存「${archiveName}」`);
+                this.showCssSystemMessage(`💾 已保存气泡存档「${archiveName}」`);
             }
         }
         
@@ -1376,7 +1488,9 @@ div.innerHTML = `
                 archive.name = newName;
                 this.saveBubbleArchives(archives);
                 console.log('✏️ AI重命名存档:', oldName, '→', newName);
-                text = text.replace(/\[RENAME_ARCHIVE:[^\]]+\]/, `✏️ [已将「${oldName}」重命名为「${newName}」]`);
+                text = text.replace(/\[RENAME_ARCHIVE:[^\]]+\]/, '');
+                this.showCssToast(`✏️「${oldName}」→「${newName}」`);
+                this.showCssSystemMessage(`✏️ 已将「${oldName}」重命名为「${newName}」`);
             } else {
                 text = text.replace(/\[RENAME_ARCHIVE:[^\]]+\]/, '❌ [存档重命名失败]');
             }
@@ -1780,6 +1894,66 @@ this.applyWallpaper(this.settings.chatWallpaper || 'default');
         
         this.triggerAvatarShake();
         
+        this.scrollToBottom();
+    }
+    
+    // CSS操作的悬浮弹窗（自动消失）
+    showCssToast(text) {
+        const existing = document.getElementById('cssToast');
+        if (existing) existing.remove();
+
+        const toast = document.createElement('div');
+        toast.id = 'cssToast';
+        toast.style.cssText = `
+            position: fixed;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(20,20,20,0.92);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 20px;
+            padding: 10px 20px;
+            font-size: 13px;
+            color: rgba(255,255,255,0.85);
+            z-index: 9999;
+            pointer-events: none;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            white-space: nowrap;
+            animation: cssToastIn 0.3s ease-out;
+        `;
+        toast.textContent = text;
+
+        // 动画
+        if (!document.getElementById('cssToastAnim')) {
+            const style = document.createElement('style');
+            style.id = 'cssToastAnim';
+            style.textContent = `
+                @keyframes cssToastIn {
+                    from { opacity:0; transform:translateX(-50%) translateY(-10px); }
+                    to   { opacity:1; transform:translateX(-50%) translateY(0); }
+                }`;
+            document.head.appendChild(style);
+        }
+
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+            toast.style.transition = 'opacity 0.4s ease';
+            toast.style.opacity = '0';
+            setTimeout(() => toast.remove(), 400);
+        }, 2500);
+    }
+    
+    // CSS操作的系统小字（拍一拍风格，留在聊天记录里）
+    showCssSystemMessage(text) {
+        const messagesList = document.getElementById('messagesList');
+        if (!messagesList) return;
+
+        const div = document.createElement('div');
+        div.className = 'system-message css-system-message';
+        div.innerHTML = `<span>${this.escapeHtml(text)}</span>`;
+        messagesList.appendChild(div);
         this.scrollToBottom();
     }
     
