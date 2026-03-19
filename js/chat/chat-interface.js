@@ -182,55 +182,69 @@ class ChatInterface {
             }
             /* 聊天列表火花图标 */
             .chat-list-flame { font-size:12px;margin-left:4px;display:inline; }
-            /* 星痕面板（右侧，token上方） */
-            .badge-panel {
+            /* 统一信息面板 */
+            .info-panel {
                 position: absolute;
                 top: 70px;
                 right: 16px;
-                z-index: 51;
+                z-index: 50;
+                min-width: 220px;
             }
-            /* 把token推到星痕下方 */
-            .token-stats { top: 108px !important; }
-            .badge-display {
+            .info-panel-header {
                 background: rgba(245,245,245,0.75);
                 backdrop-filter: blur(20px);
                 -webkit-backdrop-filter: blur(20px);
                 border: 0.5px solid rgba(0,0,0,0.08);
                 border-radius: 16px;
-                padding: 6px 12px;
-                font-size: 14px;
-                cursor: pointer;
+                padding: 4px 6px;
                 display: flex;
                 align-items: center;
-                gap: 6px;
+                gap: 4px;
                 box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-                transition: all 0.2s;
+                cursor: pointer;
             }
-            .badge-display:active { transform: scale(0.95); }
-            .badge-display.expanded .expand-icon { transform: rotate(180deg); }
-            .badge-details {
-                position: absolute;
-                top: 100%;
-                left: 0;
+            .info-panel-header:active { transform: scale(0.97); }
+            .info-panel-tabs { display:flex; gap:2px; flex:1; }
+            .info-tab {
+                flex:1;
+                padding: 5px 10px;
+                border: none;
+                border-radius: 12px;
+                background: transparent;
+                color: rgba(0,0,0,0.4);
+                font-size: 12px;
+                cursor: pointer;
+                transition: all 0.2s;
+                white-space: nowrap;
+            }
+            .info-tab.active {
+                background: rgba(0,0,0,0.06);
+                color: #000;
+                font-weight: 600;
+            }
+            .info-panel-toggle {
+                font-size: 10px;
+                color: rgba(0,0,0,0.3);
+                transition: transform 0.3s;
+                padding: 0 4px;
+            }
+            .info-panel.expanded .info-panel-toggle { transform: rotate(180deg); }
+            .info-panel-body {
                 margin-top: 8px;
                 background: rgba(245,245,245,0.85);
                 backdrop-filter: blur(30px);
                 -webkit-backdrop-filter: blur(30px);
                 border: 0.5px solid rgba(0,0,0,0.08);
                 border-radius: 12px;
-                padding: 10px 14px;
-                min-width: 160px;
+                padding: 12px;
                 box-shadow: 0 4px 16px rgba(0,0,0,0.08);
             }
-            .badge-item {
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                padding: 6px 0;
-            }
-            .badge-item-icon { font-size: 16px; flex-shrink:0; }
-            .badge-item-icon img { width:16px; height:16px; object-fit:contain; vertical-align:middle; }
-            .badge-item-text { font-size: 13px; color: #000; }
+            .info-panel-content { display:none; }
+            .info-panel-content.active { display:block; }
+            .badge-item { display:flex;align-items:center;gap:8px;padding:6px 0; }
+            .badge-item-icon { font-size:16px;flex-shrink:0; }
+            .badge-item-icon img { width:16px;height:16px;object-fit:contain;vertical-align:middle; }
+            .badge-item-text { font-size:13px;color:#000; }
         `;
         document.head.appendChild(style);
     }
@@ -281,22 +295,24 @@ class ChatInterface {
             });
         }
         
-        // Token统计展开
-        const tokenDisplay = document.getElementById('tokenDisplay');
-        if (tokenDisplay) {
-            tokenDisplay.addEventListener('click', () => {
-                console.log('📊 点击Token统计');
-                this.toggleTokenDetails();
+        // 统一信息面板
+        const infoPanelToggle = document.getElementById('infoPanelToggle');
+        const infoPanelHeader = document.getElementById('infoPanelHeader');
+        if (infoPanelHeader) {
+            // 点击箭头展开/收起
+            infoPanelToggle?.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.toggleInfoPanel();
             });
         }
-        
-        // 徽章面板展开
-        const badgeDisplay = document.getElementById('badgeDisplay');
-        if (badgeDisplay) {
-            badgeDisplay.addEventListener('click', () => {
-                this.toggleBadgePanel();
+        // tab切换
+        document.querySelectorAll('.info-tab').forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const tabName = tab.getAttribute('data-tab');
+                this.switchInfoTab(tabName);
             });
-        }
+        });
         
         // 菜单按钮
         const menuBtn = document.getElementById('menuBtn');
@@ -517,40 +533,44 @@ class ChatInterface {
     }
 }
     
-   // ==================== Token统计 ====================
+   // ==================== 统一信息面板 ====================
     
-    toggleTokenDetails() {
-        const display = document.getElementById('tokenDisplay');
-        const details = document.getElementById('tokenDetails');
+    toggleInfoPanel() {
+        const panel = document.getElementById('infoPanel');
+        const body = document.getElementById('infoPanelBody');
+        if (!panel || !body) return;
         
-        if (!display || !details) return;
-        
-        if (details.style.display === 'none') {
-            display.classList.add('expanded');
-            details.style.display = 'block';
-            console.log('📊 展开Token详情');
+        if (body.style.display === 'none') {
+            body.style.display = 'block';
+            panel.classList.add('expanded');
         } else {
-            display.classList.remove('expanded');
-            details.style.display = 'none';
-            console.log('📊 收起Token详情');
+            body.style.display = 'none';
+            panel.classList.remove('expanded');
         }
     }
     
-    // ==================== 徽章面板 ====================
-    
-    toggleBadgePanel() {
-        const display = document.getElementById('badgeDisplay');
-        const details = document.getElementById('badgeDetails');
-        if (!display || !details) return;
-        
-        if (details.style.display === 'none') {
-            display.classList.add('expanded');
-            details.style.display = 'block';
-        } else {
-            display.classList.remove('expanded');
-            details.style.display = 'none';
+    switchInfoTab(tabName) {
+        // 更新tab高亮
+        document.querySelectorAll('.info-tab').forEach(t => {
+            t.classList.toggle('active', t.getAttribute('data-tab') === tabName);
+        });
+        // 切换内容
+        const tokenContent = document.getElementById('infoPanelToken');
+        const badgeContent = document.getElementById('infoPanelBadge');
+        if (tokenContent) tokenContent.style.display = tabName === 'token' ? 'block' : 'none';
+        if (badgeContent) badgeContent.style.display = tabName === 'badge' ? 'block' : 'none';
+        // 自动展开
+        const body = document.getElementById('infoPanelBody');
+        const panel = document.getElementById('infoPanel');
+        if (body && body.style.display === 'none') {
+            body.style.display = 'block';
+            if (panel) panel.classList.add('expanded');
         }
     }
+    
+    // 兼容旧调用
+    toggleTokenDetails() { this.switchInfoTab('token'); }
+    toggleBadgePanel() { this.switchInfoTab('badge'); }
     
     updateBadgePanel() {
         const status = this.getFlameStatus();
@@ -559,27 +579,23 @@ class ChatInterface {
             ? (this.settings.flameCustomDeadIconType === 'image')
             : (this.settings.flameCustomIconType === 'image');
         
-        // 面板始终可见
-        const panel = document.getElementById('badgePanel');
-        if (panel) panel.style.display = 'block';
-        
-        // 顶部摘要图标
-        const summaryIcon = document.getElementById('badgeSummaryIcon');
-        if (summaryIcon) {
+        // tab上的图标
+        const tabIcon = document.getElementById('badgeTabIcon');
+        if (tabIcon) {
             if (flameOff) {
-                summaryIcon.textContent = '⚪';
+                tabIcon.textContent = '⚪';
             } else if (status.icon) {
                 if (isImg) {
-                    summaryIcon.innerHTML = `<img src="${status.icon}" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;">`;
+                    tabIcon.innerHTML = `<img src="${status.icon}" style="width:12px;height:12px;object-fit:contain;vertical-align:middle;">`;
                 } else {
-                    summaryIcon.textContent = status.icon;
+                    tabIcon.textContent = status.icon;
                 }
             } else {
-                summaryIcon.textContent = '⚪';
+                tabIcon.textContent = '⚪';
             }
         }
         
-        // 展开面板里的火花条目（常驻，关闭时显示"未开启"）
+        // 展开内容里的火花条目
         const flameIcon = document.getElementById('badgeFlameIcon');
         const flameText = document.getElementById('badgeFlameText');
         const flameItem = document.getElementById('badgeFlameItem');
@@ -1946,14 +1962,12 @@ this.applyWallpaper(this.settings.chatWallpaper || 'default');
     }
     
     toggleTokenDisplay() {
-        const tokenStats = document.getElementById('tokenStats');
-        if (tokenStats) {
+        const panel = document.getElementById('infoPanel');
+        if (panel) {
             if (this.settings.hideToken) {
-                tokenStats.style.display = 'none';
-                console.log('🙈 隐藏Token统计');
+                panel.style.display = 'none';
             } else {
-                tokenStats.style.display = 'block';
-                console.log('👁️ 显示Token统计');
+                panel.style.display = 'block';
             }
         }
     }
