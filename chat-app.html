@@ -456,12 +456,12 @@
             <h3 class="section-title">亲密关系</h3>
             
             <!-- 续火花系统 -->
-            <div class="setting-item disabled">
+            <div class="setting-item" id="settingFlameSystem" style="cursor: pointer;">
                 <div class="setting-info">
-                    <span class="setting-label">续火花系统</span>
+                    <span class="setting-label">🔥 续火花系统</span>
                     <span class="setting-desc">设置火花开始时间和熄灭时长</span>
                 </div>
-                <span class="setting-badge">待开发</span>
+                <span class="setting-arrow">›</span>
             </div>
             
             <!-- 亲密关系绑定 -->
@@ -1545,6 +1545,69 @@
     </div>
 </div>
 <!-- ==================== 头像框弹窗结束 ==================== -->
+
+<!-- ==================== 续火花系统弹窗 ==================== -->
+<div class="flame-modal" id="flameModal" style="display:none;">
+    <div class="flame-overlay" id="flameOverlay"></div>
+    <div class="flame-modal-content">
+        <div class="flame-modal-header">
+            <h2>🔥 续火花系统</h2>
+            <button class="flame-close-btn" id="flameClose">×</button>
+        </div>
+        <div class="flame-modal-body">
+            <!-- 当前状态 -->
+            <div class="flame-status-card" id="flameStatusCard">
+                <div class="flame-status-icon" id="flameStatusIcon">🔥</div>
+                <div class="flame-status-text" id="flameStatusText">连续 0 天</div>
+                <div class="flame-status-desc" id="flameStatusDesc">火花状态正常</div>
+            </div>
+
+            <!-- 开关 -->
+            <div class="flame-setting-row">
+                <span>启用续火花</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="flameEnabledSwitch" checked>
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+
+            <!-- 开始日期 -->
+            <div class="flame-setting-row">
+                <span>火花开始日期</span>
+                <input type="date" id="flameStartDate" class="flame-date-input">
+            </div>
+
+            <!-- 熄灭天数 -->
+            <div class="flame-setting-row">
+                <span>几天不聊天熄灭</span>
+                <select id="flameExtinguishDays" class="flame-select">
+                    <option value="1">1天</option>
+                    <option value="3" selected>3天</option>
+                    <option value="5">5天</option>
+                    <option value="7">7天</option>
+                    <option value="0">永不熄灭</option>
+                </select>
+            </div>
+
+            <!-- 自定义图标 -->
+            <div class="flame-setting-row">
+                <span>火花图标</span>
+                <div class="flame-icon-pick">
+                    <span id="flameIconPreview">🔥</span>
+                    <input type="text" id="flameCustomIcon" placeholder="emoji或留空" maxlength="4" class="flame-icon-input">
+                </div>
+            </div>
+            <div class="flame-setting-row">
+                <span>熄灭图标</span>
+                <div class="flame-icon-pick">
+                    <span id="flameDeadIconPreview">💔</span>
+                    <input type="text" id="flameCustomDeadIcon" placeholder="emoji或留空" maxlength="4" class="flame-icon-input">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- ==================== 续火花系统弹窗结束 ==================== -->
 
 </body>
 </html>
