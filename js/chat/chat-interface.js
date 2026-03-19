@@ -688,7 +688,8 @@ class ChatInterface {
         
         try {
             const maxMessages = this.settings.contextMessages || 20;
-            const recentMessages = this.messages.slice(-maxMessages);
+            // 过滤掉系统消息（CSS操作提示等），只发user和ai消息给API
+            const recentMessages = this.messages.filter(m => m.type !== 'system').slice(-maxMessages);
             
             console.log('📜 准备发送的消息历史:', recentMessages.length, '条');
 
@@ -992,6 +993,14 @@ this.silentMemoryCheck(result.text);
     // 将一条消息拆成多个DOM元素（文字→气泡，HTML→独立块）
     createMessageElements(message) {
         const text = message.text || '';
+        
+        // 系统消息（CSS操作提示等）→ 直接渲染为系统小字
+        if (message.type === 'system') {
+            const div = document.createElement('div');
+            div.className = 'system-message css-system-message';
+            div.innerHTML = `<span>${this.escapeHtml(text)}</span>`;
+            return [div];
+        }
         
         // 检查是否包含[RENDER_HTML]
         if (!text.includes('[RENDER_HTML]')) {
@@ -1934,9 +1943,19 @@ this.applyWallpaper(this.settings.chatWallpaper || 'default');
     
     // CSS操作的系统小字（拍一拍风格，留在聊天记录里）
     showCssSystemMessage(text) {
+        // 存进消息数组和storage，这样刷新后还能看到
+        const systemMsg = {
+            type: 'system',
+            text: text,
+            timestamp: new Date().toISOString()
+        };
+        
+        this.messages.push(systemMsg);
+        this.storage.addMessage(this.currentFriendCode, systemMsg);
+        
+        // 渲染到DOM
         const messagesList = document.getElementById('messagesList');
         if (!messagesList) return;
-
         const div = document.createElement('div');
         div.className = 'system-message css-system-message';
         div.innerHTML = `<span>${this.escapeHtml(text)}</span>`;
