@@ -128,12 +128,29 @@
         <div class="info-panel-body" id="infoPanelBody" style="display:none;">
             <!-- Token内容 -->
             <div class="info-panel-content active" id="infoPanelToken">
-                <div class="token-item"><span>世界书:</span><span id="tokenWorldbook">0</span></div>
-                <div class="token-item"><span>人设:</span><span id="tokenPersona">0</span></div>
-                <div class="token-item"><span>输入:</span><span id="tokenInput">0</span></div>
-                <div class="token-item"><span>输出:</span><span id="tokenOutput">0</span></div>
-                <div class="token-divider"></div>
-                <div class="token-item token-total"><span>实际消耗:</span><span id="tokenTotal">0</span></div>
+                <!-- 本轮概要 -->
+                <div class="token-round-summary">
+                    <div class="token-round-row"><span>⬆ 输入</span><span id="tokenRoundInput">-</span></div>
+                    <div class="token-round-row"><span>⬇ 输出</span><span id="tokenRoundOutput">-</span></div>
+                    <div class="token-round-row"><span>⏱ 耗时</span><span id="tokenRoundDuration">-</span></div>
+                </div>
+                <!-- 详情按钮 -->
+                <div class="token-detail-toggle" id="tokenDetailToggle" style="text-align:center;padding:6px 0;cursor:pointer;">
+                    <span style="font-size:11px;color:rgba(0,0,0,0.35);">▾ 查看本轮详情</span>
+                </div>
+                <!-- 详情区（默认隐藏） -->
+                <div class="token-detail-breakdown" id="tokenDetailBreakdown" style="display:none;">
+                    <div class="token-divider"></div>
+                    <div class="token-detail-title" style="font-size:12px;font-weight:600;color:rgba(0,0,0,0.6);padding:4px 0;">Token 深度分析</div>
+                    <div class="token-detail-item"><span>🧠 人设</span><div class="token-detail-bar-wrap"><div class="token-detail-bar" id="tokenBarPersona"></div></div><span id="tokenDetailPersona">-</span></div>
+                    <div class="token-detail-item"><span>🌍 世界观</span><div class="token-detail-bar-wrap"><div class="token-detail-bar" id="tokenBarWorld"></div></div><span id="tokenDetailWorld">-</span></div>
+                    <div class="token-detail-item"><span>🖼 图片</span><div class="token-detail-bar-wrap"><div class="token-detail-bar" id="tokenBarImage"></div></div><span id="tokenDetailImage">-</span></div>
+                    <div class="token-detail-item"><span>⚙ 系统指令</span><div class="token-detail-bar-wrap"><div class="token-detail-bar" id="tokenBarSystem"></div></div><span id="tokenDetailSystem">-</span></div>
+                    <div class="token-detail-item"><span>💬 聊天记录</span><div class="token-detail-bar-wrap"><div class="token-detail-bar" id="tokenBarChat"></div></div><span id="tokenDetailChat">-</span></div>
+                    <div class="token-detail-item"><span>📝 记忆</span><div class="token-detail-bar-wrap"><div class="token-detail-bar" id="tokenBarMemory"></div></div><span id="tokenDetailMemory">-</span></div>
+                    <div class="token-divider"></div>
+                    <div class="token-detail-item token-total"><span>总计</span><span></span><span id="tokenDetailTotal">-</span></div>
+                </div>
             </div>
             <!-- 星痕内容 -->
             <div class="info-panel-content" id="infoPanelBadge" style="display:none;">
