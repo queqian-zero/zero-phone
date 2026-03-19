@@ -182,13 +182,15 @@ class ChatInterface {
             }
             /* 聊天列表火花图标 */
             .chat-list-flame { font-size:12px;margin-left:4px;display:inline; }
-            /* 左侧徽章面板（对称token） */
+            /* 星痕面板（右侧，token上方） */
             .badge-panel {
                 position: absolute;
                 top: 70px;
-                left: 16px;
-                z-index: 50;
+                right: 16px;
+                z-index: 51;
             }
+            /* 把token推到星痕下方 */
+            .token-stats { top: 108px !important; }
             .badge-display {
                 background: rgba(245,245,245,0.75);
                 backdrop-filter: blur(20px);
@@ -552,33 +554,42 @@ class ChatInterface {
     
     updateBadgePanel() {
         const status = this.getFlameStatus();
-        const isImg = (status.status === 'dead' || status.status === 'gone')
+        const flameOff = this.settings.flameEnabled === false;
+        const isImg = (!flameOff && (status.status === 'dead' || status.status === 'gone'))
             ? (this.settings.flameCustomDeadIconType === 'image')
             : (this.settings.flameCustomIconType === 'image');
+        
+        // 面板始终可见
+        const panel = document.getElementById('badgePanel');
+        if (panel) panel.style.display = 'block';
         
         // 顶部摘要图标
         const summaryIcon = document.getElementById('badgeSummaryIcon');
         if (summaryIcon) {
-            if (status.icon) {
+            if (flameOff) {
+                summaryIcon.textContent = '⚪';
+            } else if (status.icon) {
                 if (isImg) {
                     summaryIcon.innerHTML = `<img src="${status.icon}" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;">`;
                 } else {
                     summaryIcon.textContent = status.icon;
                 }
             } else {
-                summaryIcon.textContent = this.settings.flameEnabled !== false ? '⚪' : '';
+                summaryIcon.textContent = '⚪';
             }
         }
         
-        // 展开面板里的火花条目
+        // 展开面板里的火花条目（常驻，关闭时显示"未开启"）
         const flameIcon = document.getElementById('badgeFlameIcon');
         const flameText = document.getElementById('badgeFlameText');
         const flameItem = document.getElementById('badgeFlameItem');
         
-        if (this.settings.flameEnabled === false) {
-            if (flameItem) flameItem.style.display = 'none';
+        if (flameItem) flameItem.style.display = 'flex';
+        
+        if (flameOff) {
+            if (flameIcon) flameIcon.textContent = '⚪';
+            if (flameText) flameText.textContent = '续火花 未开启';
         } else {
-            if (flameItem) flameItem.style.display = 'flex';
             if (flameIcon) {
                 if (isImg && status.icon) {
                     flameIcon.innerHTML = `<img src="${status.icon}" style="width:16px;height:16px;object-fit:contain;">`;
@@ -587,12 +598,6 @@ class ChatInterface {
                 }
             }
             if (flameText) flameText.textContent = status.text;
-        }
-        
-        // 整个面板可见性
-        const panel = document.getElementById('badgePanel');
-        if (panel) {
-            panel.style.display = (this.settings.flameEnabled === false) ? 'none' : 'block';
         }
     }
     
@@ -5080,7 +5085,7 @@ getFlameStatusForAI() {
     const settings = this.settings;
     
     if (settings.flameEnabled === false) {
-        return '【续火花系统】已关闭';
+        return '【续火花系统】已关闭\n- 你可以通过 [FLAME_TOGGLE:on] 尝试请求user打开续火花（需要user同意）';
     }
     
     const extinguishText = (settings.flameExtinguishDays ?? 3) === 0 ? '永不熄灭' : `${settings.flameExtinguishDays}天不聊就熄灭`;
@@ -5092,7 +5097,8 @@ getFlameStatusForAI() {
         desc += '\n💔 火花已经熄灭了。你可以表现出遗憾、难过或者装作不在意——取决于你的性格。';
     }
     
-    desc += '\n- 你可以通过 [FLAME_TOGGLE:on] 或 [FLAME_TOGGLE:off] 来尝试控制火花开关（需要user同意）';
+    desc += '\n- 你可以通过 [FLAME_TOGGLE:on] 或 [FLAME_TOGGLE:off] 来尝试开关火花（需要user同意）';
+    desc += '\n- 你可以通过 [FLAME_DAYS:天数] 来尝试调整熄灭天数（需要user同意），可选值：1、3、5、7、0（永不熄灭）';
     
     return desc;
 }
@@ -5196,6 +5202,7 @@ bindFlameEvents() {
             this.settings.flameEnabled = e.target.checked;
             this.saveSettings();
             this.updateFlameStatusCard();
+            this.updateBadgePanel();
         });
     }
     
@@ -5339,53 +5346,85 @@ updateFlameIconPreview(previewId, value, type) {
 
 // 处理AI的火花控制指令
 processFlameCommands(text) {
-    const toggleMatch = text.match(/\[FLAME_TOGGLE:(on|off)\]/);
-    if (!toggleMatch) return text;
-    
-    const wantOn = toggleMatch[1] === 'on';
     const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
-    const action = wantOn ? '打开' : '关闭';
     
-    // 从文本中移除指令
-    text = text.replace(/\[FLAME_TOGGLE:(on|off)\]/, '');
+    // ====== [FLAME_TOGGLE:on/off] ======
+    const toggleMatch = text.match(/\[FLAME_TOGGLE:(on|off)\]/);
+    if (toggleMatch) {
+        const wantOn = toggleMatch[1] === 'on';
+        const action = wantOn ? '打开' : '关闭';
+        text = text.replace(/\[FLAME_TOGGLE:(on|off)\]/, '');
+        
+        setTimeout(() => {
+            const modal = document.createElement('div');
+            modal.id = 'flameToggleConfirm';
+            modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;display:flex;align-items:center;justify-content:center;';
+            modal.innerHTML = `
+                <div style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);"></div>
+                <div style="position:relative;z-index:1;width:85%;max-width:320px;background:#1a1a1a;border-radius:16px;padding:24px 20px;text-align:center;">
+                    <div style="font-size:28px;margin-bottom:12px;">${wantOn ? '🔥' : '💨'}</div>
+                    <div style="font-size:15px;color:#fff;margin-bottom:6px;font-weight:600;">${this.escapeHtml(friendName)} 正在尝试${action}续火花系统</div>
+                    <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:20px;">TA想${action}你们之间的续火花</div>
+                    <button id="flameToggleAgree" style="width:100%;padding:13px;margin-bottom:8px;border:none;border-radius:10px;background:rgba(255,140,0,0.15);color:#ffaa33;font-size:14px;cursor:pointer;">同意${action}续火花系统</button>
+                    <button id="flameToggleDecline" style="width:100%;padding:13px;border:none;border-radius:10px;background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.5);font-size:14px;cursor:pointer;">我想和TA再商量商量</button>
+                </div>`;
+            document.body.appendChild(modal);
+            
+            document.getElementById('flameToggleAgree').addEventListener('click', () => {
+                modal.remove();
+                this.settings.flameEnabled = wantOn;
+                this.saveSettings();
+                this.updateBadgePanel();
+                this.showCssSystemMessage(wantOn ? '🔥 续火花系统已打开' : '💨 续火花系统已关闭');
+                this.showCssToast(wantOn ? '🔥 火花已点燃' : '💨 火花已关闭');
+            });
+            document.getElementById('flameToggleDecline').addEventListener('click', () => {
+                modal.remove();
+                this.showCssSystemMessage(`你婉拒了${friendName}的请求`);
+            });
+        }, 300);
+    }
     
-    // 弹窗确认
-    setTimeout(() => {
-        const msg = `${friendName} 正在尝试操控你的设备${action}续火花系统`;
+    // ====== [FLAME_DAYS:天数] ======
+    const daysMatch = text.match(/\[FLAME_DAYS:(\d+)\]/);
+    if (daysMatch) {
+        const requestedDays = parseInt(daysMatch[1]);
+        const validDays = [0, 1, 3, 5, 7];
+        text = text.replace(/\[FLAME_DAYS:\d+\]/, '');
         
-        // 创建自定义弹窗
-        const modal = document.createElement('div');
-        modal.id = 'flameToggleConfirm';
-        modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;display:flex;align-items:center;justify-content:center;';
-        modal.innerHTML = `
-            <div style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);"></div>
-            <div style="position:relative;z-index:1;width:85%;max-width:320px;background:#1a1a1a;border-radius:16px;padding:24px 20px;text-align:center;">
-                <div style="font-size:28px;margin-bottom:12px;">${wantOn ? '🔥' : '💨'}</div>
-                <div style="font-size:15px;color:#fff;margin-bottom:6px;font-weight:600;">${this.escapeHtml(msg)}</div>
-                <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:20px;">TA想${action}你们之间的续火花</div>
-                <button id="flameToggleAgree" style="width:100%;padding:13px;margin-bottom:8px;border:none;border-radius:10px;background:rgba(255,140,0,0.15);color:#ffaa33;font-size:14px;cursor:pointer;">
-                    同意${action}续火花系统
-                </button>
-                <button id="flameToggleDecline" style="width:100%;padding:13px;border:none;border-radius:10px;background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.5);font-size:14px;cursor:pointer;">
-                    我想和TA再商量商量
-                </button>
-            </div>
-        `;
-        document.body.appendChild(modal);
+        if (!validDays.includes(requestedDays)) return text;
         
-        document.getElementById('flameToggleAgree').addEventListener('click', () => {
-            modal.remove();
-            this.settings.flameEnabled = wantOn;
-            this.saveSettings();
-            this.showCssSystemMessage(wantOn ? '🔥 续火花系统已打开' : '💨 续火花系统已关闭');
-            this.showCssToast(wantOn ? '🔥 火花已点燃' : '💨 火花已关闭');
-        });
+        const daysText = requestedDays === 0 ? '永不熄灭' : `${requestedDays}天`;
         
-        document.getElementById('flameToggleDecline').addEventListener('click', () => {
-            modal.remove();
-            this.showCssSystemMessage(`你婉拒了${friendName}的请求`);
-        });
-    }, 300);
+        setTimeout(() => {
+            const modal = document.createElement('div');
+            modal.id = 'flameDaysConfirm';
+            modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;display:flex;align-items:center;justify-content:center;';
+            modal.innerHTML = `
+                <div style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);"></div>
+                <div style="position:relative;z-index:1;width:85%;max-width:320px;background:#1a1a1a;border-radius:16px;padding:24px 20px;text-align:center;">
+                    <div style="font-size:28px;margin-bottom:12px;">⏱️</div>
+                    <div style="font-size:15px;color:#fff;margin-bottom:6px;font-weight:600;">${this.escapeHtml(friendName)} 想调整续火花天数</div>
+                    <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:20px;">TA想把熄灭时间改为「${daysText}」</div>
+                    <button id="flameDaysAgree" style="width:100%;padding:13px;margin-bottom:8px;border:none;border-radius:10px;background:rgba(255,140,0,0.15);color:#ffaa33;font-size:14px;cursor:pointer;">同意改为 ${daysText}</button>
+                    <button id="flameDaysDecline" style="width:100%;padding:13px;border:none;border-radius:10px;background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.5);font-size:14px;cursor:pointer;">我想和TA再商量商量</button>
+                </div>`;
+            document.body.appendChild(modal);
+            
+            document.getElementById('flameDaysAgree').addEventListener('click', () => {
+                modal.remove();
+                this.settings.flameExtinguishDays = requestedDays;
+                this.saveSettings();
+                this.updateBadgePanel();
+                this.showCssSystemMessage(`⏱️ 续火花天数已调整为「${daysText}」`);
+                this.showCssToast(`⏱️ 已改为 ${daysText}`);
+            });
+            document.getElementById('flameDaysDecline').addEventListener('click', () => {
+                modal.remove();
+                this.showCssSystemMessage(`你婉拒了${friendName}的请求`);
+            });
+        }, 500);
+    }
     
     return text;
 }
