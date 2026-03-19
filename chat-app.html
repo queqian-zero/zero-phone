@@ -114,48 +114,34 @@
         <button class="chat-settings-btn" id="chatSettingsBtn" title="聊天设置">⚙️</button>
     </div>
 
-    <!-- 星痕面板（在Token上方） -->
-    <div class="badge-panel" id="badgePanel">
-        <div class="badge-display" id="badgeDisplay">
-            <span id="badgeSummaryIcon">🔥</span>
-            <span id="badgeSummaryLabel" style="font-size:12px;">星痕</span>
-            <span class="expand-icon">▼</span>
+    <!-- 统一信息面板（Token + 星痕） -->
+    <div class="info-panel" id="infoPanel">
+        <!-- 顶部：tab切换 + 收起 -->
+        <div class="info-panel-header" id="infoPanelHeader">
+            <div class="info-panel-tabs">
+                <button class="info-tab active" id="infoTabToken" data-tab="token">📊 Token</button>
+                <button class="info-tab" id="infoTabBadge" data-tab="badge"><span id="badgeTabIcon">🔥</span> 星痕</button>
+            </div>
+            <span class="info-panel-toggle" id="infoPanelToggle">▼</span>
         </div>
-        <div class="badge-details" id="badgeDetails" style="display: none;">
-            <div class="badge-item" id="badgeFlameItem">
-                <span class="badge-item-icon" id="badgeFlameIcon">🔥</span>
-                <span class="badge-item-text" id="badgeFlameText">连续 0 天</span>
+        <!-- 内容区（3号区域） -->
+        <div class="info-panel-body" id="infoPanelBody" style="display:none;">
+            <!-- Token内容 -->
+            <div class="info-panel-content active" id="infoPanelToken">
+                <div class="token-item"><span>世界书:</span><span id="tokenWorldbook">0</span></div>
+                <div class="token-item"><span>人设:</span><span id="tokenPersona">0</span></div>
+                <div class="token-item"><span>输入:</span><span id="tokenInput">0</span></div>
+                <div class="token-item"><span>输出:</span><span id="tokenOutput">0</span></div>
+                <div class="token-divider"></div>
+                <div class="token-item token-total"><span>实际消耗:</span><span id="tokenTotal">0</span></div>
             </div>
-        </div>
-    </div>
-
-    <!-- Token统计 -->
-    <div class="token-stats" id="tokenStats">
-        <div class="token-display" id="tokenDisplay">
-            <span>Token: 0</span>
-            <span class="expand-icon">▼</span>
-        </div>
-        <div class="token-details" id="tokenDetails" style="display: none;">
-            <div class="token-item">
-                <span>世界书:</span>
-                <span id="tokenWorldbook">0</span>
-            </div>
-            <div class="token-item">
-                <span>人设:</span>
-                <span id="tokenPersona">0</span>
-            </div>
-            <div class="token-item">
-                <span>输入:</span>
-                <span id="tokenInput">0</span>
-            </div>
-            <div class="token-item">
-                <span>输出:</span>
-                <span id="tokenOutput">0</span>
-            </div>
-            <div class="token-divider"></div>
-            <div class="token-item token-total">
-                <span>实际消耗:</span>
-                <span id="tokenTotal">0</span>
+            <!-- 星痕内容 -->
+            <div class="info-panel-content" id="infoPanelBadge" style="display:none;">
+                <div class="badge-item" id="badgeFlameItem">
+                    <span class="badge-item-icon" id="badgeFlameIcon">🔥</span>
+                    <span class="badge-item-text" id="badgeFlameText">连续 0 天</span>
+                </div>
+                <!-- 以后扩展：幸运字符、勋章、亲密关系 -->
             </div>
         </div>
     </div>
