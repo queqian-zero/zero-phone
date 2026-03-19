@@ -36,7 +36,14 @@ class ChatInterface {
             userAvatarFrameSrc: '',
             userAvatarFrameOffsetX: 0,
             userAvatarFrameOffsetY: 0,
-            userAvatarFrameScale: 100
+            userAvatarFrameScale: 100,
+            // 续火花系统
+            flameEnabled: true,
+            flameStartDate: '',       // 空=使用好友添加时间
+            flameExtinguishDays: 3,   // 1,3,5,7,0(永不)
+            flameLastChatDate: '',    // 最后聊天日期 YYYY-MM-DD
+            flameCustomIcon: '',      // 空=默认🔥
+            flameCustomDeadIcon: ''   // 空=默认💔
 };
 
         
@@ -171,6 +178,26 @@ class ChatInterface {
                 padding: 3px 12px;
                 border-radius: 10px;
             }
+            /* ====== 火花系统弹窗 ====== */
+            .flame-modal { position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;display:flex;align-items:center;justify-content:center; }
+            .flame-overlay { position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6); }
+            .flame-modal-content { position:relative;z-index:1;width:92%;max-width:380px;background:#1a1a1a;border-radius:16px;max-height:85vh;overflow-y:auto; }
+            .flame-modal-header { display:flex;justify-content:space-between;align-items:center;padding:18px 20px 12px;border-bottom:1px solid rgba(255,255,255,0.06); }
+            .flame-modal-header h2 { font-size:17px;color:#fff;margin:0; }
+            .flame-close-btn { background:none;border:none;color:rgba(255,255,255,0.5);font-size:22px;cursor:pointer;padding:0 4px; }
+            .flame-modal-body { padding:16px 20px 24px; }
+            .flame-status-card { text-align:center;padding:20px;margin-bottom:18px;background:rgba(255,255,255,0.03);border-radius:12px;border:1px solid rgba(255,255,255,0.06); }
+            .flame-status-icon { font-size:40px;margin-bottom:6px; }
+            .flame-status-text { font-size:18px;font-weight:600;color:#fff; }
+            .flame-status-desc { font-size:12px;color:rgba(255,255,255,0.4);margin-top:4px; }
+            .flame-setting-row { display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.04); }
+            .flame-setting-row span:first-child { font-size:14px;color:rgba(255,255,255,0.8); }
+            .flame-date-input, .flame-select { background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:6px 10px;color:#fff;font-size:13px; }
+            .flame-date-input::-webkit-calendar-picker-indicator { filter:invert(1); }
+            .flame-icon-pick { display:flex;align-items:center;gap:8px; }
+            .flame-icon-input { width:60px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:5px 8px;color:#fff;font-size:14px;text-align:center; }
+            /* 聊天列表火花图标 */
+            .chat-list-flame { font-size:12px;margin-left:4px;display:inline; }
         `;
         document.head.appendChild(style);
     }
@@ -677,6 +704,7 @@ class ChatInterface {
         }
         
         this.closeMenu();
+        this.updateFlameOnChat(); // 续火花
         this.scrollToBottom();
     }
     
@@ -834,6 +862,9 @@ ${archiveListText}
 
 ⚠️ 注意：绝大多数时候你不需要主动使用这些标记。只在user明确要求或者你觉得合适的时候才用。`;
 
+            // ====== 火花系统状态注入 ======
+            systemPrompt += '\n\n' + this.getFlameStatusForAI();
+
             // 偶尔报备记忆清理
             if (this._pendingMemoryReport) {
                 this._pendingMemoryReport = false;
@@ -860,6 +891,7 @@ ${archiveListText}
             // ====== 需求4：检查AI是否发了APPLY_CSS ======
             let aiText = result.text;
             aiText = this.processAICssCommands(aiText);
+            aiText = this.processFlameCommands(aiText);
             
             this.addMessage({
                 type: 'ai',
@@ -879,6 +911,7 @@ if (result.tokens) {
 
 // 后台静默检测是否有值得记住的内容
 this.silentMemoryCheck(result.text);
+this.updateFlameOnChat(); // 续火花
             
             this.scrollToBottom();
             
@@ -1688,6 +1721,14 @@ if (exportDataBtn) {
         if (memoryModuleBtn) {
             memoryModuleBtn.addEventListener('click', () => {
                 this.openMemoryModule();
+            });
+        }
+        
+        // 火花系统入口
+        const flameBtn = document.getElementById('settingFlameSystem');
+        if (flameBtn) {
+            flameBtn.addEventListener('click', () => {
+                this.openFlameModal();
             });
         }
     }
@@ -4847,6 +4888,297 @@ showMemoryToast(friendName) {
     }, 3000);
 }
     
+// ==================== 续火花系统 ====================
+
+// 获取火花状态
+getFlameStatus(friendCode) {
+    const settings = this.storage.getChatSettings(friendCode || this.currentFriendCode) || {};
+    const friend = this.storage.getFriendByCode(friendCode || this.currentFriendCode);
+    
+    // 未开启
+    if (settings.flameEnabled === false) {
+        return { status: 'disabled', days: 0, icon: '', text: '火花已关闭' };
+    }
+    
+    const flameIcon = settings.flameCustomIcon || '🔥';
+    const deadIcon = settings.flameCustomDeadIcon || '💔';
+    const extinguishDays = settings.flameExtinguishDays ?? 3;
+    
+    // 开始日期
+    const startStr = settings.flameStartDate || friend?.addedTime || new Date().toISOString().split('T')[0];
+    const startDate = new Date(startStr);
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    startDate.setHours(0,0,0,0);
+    
+    // 最后聊天日期
+    const lastChatStr = settings.flameLastChatDate || '';
+    const lastChatDate = lastChatStr ? new Date(lastChatStr) : null;
+    if (lastChatDate) lastChatDate.setHours(0,0,0,0);
+    
+    // 从开始到今天的天数
+    const totalDays = Math.floor((today - startDate) / 86400000);
+    
+    // 永不熄灭
+    if (extinguishDays === 0) {
+        return { status: 'active', days: Math.max(totalDays, 0), icon: flameIcon, text: `连续 ${Math.max(totalDays,0)} 天` };
+    }
+    
+    // 没聊过天
+    if (!lastChatDate) {
+        // 看今天距离开始日期
+        if (totalDays >= extinguishDays) {
+            const deadDays = totalDays - extinguishDays;
+            if (deadDays >= 3) {
+                return { status: 'gone', days: 0, icon: '', text: '火花已消失' };
+            }
+            return { status: 'dead', days: 0, icon: deadIcon, text: '火花已熄灭' };
+        }
+        return { status: 'active', days: Math.max(totalDays, 0), icon: flameIcon, text: `连续 ${Math.max(totalDays,0)} 天` };
+    }
+    
+    // 计算距离上次聊天的天数
+    const daysSinceChat = Math.floor((today - lastChatDate) / 86400000);
+    
+    if (daysSinceChat <= extinguishDays) {
+        // 火花还在
+        const streakDays = Math.max(totalDays, 0);
+        if (daysSinceChat >= extinguishDays - 1 && extinguishDays > 1) {
+            return { status: 'dying', days: streakDays, icon: flameIcon, text: `连续 ${streakDays} 天（即将熄灭！）` };
+        }
+        return { status: 'active', days: streakDays, icon: flameIcon, text: `连续 ${streakDays} 天` };
+    }
+    
+    // 火花熄灭了
+    const deadDays = daysSinceChat - extinguishDays;
+    if (deadDays >= 3) {
+        // 熄灭超过3天，图标也消失
+        return { status: 'gone', days: 0, icon: '', text: '火花已消失' };
+    }
+    return { status: 'dead', days: 0, icon: deadIcon, text: '火花已熄灭' };
+}
+
+// 聊天时更新火花最后聊天日期
+updateFlameOnChat() {
+    if (!this.currentFriendCode) return;
+    const today = new Date().toISOString().split('T')[0];
+    if (this.settings.flameLastChatDate === today) return; // 今天已更新过
+    this.settings.flameLastChatDate = today;
+    this.saveSettings();
+    console.log('🔥 火花：最后聊天日期更新为', today);
+}
+
+// 获取火花状态描述（给AI看的）
+getFlameStatusForAI() {
+    const status = this.getFlameStatus();
+    const settings = this.settings;
+    
+    if (settings.flameEnabled === false) {
+        return '【续火花系统】已关闭';
+    }
+    
+    const extinguishText = (settings.flameExtinguishDays ?? 3) === 0 ? '永不熄灭' : `${settings.flameExtinguishDays}天不聊就熄灭`;
+    let desc = `【续火花系统】已开启\n- 设置：${extinguishText}\n- 当前状态：${status.text}`;
+    
+    if (status.status === 'dying') {
+        desc += '\n⚠️ 火花即将熄灭！如果user今天不说话，火花就灭了。你可以自然地提醒或暗示user来续火花。';
+    } else if (status.status === 'dead') {
+        desc += '\n💔 火花已经熄灭了。你可以表现出遗憾、难过或者装作不在意——取决于你的性格。';
+    }
+    
+    desc += '\n- 你可以通过 [FLAME_TOGGLE:on] 或 [FLAME_TOGGLE:off] 来尝试控制火花开关（需要user同意）';
+    
+    return desc;
+}
+
+// 打开火花设置弹窗
+openFlameModal() {
+    console.log('🔥 打开火花设置弹窗');
+    const modal = document.getElementById('flameModal');
+    if (!modal) return;
+    modal.style.display = 'flex';
+    
+    // 同步UI
+    const friend = this.currentFriend || this.storage.getFriendByCode(this.currentFriendCode);
+    const defaultStart = this.settings.flameStartDate || friend?.addedTime || new Date().toISOString().split('T')[0];
+    
+    const enabledSwitch = document.getElementById('flameEnabledSwitch');
+    const startInput = document.getElementById('flameStartDate');
+    const extinguishSelect = document.getElementById('flameExtinguishDays');
+    const iconInput = document.getElementById('flameCustomIcon');
+    const deadIconInput = document.getElementById('flameCustomDeadIcon');
+    
+    if (enabledSwitch) enabledSwitch.checked = this.settings.flameEnabled !== false;
+    if (startInput) startInput.value = defaultStart;
+    if (extinguishSelect) extinguishSelect.value = String(this.settings.flameExtinguishDays ?? 3);
+    if (iconInput) iconInput.value = this.settings.flameCustomIcon || '';
+    if (deadIconInput) deadIconInput.value = this.settings.flameCustomDeadIcon || '';
+    
+    // 更新图标预览
+    const iconPreview = document.getElementById('flameIconPreview');
+    const deadPreview = document.getElementById('flameDeadIconPreview');
+    if (iconPreview) iconPreview.textContent = this.settings.flameCustomIcon || '🔥';
+    if (deadPreview) deadPreview.textContent = this.settings.flameCustomDeadIcon || '💔';
+    
+    // 更新状态卡片
+    this.updateFlameStatusCard();
+    
+    // 绑定事件（只一次）
+    if (!this.flameEventsBound) {
+        this.bindFlameEvents();
+        this.flameEventsBound = true;
+    }
+}
+
+closeFlameModal() {
+    const modal = document.getElementById('flameModal');
+    if (modal) modal.style.display = 'none';
+}
+
+updateFlameStatusCard() {
+    const status = this.getFlameStatus();
+    const iconEl = document.getElementById('flameStatusIcon');
+    const textEl = document.getElementById('flameStatusText');
+    const descEl = document.getElementById('flameStatusDesc');
+    const card = document.getElementById('flameStatusCard');
+    
+    if (iconEl) iconEl.textContent = status.icon || '⚪';
+    if (textEl) textEl.textContent = status.text;
+    
+    if (descEl) {
+        const descMap = {
+            'active': '火花燃烧中',
+            'dying': '⚠️ 即将熄灭！快聊天续上！',
+            'dead': '火花已熄灭…聊天可以重新点燃',
+            'gone': '火花已消失…聊天可以重新开始',
+            'disabled': '火花系统未启用'
+        };
+        descEl.textContent = descMap[status.status] || '';
+    }
+    
+    if (card) {
+        card.style.borderColor = status.status === 'dying' ? 'rgba(255,165,0,0.4)' : 
+                                  status.status === 'dead' ? 'rgba(255,60,60,0.3)' : 
+                                  'rgba(255,255,255,0.06)';
+    }
+}
+
+bindFlameEvents() {
+    // 关闭
+    const closeBtn = document.getElementById('flameClose');
+    const overlay = document.getElementById('flameOverlay');
+    if (closeBtn) closeBtn.addEventListener('click', () => this.closeFlameModal());
+    if (overlay) overlay.addEventListener('click', () => this.closeFlameModal());
+    
+    // 开关
+    const enabledSwitch = document.getElementById('flameEnabledSwitch');
+    if (enabledSwitch) {
+        enabledSwitch.addEventListener('change', (e) => {
+            this.settings.flameEnabled = e.target.checked;
+            this.saveSettings();
+            this.updateFlameStatusCard();
+            console.log('🔥 火花开关:', this.settings.flameEnabled);
+        });
+    }
+    
+    // 开始日期
+    const startInput = document.getElementById('flameStartDate');
+    if (startInput) {
+        startInput.addEventListener('change', (e) => {
+            this.settings.flameStartDate = e.target.value;
+            this.saveSettings();
+            this.updateFlameStatusCard();
+        });
+    }
+    
+    // 熄灭天数
+    const extinguishSelect = document.getElementById('flameExtinguishDays');
+    if (extinguishSelect) {
+        extinguishSelect.addEventListener('change', (e) => {
+            this.settings.flameExtinguishDays = parseInt(e.target.value);
+            this.saveSettings();
+            this.updateFlameStatusCard();
+        });
+    }
+    
+    // 火花图标
+    const iconInput = document.getElementById('flameCustomIcon');
+    if (iconInput) {
+        iconInput.addEventListener('input', (e) => {
+            this.settings.flameCustomIcon = e.target.value.trim();
+            const preview = document.getElementById('flameIconPreview');
+            if (preview) preview.textContent = this.settings.flameCustomIcon || '🔥';
+            this.saveSettings();
+            this.updateFlameStatusCard();
+        });
+    }
+    
+    // 熄灭图标
+    const deadIconInput = document.getElementById('flameCustomDeadIcon');
+    if (deadIconInput) {
+        deadIconInput.addEventListener('input', (e) => {
+            this.settings.flameCustomDeadIcon = e.target.value.trim();
+            const preview = document.getElementById('flameDeadIconPreview');
+            if (preview) preview.textContent = this.settings.flameCustomDeadIcon || '💔';
+            this.saveSettings();
+            this.updateFlameStatusCard();
+        });
+    }
+}
+
+// 处理AI的火花控制指令
+processFlameCommands(text) {
+    const toggleMatch = text.match(/\[FLAME_TOGGLE:(on|off)\]/);
+    if (!toggleMatch) return text;
+    
+    const wantOn = toggleMatch[1] === 'on';
+    const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
+    const action = wantOn ? '打开' : '关闭';
+    
+    // 从文本中移除指令
+    text = text.replace(/\[FLAME_TOGGLE:(on|off)\]/, '');
+    
+    // 弹窗确认
+    setTimeout(() => {
+        const msg = `${friendName} 正在尝试操控你的设备${action}续火花系统`;
+        
+        // 创建自定义弹窗
+        const modal = document.createElement('div');
+        modal.id = 'flameToggleConfirm';
+        modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;display:flex;align-items:center;justify-content:center;';
+        modal.innerHTML = `
+            <div style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);"></div>
+            <div style="position:relative;z-index:1;width:85%;max-width:320px;background:#1a1a1a;border-radius:16px;padding:24px 20px;text-align:center;">
+                <div style="font-size:28px;margin-bottom:12px;">${wantOn ? '🔥' : '💨'}</div>
+                <div style="font-size:15px;color:#fff;margin-bottom:6px;font-weight:600;">${this.escapeHtml(msg)}</div>
+                <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:20px;">TA想${action}你们之间的续火花</div>
+                <button id="flameToggleAgree" style="width:100%;padding:13px;margin-bottom:8px;border:none;border-radius:10px;background:rgba(255,140,0,0.15);color:#ffaa33;font-size:14px;cursor:pointer;">
+                    同意${action}续火花系统
+                </button>
+                <button id="flameToggleDecline" style="width:100%;padding:13px;border:none;border-radius:10px;background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.5);font-size:14px;cursor:pointer;">
+                    我想和TA再商量商量
+                </button>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        document.getElementById('flameToggleAgree').addEventListener('click', () => {
+            modal.remove();
+            this.settings.flameEnabled = wantOn;
+            this.saveSettings();
+            this.showCssSystemMessage(wantOn ? '🔥 续火花系统已打开' : '💨 续火花系统已关闭');
+            this.showCssToast(wantOn ? '🔥 火花已点燃' : '💨 火花已关闭');
+        });
+        
+        document.getElementById('flameToggleDecline').addEventListener('click', () => {
+            modal.remove();
+            this.showCssSystemMessage(`你婉拒了${friendName}的请求`);
+        });
+    }, 300);
+    
+    return text;
+}
+
     // ==================== 头像框功能方法 ====================
 
 getAvatarBorderRadius() {

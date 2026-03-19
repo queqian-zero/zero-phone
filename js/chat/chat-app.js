@@ -490,18 +490,63 @@ createChatListItem({ friend, lastMsg }) {
 
     // 时间显示
     const timeStr = lastMsg?.timestamp ? this.formatChatListTime(new Date(lastMsg.timestamp)) : '';
+    
+    // 火花图标
+    const flameHtml = this.getChatListFlameIcon(friend.code, settings, friend);
 
     return `
         <div class="chat-list-item ${pinned}" data-code="${friend.code}">
             <div class="chat-list-avatar">${avatarContent}</div>
             <div class="chat-list-info">
                 <div class="chat-list-name-row">
-                    <span class="chat-list-name">${displayName}</span>
+                    <span class="chat-list-name">${displayName}${flameHtml}</span>
                     <span class="chat-list-time">${timeStr}</span>
                 </div>
                 <div class="chat-list-preview">${this.escapeHtml(preview)}</div>
             </div>
         </div>`;
+}
+
+// 获取聊天列表中的火花图标
+getChatListFlameIcon(friendCode, settings, friend) {
+    if (settings.flameEnabled === false) return '';
+    
+    const flameIcon = settings.flameCustomIcon || '🔥';
+    const deadIcon = settings.flameCustomDeadIcon || '💔';
+    const extinguishDays = settings.flameExtinguishDays ?? 3;
+    
+    const startStr = settings.flameStartDate || friend?.addedTime || new Date().toISOString().split('T')[0];
+    const startDate = new Date(startStr);
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    startDate.setHours(0,0,0,0);
+    
+    const lastChatStr = settings.flameLastChatDate || '';
+    const lastChatDate = lastChatStr ? new Date(lastChatStr) : null;
+    if (lastChatDate) lastChatDate.setHours(0,0,0,0);
+    
+    const totalDays = Math.floor((today - startDate) / 86400000);
+    
+    // 永不熄灭
+    if (extinguishDays === 0) {
+        return ` <span class="chat-list-flame">${flameIcon}</span>`;
+    }
+    
+    // 计算距离上次聊天的天数
+    const daysSinceChat = lastChatDate ? Math.floor((today - lastChatDate) / 86400000) : totalDays;
+    
+    if (daysSinceChat <= extinguishDays) {
+        // 火花还在
+        return ` <span class="chat-list-flame">${flameIcon}</span>`;
+    }
+    
+    // 火花熄灭
+    const deadDays = daysSinceChat - extinguishDays;
+    if (deadDays >= 3) {
+        // 消失了
+        return '';
+    }
+    return ` <span class="chat-list-flame">${deadIcon}</span>`;
 }
 
 // 聊天列表时间格式化
