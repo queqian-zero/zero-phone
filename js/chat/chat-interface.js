@@ -182,6 +182,53 @@ class ChatInterface {
             }
             /* 聊天列表火花图标 */
             .chat-list-flame { font-size:12px;margin-left:4px;display:inline; }
+            /* 左侧徽章面板（对称token） */
+            .badge-panel {
+                position: absolute;
+                top: 70px;
+                left: 16px;
+                z-index: 50;
+            }
+            .badge-display {
+                background: rgba(245,245,245,0.75);
+                backdrop-filter: blur(20px);
+                -webkit-backdrop-filter: blur(20px);
+                border: 0.5px solid rgba(0,0,0,0.08);
+                border-radius: 16px;
+                padding: 6px 12px;
+                font-size: 14px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+                transition: all 0.2s;
+            }
+            .badge-display:active { transform: scale(0.95); }
+            .badge-display.expanded .expand-icon { transform: rotate(180deg); }
+            .badge-details {
+                position: absolute;
+                top: 100%;
+                left: 0;
+                margin-top: 8px;
+                background: rgba(245,245,245,0.85);
+                backdrop-filter: blur(30px);
+                -webkit-backdrop-filter: blur(30px);
+                border: 0.5px solid rgba(0,0,0,0.08);
+                border-radius: 12px;
+                padding: 10px 14px;
+                min-width: 160px;
+                box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+            }
+            .badge-item {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 6px 0;
+            }
+            .badge-item-icon { font-size: 16px; flex-shrink:0; }
+            .badge-item-icon img { width:16px; height:16px; object-fit:contain; vertical-align:middle; }
+            .badge-item-text { font-size: 13px; color: #000; }
         `;
         document.head.appendChild(style);
     }
@@ -238,6 +285,14 @@ class ChatInterface {
             tokenDisplay.addEventListener('click', () => {
                 console.log('📊 点击Token统计');
                 this.toggleTokenDetails();
+            });
+        }
+        
+        // 徽章面板展开
+        const badgeDisplay = document.getElementById('badgeDisplay');
+        if (badgeDisplay) {
+            badgeDisplay.addEventListener('click', () => {
+                this.toggleBadgePanel();
             });
         }
         
@@ -476,6 +531,68 @@ class ChatInterface {
             display.classList.remove('expanded');
             details.style.display = 'none';
             console.log('📊 收起Token详情');
+        }
+    }
+    
+    // ==================== 徽章面板 ====================
+    
+    toggleBadgePanel() {
+        const display = document.getElementById('badgeDisplay');
+        const details = document.getElementById('badgeDetails');
+        if (!display || !details) return;
+        
+        if (details.style.display === 'none') {
+            display.classList.add('expanded');
+            details.style.display = 'block';
+        } else {
+            display.classList.remove('expanded');
+            details.style.display = 'none';
+        }
+    }
+    
+    updateBadgePanel() {
+        const status = this.getFlameStatus();
+        const isImg = (status.status === 'dead' || status.status === 'gone')
+            ? (this.settings.flameCustomDeadIconType === 'image')
+            : (this.settings.flameCustomIconType === 'image');
+        
+        // 顶部摘要图标
+        const summaryIcon = document.getElementById('badgeSummaryIcon');
+        if (summaryIcon) {
+            if (status.icon) {
+                if (isImg) {
+                    summaryIcon.innerHTML = `<img src="${status.icon}" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;">`;
+                } else {
+                    summaryIcon.textContent = status.icon;
+                }
+            } else {
+                summaryIcon.textContent = this.settings.flameEnabled !== false ? '⚪' : '';
+            }
+        }
+        
+        // 展开面板里的火花条目
+        const flameIcon = document.getElementById('badgeFlameIcon');
+        const flameText = document.getElementById('badgeFlameText');
+        const flameItem = document.getElementById('badgeFlameItem');
+        
+        if (this.settings.flameEnabled === false) {
+            if (flameItem) flameItem.style.display = 'none';
+        } else {
+            if (flameItem) flameItem.style.display = 'flex';
+            if (flameIcon) {
+                if (isImg && status.icon) {
+                    flameIcon.innerHTML = `<img src="${status.icon}" style="width:16px;height:16px;object-fit:contain;">`;
+                } else {
+                    flameIcon.textContent = status.icon || '⚪';
+                }
+            }
+            if (flameText) flameText.textContent = status.text;
+        }
+        
+        // 整个面板可见性
+        const panel = document.getElementById('badgePanel');
+        if (panel) {
+            panel.style.display = (this.settings.flameEnabled === false) ? 'none' : 'block';
         }
     }
     
@@ -1756,6 +1873,8 @@ if (this.settings.avatarFrameCss) {
     this.applyAvatarFrameCss(false);
 }
 
+// 更新徽章面板
+this.updateBadgePanel();
 
     }
     
@@ -4910,13 +5029,15 @@ getFlameStatus(friendCode) {
     
     // 没聊过天
     if (!lastChatDate) {
-        // 看今天距离开始日期
-        if (totalDays >= extinguishDays) {
+        if (totalDays > extinguishDays) {
             const deadDays = totalDays - extinguishDays;
             if (deadDays >= 3) {
                 return { status: 'gone', days: 0, icon: '', text: '火花已消失' };
             }
             return { status: 'dead', days: 0, icon: deadIcon, text: '火花已熄灭' };
+        }
+        if (totalDays === extinguishDays) {
+            return { status: 'dying', days: Math.max(totalDays, 0), icon: flameIcon, text: `连续 ${Math.max(totalDays,0)} 天（即将熄灭！）` };
         }
         return { status: 'active', days: Math.max(totalDays, 0), icon: flameIcon, text: `连续 ${Math.max(totalDays,0)} 天` };
     }
@@ -4946,9 +5067,10 @@ getFlameStatus(friendCode) {
 updateFlameOnChat() {
     if (!this.currentFriendCode) return;
     const today = new Date().toISOString().split('T')[0];
-    if (this.settings.flameLastChatDate === today) return; // 今天已更新过
+    if (this.settings.flameLastChatDate === today) return;
     this.settings.flameLastChatDate = today;
     this.saveSettings();
+    this.updateBadgePanel();
     console.log('🔥 火花：最后聊天日期更新为', today);
 }
 

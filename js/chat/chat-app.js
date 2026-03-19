@@ -541,9 +541,11 @@ getChatListFlameIcon(friendCode, settings, friend) {
     const daysSinceChat = lastChatDate ? Math.floor((today - lastChatDate) / 86400000) : totalDays;
     
     if (daysSinceChat <= extinguishDays) {
+        // 火花还在（含即将熄灭）
         return ` <span class="chat-list-flame">${renderIcon(flameIconVal, flameIsImg)}</span>`;
     }
     
+    // 火花熄灭
     const deadDays = daysSinceChat - extinguishDays;
     if (deadDays >= 3) return '';
     return ` <span class="chat-list-flame">${renderIcon(deadIconVal, deadIsImg)}</span>`;
