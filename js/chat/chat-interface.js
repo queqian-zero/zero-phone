@@ -245,6 +245,18 @@ class ChatInterface {
             .badge-item-icon { font-size:16px;flex-shrink:0; }
             .badge-item-icon img { width:16px;height:16px;object-fit:contain;vertical-align:middle; }
             .badge-item-text { font-size:13px;color:#000; }
+            /* Token本轮概要 */
+            .token-round-summary { padding: 4px 0; }
+            .token-round-row { display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:13px;color:#000; }
+            .token-round-row span:last-child { font-weight:600;font-variant-numeric:tabular-nums; }
+            /* Token详情分布 */
+            .token-detail-item { display:flex;align-items:center;gap:6px;padding:5px 0;font-size:12px;color:rgba(0,0,0,0.7); }
+            .token-detail-item > span:first-child { width:70px;flex-shrink:0; }
+            .token-detail-bar-wrap { flex:1;height:6px;background:rgba(0,0,0,0.06);border-radius:3px;overflow:hidden; }
+            .token-detail-bar { height:100%;border-radius:3px;transition:width 0.4s ease;min-width:0; }
+            .token-detail-item > span:last-child { width:85px;text-align:right;flex-shrink:0;font-size:11px;font-variant-numeric:tabular-nums; }
+            .token-detail-item.token-total { font-weight:600;color:#000; }
+            .token-detail-item.token-total > span:last-child { font-size:12px; }
         `;
         document.head.appendChild(style);
     }
@@ -313,6 +325,24 @@ class ChatInterface {
                 this.switchInfoTab(tabName);
             });
         });
+        
+        // Token详情展开
+        const tokenDetailToggle = document.getElementById('tokenDetailToggle');
+        if (tokenDetailToggle) {
+            tokenDetailToggle.addEventListener('click', () => {
+                const bd = document.getElementById('tokenDetailBreakdown');
+                const label = tokenDetailToggle.querySelector('span');
+                if (bd) {
+                    if (bd.style.display === 'none') {
+                        bd.style.display = 'block';
+                        if (label) label.textContent = '▴ 收起详情';
+                    } else {
+                        bd.style.display = 'none';
+                        if (label) label.textContent = '▾ 查看本轮详情';
+                    }
+                }
+            });
+        }
         
         // 菜单按钮
         const menuBtn = document.getElementById('menuBtn');
@@ -602,54 +632,181 @@ class ChatInterface {
     }
     
     updateTokenStatsFromStorage(tokenStats) {
-        console.log('📊 从storage更新Token统计:', tokenStats);
-        
-        const elements = {
-            'tokenTotal': tokenStats.total || 0,
-            'tokenWorldbook': tokenStats.worldBook || 0,
-            'tokenPersona': tokenStats.persona || 0,
-            'tokenInput': tokenStats.input || 0,
-            'tokenOutput': tokenStats.output || 0
-        };
-        
-        Object.keys(elements).forEach(id => {
-            const el = document.getElementById(id);
-            if (el) {
-                el.textContent = elements[id];
-            }
-        });
-        
-        const displayEl = document.querySelector('#tokenDisplay span');
-        if (displayEl) {
-            displayEl.textContent = `Token: ${tokenStats.total || 0}`;
-        }
+        // 兼容旧调用，不做UI更新了（新面板由updateTokenRound驱动）
+        console.log('📊 Token累计统计:', tokenStats);
     }
     
     updateTokenStatsFromAPI(tokens) {
-        console.log('📊 从API更新Token统计:', tokens);
-        
+        // 兼容旧调用
         const chat = this.storage.getChatByFriendCode(this.currentFriendCode);
-        const currentStats = chat?.tokenStats || {
-            worldBook: 0,
-            persona: 0,
-            chatHistory: 0,
-            input: 0,
-            output: 0,
-            total: 0
-        };
-        
+        const currentStats = chat?.tokenStats || { worldBook:0, persona:0, chatHistory:0, input:0, output:0, total:0 };
         const updatedStats = {
-            worldBook: currentStats.worldBook,
-            persona: currentStats.persona,
-            chatHistory: currentStats.chatHistory,
+            ...currentStats,
             input: currentStats.input + (tokens.input || 0),
             output: currentStats.output + (tokens.output || 0),
             total: currentStats.total + (tokens.total || 0),
             lastUpdate: new Date().toISOString()
         };
-        
         this.storage.updateTokenStats(this.currentFriendCode, updatedStats);
-        this.updateTokenStatsFromStorage(updatedStats);
+    }
+    
+    // 更新本轮Token面板
+    updateTokenRound(tokens, durationMs) {
+        const input = tokens.input || 0;
+        const output = tokens.output || 0;
+        const total = input + output;
+        
+        // 累计统计也更新
+        this.updateTokenStatsFromAPI(tokens);
+        
+        // 恢复详情区原始结构（报错时会被替换）
+        const breakdown = document.getElementById('tokenDetailBreakdown');
+        if (breakdown && !document.getElementById('tokenBarPersona')) {
+            breakdown.innerHTML = `
+                <div class="token-divider"></div>
+                <div class="token-detail-title" style="font-size:12px;font-weight:600;color:rgba(0,0,0,0.6);padding:4px 0;">Token 深度分析</div>
+                <div class="token-detail-item"><span>🧠 人设</span><div class="token-detail-bar-wrap"><div class="token-detail-bar" id="tokenBarPersona"></div></div><span id="tokenDetailPersona">-</span></div>
+                <div class="token-detail-item"><span>🌍 世界观</span><div class="token-detail-bar-wrap"><div class="token-detail-bar" id="tokenBarWorld"></div></div><span id="tokenDetailWorld">-</span></div>
+                <div class="token-detail-item"><span>🖼 图片</span><div class="token-detail-bar-wrap"><div class="token-detail-bar" id="tokenBarImage"></div></div><span id="tokenDetailImage">-</span></div>
+                <div class="token-detail-item"><span>⚙ 系统指令</span><div class="token-detail-bar-wrap"><div class="token-detail-bar" id="tokenBarSystem"></div></div><span id="tokenDetailSystem">-</span></div>
+                <div class="token-detail-item"><span>💬 聊天记录</span><div class="token-detail-bar-wrap"><div class="token-detail-bar" id="tokenBarChat"></div></div><span id="tokenDetailChat">-</span></div>
+                <div class="token-detail-item"><span>📝 记忆</span><div class="token-detail-bar-wrap"><div class="token-detail-bar" id="tokenBarMemory"></div></div><span id="tokenDetailMemory">-</span></div>
+                <div class="token-divider"></div>
+                <div class="token-detail-item token-total"><span>总计</span><span></span><span id="tokenDetailTotal">-</span></div>`;
+        }
+        
+        // 本轮概要
+        const inputEl = document.getElementById('tokenRoundInput');
+        const outputEl = document.getElementById('tokenRoundOutput');
+        const durationEl = document.getElementById('tokenRoundDuration');
+        
+        if (inputEl) inputEl.textContent = input.toLocaleString();
+        if (outputEl) outputEl.textContent = output.toLocaleString();
+        if (durationEl) {
+            if (durationMs < 1000) {
+                durationEl.textContent = durationMs + 'ms';
+            } else {
+                durationEl.textContent = (durationMs / 1000).toFixed(1) + 's';
+            }
+        }
+        
+        // Tab标签更新
+        const tabBtn = document.getElementById('infoTabToken');
+        if (tabBtn) tabBtn.textContent = `📊 ${total.toLocaleString()}`;
+        
+        // 详情分布估算
+        const bd = this._lastRoundBreakdown || {};
+        const totalInputChars = (bd.systemChars || 0) + (bd.chatChars || 0);
+        
+        // 按字符比例估算各组件token
+        const estimate = (chars) => totalInputChars > 0 ? Math.round(input * chars / totalInputChars) : 0;
+        
+        // 人设在系统提示里的占比
+        const personaTokens = estimate(bd.personaChars || 0);
+        // 系统指令 = 系统提示 - 人设
+        const systemTokens = estimate(Math.max(0, (bd.systemChars || 0) - (bd.personaChars || 0)));
+        // 聊天记录
+        const chatTokens = estimate(bd.chatChars || 0);
+        // 图片（粗估每张258 tokens）
+        const imageTokens = (bd.imageCount || 0) * 258;
+        // 记忆（暂时占位）
+        const memoryTokens = 0;
+        // 世界观（暂时占位）
+        const worldTokens = 0;
+        
+        // 各项数据
+        const items = [
+            { barId: 'tokenBarPersona', textId: 'tokenDetailPersona', value: personaTokens, color: '#ff6b6b' },
+            { barId: 'tokenBarWorld', textId: 'tokenDetailWorld', value: worldTokens, color: '#4ecdc4' },
+            { barId: 'tokenBarImage', textId: 'tokenDetailImage', value: imageTokens, color: '#45b7d1' },
+            { barId: 'tokenBarSystem', textId: 'tokenDetailSystem', value: systemTokens, color: '#96c93d' },
+            { barId: 'tokenBarChat', textId: 'tokenDetailChat', value: chatTokens, color: '#f7dc6f' },
+            { barId: 'tokenBarMemory', textId: 'tokenDetailMemory', value: memoryTokens, color: '#bb8fce' },
+        ];
+        
+        const maxVal = Math.max(...items.map(i => i.value), 1);
+        
+        items.forEach(item => {
+            const bar = document.getElementById(item.barId);
+            const text = document.getElementById(item.textId);
+            const pct = total > 0 ? Math.round(item.value / total * 100) : 0;
+            
+            if (bar) {
+                bar.style.width = (item.value / maxVal * 100) + '%';
+                bar.style.background = item.color;
+            }
+            if (text) {
+                text.textContent = item.value > 0 ? `${item.value.toLocaleString()} (${pct}%)` : '-';
+            }
+        });
+        
+        // 总计
+        const totalEl = document.getElementById('tokenDetailTotal');
+        if (totalEl) totalEl.textContent = `${total.toLocaleString()} tokens`;
+    }
+    
+    // 报错时更新Token面板
+    updateTokenRoundError(errorMsg, durationMs) {
+        // Tab标签变红
+        const tabBtn = document.getElementById('infoTabToken');
+        if (tabBtn) {
+            tabBtn.innerHTML = '<span style="color:#ff4444;">❌ 报错</span>';
+        }
+        
+        // 本轮概要显示错误
+        const inputEl = document.getElementById('tokenRoundInput');
+        const outputEl = document.getElementById('tokenRoundOutput');
+        const durationEl = document.getElementById('tokenRoundDuration');
+        
+        if (inputEl) inputEl.innerHTML = '<span style="color:#ff4444;">失败</span>';
+        if (outputEl) outputEl.innerHTML = '<span style="color:#ff4444;">失败</span>';
+        if (durationEl) {
+            if (durationMs < 1000) {
+                durationEl.textContent = durationMs + 'ms';
+            } else {
+                durationEl.textContent = (durationMs / 1000).toFixed(1) + 's';
+            }
+        }
+        
+        // 提取错误码和简短原因
+        const codeMatch = errorMsg.match(/HTTP\s*(\d+)/);
+        const errCode = codeMatch ? codeMatch[1] : '';
+        
+        // 错误码中文翻译
+        const errNames = {
+            '400': '请求格式错误', '401': 'Key无效/过期', '402': '余额不足',
+            '403': '权限不足', '404': '模型/地址错误', '429': '请求太频繁',
+            '500': '服务器内部错误', '502': '网关错误', '503': '服务不可用', '504': '网关超时'
+        };
+        const errName = errCode ? (errNames[errCode] || `错误${errCode}`) : '未知错误';
+        
+        // 截取错误原因（去掉换行，限制长度）
+        const shortMsg = errorMsg.replace(/\n/g, ' ').substring(0, 120);
+        
+        // 详情区显示错误信息
+        const breakdown = document.getElementById('tokenDetailBreakdown');
+        if (breakdown) {
+            breakdown.style.display = 'block';
+            breakdown.innerHTML = `
+                <div class="token-divider"></div>
+                <div style="padding:8px 0;">
+                    <div style="font-size:13px;font-weight:600;color:#ff4444;margin-bottom:8px;">
+                        ❌ ${errCode ? `HTTP ${errCode}` : '调用失败'} — ${errName}
+                    </div>
+                    <div style="font-size:11px;color:rgba(0,0,0,0.45);line-height:1.5;word-break:break-all;">
+                        ${this.escapeHtml(shortMsg)}${errorMsg.length > 120 ? '…' : ''}
+                    </div>
+                </div>`;
+        }
+        
+        // 自动展开面板
+        const body = document.getElementById('infoPanelBody');
+        const panel = document.getElementById('infoPanel');
+        if (body) body.style.display = 'block';
+        if (panel) panel.classList.add('expanded');
+        
+        // 切到token tab
+        this.switchInfoTab('token');
     }
     
     // ==================== 状态弹窗 ====================
@@ -980,6 +1137,16 @@ ${archiveListText}
             console.log('👤 最终系统提示长度:', systemPrompt.length);
             console.log('🌐 开始调用API...');
             
+            // 记录本轮token分布（按字符估算）
+            const personaChars = (this.currentFriend?.persona || '').length;
+            const systemChars = systemPrompt.length;
+            const chatChars = messagesWithTimestamps.reduce((sum, m) => sum + (m.text?.length || 0), 0);
+            const imageCount = avatarImages ? avatarImages.length : 0;
+            this._lastRoundBreakdown = { personaChars, systemChars, chatChars, imageCount };
+            
+            // 计时开始
+            const apiStartTime = Date.now();
+            
             // ====== 调用API（传入头像图片）======
             const result = await this.apiManager.callAI(messagesWithTimestamps, systemPrompt, avatarImages);
             
@@ -987,6 +1154,8 @@ ${archiveListText}
             
             if (!result.success) {
                 console.error('❌ API调用失败:', result.error);
+                const errDuration = Date.now() - apiStartTime;
+                this.updateTokenRoundError(result.error, errDuration);
                 this.showErrorAlert(result.error);
                 return;
             }
@@ -1012,7 +1181,8 @@ ${archiveListText}
             });
 
 if (result.tokens) {
-    this.updateTokenStatsFromAPI(result.tokens);
+    const duration = Date.now() - apiStartTime;
+    this.updateTokenRound(result.tokens, duration);
 }
 
 // 后台静默检测是否有值得记住的内容
@@ -1024,6 +1194,7 @@ this.updateFlameOnChat(); // 续火花
         } catch (e) {
             console.error('❌ 发送AI消息时出错:', e);
             this.hideTypingIndicator();
+            this.updateTokenRoundError(e.message || '未知错误', 0);
             this.showErrorAlert('发送失败\n\n' + e.message);
         }
     }
@@ -4241,26 +4412,14 @@ compressAndApplyWallpaper(imageData) {
         this.renderBubbleArchives();
     }
 
-    // 读取所有气泡存档（以好友编码为key，不同好友存档独立）
+    // 读取所有气泡存档
     getBubbleArchives() {
-        try {
-            const key = 'zero_phone_bubble_archives_' + (this.currentFriendCode || 'global');
-            const data = localStorage.getItem(key);
-            return data ? JSON.parse(data) : [];
-        } catch (e) {
-            console.error('❌ 读取气泡存档失败:', e);
-            return [];
-        }
+        return this.storage.getBubbleArchives(this.currentFriendCode);
     }
 
     // 保存所有气泡存档
     saveBubbleArchives(archives) {
-        try {
-            const key = 'zero_phone_bubble_archives_' + (this.currentFriendCode || 'global');
-            localStorage.setItem(key, JSON.stringify(archives));
-        } catch (e) {
-            console.error('❌ 保存气泡存档失败:', e);
-        }
+        this.storage.saveBubbleArchives(this.currentFriendCode, archives);
     }
 
     // 渲染存档列表
