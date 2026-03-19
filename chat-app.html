@@ -458,10 +458,10 @@
             <!-- 续火花系统 -->
             <div class="setting-item" id="settingFlameSystem" style="cursor: pointer;">
                 <div class="setting-info">
-                    <span class="setting-label">🔥 续火花系统</span>
+                    <span class="setting-label">续火花系统</span>
                     <span class="setting-desc">设置火花开始时间和熄灭时长</span>
                 </div>
-                <span class="setting-arrow">›</span>
+                <button class="setting-action-btn"><span>🔥</span></button>
             </div>
             
             <!-- 亲密关系绑定 -->
@@ -1547,61 +1547,73 @@
 <!-- ==================== 头像框弹窗结束 ==================== -->
 
 <!-- ==================== 续火花系统弹窗 ==================== -->
-<div class="flame-modal" id="flameModal" style="display:none;">
-    <div class="flame-overlay" id="flameOverlay"></div>
-    <div class="flame-modal-content">
-        <div class="flame-modal-header">
-            <h2>🔥 续火花系统</h2>
-            <button class="flame-close-btn" id="flameClose">×</button>
+<div class="flame-modal" id="flameModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:3200;display:none;padding:20px;">
+    <div class="flame-overlay" id="flameOverlay" style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);"></div>
+    <div style="position:relative;z-index:1;background:rgba(20,20,20,0.95);border:1px solid rgba(255,255,255,0.2);border-radius:16px;max-width:600px;width:100%;max-height:90vh;overflow-y:auto;margin:auto;">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:20px 24px 14px;border-bottom:1px solid rgba(255,255,255,0.06);">
+            <h3 style="font-size:18px;color:#fff;margin:0;">🔥 续火花系统</h3>
+            <button id="flameClose" style="background:none;border:none;color:rgba(255,255,255,0.5);font-size:24px;cursor:pointer;">×</button>
         </div>
-        <div class="flame-modal-body">
-            <!-- 当前状态 -->
-            <div class="flame-status-card" id="flameStatusCard">
-                <div class="flame-status-icon" id="flameStatusIcon">🔥</div>
-                <div class="flame-status-text" id="flameStatusText">连续 0 天</div>
-                <div class="flame-status-desc" id="flameStatusDesc">火花状态正常</div>
+        <div style="padding:20px 24px 28px;">
+            <!-- 当前状态卡片 -->
+            <div id="flameStatusCard" style="text-align:center;padding:28px;margin-bottom:20px;background:rgba(255,255,255,0.03);border-radius:14px;border:1px solid rgba(255,255,255,0.06);">
+                <div id="flameStatusIcon" style="font-size:48px;margin-bottom:8px;">🔥</div>
+                <div id="flameStatusText" style="font-size:20px;font-weight:600;color:#fff;">连续 0 天</div>
+                <div id="flameStatusDesc" style="font-size:13px;color:rgba(255,255,255,0.4);margin-top:6px;">火花状态正常</div>
             </div>
 
-            <!-- 开关 -->
-            <div class="flame-setting-row">
-                <span>启用续火花</span>
-                <label class="toggle-switch">
-                    <input type="checkbox" id="flameEnabledSwitch" checked>
-                    <span class="toggle-slider"></span>
-                </label>
-            </div>
-
-            <!-- 开始日期 -->
-            <div class="flame-setting-row">
-                <span>火花开始日期</span>
-                <input type="date" id="flameStartDate" class="flame-date-input">
-            </div>
-
-            <!-- 熄灭天数 -->
-            <div class="flame-setting-row">
-                <span>几天不聊天熄灭</span>
-                <select id="flameExtinguishDays" class="flame-select">
-                    <option value="1">1天</option>
-                    <option value="3" selected>3天</option>
-                    <option value="5">5天</option>
-                    <option value="7">7天</option>
-                    <option value="0">永不熄灭</option>
-                </select>
-            </div>
-
-            <!-- 自定义图标 -->
-            <div class="flame-setting-row">
-                <span>火花图标</span>
-                <div class="flame-icon-pick">
-                    <span id="flameIconPreview">🔥</span>
-                    <input type="text" id="flameCustomIcon" placeholder="emoji或留空" maxlength="4" class="flame-icon-input">
+            <!-- 设置项 -->
+            <div style="display:flex;flex-direction:column;gap:2px;">
+                <!-- 开关 -->
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+                    <span style="font-size:15px;color:rgba(255,255,255,0.85);">启用续火花</span>
+                    <label class="toggle-switch"><input type="checkbox" id="flameEnabledSwitch" checked><span class="toggle-slider"></span></label>
                 </div>
-            </div>
-            <div class="flame-setting-row">
-                <span>熄灭图标</span>
-                <div class="flame-icon-pick">
-                    <span id="flameDeadIconPreview">💔</span>
-                    <input type="text" id="flameCustomDeadIcon" placeholder="emoji或留空" maxlength="4" class="flame-icon-input">
+                <!-- 开始日期 -->
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+                    <span style="font-size:15px;color:rgba(255,255,255,0.85);">火花开始日期</span>
+                    <input type="date" id="flameStartDate" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:8px 14px;color:#fff;font-size:14px;">
+                </div>
+                <!-- 熄灭天数 -->
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+                    <span style="font-size:15px;color:rgba(255,255,255,0.85);">几天不聊天熄灭</span>
+                    <select id="flameExtinguishDays" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:8px 14px;color:#fff;font-size:14px;">
+                        <option value="1">1天</option>
+                        <option value="3" selected>3天</option>
+                        <option value="5">5天</option>
+                        <option value="7">7天</option>
+                        <option value="0">永不熄灭</option>
+                    </select>
+                </div>
+                <!-- 火花图标 -->
+                <div style="padding:16px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                        <span style="font-size:15px;color:rgba(255,255,255,0.85);">火花图标</span>
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <span id="flameIconPreview" style="font-size:24px;">🔥</span>
+                            <input type="text" id="flameCustomIcon" placeholder="emoji" maxlength="4" style="width:56px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:6px 8px;color:#fff;font-size:14px;text-align:center;">
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:8px;">
+                        <button id="flameIconUploadBtn" style="flex:1;padding:10px;border:1px dashed rgba(255,255,255,0.15);border-radius:10px;background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.5);font-size:13px;cursor:pointer;">📷 上传透明底图片</button>
+                        <input type="file" id="flameIconUploadInput" accept="image/*" style="display:none;">
+                        <input type="text" id="flameIconUrl" placeholder="或粘贴图片URL" style="flex:1;padding:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:13px;">
+                    </div>
+                </div>
+                <!-- 熄灭图标 -->
+                <div style="padding:16px 0;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                        <span style="font-size:15px;color:rgba(255,255,255,0.85);">熄灭图标</span>
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <span id="flameDeadIconPreview" style="font-size:24px;">💔</span>
+                            <input type="text" id="flameCustomDeadIcon" placeholder="emoji" maxlength="4" style="width:56px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:6px 8px;color:#fff;font-size:14px;text-align:center;">
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:8px;">
+                        <button id="flameDeadIconUploadBtn" style="flex:1;padding:10px;border:1px dashed rgba(255,255,255,0.15);border-radius:10px;background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.5);font-size:13px;cursor:pointer;">📷 上传透明底图片</button>
+                        <input type="file" id="flameDeadIconUploadInput" accept="image/*" style="display:none;">
+                        <input type="text" id="flameDeadIconUrl" placeholder="或粘贴图片URL" style="flex:1;padding:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:13px;">
+                    </div>
                 </div>
             </div>
         </div>
