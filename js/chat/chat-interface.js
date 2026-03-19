@@ -5177,7 +5177,7 @@ updateFlameStatusCard() {
             ? (this.settings.flameCustomDeadIconType === 'image')
             : (this.settings.flameCustomIconType === 'image');
         if (isImg && status.icon) {
-            iconEl.innerHTML = `<img src="${status.icon}" style="width:48px;height:48px;object-fit:contain;">`;
+            iconEl.innerHTML = `<img src="${status.icon}" style="width:48px;height:48px;object-fit:contain;display:block;margin:0 auto;">`;
         } else {
             iconEl.textContent = status.icon || '⚪';
         }
