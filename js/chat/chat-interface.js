@@ -43,7 +43,9 @@ class ChatInterface {
             flameExtinguishDays: 3,   // 1,3,5,7,0(永不)
             flameLastChatDate: '',    // 最后聊天日期 YYYY-MM-DD
             flameCustomIcon: '',      // 空=默认🔥
-            flameCustomDeadIcon: ''   // 空=默认💔
+            flameCustomIconType: 'emoji',  // 'emoji' 或 'image'
+            flameCustomDeadIcon: '',   // 空=默认💔
+            flameCustomDeadIconType: 'emoji'  // 'emoji' 或 'image'
 };
 
         
@@ -178,24 +180,6 @@ class ChatInterface {
                 padding: 3px 12px;
                 border-radius: 10px;
             }
-            /* ====== 火花系统弹窗 ====== */
-            .flame-modal { position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;display:flex;align-items:center;justify-content:center; }
-            .flame-overlay { position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6); }
-            .flame-modal-content { position:relative;z-index:1;width:92%;max-width:380px;background:#1a1a1a;border-radius:16px;max-height:85vh;overflow-y:auto; }
-            .flame-modal-header { display:flex;justify-content:space-between;align-items:center;padding:18px 20px 12px;border-bottom:1px solid rgba(255,255,255,0.06); }
-            .flame-modal-header h2 { font-size:17px;color:#fff;margin:0; }
-            .flame-close-btn { background:none;border:none;color:rgba(255,255,255,0.5);font-size:22px;cursor:pointer;padding:0 4px; }
-            .flame-modal-body { padding:16px 20px 24px; }
-            .flame-status-card { text-align:center;padding:20px;margin-bottom:18px;background:rgba(255,255,255,0.03);border-radius:12px;border:1px solid rgba(255,255,255,0.06); }
-            .flame-status-icon { font-size:40px;margin-bottom:6px; }
-            .flame-status-text { font-size:18px;font-weight:600;color:#fff; }
-            .flame-status-desc { font-size:12px;color:rgba(255,255,255,0.4);margin-top:4px; }
-            .flame-setting-row { display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.04); }
-            .flame-setting-row span:first-child { font-size:14px;color:rgba(255,255,255,0.8); }
-            .flame-date-input, .flame-select { background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:6px 10px;color:#fff;font-size:13px; }
-            .flame-date-input::-webkit-calendar-picker-indicator { filter:invert(1); }
-            .flame-icon-pick { display:flex;align-items:center;gap:8px; }
-            .flame-icon-input { width:60px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:5px 8px;color:#fff;font-size:14px;text-align:center; }
             /* 聊天列表火花图标 */
             .chat-list-flame { font-size:12px;margin-left:4px;display:inline; }
         `;
@@ -5011,19 +4995,23 @@ openFlameModal() {
     if (enabledSwitch) enabledSwitch.checked = this.settings.flameEnabled !== false;
     if (startInput) startInput.value = defaultStart;
     if (extinguishSelect) extinguishSelect.value = String(this.settings.flameExtinguishDays ?? 3);
-    if (iconInput) iconInput.value = this.settings.flameCustomIcon || '';
-    if (deadIconInput) deadIconInput.value = this.settings.flameCustomDeadIcon || '';
     
-    // 更新图标预览
-    const iconPreview = document.getElementById('flameIconPreview');
-    const deadPreview = document.getElementById('flameDeadIconPreview');
-    if (iconPreview) iconPreview.textContent = this.settings.flameCustomIcon || '🔥';
-    if (deadPreview) deadPreview.textContent = this.settings.flameCustomDeadIcon || '💔';
+    // emoji输入框只在emoji类型时填值
+    if (iconInput) iconInput.value = (this.settings.flameCustomIconType !== 'image') ? (this.settings.flameCustomIcon || '') : '';
+    if (deadIconInput) deadIconInput.value = (this.settings.flameCustomDeadIconType !== 'image') ? (this.settings.flameCustomDeadIcon || '') : '';
     
-    // 更新状态卡片
+    // 图标预览（支持emoji和图片）
+    this.updateFlameIconPreview('flameIconPreview', this.settings.flameCustomIcon || '🔥', this.settings.flameCustomIconType || 'emoji');
+    this.updateFlameIconPreview('flameDeadIconPreview', this.settings.flameCustomDeadIcon || '💔', this.settings.flameCustomDeadIconType || 'emoji');
+    
+    // URL输入框恢复
+    const iconUrl = document.getElementById('flameIconUrl');
+    const deadUrl = document.getElementById('flameDeadIconUrl');
+    if (iconUrl) iconUrl.value = (this.settings.flameCustomIconType === 'image' && this.settings.flameCustomIcon?.startsWith('http')) ? this.settings.flameCustomIcon : '';
+    if (deadUrl) deadUrl.value = (this.settings.flameCustomDeadIconType === 'image' && this.settings.flameCustomDeadIcon?.startsWith('http')) ? this.settings.flameCustomDeadIcon : '';
+    
     this.updateFlameStatusCard();
     
-    // 绑定事件（只一次）
     if (!this.flameEventsBound) {
         this.bindFlameEvents();
         this.flameEventsBound = true;
@@ -5042,7 +5030,16 @@ updateFlameStatusCard() {
     const descEl = document.getElementById('flameStatusDesc');
     const card = document.getElementById('flameStatusCard');
     
-    if (iconEl) iconEl.textContent = status.icon || '⚪';
+    if (iconEl) {
+        const isImg = (status.status === 'dead' || status.status === 'gone') 
+            ? (this.settings.flameCustomDeadIconType === 'image')
+            : (this.settings.flameCustomIconType === 'image');
+        if (isImg && status.icon) {
+            iconEl.innerHTML = `<img src="${status.icon}" style="width:48px;height:48px;object-fit:contain;">`;
+        } else {
+            iconEl.textContent = status.icon || '⚪';
+        }
+    }
     if (textEl) textEl.textContent = status.text;
     
     if (descEl) {
@@ -5077,7 +5074,6 @@ bindFlameEvents() {
             this.settings.flameEnabled = e.target.checked;
             this.saveSettings();
             this.updateFlameStatusCard();
-            console.log('🔥 火花开关:', this.settings.flameEnabled);
         });
     }
     
@@ -5101,28 +5097,121 @@ bindFlameEvents() {
         });
     }
     
-    // 火花图标
+    // 火花图标 - emoji输入
     const iconInput = document.getElementById('flameCustomIcon');
     if (iconInput) {
         iconInput.addEventListener('input', (e) => {
-            this.settings.flameCustomIcon = e.target.value.trim();
-            const preview = document.getElementById('flameIconPreview');
-            if (preview) preview.textContent = this.settings.flameCustomIcon || '🔥';
+            const val = e.target.value.trim();
+            if (val) {
+                this.settings.flameCustomIcon = val;
+                this.settings.flameCustomIconType = 'emoji';
+                this.updateFlameIconPreview('flameIconPreview', val, 'emoji');
+            }
             this.saveSettings();
             this.updateFlameStatusCard();
         });
     }
     
-    // 熄灭图标
+    // 火花图标 - 上传图片
+    const iconUploadBtn = document.getElementById('flameIconUploadBtn');
+    const iconUploadInput = document.getElementById('flameIconUploadInput');
+    if (iconUploadBtn && iconUploadInput) {
+        iconUploadBtn.addEventListener('click', () => iconUploadInput.click());
+        iconUploadInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file || !file.type.startsWith('image/')) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                this.settings.flameCustomIcon = ev.target.result;
+                this.settings.flameCustomIconType = 'image';
+                this.updateFlameIconPreview('flameIconPreview', ev.target.result, 'image');
+                document.getElementById('flameCustomIcon').value = '';
+                document.getElementById('flameIconUrl').value = '';
+                this.saveSettings();
+                this.updateFlameStatusCard();
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+    
+    // 火花图标 - URL
+    const iconUrlInput = document.getElementById('flameIconUrl');
+    if (iconUrlInput) {
+        iconUrlInput.addEventListener('change', (e) => {
+            const url = e.target.value.trim();
+            if (url) {
+                this.settings.flameCustomIcon = url;
+                this.settings.flameCustomIconType = 'image';
+                this.updateFlameIconPreview('flameIconPreview', url, 'image');
+                document.getElementById('flameCustomIcon').value = '';
+                this.saveSettings();
+                this.updateFlameStatusCard();
+            }
+        });
+    }
+    
+    // 熄灭图标 - emoji输入
     const deadIconInput = document.getElementById('flameCustomDeadIcon');
     if (deadIconInput) {
         deadIconInput.addEventListener('input', (e) => {
-            this.settings.flameCustomDeadIcon = e.target.value.trim();
-            const preview = document.getElementById('flameDeadIconPreview');
-            if (preview) preview.textContent = this.settings.flameCustomDeadIcon || '💔';
+            const val = e.target.value.trim();
+            if (val) {
+                this.settings.flameCustomDeadIcon = val;
+                this.settings.flameCustomDeadIconType = 'emoji';
+                this.updateFlameIconPreview('flameDeadIconPreview', val, 'emoji');
+            }
             this.saveSettings();
             this.updateFlameStatusCard();
         });
+    }
+    
+    // 熄灭图标 - 上传图片
+    const deadUploadBtn = document.getElementById('flameDeadIconUploadBtn');
+    const deadUploadInput = document.getElementById('flameDeadIconUploadInput');
+    if (deadUploadBtn && deadUploadInput) {
+        deadUploadBtn.addEventListener('click', () => deadUploadInput.click());
+        deadUploadInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file || !file.type.startsWith('image/')) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                this.settings.flameCustomDeadIcon = ev.target.result;
+                this.settings.flameCustomDeadIconType = 'image';
+                this.updateFlameIconPreview('flameDeadIconPreview', ev.target.result, 'image');
+                document.getElementById('flameCustomDeadIcon').value = '';
+                document.getElementById('flameDeadIconUrl').value = '';
+                this.saveSettings();
+                this.updateFlameStatusCard();
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+    
+    // 熄灭图标 - URL
+    const deadUrlInput = document.getElementById('flameDeadIconUrl');
+    if (deadUrlInput) {
+        deadUrlInput.addEventListener('change', (e) => {
+            const url = e.target.value.trim();
+            if (url) {
+                this.settings.flameCustomDeadIcon = url;
+                this.settings.flameCustomDeadIconType = 'image';
+                this.updateFlameIconPreview('flameDeadIconPreview', url, 'image');
+                document.getElementById('flameCustomDeadIcon').value = '';
+                this.saveSettings();
+                this.updateFlameStatusCard();
+            }
+        });
+    }
+}
+
+// 更新图标预览（支持emoji和图片）
+updateFlameIconPreview(previewId, value, type) {
+    const el = document.getElementById(previewId);
+    if (!el) return;
+    if (type === 'image') {
+        el.innerHTML = `<img src="${value}" style="width:24px;height:24px;object-fit:contain;vertical-align:middle;">`;
+    } else {
+        el.textContent = value || (previewId.includes('Dead') ? '💔' : '🔥');
     }
 }
 

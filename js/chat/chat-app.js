@@ -511,9 +511,16 @@ createChatListItem({ friend, lastMsg }) {
 getChatListFlameIcon(friendCode, settings, friend) {
     if (settings.flameEnabled === false) return '';
     
-    const flameIcon = settings.flameCustomIcon || '🔥';
-    const deadIcon = settings.flameCustomDeadIcon || '💔';
+    const flameIconVal = settings.flameCustomIcon || '🔥';
+    const deadIconVal = settings.flameCustomDeadIcon || '💔';
+    const flameIsImg = settings.flameCustomIconType === 'image';
+    const deadIsImg = settings.flameCustomDeadIconType === 'image';
     const extinguishDays = settings.flameExtinguishDays ?? 3;
+    
+    const renderIcon = (val, isImg) => {
+        if (isImg && val) return `<img src="${val}" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;">`;
+        return val;
+    };
     
     const startStr = settings.flameStartDate || friend?.addedTime || new Date().toISOString().split('T')[0];
     const startDate = new Date(startStr);
@@ -527,26 +534,19 @@ getChatListFlameIcon(friendCode, settings, friend) {
     
     const totalDays = Math.floor((today - startDate) / 86400000);
     
-    // 永不熄灭
     if (extinguishDays === 0) {
-        return ` <span class="chat-list-flame">${flameIcon}</span>`;
+        return ` <span class="chat-list-flame">${renderIcon(flameIconVal, flameIsImg)}</span>`;
     }
     
-    // 计算距离上次聊天的天数
     const daysSinceChat = lastChatDate ? Math.floor((today - lastChatDate) / 86400000) : totalDays;
     
     if (daysSinceChat <= extinguishDays) {
-        // 火花还在
-        return ` <span class="chat-list-flame">${flameIcon}</span>`;
+        return ` <span class="chat-list-flame">${renderIcon(flameIconVal, flameIsImg)}</span>`;
     }
     
-    // 火花熄灭
     const deadDays = daysSinceChat - extinguishDays;
-    if (deadDays >= 3) {
-        // 消失了
-        return '';
-    }
-    return ` <span class="chat-list-flame">${deadIcon}</span>`;
+    if (deadDays >= 3) return '';
+    return ` <span class="chat-list-flame">${renderIcon(deadIconVal, deadIsImg)}</span>`;
 }
 
 // 聊天列表时间格式化
