@@ -161,7 +161,11 @@
                     <span class="badge-item-icon" id="badgeFlameIcon">🔥</span>
                     <span class="badge-item-text" id="badgeFlameText">连续 0 天</span>
                 </div>
-                <!-- 以后扩展：幸运字符、勋章、亲密关系 -->
+                <div class="badge-item" id="badgeLuckyItem">
+                    <span class="badge-item-icon" id="badgeLuckyIcon">🎲</span>
+                    <span class="badge-item-text" id="badgeLuckyText">未佩戴</span>
+                </div>
+                <!-- 以后扩展：勋章、亲密关系 -->
             </div>
         </div>
     </div>
@@ -1618,7 +1622,7 @@
                 <div class="intimacy-module-card" data-module="lucky-char">
                     <div class="intimacy-module-icon">🎲</div>
                     <div class="intimacy-module-name">幸运字符</div>
-                    <div class="intimacy-module-status" id="intimacyModLucky">待开发</div>
+                    <div class="intimacy-module-status" id="intimacyModLucky">点击进入</div>
                 </div>
                 <div class="intimacy-module-card" data-module="relationship">
                     <div class="intimacy-module-icon">💍</div>
@@ -1743,6 +1747,13 @@
                 <input type="text" id="luckyCustomUrl" placeholder="或粘贴图片URL" style="flex:1;padding:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:13px;">
             </div>
             <button id="luckyCustomAddBtn" style="width:100%;padding:12px;margin-bottom:12px;border:none;border-radius:10px;background:rgba(255,140,0,0.15);color:#ffaa33;font-size:14px;cursor:pointer;">添加字符</button>
+            <!-- 自定义卡牌背面 -->
+            <div style="font-size:13px;color:rgba(255,255,255,0.6);margin:8px 0;">卡牌背面图</div>
+            <div style="display:flex;gap:8px;margin-bottom:12px;">
+                <button id="luckyCardBackUploadBtn" style="flex:1;padding:10px;border:1px dashed rgba(255,255,255,0.15);border-radius:10px;background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.5);font-size:13px;cursor:pointer;">📷 上传</button>
+                <input type="file" id="luckyCardBackUploadInput" accept="image/*" style="display:none;">
+                <input type="text" id="luckyCardBackUrlInput" placeholder="或粘贴URL" style="flex:1;padding:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:13px;">
+            </div>
             <!-- 更换背景图 -->
             <div style="font-size:13px;color:rgba(255,255,255,0.6);margin:8px 0;">更换背景图</div>
             <div style="display:flex;gap:8px;margin-bottom:12px;">
