@@ -184,7 +184,7 @@ class ChatInterface {
             .chat-list-flame { font-size:12px;margin-left:4px;display:inline;vertical-align:middle;line-height:1; }
             /* ====== 亲密关系全屏页 ====== */
             .intimacy-page { position:fixed;top:0;left:0;right:0;bottom:0;z-index:3500;overflow-y:auto;-webkit-overflow-scrolling:touch; }
-            .intimacy-bg { position:fixed;top:0;left:0;right:0;bottom:0;background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);background-size:cover;background-position:center; }
+            .intimacy-bg { position:fixed;top:0;left:0;right:0;bottom:0;background:#111111;background-size:cover;background-position:center; }
             .intimacy-content { position:relative;z-index:1;padding:0 0 40px; }
             .intimacy-header { display:flex;align-items:center;justify-content:space-between;padding:16px 16px 8px;padding-top:calc(16px + env(safe-area-inset-top)); }
             .intimacy-back { background:none;border:none;color:#fff;font-size:20px;cursor:pointer;padding:4px 8px; }
@@ -234,8 +234,8 @@ class ChatInterface {
             .lucky-wearing-section { padding:0 20px;margin-bottom:16px; }
             .lucky-wearing-card { padding:24px;background:rgba(255,255,255,0.06);backdrop-filter:blur(10px);border-radius:16px;border:1px solid rgba(255,255,255,0.08);text-align:center; }
             .lucky-wearing-empty { font-size:13px;color:rgba(255,255,255,0.3); }
-            .lucky-wearing-icon { font-size:48px;margin-bottom:8px; }
-            .lucky-wearing-icon img { width:48px;height:48px;object-fit:contain; }
+            .lucky-wearing-icon { font-size:48px;margin-bottom:8px;display:flex;justify-content:center;align-items:center; }
+            .lucky-wearing-icon img { width:48px;height:48px;object-fit:contain;display:block;margin:0 auto; }
             .lucky-wearing-name { font-size:16px;font-weight:600;color:#fff;margin-bottom:8px; }
             .lucky-wearing-chars { font-size:22px;letter-spacing:4px;margin-bottom:6px; }
             .lucky-wearing-chars .lit { color:#f0932b; }
@@ -696,7 +696,7 @@ class ChatInterface {
             ? (this.settings.flameCustomDeadIconType === 'image')
             : (this.settings.flameCustomIconType === 'image');
         
-        // 展开内容里的火花条目
+        // 火花条目
         const flameIcon = document.getElementById('badgeFlameIcon');
         const flameText = document.getElementById('badgeFlameText');
         const flameItem = document.getElementById('badgeFlameItem');
@@ -715,6 +715,37 @@ class ChatInterface {
                 }
             }
             if (flameText) flameText.textContent = status.text;
+        }
+        
+        // 幸运字符条目
+        const luckyIcon = document.getElementById('badgeLuckyIcon');
+        const luckyText = document.getElementById('badgeLuckyText');
+        const luckyItem = document.getElementById('badgeLuckyItem');
+        
+        if (luckyItem && this.currentFriendCode) {
+            const data = this.storage.getIntimacyData(this.currentFriendCode);
+            const lc = data.luckyChars || {};
+            const wearingId = lc.userWearing || lc.aiWearing;
+            const wearing = wearingId ? (lc.owned || []).find(o => o.id === wearingId) : null;
+            
+            if (wearing && lc.userWearingOn !== false) {
+                const allChars = this.getAllLuckyChars ? this.getAllLuckyChars() : [];
+                const charDef = allChars.find(c => c.id === wearing.id);
+                const pct = wearing.totalChars > 0 ? Math.round(wearing.litChars / wearing.totalChars * 100) : 0;
+                
+                if (luckyIcon) {
+                    if (charDef?.iconType === 'image') {
+                        luckyIcon.innerHTML = `<img src="${charDef.icon}" style="width:16px;height:16px;object-fit:contain;">`;
+                    } else {
+                        luckyIcon.textContent = charDef?.icon || '🎲';
+                    }
+                }
+                if (luckyText) luckyText.textContent = `${wearing.name} ${pct}%`;
+            } else {
+                if (luckyIcon) luckyIcon.textContent = '🎲';
+                if (luckyText) luckyText.textContent = '未佩戴';
+            }
+            luckyItem.style.display = 'flex';
         }
     }
     
@@ -5578,6 +5609,11 @@ refreshIntimacyPage() {
         bg.style.backgroundPosition = 'center';
     }
     
+    // 模块入口状态
+    const luckyOwned = (data.luckyChars?.owned || []).length;
+    const modLucky = document.getElementById('intimacyModLucky');
+    if (modLucky) modLucky.textContent = luckyOwned > 0 ? `已拥有 ${luckyOwned} 个` : '点击进入';
+    
     // 星迹档案
     this.renderTimeline(data.timeline);
 }
@@ -5725,7 +5761,7 @@ setIntimacyBg(bgImage) {
             bg.style.backgroundPosition = 'center';
         } else {
             bg.style.backgroundImage = '';
-            bg.style.background = 'linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%)';
+            bg.style.background = '#111111';
         }
     }
     document.getElementById('intimacyCustomizePanel').style.display = 'none';
@@ -5781,19 +5817,15 @@ refreshLuckyCharPage() {
     const lc = data.luckyChars || {};
     const today = new Date().toISOString().split('T')[0];
     
-    // 背景图
+    // 背景图（只用幸运字符自己的）
     const bg = document.getElementById('luckyCharBg');
     if (bg) {
         if (lc.bgImage) {
             bg.style.backgroundImage = `url(${lc.bgImage})`;
             bg.style.backgroundSize = 'cover';
             bg.style.backgroundPosition = 'center';
-        } else if (data.bgImage) {
-            bg.style.backgroundImage = `url(${data.bgImage})`;
-            bg.style.backgroundSize = 'cover';
-            bg.style.backgroundPosition = 'center';
         } else {
-            bg.style.background = 'linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%)';
+            bg.style.background = '#111111';
         }
     }
     
@@ -5818,9 +5850,14 @@ refreshLuckyCharPage() {
 }
 
 resetDrawCards() {
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    const cardBack = data?.luckyChars?.cardBackImage;
+    const backHtml = cardBack 
+        ? `<div class="lucky-card-back"><img src="${cardBack}" style="width:100%;height:100%;object-fit:cover;border-radius:11px;"></div>`
+        : '<div class="lucky-card-back">?</div>';
     document.querySelectorAll('.lucky-card').forEach(card => {
         card.className = 'lucky-card';
-        card.innerHTML = '<div class="lucky-card-back">?</div>';
+        card.innerHTML = backHtml;
     });
 }
 
@@ -5875,7 +5912,7 @@ renderWearingDisplay(lc) {
         if (pct >= 100) {
             progressEl.textContent = `✨ 已完全点亮`;
         } else {
-            progressEl.textContent = `${pct}% · 还需 ${(total - lit) * 50} 条消息`;
+            progressEl.textContent = `${pct}% · 还需 ${(total - lit) * 10} 条消息`;
         }
     }
 }
@@ -6008,9 +6045,10 @@ wearLuckyChar(charId, who = 'user') {
     this.storage.saveIntimacyData(this.currentFriendCode, data);
     this.showCssToast(`已佩戴「${owned.find(o => o.id === charId).name}」`);
     this.refreshLuckyCharPage();
+    this.updateBadgePanel();
 }
 
-// 聊天时点亮字符（每50条消息亮一个字）
+// 聊天时点亮字符（每10条消息亮一个字）
 updateLuckyCharOnMessage() {
     if (!this.currentFriendCode) return;
     const data = this.storage.getIntimacyData(this.currentFriendCode);
@@ -6025,7 +6063,7 @@ updateLuckyCharOnMessage() {
     if (!lc._litAccumulator) lc._litAccumulator = 0;
     lc._litAccumulator++;
     
-    if (lc._litAccumulator >= 50) {
+    if (lc._litAccumulator >= 10) {
         lc._litAccumulator = 0;
         wearing.litChars++;
         
@@ -6159,7 +6197,17 @@ bindLuckyCharEvents() {
     const uploadBtn = document.getElementById('luckyCustomUploadBtn');
     const uploadInput = document.getElementById('luckyCustomUploadInput');
     if (uploadBtn && uploadInput) {
-        uploadBtn.addEventListener('click', () => uploadInput.click());
+        uploadBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            uploadInput.value = ''; // 清空以便重复选择同一文件
+            uploadInput.click();
+        });
+        uploadInput.addEventListener('change', () => {
+            if (uploadInput.files[0]) {
+                uploadBtn.textContent = '✅ 已选择图片';
+            }
+        });
     }
     
     document.getElementById('luckyCustomAddBtn')?.addEventListener('click', () => {
@@ -6195,6 +6243,99 @@ bindLuckyCharEvents() {
             this.showCssToast('请上传图片或填入URL');
         }
     });
+    
+    // 幸运字符背景图上传
+    const bgUpBtn = document.getElementById('luckyBgUploadBtn');
+    const bgUpInput = document.getElementById('luckyBgUploadInput');
+    if (bgUpBtn && bgUpInput) {
+        bgUpBtn.addEventListener('click', (e) => { e.stopPropagation(); e.preventDefault(); bgUpInput.value=''; bgUpInput.click(); });
+        bgUpInput.addEventListener('change', () => {
+            const file = bgUpInput.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const scale = Math.min(1, 1080 / img.width);
+                    canvas.width = img.width * scale;
+                    canvas.height = img.height * scale;
+                    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                    this.setLuckyCharBg(canvas.toDataURL('image/jpeg', 0.7));
+                };
+                img.src = ev.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+    const bgUrlInput = document.getElementById('luckyBgUrlInput');
+    if (bgUrlInput) {
+        bgUrlInput.addEventListener('change', (e) => {
+            const url = e.target.value.trim();
+            if (url) this.setLuckyCharBg(url);
+        });
+    }
+    
+    // 卡牌背面上传
+    const cbUpBtn = document.getElementById('luckyCardBackUploadBtn');
+    const cbUpInput = document.getElementById('luckyCardBackUploadInput');
+    if (cbUpBtn && cbUpInput) {
+        cbUpBtn.addEventListener('click', (e) => { e.stopPropagation(); e.preventDefault(); cbUpInput.value=''; cbUpInput.click(); });
+        cbUpInput.addEventListener('change', () => {
+            const file = cbUpInput.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const scale = Math.min(1, 400 / img.width);
+                    canvas.width = img.width * scale;
+                    canvas.height = img.height * scale;
+                    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                    this.setLuckyCardBack(canvas.toDataURL('image/jpeg', 0.8));
+                };
+                img.src = ev.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+    const cbUrlInput = document.getElementById('luckyCardBackUrlInput');
+    if (cbUrlInput) {
+        cbUrlInput.addEventListener('change', (e) => {
+            const url = e.target.value.trim();
+            if (url) this.setLuckyCardBack(url);
+        });
+    }
+}
+
+setLuckyCharBg(bgImage) {
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    if (!data.luckyChars) data.luckyChars = {};
+    data.luckyChars.bgImage = bgImage;
+    this.storage.saveIntimacyData(this.currentFriendCode, data);
+    const bg = document.getElementById('luckyCharBg');
+    if (bg) {
+        if (bgImage) {
+            bg.style.backgroundImage = `url(${bgImage})`;
+            bg.style.backgroundSize = 'cover';
+            bg.style.backgroundPosition = 'center';
+        } else {
+            bg.style.background = '#111111';
+        }
+    }
+    document.getElementById('luckyCustomizePanel').style.display = 'none';
+    this.showCssToast('背景已更新');
+}
+
+// 卡牌背面自定义
+setLuckyCardBack(backImage) {
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    if (!data.luckyChars) data.luckyChars = {};
+    data.luckyChars.cardBackImage = backImage;
+    this.storage.saveIntimacyData(this.currentFriendCode, data);
+    this.resetDrawCards();
+    this.showCssToast(backImage ? '卡牌背面已更新' : '已恢复默认背面');
 }
 
 // ==================== 续火花系统 ====================
