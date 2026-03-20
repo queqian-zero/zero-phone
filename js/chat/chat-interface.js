@@ -237,9 +237,9 @@ class ChatInterface {
             .lucky-wearing-icon { font-size:80px;margin-bottom:12px;display:flex;justify-content:center;align-items:center; }
             .lucky-wearing-icon img { width:120px;height:120px;object-fit:contain;display:block;margin:0 auto; }
             .lucky-wearing-name { font-size:20px;font-weight:700;color:#fff;margin-bottom:12px; }
-            .lucky-wearing-chars { font-size:22px;letter-spacing:4px;margin-bottom:6px; }
-            .lucky-wearing-chars .lit { color:#f0932b; }
-            .lucky-wearing-chars .unlit { color:rgba(255,255,255,0.15); }
+            .lucky-wearing-chars { font-size:28px;letter-spacing:3px;margin-bottom:10px;font-weight:700;font-family:'Georgia',serif; }
+            .lucky-wearing-chars .lit { color:#f0932b;text-shadow:0 0 8px rgba(240,147,43,0.4); }
+            .lucky-wearing-chars .unlit { color:rgba(255,255,255,0.12); }
             .lucky-wearing-progress { font-size:11px;color:rgba(255,255,255,0.4); }
             /* 抽卡区 */
             .lucky-draw-section { padding:0 20px;margin-bottom:20px; }
@@ -735,7 +735,9 @@ class ChatInterface {
             if (wearing && lc.userWearingOn !== false) {
                 const allChars = this.getAllLuckyChars ? this.getAllLuckyChars() : [];
                 const charDef = allChars.find(c => c.id === wearing.id);
-                const pct = wearing.totalChars > 0 ? Math.round(wearing.litChars / wearing.totalChars * 100) : 0;
+                const engName = wearing.engName || charDef?.engName || wearing.name;
+                const realTotal = engName.replace(/\s/g, '').length;
+                const pct = realTotal > 0 ? Math.min(100, Math.round(wearing.litChars / realTotal * 100)) : 0;
                 
                 if (luckyIcon) {
                     if (charDef?.iconType === 'image') {
@@ -5496,7 +5498,11 @@ getIntimacyStatusForAI() {
         const wearing = owned.find(c => c.id === lc.userWearing || c.id === lc.aiWearing);
         desc += `\n- 幸运字符：已拥有${owned.length}个`;
         if (wearing) {
-            const litPct = wearing.totalChars > 0 ? Math.round(wearing.litChars / wearing.totalChars * 100) : 0;
+            const allChars = this.getAllLuckyChars();
+            const charDef = allChars.find(c => c.id === wearing.id);
+            const engName = wearing.engName || charDef?.engName || wearing.name;
+            const realTotal = engName.replace(/\s/g, '').length;
+            const litPct = realTotal > 0 ? Math.min(100, Math.round(wearing.litChars / realTotal * 100)) : 0;
             desc += `，正在佩戴「${wearing.name}」(${litPct}%点亮)`;
         }
         const drawsLeft = 3 - (lc.drawDate === new Date().toISOString().split('T')[0] ? (lc.todayDrawsAI || 0) : 0);
@@ -5881,13 +5887,15 @@ renderWearingDisplay(lc) {
     if (emptyEl) emptyEl.style.display = 'none';
     if (displayEl) displayEl.style.display = 'block';
     
-    // 图标
+    // 图标 - 未完全点亮时灰色（跟小图一致）
     const iconEl = document.getElementById('luckyWearingIcon');
     if (iconEl) {
         const allChars = this.getAllLuckyChars();
         const charDef = allChars.find(c => c.id === wearing.id);
-        const pct = wearing.totalChars > 0 ? Math.round(wearing.litChars / wearing.totalChars * 100) : 0;
-        const grayStyle = pct >= 100 ? '' : `filter:grayscale(${100 - pct}%);`;
+        const engName = wearing.engName || charDef?.engName || wearing.name;
+        const realTotal = engName.replace(/\s/g, '').length;
+        const pct = realTotal > 0 ? Math.min(100, Math.round(wearing.litChars / realTotal * 100)) : 0;
+        const grayStyle = pct >= 100 ? '' : 'filter:grayscale(100%) opacity(0.5);';
         if (charDef?.iconType === 'image') {
             iconEl.innerHTML = `<img src="${charDef.icon}" style="width:120px;height:120px;object-fit:contain;display:block;margin:0 auto;${grayStyle}">`;
         } else {
@@ -5895,24 +5903,30 @@ renderWearingDisplay(lc) {
         }
     }
     
-    // 名称
+    // 名称（中文）
     const nameEl = document.getElementById('luckyWearingName');
     if (nameEl) nameEl.textContent = wearing.name;
     
-    // 逐字点亮
+    // 逐字母点亮（用英文名，跳过空格）
     const charsEl = document.getElementById('luckyWearingChars');
     if (charsEl) {
-        const fullName = wearing.name;
+        const engName = wearing.engName || wearing.name;
+        const letters = engName.split('');
         const litCount = wearing.litChars || 0;
-        charsEl.innerHTML = fullName.split('').map((ch, i) => 
-            `<span class="${i < litCount ? 'lit' : 'unlit'}">${ch}</span>`
-        ).join('');
+        let letterIdx = 0;
+        charsEl.innerHTML = letters.map(ch => {
+            if (ch === ' ') return `<span style="margin:0 3px;"></span>`; // 空格不算
+            const isLit = letterIdx < litCount;
+            letterIdx++;
+            return `<span class="${isLit ? 'lit' : 'unlit'}">${ch}</span>`;
+        }).join('');
     }
     
     // 进度
     const progressEl = document.getElementById('luckyWearingProgress');
     if (progressEl) {
-        const total = wearing.totalChars || wearing.name.length;
+        const engName = wearing.engName || wearing.name;
+        const total = wearing.totalChars || engName.replace(/\s/g, '').length;
         const lit = wearing.litChars || 0;
         const pct = total > 0 ? Math.round(lit / total * 100) : 0;
         if (pct >= 100) {
@@ -5941,7 +5955,10 @@ renderOwnedChars(lc) {
     grid.innerHTML = owned.map(oc => {
         const charDef = allChars.find(c => c.id === oc.id);
         const isWearing = oc.id === wearingId;
-        const pct = oc.totalChars > 0 ? Math.round(oc.litChars / oc.totalChars * 100) : 0;
+        // 用英文名长度计算（兼容旧数据）
+        const engName = oc.engName || charDef?.engName || oc.name;
+        const realTotal = engName.replace(/\s/g, '').length;
+        const pct = realTotal > 0 ? Math.min(100, Math.round(oc.litChars / realTotal * 100)) : 0;
         const isLit = pct >= 100;
         const isCustom = customIds.includes(oc.id);
         // 未完全点亮的用灰色滤镜
@@ -6020,11 +6037,13 @@ drawLuckyCard(cardIndex, drawer = 'user') {
         
         if (!owned.find(o => o.id === pick.id)) {
             // 新字符
+            const engName = pick.engName || pick.name;
             const newChar = {
                 id: pick.id,
                 name: pick.name,
+                engName: engName,
                 litChars: 0,
-                totalChars: pick.name.length,
+                totalChars: engName.replace(/\s/g, '').length,
                 litDate: '',
                 obtainedBy: drawer,
                 obtainedDate: new Date().toISOString()
@@ -6121,7 +6140,7 @@ deleteCustomLuckyChar(charId) {
     this.updateBadgePanel();
 }
 
-// 聊天时点亮字符（每10条消息亮一个字）
+// 聊天时点亮字符（每10条消息亮一个字母）
 updateLuckyCharOnMessage() {
     if (!this.currentFriendCode) return;
     const data = this.storage.getIntimacyData(this.currentFriendCode);
@@ -6130,9 +6149,18 @@ updateLuckyCharOnMessage() {
     if (!wearingId) return;
     
     const wearing = (lc.owned || []).find(o => o.id === wearingId);
-    if (!wearing || wearing.litChars >= wearing.totalChars) return;
+    if (!wearing) return;
     
-    // 用消息累加器（每50条亮一个字）
+    // 自动修正旧数据：用英文名长度
+    const allChars = this.getAllLuckyChars();
+    const charDef = allChars.find(c => c.id === wearing.id);
+    const engName = wearing.engName || charDef?.engName || wearing.name;
+    const realTotal = engName.replace(/\s/g, '').length;
+    if (!wearing.engName && charDef?.engName) wearing.engName = charDef.engName;
+    wearing.totalChars = realTotal;
+    
+    if (wearing.litChars >= realTotal) return; // 已完全点亮
+    
     if (!lc._litAccumulator) lc._litAccumulator = 0;
     lc._litAccumulator++;
     
@@ -6140,10 +6168,9 @@ updateLuckyCharOnMessage() {
         lc._litAccumulator = 0;
         wearing.litChars++;
         
-        if (wearing.litChars >= wearing.totalChars) {
-            // 完全点亮！
+        if (wearing.litChars >= realTotal) {
             wearing.litDate = new Date().toISOString();
-            data.value += 15; // 亲密值奖励
+            data.value += 15;
             
             this.storage.addTimelineEntry(this.currentFriendCode, {
                 type: 'lucky_char_lit',
