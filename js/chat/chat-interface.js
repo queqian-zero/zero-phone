@@ -228,6 +228,42 @@ class ChatInterface {
             .intimacy-tl-note-input { width:100%;padding:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#fff;font-size:12px;resize:none; }
             /* 自定义面板 */
             .intimacy-customize-panel { position:fixed;top:0;left:0;right:0;bottom:0;z-index:3600;display:flex;align-items:flex-end;justify-content:center; }
+            /* ====== 幸运字符页 ====== */
+            .lucky-char-page { position:fixed;top:0;left:0;right:0;bottom:0;z-index:3550;overflow-y:auto;-webkit-overflow-scrolling:touch; }
+            .lucky-customize-panel { position:fixed;top:0;left:0;right:0;bottom:0;z-index:3650;display:flex;align-items:flex-end;justify-content:center; }
+            .lucky-wearing-section { padding:0 20px;margin-bottom:16px; }
+            .lucky-wearing-card { padding:24px;background:rgba(255,255,255,0.06);backdrop-filter:blur(10px);border-radius:16px;border:1px solid rgba(255,255,255,0.08);text-align:center; }
+            .lucky-wearing-empty { font-size:13px;color:rgba(255,255,255,0.3); }
+            .lucky-wearing-icon { font-size:48px;margin-bottom:8px; }
+            .lucky-wearing-icon img { width:48px;height:48px;object-fit:contain; }
+            .lucky-wearing-name { font-size:16px;font-weight:600;color:#fff;margin-bottom:8px; }
+            .lucky-wearing-chars { font-size:22px;letter-spacing:4px;margin-bottom:6px; }
+            .lucky-wearing-chars .lit { color:#f0932b; }
+            .lucky-wearing-chars .unlit { color:rgba(255,255,255,0.15); }
+            .lucky-wearing-progress { font-size:11px;color:rgba(255,255,255,0.4); }
+            /* 抽卡区 */
+            .lucky-draw-section { padding:0 20px;margin-bottom:20px; }
+            .lucky-draw-cards { display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px; }
+            .lucky-card { aspect-ratio:3/4;background:rgba(255,255,255,0.06);border-radius:12px;border:1px solid rgba(255,255,255,0.08);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.3s;overflow:hidden; }
+            .lucky-card:active { transform:scale(0.95); }
+            .lucky-card.flipped { border-color:rgba(240,147,43,0.3); }
+            .lucky-card.flipped.empty { border-color:rgba(255,255,255,0.05); }
+            .lucky-card-back { font-size:28px;color:rgba(255,255,255,0.2); }
+            .lucky-card-front { text-align:center;padding:8px; }
+            .lucky-card-front .char-icon { font-size:32px;margin-bottom:4px; }
+            .lucky-card-front .char-icon img { width:32px;height:32px;object-fit:contain; }
+            .lucky-card-front .char-name { font-size:11px;color:#fff; }
+            .lucky-card-front .char-empty { font-size:14px;color:rgba(255,255,255,0.2); }
+            /* 已拥有 */
+            .lucky-owned-section { padding:0 20px;margin-bottom:20px; }
+            .lucky-owned-grid { display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px; }
+            .lucky-owned-item { padding:12px 4px;background:rgba(255,255,255,0.05);border-radius:10px;text-align:center;cursor:pointer;border:1px solid rgba(255,255,255,0.05);transition:all 0.2s; }
+            .lucky-owned-item.wearing { border-color:rgba(240,147,43,0.4);background:rgba(240,147,43,0.08); }
+            .lucky-owned-item .owned-icon { font-size:28px;margin-bottom:4px; }
+            .lucky-owned-item .owned-icon img { width:28px;height:28px;object-fit:contain; }
+            .lucky-owned-item .owned-name { font-size:10px;color:rgba(255,255,255,0.6);overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+            .lucky-owned-item .owned-pct { font-size:9px;color:rgba(255,255,255,0.3); }
+            .lucky-wear-toggle-section { padding:0 20px; }
             /* 统一信息面板 */
             .info-panel {
                 position: absolute;
@@ -1040,6 +1076,7 @@ class ChatInterface {
         this.closeMenu();
         this.updateFlameOnChat(); // 续火花
         this.updateIntimacyOnMessage(); // 亲密值
+        this.updateLuckyCharOnMessage(); // 点亮字符
         this.checkGreetings(text, 'user'); // 早晚安检测
         this.scrollToBottom();
     }
@@ -1155,7 +1192,8 @@ user是次元壁那头的人。对user来说，你是一堆数据流里的某个
                             'ai_avatar': '你的头像',
                             'ai_avatar_frame': '你的头像框（围绕头像的装饰边框）',
                             'user_avatar': 'user的头像',
-                            'user_avatar_frame': 'user的头像框（围绕头像的装饰边框）'
+                            'user_avatar_frame': 'user的头像框（围绕头像的装饰边框）',
+                            'intimacy_bg': '亲密关系页面的背景图'
                         };
                         return `第${i+1}张：${roleMap[img.role] || '未知图片'}`;
                     }).join('，');
@@ -1218,6 +1256,9 @@ ${archiveListText}
             // ====== 火花系统状态注入 ======
             systemPrompt += '\n\n' + this.getFlameStatusForAI();
 
+            // ====== 亲密关系状态注入 ======
+            systemPrompt += '\n\n' + this.getIntimacyStatusForAI();
+
             // 偶尔报备记忆清理
             if (this._pendingMemoryReport) {
                 this._pendingMemoryReport = false;
@@ -1263,6 +1304,7 @@ ${archiveListText}
             let aiText = result.text;
             aiText = this.processAICssCommands(aiText);
             aiText = this.processFlameCommands(aiText);
+            aiText = this.processLuckyCharCommands(aiText);
             
             this.addMessage({
                 type: 'ai',
@@ -1285,6 +1327,7 @@ if (result.tokens) {
 this.silentMemoryCheck(result.text);
 this.updateFlameOnChat(); // 续火花
 this.updateIntimacyOnMessage(); // 亲密值
+this.updateLuckyCharOnMessage(); // 点亮字符
 this.checkGreetings(aiText, 'ai'); // 早晚安检测
             
             this.scrollToBottom();
@@ -1755,6 +1798,15 @@ div.innerHTML = `
                 const userFrameData = await this.imageToBase64(this.settings.userAvatarFrameSrc);
                 if (userFrameData) {
                     images.push({ role: 'user_avatar_frame', data: userFrameData.data, mediaType: userFrameData.mediaType });
+                }
+            }
+            
+            // 亲密关系背景图
+            const intimacyData = this.storage.getIntimacyData(this.currentFriendCode);
+            if (intimacyData && intimacyData.bgImage) {
+                const bgData = await this.imageToBase64(intimacyData.bgImage);
+                if (bgData) {
+                    images.push({ role: 'intimacy_bg', data: bgData.data, mediaType: bgData.mediaType });
                 }
             }
             
@@ -5392,6 +5444,77 @@ checkGreetings(text, sender) {
 }
 
 // 打开亲密关系页
+// AI可视亲密关系完整状态
+getIntimacyStatusForAI() {
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    const { current, next } = this.getIntimacyLevel(data.value);
+    const flameStatus = this.getFlameStatus();
+    
+    let desc = `【亲密关系】`;
+    desc += `\n- 亲密值：${data.value}（Lv.${current.level} ${current.name}${next ? `，距Lv.${next.level}还需${next.min - data.value}` : ''}）`;
+    desc += `\n- 今日消息：${data.todayMessages || 0}条`;
+    
+    // 幸运字符
+    const lc = data.luckyChars || {};
+    const owned = lc.owned || [];
+    if (owned.length > 0) {
+        const wearing = owned.find(c => c.id === lc.userWearing || c.id === lc.aiWearing);
+        desc += `\n- 幸运字符：已拥有${owned.length}个`;
+        if (wearing) {
+            const litPct = wearing.totalChars > 0 ? Math.round(wearing.litChars / wearing.totalChars * 100) : 0;
+            desc += `，正在佩戴「${wearing.name}」(${litPct}%点亮)`;
+        }
+        const drawsLeft = 3 - (lc.drawDate === new Date().toISOString().split('T')[0] ? (lc.todayDrawsAI || 0) : 0);
+        desc += `\n  你今天还能抽${drawsLeft}次幸运字符（在6张牌里翻1张，每张35%概率出字符）`;
+        desc += `\n  你可以用 [LUCKY_DRAW] 抽一次，用 [LUCKY_WEAR:字符id] 选择佩戴`;
+    } else {
+        desc += `\n- 幸运字符：还没有，可以用 [LUCKY_DRAW] 抽卡`;
+    }
+    
+    // 关系绑定
+    const rel = data.relationship || {};
+    if (rel.bound) {
+        desc += `\n- 关系绑定：已绑定「${rel.bound.name}」`;
+    } else {
+        desc += `\n- 关系绑定：未绑定`;
+        desc += `\n  你可以用 [RELATION_INVITE:关系名] 向user发起绑定邀请（会生成一张邀请卡，user需要同意）`;
+    }
+    if (rel.pendingInvite) {
+        const from = rel.pendingInvite.from === 'user' ? 'user' : '你';
+        desc += `\n  ⏳ 当前有一个待处理的邀请（${from}发起的「${rel.pendingInvite.relName}」），等待回应中`;
+    }
+    
+    // 亲密徽章
+    const badges = data.badges || {};
+    const unlocked = badges.unlocked || [];
+    if (unlocked.length > 0) {
+        desc += `\n- 亲密徽章：已解锁${unlocked.length}个（${unlocked.map(b => b.name).join('、')}）`;
+    } else {
+        desc += `\n- 亲密徽章：还没有解锁`;
+    }
+    
+    // 跨次元兑换所摘要
+    const ex = data.exchange || {};
+    const todoCount = (ex.todos || []).filter(t => !t.completed).length;
+    const fundTotal = (ex.funds || []).reduce((s, f) => s + (f.amount || 0), 0);
+    const letterCount = (ex.letters || []).length;
+    if (todoCount || fundTotal || letterCount) {
+        desc += `\n- 跨次元兑换所：`;
+        if (todoCount) desc += `${todoCount}件待做事项 `;
+        if (fundTotal) desc += `亲密基金${fundTotal}元 `;
+        if (letterCount) desc += `${letterCount}封信 `;
+    }
+    
+    // 背景图
+    if (data.bgImage) {
+        desc += `\n- 亲密关系页面有自定义背景图（附带的图片中能看到）`;
+    }
+    
+    desc += `\n\n你可以自然地在聊天中提及亲密关系相关的事情（比如吐槽界面、讨论怎么获得徽章、提起幸运字符等），但不要刻意，根据你的人设和聊天氛围来。`;
+    
+    return desc;
+}
+
 openIntimacyPage() {
     console.log('💎 打开亲密关系页');
     const page = document.getElementById('intimacyPage');
@@ -5576,11 +5699,15 @@ bindIntimacyEvents() {
         this.showCssToast('已恢复默认背景');
     });
     
-    // 模块入口（暂时弹提示）
+    // 模块入口
     document.querySelectorAll('.intimacy-module-card').forEach(card => {
         card.addEventListener('click', () => {
             const mod = card.getAttribute('data-module');
-            this.showCssToast(`${card.querySelector('.intimacy-module-name').textContent} 开发中...`);
+            if (mod === 'lucky-char') {
+                this.openLuckyCharPage();
+            } else {
+                this.showCssToast(`${card.querySelector('.intimacy-module-name').textContent} 开发中...`);
+            }
         });
     });
 }
@@ -5602,6 +5729,472 @@ setIntimacyBg(bgImage) {
         }
     }
     document.getElementById('intimacyCustomizePanel').style.display = 'none';
+}
+
+// ==================== 幸运字符系统 ====================
+
+// 内置16个幸运字符
+_builtinLuckyChars = [
+    { id: 'lc_beautiful', name: '美好', engName: 'beautiful', icon: 'assets/images/lucky-chars/luck-beautiful.png', iconType: 'image' },
+    { id: 'lc_treasure', name: '珍宝', engName: 'treasure', icon: 'assets/images/lucky-chars/luck-treasure.png', iconType: 'image' },
+    { id: 'lc_meetyou', name: '遇见你', engName: 'meet you', icon: 'assets/images/lucky-chars/luck-meet-you.png', iconType: 'image' },
+    { id: 'lc_destiny', name: '宿命', engName: 'destiny', icon: 'assets/images/lucky-chars/luck-destiny.png', iconType: 'image' },
+    { id: 'lc_only', name: '唯一', engName: 'only', icon: 'assets/images/lucky-chars/luck-only.png', iconType: 'image' },
+    { id: 'lc_mine', name: '我的', engName: 'mine', icon: 'assets/images/lucky-chars/luck-mine.png', iconType: 'image' },
+    { id: 'lc_happiness', name: '幸福', engName: 'happiness', icon: 'assets/images/lucky-chars/luck-happiness.png', iconType: 'image' },
+    { id: 'lc_cherish', name: '珍爱', engName: 'cherish', icon: 'assets/images/lucky-chars/luck-cherish.png', iconType: 'image' },
+    { id: 'lc_future', name: '未来', engName: 'future', icon: 'assets/images/lucky-chars/luck-future.png', iconType: 'image' },
+    { id: 'lc_guardian', name: '守护', engName: 'guardian', icon: 'assets/images/lucky-chars/luck-guardian.png', iconType: 'image' },
+    { id: 'lc_merriment', name: '欢乐', engName: 'merriment', icon: 'assets/images/lucky-chars/luck-merriment.png', iconType: 'image' },
+    { id: 'lc_sanctuary', name: '庇护所', engName: 'sanctuary', icon: 'assets/images/lucky-chars/luck-sanctuary.png', iconType: 'image' },
+    { id: 'lc_starlight', name: '星光', engName: 'starlight', icon: 'assets/images/lucky-chars/luck-starlight.png', iconType: 'image' },
+    { id: 'lc_exclusive', name: '专属', engName: 'Exclusive', icon: 'assets/images/lucky-chars/luck-exclusive.png', iconType: 'image' },
+    { id: 'lc_dreamland', name: '梦境', engName: 'dreamland', icon: 'assets/images/lucky-chars/luck-dreamland.png', iconType: 'image' },
+    { id: 'lc_eternal', name: '永恒', engName: 'eternal', icon: 'assets/images/lucky-chars/luck-eternal.png', iconType: 'image' }
+];
+
+getAllLuckyChars() {
+    const config = this.storage.getIntimacyConfig();
+    return [...this._builtinLuckyChars, ...(config.customLuckyChars || [])];
+}
+
+openLuckyCharPage() {
+    const page = document.getElementById('luckyCharPage');
+    if (!page) return;
+    page.style.display = 'block';
+    
+    this.refreshLuckyCharPage();
+    
+    if (!this._luckyEventsBound) {
+        this.bindLuckyCharEvents();
+        this._luckyEventsBound = true;
+    }
+}
+
+closeLuckyCharPage() {
+    const page = document.getElementById('luckyCharPage');
+    if (page) page.style.display = 'none';
+}
+
+refreshLuckyCharPage() {
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    const lc = data.luckyChars || {};
+    const today = new Date().toISOString().split('T')[0];
+    
+    // 背景图
+    const bg = document.getElementById('luckyCharBg');
+    if (bg) {
+        if (lc.bgImage) {
+            bg.style.backgroundImage = `url(${lc.bgImage})`;
+            bg.style.backgroundSize = 'cover';
+            bg.style.backgroundPosition = 'center';
+        } else if (data.bgImage) {
+            bg.style.backgroundImage = `url(${data.bgImage})`;
+            bg.style.backgroundSize = 'cover';
+            bg.style.backgroundPosition = 'center';
+        } else {
+            bg.style.background = 'linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%)';
+        }
+    }
+    
+    // 抽卡次数
+    const userDraws = (lc.drawDate === today) ? (lc.todayDrawsUser || 0) : 0;
+    const remaining = 3 - userDraws;
+    const countEl = document.getElementById('luckyDrawCount');
+    if (countEl) countEl.textContent = `剩余 ${remaining} 次`;
+    
+    // 重置卡片
+    this.resetDrawCards();
+    
+    // 佩戴展示
+    this.renderWearingDisplay(lc);
+    
+    // 已拥有列表
+    this.renderOwnedChars(lc);
+    
+    // 佩戴开关
+    const toggle = document.getElementById('luckyWearToggle');
+    if (toggle) toggle.checked = lc.userWearingOn !== false;
+}
+
+resetDrawCards() {
+    document.querySelectorAll('.lucky-card').forEach(card => {
+        card.className = 'lucky-card';
+        card.innerHTML = '<div class="lucky-card-back">?</div>';
+    });
+}
+
+renderWearingDisplay(lc) {
+    const emptyEl = document.getElementById('luckyWearingEmpty');
+    const displayEl = document.getElementById('luckyWearingDisplay');
+    
+    const wearingId = lc.userWearing || lc.aiWearing;
+    const wearing = wearingId ? (lc.owned || []).find(c => c.id === wearingId) : null;
+    
+    if (!wearing || lc.userWearingOn === false) {
+        if (emptyEl) emptyEl.style.display = 'block';
+        if (displayEl) displayEl.style.display = 'none';
+        return;
+    }
+    
+    if (emptyEl) emptyEl.style.display = 'none';
+    if (displayEl) displayEl.style.display = 'block';
+    
+    // 图标
+    const iconEl = document.getElementById('luckyWearingIcon');
+    if (iconEl) {
+        const allChars = this.getAllLuckyChars();
+        const charDef = allChars.find(c => c.id === wearing.id);
+        if (charDef?.iconType === 'image') {
+            iconEl.innerHTML = `<img src="${charDef.icon}" style="width:48px;height:48px;object-fit:contain;">`;
+        } else {
+            iconEl.textContent = charDef?.icon || '✦';
+        }
+    }
+    
+    // 名称
+    const nameEl = document.getElementById('luckyWearingName');
+    if (nameEl) nameEl.textContent = wearing.name;
+    
+    // 逐字点亮
+    const charsEl = document.getElementById('luckyWearingChars');
+    if (charsEl) {
+        const fullName = wearing.name;
+        const litCount = wearing.litChars || 0;
+        charsEl.innerHTML = fullName.split('').map((ch, i) => 
+            `<span class="${i < litCount ? 'lit' : 'unlit'}">${ch}</span>`
+        ).join('');
+    }
+    
+    // 进度
+    const progressEl = document.getElementById('luckyWearingProgress');
+    if (progressEl) {
+        const total = wearing.totalChars || wearing.name.length;
+        const lit = wearing.litChars || 0;
+        const pct = total > 0 ? Math.round(lit / total * 100) : 0;
+        if (pct >= 100) {
+            progressEl.textContent = `✨ 已完全点亮`;
+        } else {
+            progressEl.textContent = `${pct}% · 还需 ${(total - lit) * 50} 条消息`;
+        }
+    }
+}
+
+renderOwnedChars(lc) {
+    const grid = document.getElementById('luckyOwnedGrid');
+    if (!grid) return;
+    
+    const owned = lc.owned || [];
+    if (owned.length === 0) {
+        grid.innerHTML = '<div class="intimacy-timeline-empty">还没有抽到字符</div>';
+        return;
+    }
+    
+    const allChars = this.getAllLuckyChars();
+    const wearingId = lc.userWearing || lc.aiWearing;
+    
+    grid.innerHTML = owned.map(oc => {
+        const charDef = allChars.find(c => c.id === oc.id);
+        const isWearing = oc.id === wearingId;
+        const pct = oc.totalChars > 0 ? Math.round(oc.litChars / oc.totalChars * 100) : 0;
+        const iconHtml = charDef?.iconType === 'image' 
+            ? `<img src="${charDef.icon}" style="width:28px;height:28px;object-fit:contain;">` 
+            : (charDef?.icon || '✦');
+        
+        return `
+            <div class="lucky-owned-item ${isWearing ? 'wearing' : ''}" data-char-id="${oc.id}">
+                <div class="owned-icon">${iconHtml}</div>
+                <div class="owned-name">${oc.name}</div>
+                <div class="owned-pct">${pct}%</div>
+            </div>`;
+    }).join('');
+    
+    // 点击佩戴
+    grid.querySelectorAll('.lucky-owned-item').forEach(item => {
+        item.addEventListener('click', () => {
+            const charId = item.getAttribute('data-char-id');
+            this.wearLuckyChar(charId, 'user');
+        });
+    });
+}
+
+// 抽卡
+drawLuckyCard(cardIndex, drawer = 'user') {
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    const lc = data.luckyChars || {};
+    const today = new Date().toISOString().split('T')[0];
+    
+    // 重置日期
+    if (lc.drawDate !== today) {
+        lc.todayDrawsUser = 0;
+        lc.todayDrawsAI = 0;
+        lc.drawDate = today;
+    }
+    
+    const drawKey = drawer === 'user' ? 'todayDrawsUser' : 'todayDrawsAI';
+    if ((lc[drawKey] || 0) >= 3) {
+        this.showCssToast('今天的抽卡次数已用完');
+        return null;
+    }
+    
+    lc[drawKey]++;
+    
+    // 35%概率抽到字符
+    const isHit = Math.random() < 0.35;
+    let result = null;
+    
+    if (isHit) {
+        const allChars = this.getAllLuckyChars();
+        const owned = lc.owned || [];
+        // 随机选一个（可以重复抽到已有的，但不添加新的）
+        const pick = allChars[Math.floor(Math.random() * allChars.length)];
+        
+        if (!owned.find(o => o.id === pick.id)) {
+            // 新字符
+            const newChar = {
+                id: pick.id,
+                name: pick.name,
+                litChars: 0,
+                totalChars: pick.name.length,
+                litDate: '',
+                obtainedBy: drawer,
+                obtainedDate: new Date().toISOString()
+            };
+            if (!lc.owned) lc.owned = [];
+            lc.owned.push(newChar);
+            
+            // 亲密值
+            data.value += 2;
+            
+            // 星迹档案
+            this.storage.addTimelineEntry(this.currentFriendCode, {
+                type: 'lucky_char_draw',
+                title: `${drawer === 'user' ? '你' : 'TA'}抽到了幸运字符「${pick.name}」`,
+                icon: '🎲'
+            });
+            
+            result = { hit: true, char: pick, isNew: true };
+        } else {
+            result = { hit: true, char: pick, isNew: false };
+        }
+    } else {
+        result = { hit: false };
+    }
+    
+    data.luckyChars = lc;
+    this.storage.saveIntimacyData(this.currentFriendCode, data);
+    
+    return result;
+}
+
+// 佩戴
+wearLuckyChar(charId, who = 'user') {
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    const lc = data.luckyChars || {};
+    const owned = lc.owned || [];
+    
+    if (!owned.find(o => o.id === charId)) {
+        this.showCssToast('还没有拥有这个字符');
+        return;
+    }
+    
+    if (who === 'user') {
+        lc.userWearing = charId;
+    } else {
+        lc.aiWearing = charId;
+    }
+    
+    data.luckyChars = lc;
+    this.storage.saveIntimacyData(this.currentFriendCode, data);
+    this.showCssToast(`已佩戴「${owned.find(o => o.id === charId).name}」`);
+    this.refreshLuckyCharPage();
+}
+
+// 聊天时点亮字符（每50条消息亮一个字）
+updateLuckyCharOnMessage() {
+    if (!this.currentFriendCode) return;
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    const lc = data.luckyChars || {};
+    const wearingId = lc.userWearing || lc.aiWearing;
+    if (!wearingId) return;
+    
+    const wearing = (lc.owned || []).find(o => o.id === wearingId);
+    if (!wearing || wearing.litChars >= wearing.totalChars) return;
+    
+    // 用消息累加器（每50条亮一个字）
+    if (!lc._litAccumulator) lc._litAccumulator = 0;
+    lc._litAccumulator++;
+    
+    if (lc._litAccumulator >= 50) {
+        lc._litAccumulator = 0;
+        wearing.litChars++;
+        
+        if (wearing.litChars >= wearing.totalChars) {
+            // 完全点亮！
+            wearing.litDate = new Date().toISOString();
+            data.value += 15; // 亲密值奖励
+            
+            this.storage.addTimelineEntry(this.currentFriendCode, {
+                type: 'lucky_char_lit',
+                title: `幸运字符「${wearing.name}」已完全点亮 ✨`,
+                icon: '✨'
+            });
+            
+            this.showCssToast(`✨ 幸运字符「${wearing.name}」已完全点亮！`);
+        }
+    }
+    
+    data.luckyChars = lc;
+    this.storage.saveIntimacyData(this.currentFriendCode, data);
+}
+
+// AI幸运字符指令处理
+processLuckyCharCommands(text) {
+    const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
+    
+    // [LUCKY_DRAW] - AI抽卡
+    if (text.includes('[LUCKY_DRAW]')) {
+        text = text.replace('[LUCKY_DRAW]', '');
+        const result = this.drawLuckyCard(0, 'ai');
+        if (result) {
+            if (result.hit) {
+                const msg = result.isNew 
+                    ? `🎲 ${friendName} 抽到了新的幸运字符「${result.char.name}」！`
+                    : `🎲 ${friendName} 抽到了「${result.char.name}」（已拥有）`;
+                this.showCssSystemMessage(msg);
+                this.showCssToast(msg);
+            } else {
+                this.showCssSystemMessage(`🎲 ${friendName} 翻了一张空牌`);
+            }
+        }
+    }
+    
+    // [LUCKY_WEAR:id] - AI选择佩戴
+    const wearMatch = text.match(/\[LUCKY_WEAR:([^\]]+)\]/);
+    if (wearMatch) {
+        const charId = wearMatch[1].trim();
+        text = text.replace(/\[LUCKY_WEAR:[^\]]+\]/, '');
+        
+        const data = this.storage.getIntimacyData(this.currentFriendCode);
+        const lc = data.luckyChars || {};
+        const owned = lc.owned || [];
+        const target = owned.find(o => o.id === charId);
+        
+        if (target) {
+            lc.aiWearing = charId;
+            data.luckyChars = lc;
+            this.storage.saveIntimacyData(this.currentFriendCode, data);
+            this.showCssSystemMessage(`✦ ${friendName} 选择佩戴「${target.name}」`);
+            this.showCssToast(`✦ ${friendName} 佩戴了「${target.name}」`);
+        }
+    }
+    
+    return text;
+}
+
+bindLuckyCharEvents() {
+    // 返回
+    document.getElementById('luckyCharBack')?.addEventListener('click', () => this.closeLuckyCharPage());
+    
+    // 自定义面板
+    document.getElementById('luckyCharCustomize')?.addEventListener('click', () => {
+        document.getElementById('luckyCustomizePanel').style.display = 'flex';
+    });
+    document.getElementById('luckyCustomizeClose')?.addEventListener('click', () => {
+        document.getElementById('luckyCustomizePanel').style.display = 'none';
+    });
+    document.getElementById('luckyCustomizeOverlay')?.addEventListener('click', () => {
+        document.getElementById('luckyCustomizePanel').style.display = 'none';
+    });
+    
+    // 抽卡
+    document.querySelectorAll('.lucky-card').forEach(card => {
+        card.addEventListener('click', () => {
+            if (card.classList.contains('flipped')) return;
+            
+            const result = this.drawLuckyCard(parseInt(card.getAttribute('data-index')), 'user');
+            if (!result) return;
+            
+            card.classList.add('flipped');
+            
+            if (result.hit) {
+                const allChars = this.getAllLuckyChars();
+                const charDef = allChars.find(c => c.id === result.char.id);
+                const iconHtml = charDef?.iconType === 'image' 
+                    ? `<img src="${charDef.icon}" style="width:32px;height:32px;object-fit:contain;">` 
+                    : (charDef?.icon || '✦');
+                card.innerHTML = `<div class="lucky-card-front">
+                    <div class="char-icon">${iconHtml}</div>
+                    <div class="char-name">${result.char.name}</div>
+                    ${result.isNew ? '<div style="font-size:9px;color:#f0932b;margin-top:2px;">NEW!</div>' : '<div style="font-size:9px;color:rgba(255,255,255,0.3);margin-top:2px;">已拥有</div>'}
+                </div>`;
+                if (navigator.vibrate) navigator.vibrate(100);
+            } else {
+                card.classList.add('empty');
+                card.innerHTML = '<div class="lucky-card-front"><div class="char-empty">空</div></div>';
+            }
+            
+            // 更新剩余次数和列表
+            const data = this.storage.getIntimacyData(this.currentFriendCode);
+            const lc = data.luckyChars || {};
+            const today = new Date().toISOString().split('T')[0];
+            const remaining = 3 - ((lc.drawDate === today) ? (lc.todayDrawsUser || 0) : 0);
+            const countEl = document.getElementById('luckyDrawCount');
+            if (countEl) countEl.textContent = `剩余 ${remaining} 次`;
+            
+            this.renderOwnedChars(lc);
+        });
+    });
+    
+    // 佩戴开关
+    document.getElementById('luckyWearToggle')?.addEventListener('change', (e) => {
+        const data = this.storage.getIntimacyData(this.currentFriendCode);
+        if (!data.luckyChars) data.luckyChars = {};
+        data.luckyChars.userWearingOn = e.target.checked;
+        this.storage.saveIntimacyData(this.currentFriendCode, data);
+        this.renderWearingDisplay(data.luckyChars);
+    });
+    
+    // 自定义字符上传
+    const uploadBtn = document.getElementById('luckyCustomUploadBtn');
+    const uploadInput = document.getElementById('luckyCustomUploadInput');
+    if (uploadBtn && uploadInput) {
+        uploadBtn.addEventListener('click', () => uploadInput.click());
+    }
+    
+    document.getElementById('luckyCustomAddBtn')?.addEventListener('click', () => {
+        const name = document.getElementById('luckyCustomName')?.value.trim();
+        if (!name) { this.showCssToast('请输入字符名称'); return; }
+        
+        const url = document.getElementById('luckyCustomUrl')?.value.trim();
+        const fileInput = document.getElementById('luckyCustomUploadInput');
+        
+        const addChar = (icon, iconType) => {
+            const config = this.storage.getIntimacyConfig();
+            if (!config.customLuckyChars) config.customLuckyChars = [];
+            config.customLuckyChars.push({
+                id: 'lc_custom_' + Date.now(),
+                name: name,
+                icon: icon,
+                iconType: iconType
+            });
+            this.storage.saveIntimacyConfig(config);
+            this.showCssToast(`已添加「${name}」`);
+            document.getElementById('luckyCustomName').value = '';
+            document.getElementById('luckyCustomUrl').value = '';
+            document.getElementById('luckyCustomizePanel').style.display = 'none';
+        };
+        
+        if (url) {
+            addChar(url, 'image');
+        } else if (fileInput?.files[0]) {
+            const reader = new FileReader();
+            reader.onload = (ev) => addChar(ev.target.result, 'image');
+            reader.readAsDataURL(fileInput.files[0]);
+        } else {
+            this.showCssToast('请上传图片或填入URL');
+        }
+    });
 }
 
 // ==================== 续火花系统 ====================
