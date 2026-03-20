@@ -182,6 +182,52 @@ class ChatInterface {
             }
             /* 聊天列表火花图标 */
             .chat-list-flame { font-size:12px;margin-left:4px;display:inline;vertical-align:middle;line-height:1; }
+            /* ====== 亲密关系全屏页 ====== */
+            .intimacy-page { position:fixed;top:0;left:0;right:0;bottom:0;z-index:3500;overflow-y:auto;-webkit-overflow-scrolling:touch; }
+            .intimacy-bg { position:fixed;top:0;left:0;right:0;bottom:0;background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);background-size:cover;background-position:center; }
+            .intimacy-content { position:relative;z-index:1;padding:0 0 40px; }
+            .intimacy-header { display:flex;align-items:center;justify-content:space-between;padding:16px 16px 8px;padding-top:calc(16px + env(safe-area-inset-top)); }
+            .intimacy-back { background:none;border:none;color:#fff;font-size:20px;cursor:pointer;padding:4px 8px; }
+            .intimacy-title { font-size:17px;font-weight:600;color:#fff; }
+            .intimacy-customize { background:rgba(255,255,255,0.15);border:none;border-radius:16px;padding:5px 14px;color:rgba(255,255,255,0.8);font-size:12px;cursor:pointer; }
+            .intimacy-friend-name { text-align:center;font-size:20px;font-weight:700;color:#fff;padding:8px 0 16px;text-shadow:0 1px 8px rgba(0,0,0,0.3); }
+            /* 数据卡片 */
+            .intimacy-stats-card { display:flex;align-items:center;justify-content:center;margin:0 20px;padding:20px 0;background:rgba(255,255,255,0.1);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-radius:16px;border:1px solid rgba(255,255,255,0.08); }
+            .intimacy-stat { flex:1;text-align:center; }
+            .intimacy-stat-num { font-size:28px;font-weight:800;color:#fff;font-style:italic;font-variant-numeric:tabular-nums; }
+            .intimacy-stat-label { font-size:11px;color:rgba(255,255,255,0.5);margin-top:4px; }
+            .intimacy-stat-divider { width:1px;height:36px;background:rgba(255,255,255,0.12); }
+            /* 等级条 */
+            .intimacy-level-bar { margin:14px 20px 20px;padding:10px 16px;background:rgba(255,255,255,0.06);border-radius:12px; }
+            .intimacy-level-info { display:flex;justify-content:space-between;margin-bottom:6px; }
+            .intimacy-level-info span { font-size:12px;color:rgba(255,255,255,0.6); }
+            .intimacy-level-info span:first-child { font-weight:600;color:rgba(255,255,255,0.85); }
+            .intimacy-level-track { height:6px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden; }
+            .intimacy-level-fill { height:100%;border-radius:3px;background:linear-gradient(90deg,#f7dc6f,#f0932b);transition:width 0.5s ease; }
+            /* 模块入口 */
+            .intimacy-modules { padding:0 20px; }
+            .intimacy-module-row { display:flex;gap:10px;margin-bottom:10px; }
+            .intimacy-module-card { flex:1;padding:18px 8px;background:rgba(255,255,255,0.08);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-radius:14px;border:1px solid rgba(255,255,255,0.06);text-align:center;cursor:pointer;transition:transform 0.15s; }
+            .intimacy-module-card:active { transform:scale(0.95); }
+            .intimacy-module-icon { font-size:28px;margin-bottom:6px; }
+            .intimacy-module-name { font-size:13px;font-weight:600;color:#fff;margin-bottom:3px; }
+            .intimacy-module-status { font-size:10px;color:rgba(255,255,255,0.35); }
+            /* 星迹档案 */
+            .intimacy-timeline-section { margin:24px 20px 0;padding:20px;background:rgba(255,255,255,0.05);backdrop-filter:blur(10px);border-radius:16px;border:1px solid rgba(255,255,255,0.06); }
+            .intimacy-section-title { font-size:15px;font-weight:600;color:rgba(255,255,255,0.85);margin:0 0 16px; }
+            .intimacy-timeline { position:relative;padding-left:20px; }
+            .intimacy-timeline::before { content:'';position:absolute;left:6px;top:0;bottom:0;width:2px;background:rgba(255,255,255,0.1); }
+            .intimacy-timeline-empty { font-size:13px;color:rgba(255,255,255,0.3);text-align:center;padding:20px 0; }
+            .intimacy-tl-item { position:relative;margin-bottom:20px;padding-left:16px; }
+            .intimacy-tl-dot { position:absolute;left:-17px;top:4px;width:10px;height:10px;border-radius:50%;background:#f0932b;border:2px solid rgba(255,255,255,0.2); }
+            .intimacy-tl-date { font-size:11px;color:rgba(255,255,255,0.35);margin-bottom:2px; }
+            .intimacy-tl-title { font-size:13px;color:#fff; }
+            .intimacy-tl-toggle { font-size:11px;color:rgba(255,255,255,0.3);cursor:pointer;margin-top:4px; }
+            .intimacy-tl-notes { display:none;margin-top:8px;padding:10px;background:rgba(255,255,255,0.04);border-radius:8px;font-size:12px; }
+            .intimacy-tl-note { margin-bottom:6px;color:rgba(255,255,255,0.6); }
+            .intimacy-tl-note-input { width:100%;padding:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#fff;font-size:12px;resize:none; }
+            /* 自定义面板 */
+            .intimacy-customize-panel { position:fixed;top:0;left:0;right:0;bottom:0;z-index:3600;display:flex;align-items:flex-end;justify-content:center; }
             /* 统一信息面板 */
             .info-panel {
                 position: absolute;
@@ -988,6 +1034,8 @@ class ChatInterface {
         
         this.closeMenu();
         this.updateFlameOnChat(); // 续火花
+        this.updateIntimacyOnMessage(); // 亲密值
+        this.checkGreetings(text, 'user'); // 早晚安检测
         this.scrollToBottom();
     }
     
@@ -1231,6 +1279,8 @@ if (result.tokens) {
 // 后台静默检测是否有值得记住的内容
 this.silentMemoryCheck(result.text);
 this.updateFlameOnChat(); // 续火花
+this.updateIntimacyOnMessage(); // 亲密值
+this.checkGreetings(aiText, 'ai'); // 早晚安检测
             
             this.scrollToBottom();
             
@@ -2072,6 +2122,14 @@ if (exportDataBtn) {
         if (flameBtn) {
             flameBtn.addEventListener('click', () => {
                 this.openFlameModal();
+            });
+        }
+        
+        // 亲密关系入口
+        const intimacyBtn = document.getElementById('settingIntimacy');
+        if (intimacyBtn) {
+            intimacyBtn.addEventListener('click', () => {
+                this.openIntimacyPage();
             });
         }
     }
@@ -5219,6 +5277,328 @@ showMemoryToast(friendName) {
     }, 3000);
 }
     
+// ==================== 亲密关系系统 ====================
+
+// 亲密值等级表
+_intimacyLevels = [
+    { level: 1, name: '初见', min: 0 },
+    { level: 2, name: '相识', min: 50 },
+    { level: 3, name: '熟悉', min: 150 },
+    { level: 4, name: '默契', min: 400 },
+    { level: 5, name: '信赖', min: 800 },
+    { level: 6, name: '羁绊', min: 1500 },
+    { level: 7, name: '共鸣', min: 3000 },
+    { level: 8, name: '灵魂', min: 6000 },
+    { level: 9, name: '永恒', min: 15000 },
+    { level: 10, name: '命运', min: 30000 },
+    { level: 99, name: '唯一', min: 5201314 }
+];
+
+getIntimacyLevel(value) {
+    let current = this._intimacyLevels[0];
+    let next = this._intimacyLevels[1];
+    for (let i = this._intimacyLevels.length - 1; i >= 0; i--) {
+        if (value >= this._intimacyLevels[i].min) {
+            current = this._intimacyLevels[i];
+            next = this._intimacyLevels[i + 1] || null;
+            break;
+        }
+    }
+    return { current, next };
+}
+
+// 每次发消息时调用（累积亲密值）
+updateIntimacyOnMessage() {
+    if (!this.currentFriendCode) return;
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    const today = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const hour = now.getHours();
+    
+    let changed = false;
+    const oldLevel = this.getIntimacyLevel(data.value).current.level;
+    
+    // 重置今日计数
+    if (data.todayDate !== today) {
+        data.todayMessages = 0;
+        data.todayDate = today;
+    }
+    data.todayMessages++;
+    data.totalMessages++;
+    
+    // 每100条消息+1
+    data.msgAccumulator++;
+    if (data.msgAccumulator >= 100) {
+        data.value++;
+        data.msgAccumulator = 0;
+        changed = true;
+    }
+    
+    // 日活奖励（每天第一条消息+2）
+    if (data.dailyBonusDate !== today) {
+        data.value += 2;
+        data.dailyBonusDate = today;
+        changed = true;
+    }
+    
+    // 熬夜修仙（0:00-5:00，每天最多+1次）
+    if (hour >= 0 && hour < 5 && data.nightOwlDate !== today) {
+        data.value++;
+        data.nightOwlDate = today;
+        changed = true;
+    }
+    
+    // 检查升级
+    const newLevel = this.getIntimacyLevel(data.value).current.level;
+    if (newLevel > oldLevel) {
+        const levelInfo = this.getIntimacyLevel(data.value).current;
+        this.storage.addTimelineEntry(this.currentFriendCode, {
+            type: 'level_up',
+            title: `亲密等级提升至 Lv.${levelInfo.level} ${levelInfo.name}`,
+            icon: '⭐'
+        });
+    }
+    
+    this.storage.saveIntimacyData(this.currentFriendCode, data);
+}
+
+// 互道早安检测（在消息文本中检测）
+checkGreetings(text, sender) {
+    if (!this.currentFriendCode) return;
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    const today = new Date().toISOString().split('T')[0];
+    
+    const morningWords = ['早安', '早上好', '早啊', '早呀', '早~', '早！', 'good morning'];
+    const nightWords = ['晚安', '好梦', '好梦哦', 'good night', '睡了', '去睡觉'];
+    
+    const lower = text.toLowerCase();
+    
+    if (morningWords.some(w => lower.includes(w)) && data.goodMorningDate !== today) {
+        data.value += 2;
+        data.goodMorningDate = today;
+        this.storage.saveIntimacyData(this.currentFriendCode, data);
+    }
+    
+    if (nightWords.some(w => lower.includes(w)) && data.goodNightDate !== today) {
+        data.value += 2;
+        data.goodNightDate = today;
+        this.storage.saveIntimacyData(this.currentFriendCode, data);
+    }
+}
+
+// 打开亲密关系页
+openIntimacyPage() {
+    console.log('💎 打开亲密关系页');
+    const page = document.getElementById('intimacyPage');
+    if (!page) return;
+    page.style.display = 'block';
+    
+    this.refreshIntimacyPage();
+    
+    // 绑定事件（只一次）
+    if (!this._intimacyEventsBound) {
+        this.bindIntimacyEvents();
+        this._intimacyEventsBound = true;
+    }
+}
+
+closeIntimacyPage() {
+    const page = document.getElementById('intimacyPage');
+    if (page) page.style.display = 'none';
+}
+
+refreshIntimacyPage() {
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    const friend = this.currentFriend || this.storage.getFriendByCode(this.currentFriendCode);
+    const flameStatus = this.getFlameStatus();
+    
+    // 好友名
+    const nameEl = document.getElementById('intimacyFriendName');
+    if (nameEl) nameEl.textContent = friend?.nickname || friend?.name || '-';
+    
+    // 数据卡片
+    const valueEl = document.getElementById('intimacyValue');
+    const flameEl = document.getElementById('intimacyFlame');
+    const todayEl = document.getElementById('intimacyTodayMsgs');
+    if (valueEl) valueEl.textContent = data.value.toLocaleString();
+    if (flameEl) flameEl.textContent = flameStatus.days;
+    if (todayEl) todayEl.textContent = data.todayMessages || 0;
+    
+    // 等级条
+    const { current, next } = this.getIntimacyLevel(data.value);
+    const levelText = document.getElementById('intimacyLevelText');
+    const levelProgress = document.getElementById('intimacyLevelProgress');
+    const levelFill = document.getElementById('intimacyLevelFill');
+    
+    if (levelText) levelText.textContent = `Lv.${current.level} ${current.name}`;
+    if (next) {
+        const progress = data.value - current.min;
+        const range = next.min - current.min;
+        const pct = Math.min(100, Math.round(progress / range * 100));
+        if (levelProgress) levelProgress.textContent = `${data.value} / ${next.min}`;
+        if (levelFill) levelFill.style.width = pct + '%';
+    } else {
+        if (levelProgress) levelProgress.textContent = `${data.value.toLocaleString()} ✦`;
+        if (levelFill) levelFill.style.width = '100%';
+    }
+    
+    // 背景图
+    const bg = document.getElementById('intimacyBg');
+    if (bg && data.bgImage) {
+        bg.style.backgroundImage = `url(${data.bgImage})`;
+        bg.style.backgroundSize = 'cover';
+        bg.style.backgroundPosition = 'center';
+    }
+    
+    // 星迹档案
+    this.renderTimeline(data.timeline);
+}
+
+renderTimeline(timeline) {
+    const container = document.getElementById('intimacyTimeline');
+    if (!container) return;
+    
+    if (!timeline || timeline.length === 0) {
+        container.innerHTML = '<div class="intimacy-timeline-empty">还没有记录，快去创造属于你们的故事吧</div>';
+        return;
+    }
+    
+    container.innerHTML = timeline.map(item => {
+        const date = new Date(item.date);
+        const dateStr = `${date.getFullYear()}.${String(date.getMonth()+1).padStart(2,'0')}.${String(date.getDate()).padStart(2,'0')}`;
+        const hasUserNote = item.userNote ? `<div class="intimacy-tl-note">📝 ${this.escapeHtml(item.userNote)}</div>` : '';
+        const hasAiNote = item.aiNote ? `<div class="intimacy-tl-note">🤖 ${this.escapeHtml(item.aiNote)}</div>` : '';
+        
+        return `
+            <div class="intimacy-tl-item" data-tl-id="${item.id}">
+                <div class="intimacy-tl-dot"></div>
+                <div class="intimacy-tl-date">${dateStr}</div>
+                <div class="intimacy-tl-title">${item.icon || '✦'} ${this.escapeHtml(item.title)}</div>
+                <div class="intimacy-tl-toggle" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">展开寄语 ▾</div>
+                <div class="intimacy-tl-notes" style="display:none;">
+                    ${hasUserNote}
+                    ${hasAiNote}
+                    <textarea class="intimacy-tl-note-input" placeholder="写下你的寄语..." data-tl-id="${item.id}" rows="2"></textarea>
+                    <div style="display:flex;gap:6px;margin-top:6px;">
+                        <button onclick="window.chatInterface.saveTimelineNote('${item.id}')" style="flex:1;padding:6px;border:none;border-radius:6px;background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.6);font-size:11px;cursor:pointer;">保存寄语</button>
+                        <button onclick="window.chatInterface.deleteTimelineNote('${item.id}')" style="flex:1;padding:6px;border:none;border-radius:6px;background:rgba(255,60,60,0.1);color:rgba(255,100,100,0.6);font-size:11px;cursor:pointer;">删除我的寄语</button>
+                    </div>
+                </div>
+            </div>`;
+    }).join('');
+}
+
+saveTimelineNote(tlId) {
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    const item = data.timeline.find(t => t.id === tlId);
+    if (!item) return;
+    
+    const textarea = document.querySelector(`textarea[data-tl-id="${tlId}"]`);
+    if (!textarea || !textarea.value.trim()) return;
+    
+    item.userNote = textarea.value.trim();
+    this.storage.saveIntimacyData(this.currentFriendCode, data);
+    this.showCssToast('寄语已保存');
+    this.renderTimeline(data.timeline);
+}
+
+deleteTimelineNote(tlId) {
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    const item = data.timeline.find(t => t.id === tlId);
+    if (!item) return;
+    
+    item.userNote = '';
+    this.storage.saveIntimacyData(this.currentFriendCode, data);
+    this.showCssToast('寄语已删除');
+    this.renderTimeline(data.timeline);
+}
+
+bindIntimacyEvents() {
+    // 返回
+    document.getElementById('intimacyBack')?.addEventListener('click', () => this.closeIntimacyPage());
+    
+    // 自定义按钮
+    document.getElementById('intimacyCustomize')?.addEventListener('click', () => {
+        document.getElementById('intimacyCustomizePanel').style.display = 'flex';
+    });
+    document.getElementById('intimacyCustomizeClose')?.addEventListener('click', () => {
+        document.getElementById('intimacyCustomizePanel').style.display = 'none';
+    });
+    document.getElementById('intimacyCustomizeOverlay')?.addEventListener('click', () => {
+        document.getElementById('intimacyCustomizePanel').style.display = 'none';
+    });
+    
+    // 背景图上传
+    const bgUploadBtn = document.getElementById('intimacyBgUploadBtn');
+    const bgUploadInput = document.getElementById('intimacyBgUploadInput');
+    if (bgUploadBtn && bgUploadInput) {
+        bgUploadBtn.addEventListener('click', () => bgUploadInput.click());
+        bgUploadInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                // 压缩图片
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const maxW = 1080;
+                    const scale = Math.min(1, maxW / img.width);
+                    canvas.width = img.width * scale;
+                    canvas.height = img.height * scale;
+                    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                    const compressed = canvas.toDataURL('image/jpeg', 0.7);
+                    this.setIntimacyBg(compressed);
+                };
+                img.src = ev.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+    
+    // 背景图URL
+    const bgUrlInput = document.getElementById('intimacyBgUrlInput');
+    if (bgUrlInput) {
+        bgUrlInput.addEventListener('change', (e) => {
+            const url = e.target.value.trim();
+            if (url) this.setIntimacyBg(url);
+        });
+    }
+    
+    // 重置背景
+    document.getElementById('intimacyBgReset')?.addEventListener('click', () => {
+        this.setIntimacyBg('');
+        this.showCssToast('已恢复默认背景');
+    });
+    
+    // 模块入口（暂时弹提示）
+    document.querySelectorAll('.intimacy-module-card').forEach(card => {
+        card.addEventListener('click', () => {
+            const mod = card.getAttribute('data-module');
+            this.showCssToast(`${card.querySelector('.intimacy-module-name').textContent} 开发中...`);
+        });
+    });
+}
+
+setIntimacyBg(bgImage) {
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    data.bgImage = bgImage;
+    this.storage.saveIntimacyData(this.currentFriendCode, data);
+    
+    const bg = document.getElementById('intimacyBg');
+    if (bg) {
+        if (bgImage) {
+            bg.style.backgroundImage = `url(${bgImage})`;
+            bg.style.backgroundSize = 'cover';
+            bg.style.backgroundPosition = 'center';
+        } else {
+            bg.style.backgroundImage = '';
+            bg.style.background = 'linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%)';
+        }
+    }
+    document.getElementById('intimacyCustomizePanel').style.display = 'none';
+}
+
 // ==================== 续火花系统 ====================
 
 // 获取火花状态

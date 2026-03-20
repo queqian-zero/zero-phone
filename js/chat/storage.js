@@ -287,6 +287,94 @@ class StorageManager {
     getBubbleArchives(friendCode) { return this.getData('zero_phone_bubble_archives_'+(friendCode||'global')) || []; }
     saveBubbleArchives(friendCode, archives) { this.saveData('zero_phone_bubble_archives_'+(friendCode||'global'), archives); }
     
+    // ==================== 亲密关系数据（全局，所有char共用） ====================
+    
+    // 获取亲密关系数据（per friend）
+    getIntimacyData(friendCode) {
+        const key = `zero_phone_intimacy_${friendCode}`;
+        return this.getData(key) || {
+            value: 0,                    // 亲密值
+            totalMessages: 0,            // 总消息条数（用于每100条+1）
+            msgAccumulator: 0,           // 消息累加器（到100清零）
+            todayMessages: 0,            // 今日消息数
+            todayDate: '',               // 今日日期（用于重置）
+            dailyBonusDate: '',          // 日活奖励最后领取日
+            goodMorningDate: '',         // 最后互道早安日期
+            goodNightDate: '',           // 最后互道晚安日期
+            nightOwlDate: '',            // 最后熬夜修仙日期
+            timeline: [],                // 星迹档案时间线
+            bgImage: '',                 // 亲密关系页背景图
+            luckyChars: {                // 幸运字符
+                owned: [],               // 已拥有的字符 [{id, name, icon, iconType, litChars:0, totalChars:0, litDate:'', obtainedBy:'user'|'ai', obtainedDate:''}]
+                userWearing: '',         // user佩戴的字符id
+                aiWearing: '',           // AI佩戴的字符id
+                userWearingOn: true,     // user佩戴开关
+                aiWearingOn: true,       // AI佩戴开关
+                todayDrawsUser: 0,       // user今天抽了几次
+                todayDrawsAI: 0,         // AI今天抽了几次
+                drawDate: '',            // 抽卡日期（用于重置）
+                bgImage: ''              // 幸运字符页背景图
+            },
+            relationship: {              // 关系绑定
+                bound: null,             // 当前绑定 {id, name, icon, iconType, boundDate:'', wearing:true}
+                pendingInvite: null,     // 待处理邀请 {from:'user'|'ai', relId, relName, htmlTemplate, timestamp}
+                bgImage: ''
+            },
+            badges: {                    // 亲密徽章
+                unlocked: [],            // 已解锁 [{id, name, icon, unlockedDate:''}]
+                progress: {},            // 解锁进度 {badgeId: {current:0, target:0, ...}}
+                bgImage: ''
+            },
+            exchange: {                  // 跨次元兑换所
+                todos: [],               // 未来要做的事
+                funds: [],               // 亲密基金
+                shopping: [],            // 网购
+                delivery: [],            // 外卖
+                letters: [],             // 信件
+                bgImage: ''
+            },
+            capsule: {                   // 岁月胶囊
+                reports: [],             // 报告列表
+                bgImage: ''
+            }
+        };
+    }
+    
+    saveIntimacyData(friendCode, data) {
+        this.saveData(`zero_phone_intimacy_${friendCode}`, data);
+        return true;
+    }
+    
+    // 获取全局亲密关系配置（自定义字符/关系/徽章，所有char共用）
+    getIntimacyConfig() {
+        return this.getData('zero_phone_intimacy_config') || {
+            customLuckyChars: [],        // 自定义幸运字符 [{id, name, icon, iconType}]
+            customRelationships: [],     // 自定义关系 [{id, name, icon, iconType}]
+            customBadges: []             // 自定义徽章 [{id, name, icon, iconType, condition:''}]
+        };
+    }
+    
+    saveIntimacyConfig(config) {
+        this.saveData('zero_phone_intimacy_config', config);
+        return true;
+    }
+    
+    // 添加星迹档案记录
+    addTimelineEntry(friendCode, entry) {
+        const data = this.getIntimacyData(friendCode);
+        data.timeline.unshift({
+            id: 'tl_' + Date.now(),
+            date: new Date().toISOString(),
+            type: entry.type,            // 'badge_unlock' | 'lucky_char_draw' | 'lucky_char_lit' | 'relation_bind' | 'level_up'
+            title: entry.title,
+            icon: entry.icon || '',
+            userNote: '',                // user寄语
+            aiNote: ''                   // AI寄语
+        });
+        this.saveIntimacyData(friendCode, data);
+        return data.timeline[0].id;
+    }
+    
     // ==================== 调试 ====================
     printAllData() { console.log('=== 大保险柜 ==='); console.log('缓存条目:', Object.keys(this._cache).length, 'IDB:', this._dbReady); }
     getStorageInfo() {
