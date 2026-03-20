@@ -232,11 +232,11 @@ class ChatInterface {
             .lucky-char-page { position:fixed;top:0;left:0;right:0;bottom:0;z-index:3550;overflow-y:auto;-webkit-overflow-scrolling:touch; }
             .lucky-customize-panel { position:fixed;top:0;left:0;right:0;bottom:0;z-index:3650;display:flex;align-items:flex-end;justify-content:center; }
             .lucky-wearing-section { padding:0 20px;margin-bottom:16px; }
-            .lucky-wearing-card { padding:24px;background:rgba(255,255,255,0.06);backdrop-filter:blur(10px);border-radius:16px;border:1px solid rgba(255,255,255,0.08);text-align:center; }
+            .lucky-wearing-card { padding:30px 20px;background:rgba(255,255,255,0.06);backdrop-filter:blur(10px);border-radius:16px;border:1px solid rgba(255,255,255,0.08);text-align:center; }
             .lucky-wearing-empty { font-size:13px;color:rgba(255,255,255,0.3); }
-            .lucky-wearing-icon { font-size:48px;margin-bottom:8px;display:flex;justify-content:center;align-items:center; }
-            .lucky-wearing-icon img { width:48px;height:48px;object-fit:contain;display:block;margin:0 auto; }
-            .lucky-wearing-name { font-size:16px;font-weight:600;color:#fff;margin-bottom:8px; }
+            .lucky-wearing-icon { font-size:80px;margin-bottom:12px;display:flex;justify-content:center;align-items:center; }
+            .lucky-wearing-icon img { width:120px;height:120px;object-fit:contain;display:block;margin:0 auto; }
+            .lucky-wearing-name { font-size:20px;font-weight:700;color:#fff;margin-bottom:12px; }
             .lucky-wearing-chars { font-size:22px;letter-spacing:4px;margin-bottom:6px; }
             .lucky-wearing-chars .lit { color:#f0932b; }
             .lucky-wearing-chars .unlit { color:rgba(255,255,255,0.15); }
@@ -257,9 +257,9 @@ class ChatInterface {
             /* 已拥有 */
             .lucky-owned-section { padding:0 20px;margin-bottom:20px; }
             .lucky-owned-grid { display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px; }
-            .lucky-owned-item { padding:12px 4px;background:rgba(255,255,255,0.05);border-radius:10px;text-align:center;cursor:pointer;border:1px solid rgba(255,255,255,0.05);transition:all 0.2s; }
+            .lucky-owned-item { padding:12px 4px;background:rgba(255,255,255,0.05);border-radius:10px;text-align:center;cursor:pointer;border:1px solid rgba(255,255,255,0.05);transition:all 0.2s;display:flex;flex-direction:column;align-items:center; }
             .lucky-owned-item.wearing { border-color:rgba(240,147,43,0.4);background:rgba(240,147,43,0.08); }
-            .lucky-owned-item .owned-icon { font-size:28px;margin-bottom:4px; }
+            .lucky-owned-item .owned-icon { font-size:28px;margin-bottom:4px;display:flex;justify-content:center; }
             .lucky-owned-item .owned-icon img { width:28px;height:28px;object-fit:contain; }
             .lucky-owned-item .owned-name { font-size:10px;color:rgba(255,255,255,0.6);overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
             .lucky-owned-item .owned-pct { font-size:9px;color:rgba(255,255,255,0.3); }
@@ -323,10 +323,14 @@ class ChatInterface {
             }
             .info-panel-content { display:none; }
             .info-panel-content.active { display:block; }
-            .badge-item { display:flex;align-items:center;gap:8px;padding:6px 0; }
+            .badge-item { display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(0,0,0,0.04); }
+            .badge-item:last-child { border-bottom:none; }
             .badge-item-icon { font-size:16px;flex-shrink:0; }
             .badge-item-icon img { width:16px;height:16px;object-fit:contain;vertical-align:middle; }
-            .badge-item-text { font-size:13px;color:#000; }
+            .badge-item-text { font-size:13px;color:#000;text-align:right; }
+            /* 幸运字符图标放大3倍 */
+            #badgeLuckyItem .badge-item-icon { font-size:36px; }
+            #badgeLuckyItem .badge-item-icon img { width:36px;height:36px; }
             /* Token本轮概要 */
             .token-round-summary { padding: 4px 0; }
             .token-round-row { display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:13px;color:#000; }
@@ -735,7 +739,7 @@ class ChatInterface {
                 
                 if (luckyIcon) {
                     if (charDef?.iconType === 'image') {
-                        luckyIcon.innerHTML = `<img src="${charDef.icon}" style="width:16px;height:16px;object-fit:contain;">`;
+                        luckyIcon.innerHTML = `<img src="${charDef.icon}" style="width:36px;height:36px;object-fit:contain;">`;
                     } else {
                         luckyIcon.textContent = charDef?.icon || '🎲';
                     }
@@ -5883,7 +5887,7 @@ renderWearingDisplay(lc) {
         const allChars = this.getAllLuckyChars();
         const charDef = allChars.find(c => c.id === wearing.id);
         if (charDef?.iconType === 'image') {
-            iconEl.innerHTML = `<img src="${charDef.icon}" style="width:48px;height:48px;object-fit:contain;">`;
+            iconEl.innerHTML = `<img src="${charDef.icon}" style="width:120px;height:120px;object-fit:contain;display:block;margin:0 auto;">`;
         } else {
             iconEl.textContent = charDef?.icon || '✦';
         }
