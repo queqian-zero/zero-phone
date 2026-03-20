@@ -1747,20 +1747,24 @@
                 <input type="text" id="luckyCustomUrl" placeholder="或粘贴图片URL" style="flex:1;padding:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:13px;">
             </div>
             <button id="luckyCustomAddBtn" style="width:100%;padding:12px;margin-bottom:12px;border:none;border-radius:10px;background:rgba(255,140,0,0.15);color:#ffaa33;font-size:14px;cursor:pointer;">添加字符</button>
+            <!-- 已添加的自定义字符列表 -->
+            <div id="luckyCustomList" style="margin-bottom:12px;"></div>
             <!-- 自定义卡牌背面 -->
             <div style="font-size:13px;color:rgba(255,255,255,0.6);margin:8px 0;">卡牌背面图</div>
-            <div style="display:flex;gap:8px;margin-bottom:12px;">
+            <div style="display:flex;gap:8px;margin-bottom:4px;">
                 <button id="luckyCardBackUploadBtn" style="flex:1;padding:10px;border:1px dashed rgba(255,255,255,0.15);border-radius:10px;background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.5);font-size:13px;cursor:pointer;">📷 上传</button>
                 <input type="file" id="luckyCardBackUploadInput" accept="image/*" style="display:none;">
                 <input type="text" id="luckyCardBackUrlInput" placeholder="或粘贴URL" style="flex:1;padding:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:13px;">
             </div>
+            <button id="luckyCardBackReset" style="width:100%;padding:8px;margin-bottom:12px;border:none;border-radius:8px;background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.3);font-size:11px;cursor:pointer;">恢复默认卡牌背面</button>
             <!-- 更换背景图 -->
             <div style="font-size:13px;color:rgba(255,255,255,0.6);margin:8px 0;">更换背景图</div>
-            <div style="display:flex;gap:8px;margin-bottom:12px;">
+            <div style="display:flex;gap:8px;margin-bottom:4px;">
                 <button id="luckyBgUploadBtn" style="flex:1;padding:10px;border:1px dashed rgba(255,255,255,0.15);border-radius:10px;background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.5);font-size:13px;cursor:pointer;">📷 上传</button>
                 <input type="file" id="luckyBgUploadInput" accept="image/*" style="display:none;">
                 <input type="text" id="luckyBgUrlInput" placeholder="或粘贴URL" style="flex:1;padding:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:13px;">
             </div>
+            <button id="luckyBgReset" style="width:100%;padding:8px;margin-bottom:12px;border:none;border-radius:8px;background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.3);font-size:11px;cursor:pointer;">恢复默认背景</button>
             <button id="luckyCustomizeClose" style="width:100%;padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.4);font-size:13px;cursor:pointer;">关闭</button>
         </div>
     </div>
