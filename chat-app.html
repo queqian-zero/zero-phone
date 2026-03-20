@@ -1675,6 +1675,87 @@
 </div>
 <!-- ==================== 亲密关系全屏页结束 ==================== -->
 
+<!-- ==================== 幸运字符子页 ==================== -->
+<div class="lucky-char-page" id="luckyCharPage" style="display:none;">
+    <div class="intimacy-bg" id="luckyCharBg"></div>
+    <div class="intimacy-content">
+        <!-- 顶栏 -->
+        <div class="intimacy-header">
+            <button class="intimacy-back" id="luckyCharBack">←</button>
+            <span class="intimacy-title">幸运字符</span>
+            <button class="intimacy-customize" id="luckyCharCustomize">自定义</button>
+        </div>
+
+        <!-- 当前佩戴 -->
+        <div class="lucky-wearing-section" id="luckyWearingSection">
+            <div class="lucky-wearing-card" id="luckyWearingCard">
+                <div class="lucky-wearing-empty" id="luckyWearingEmpty">还没有佩戴幸运字符</div>
+                <div class="lucky-wearing-display" id="luckyWearingDisplay" style="display:none;">
+                    <div class="lucky-wearing-icon" id="luckyWearingIcon"></div>
+                    <div class="lucky-wearing-name" id="luckyWearingName">-</div>
+                    <div class="lucky-wearing-chars" id="luckyWearingChars"></div>
+                    <div class="lucky-wearing-progress" id="luckyWearingProgress">0%</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 抽卡区 -->
+        <div class="lucky-draw-section">
+            <h3 class="intimacy-section-title">🎲 今日抽卡 <span id="luckyDrawCount" style="font-weight:400;font-size:12px;color:rgba(255,255,255,0.4);">剩余 3 次</span></h3>
+            <div class="lucky-draw-cards" id="luckyDrawCards">
+                <div class="lucky-card" data-index="0"><div class="lucky-card-back">?</div></div>
+                <div class="lucky-card" data-index="1"><div class="lucky-card-back">?</div></div>
+                <div class="lucky-card" data-index="2"><div class="lucky-card-back">?</div></div>
+                <div class="lucky-card" data-index="3"><div class="lucky-card-back">?</div></div>
+                <div class="lucky-card" data-index="4"><div class="lucky-card-back">?</div></div>
+                <div class="lucky-card" data-index="5"><div class="lucky-card-back">?</div></div>
+            </div>
+        </div>
+
+        <!-- 已拥有字符 -->
+        <div class="lucky-owned-section">
+            <h3 class="intimacy-section-title">✦ 已拥有</h3>
+            <div class="lucky-owned-grid" id="luckyOwnedGrid">
+                <div class="intimacy-timeline-empty">还没有抽到字符</div>
+            </div>
+        </div>
+
+        <!-- 佩戴开关 -->
+        <div class="lucky-wear-toggle-section">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0;">
+                <span style="font-size:14px;color:rgba(255,255,255,0.8);">显示佩戴状态</span>
+                <label class="toggle-switch"><input type="checkbox" id="luckyWearToggle" checked><span class="toggle-slider"></span></label>
+            </div>
+        </div>
+    </div>
+
+    <!-- 自定义面板 -->
+    <div class="lucky-customize-panel" id="luckyCustomizePanel" style="display:none;">
+        <div style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);" id="luckyCustomizeOverlay"></div>
+        <div style="position:relative;z-index:1;width:100%;background:#1a1a1a;border-radius:16px 16px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom));animation:ctxSlideUp 0.25s ease-out;">
+            <div style="text-align:center;font-size:15px;font-weight:600;color:#fff;margin-bottom:16px;">自定义幸运字符</div>
+            <!-- 上传自定义字符 -->
+            <div style="font-size:13px;color:rgba(255,255,255,0.6);margin-bottom:8px;">上传新字符</div>
+            <input type="text" id="luckyCustomName" placeholder="字符名称" style="width:100%;padding:10px;margin-bottom:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:13px;box-sizing:border-box;">
+            <div style="display:flex;gap:8px;margin-bottom:12px;">
+                <button id="luckyCustomUploadBtn" style="flex:1;padding:10px;border:1px dashed rgba(255,255,255,0.15);border-radius:10px;background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.5);font-size:13px;cursor:pointer;">📷 上传图片</button>
+                <input type="file" id="luckyCustomUploadInput" accept="image/*" style="display:none;">
+                <input type="text" id="luckyCustomUrl" placeholder="或粘贴图片URL" style="flex:1;padding:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:13px;">
+            </div>
+            <button id="luckyCustomAddBtn" style="width:100%;padding:12px;margin-bottom:12px;border:none;border-radius:10px;background:rgba(255,140,0,0.15);color:#ffaa33;font-size:14px;cursor:pointer;">添加字符</button>
+            <!-- 更换背景图 -->
+            <div style="font-size:13px;color:rgba(255,255,255,0.6);margin:8px 0;">更换背景图</div>
+            <div style="display:flex;gap:8px;margin-bottom:12px;">
+                <button id="luckyBgUploadBtn" style="flex:1;padding:10px;border:1px dashed rgba(255,255,255,0.15);border-radius:10px;background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.5);font-size:13px;cursor:pointer;">📷 上传</button>
+                <input type="file" id="luckyBgUploadInput" accept="image/*" style="display:none;">
+                <input type="text" id="luckyBgUrlInput" placeholder="或粘贴URL" style="flex:1;padding:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:13px;">
+            </div>
+            <button id="luckyCustomizeClose" style="width:100%;padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.4);font-size:13px;cursor:pointer;">关闭</button>
+        </div>
+    </div>
+</div>
+<!-- ==================== 幸运字符子页结束 ==================== -->
+
 <!-- ==================== 续火花系统弹窗 ==================== -->
 <div class="flame-modal" id="flameModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:3200;display:none;padding:20px;">
     <div class="flame-overlay" id="flameOverlay" style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);"></div>
