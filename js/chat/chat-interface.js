@@ -664,15 +664,18 @@ class ChatInterface {
         if (breakdown && !document.getElementById('tokenBarPersona')) {
             breakdown.innerHTML = `
                 <div class="token-divider"></div>
-                <div class="token-detail-title" style="font-size:12px;font-weight:600;color:rgba(0,0,0,0.6);padding:4px 0;">Token 深度分析</div>
+                <div class="token-detail-title" style="font-size:12px;font-weight:600;color:rgba(0,0,0,0.6);padding:4px 0;">输入分布（估算）</div>
                 <div class="token-detail-item"><span>🧠 人设</span><div class="token-detail-bar-wrap"><div class="token-detail-bar" id="tokenBarPersona"></div></div><span id="tokenDetailPersona">-</span></div>
-                <div class="token-detail-item"><span>🌍 世界观</span><div class="token-detail-bar-wrap"><div class="token-detail-bar" id="tokenBarWorld"></div></div><span id="tokenDetailWorld">-</span></div>
-                <div class="token-detail-item"><span>🖼 图片</span><div class="token-detail-bar-wrap"><div class="token-detail-bar" id="tokenBarImage"></div></div><span id="tokenDetailImage">-</span></div>
                 <div class="token-detail-item"><span>⚙ 系统指令</span><div class="token-detail-bar-wrap"><div class="token-detail-bar" id="tokenBarSystem"></div></div><span id="tokenDetailSystem">-</span></div>
                 <div class="token-detail-item"><span>💬 聊天记录</span><div class="token-detail-bar-wrap"><div class="token-detail-bar" id="tokenBarChat"></div></div><span id="tokenDetailChat">-</span></div>
                 <div class="token-detail-item"><span>📝 记忆</span><div class="token-detail-bar-wrap"><div class="token-detail-bar" id="tokenBarMemory"></div></div><span id="tokenDetailMemory">-</span></div>
+                <div class="token-detail-item"><span>🖼 图片</span><div class="token-detail-bar-wrap"><div class="token-detail-bar" id="tokenBarImage"></div></div><span id="tokenDetailImage">-</span></div>
+                <div class="token-detail-item"><span>🌍 世界观</span><div class="token-detail-bar-wrap"><div class="token-detail-bar" id="tokenBarWorld"></div></div><span id="tokenDetailWorld">-</span></div>
                 <div class="token-divider"></div>
-                <div class="token-detail-item token-total"><span>总计</span><span></span><span id="tokenDetailTotal">-</span></div>`;
+                <div class="token-detail-item token-total"><span>输入</span><span></span><span id="tokenDetailInput">-</span></div>
+                <div class="token-detail-item token-total"><span>输出</span><span></span><span id="tokenDetailOutput">-</span></div>
+                <div class="token-divider"></div>
+                <div class="token-detail-item token-total" style="font-size:14px;"><span>总消耗</span><span></span><span id="tokenDetailTotal">-</span></div>`;
         }
         
         // 本轮概要
@@ -683,65 +686,82 @@ class ChatInterface {
         if (inputEl) inputEl.textContent = input.toLocaleString();
         if (outputEl) outputEl.textContent = output.toLocaleString();
         if (durationEl) {
-            if (durationMs < 1000) {
-                durationEl.textContent = durationMs + 'ms';
-            } else {
-                durationEl.textContent = (durationMs / 1000).toFixed(1) + 's';
-            }
+            durationEl.textContent = durationMs < 1000 ? durationMs + 'ms' : (durationMs / 1000).toFixed(1) + 's';
         }
         
         // Tab标签更新
         const tabBtn = document.getElementById('infoTabToken');
         if (tabBtn) tabBtn.textContent = `📊 ${total.toLocaleString()}`;
         
-        // 详情分布估算
+        // ====== 按字符比例计算百分比，分母=input ======
         const bd = this._lastRoundBreakdown || {};
-        const totalInputChars = (bd.systemChars || 0) + (bd.chatChars || 0);
         
-        // 按字符比例估算各组件token
-        const estimate = (chars) => totalInputChars > 0 ? Math.round(input * chars / totalInputChars) : 0;
+        // 图片给一个固定小比例（有图片时约5%，没有就0%）
+        const imagePct = (bd.imageCount || 0) > 0 ? 5 : 0;
+        // 世界观（占位，以后做）
+        const worldPct = 0;
         
-        // 人设在系统提示里的占比
-        const personaTokens = estimate(bd.personaChars || 0);
-        // 系统指令 = 系统提示 - 人设
-        const systemTokens = estimate(Math.max(0, (bd.systemChars || 0) - (bd.personaChars || 0)));
-        // 聊天记录
-        const chatTokens = estimate(bd.chatChars || 0);
-        // 图片（粗估每张258 tokens）
-        const imageTokens = (bd.imageCount || 0) * 258;
-        // 记忆（暂时占位）
-        const memoryTokens = 0;
-        // 世界观（暂时占位）
-        const worldTokens = 0;
+        // 剩余百分比分给文字组件
+        const textPctPool = 100 - imagePct - worldPct;
         
-        // 各项数据
+        // 文字总字符
+        const textTotalChars = (bd.personaChars || 0) + (bd.frameworkChars || 0) + (bd.chatChars || 0) + (bd.memoryChars || 0);
+        
+        // 按字符比例分配
+        const charPct = (chars) => textTotalChars > 0 ? Math.round(textPctPool * chars / textTotalChars) : 0;
+        
+        let personaPct = charPct(bd.personaChars || 0);
+        let systemPct = charPct(bd.frameworkChars || 0);
+        let chatPct = charPct(bd.chatChars || 0);
+        let memoryPct = charPct(bd.memoryChars || 0);
+        
+        // 修正舍入误差：差值加到最大的那项上
+        const pctSum = personaPct + systemPct + chatPct + memoryPct + imagePct + worldPct;
+        const diff = 100 - pctSum;
+        if (diff !== 0) {
+            // 找最大项加/减差值
+            const all = [
+                { name: 'chat', val: chatPct },
+                { name: 'system', val: systemPct },
+                { name: 'persona', val: personaPct },
+                { name: 'memory', val: memoryPct }
+            ];
+            all.sort((a, b) => b.val - a.val);
+            if (all[0].name === 'chat') chatPct += diff;
+            else if (all[0].name === 'system') systemPct += diff;
+            else if (all[0].name === 'persona') personaPct += diff;
+            else memoryPct += diff;
+        }
+        
+        // 渲染各项
         const items = [
-            { barId: 'tokenBarPersona', textId: 'tokenDetailPersona', value: personaTokens, color: '#ff6b6b' },
-            { barId: 'tokenBarWorld', textId: 'tokenDetailWorld', value: worldTokens, color: '#4ecdc4' },
-            { barId: 'tokenBarImage', textId: 'tokenDetailImage', value: imageTokens, color: '#45b7d1' },
-            { barId: 'tokenBarSystem', textId: 'tokenDetailSystem', value: systemTokens, color: '#96c93d' },
-            { barId: 'tokenBarChat', textId: 'tokenDetailChat', value: chatTokens, color: '#f7dc6f' },
-            { barId: 'tokenBarMemory', textId: 'tokenDetailMemory', value: memoryTokens, color: '#bb8fce' },
+            { barId: 'tokenBarPersona', textId: 'tokenDetailPersona', pct: personaPct, color: '#ff6b6b' },
+            { barId: 'tokenBarSystem', textId: 'tokenDetailSystem', pct: systemPct, color: '#96c93d' },
+            { barId: 'tokenBarChat', textId: 'tokenDetailChat', pct: chatPct, color: '#f7dc6f' },
+            { barId: 'tokenBarMemory', textId: 'tokenDetailMemory', pct: memoryPct, color: '#bb8fce' },
+            { barId: 'tokenBarImage', textId: 'tokenDetailImage', pct: imagePct, color: '#45b7d1' },
+            { barId: 'tokenBarWorld', textId: 'tokenDetailWorld', pct: worldPct, color: '#4ecdc4' },
         ];
-        
-        const maxVal = Math.max(...items.map(i => i.value), 1);
         
         items.forEach(item => {
             const bar = document.getElementById(item.barId);
             const text = document.getElementById(item.textId);
-            const pct = total > 0 ? Math.round(item.value / total * 100) : 0;
             
             if (bar) {
-                bar.style.width = (item.value / maxVal * 100) + '%';
+                bar.style.width = item.pct + '%';
                 bar.style.background = item.color;
             }
             if (text) {
-                text.textContent = item.value > 0 ? `${item.value.toLocaleString()} (${pct}%)` : '-';
+                text.textContent = item.pct > 0 ? `${item.pct}%` : '-';
             }
         });
         
-        // 总计
+        // 底部汇总
+        const detailInput = document.getElementById('tokenDetailInput');
+        const detailOutput = document.getElementById('tokenDetailOutput');
         const totalEl = document.getElementById('tokenDetailTotal');
+        if (detailInput) detailInput.textContent = `${input.toLocaleString()} tokens`;
+        if (detailOutput) detailOutput.textContent = `${output.toLocaleString()} tokens`;
         if (totalEl) totalEl.textContent = `${total.toLocaleString()} tokens`;
     }
     
@@ -1139,10 +1159,16 @@ ${archiveListText}
             
             // 记录本轮token分布（按字符估算）
             const personaChars = (this.currentFriend?.persona || '').length;
+            const coreMemories = this.storage.getCoreMemories(this.currentFriendCode);
+            const summaries = this.storage.getChatSummaries(this.currentFriendCode);
+            const memoryChars = coreMemories.reduce((s, m) => s + (m.content?.length || 0), 0)
+                              + summaries.reduce((s, m) => s + (m.content?.length || 0), 0);
             const systemChars = systemPrompt.length;
             const chatChars = messagesWithTimestamps.reduce((sum, m) => sum + (m.text?.length || 0), 0);
             const imageCount = avatarImages ? avatarImages.length : 0;
-            this._lastRoundBreakdown = { personaChars, systemChars, chatChars, imageCount };
+            // 框架指令 = 系统提示 - 人设 - 记忆（剩下的就是次元壁+时间+能力说明等）
+            const frameworkChars = Math.max(0, systemChars - personaChars - memoryChars);
+            this._lastRoundBreakdown = { personaChars, frameworkChars, chatChars, memoryChars, imageCount };
             
             // 计时开始
             const apiStartTime = Date.now();
@@ -1656,20 +1682,24 @@ div.innerHTML = `
         try {
             if (!src) return null;
             
-            // 如果已经是base64
             if (src.startsWith('data:')) {
                 const mediaType = src.match(/data:([^;]+)/)?.[1] || 'image/png';
-                
-                // GIF需要提取首帧
                 if (mediaType === 'image/gif') {
                     return await this.extractGifFirstFrame(src);
                 }
-                
-                const data = src.split(',')[1];
-                return { data, mediaType };
+                // base64图片需要解码获取尺寸
+                return new Promise((resolve) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const w = Math.min(img.width, 512);
+                        const h = Math.min(img.height, 512);
+                        resolve({ data: src.split(',')[1], mediaType, width: w, height: h });
+                    };
+                    img.onerror = () => resolve({ data: src.split(',')[1], mediaType, width: 256, height: 256 });
+                    img.src = src;
+                });
             }
             
-            // URL类型的图片 - 用canvas转base64
             return new Promise((resolve) => {
                 const img = new Image();
                 img.crossOrigin = 'anonymous';
@@ -1682,7 +1712,9 @@ div.innerHTML = `
                     const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
                     resolve({
                         data: dataUrl.split(',')[1],
-                        mediaType: 'image/jpeg'
+                        mediaType: 'image/jpeg',
+                        width: canvas.width,
+                        height: canvas.height
                     });
                 };
                 img.onerror = () => resolve(null);
@@ -1694,7 +1726,6 @@ div.innerHTML = `
         }
     }
     
-    // 提取GIF首帧
     async extractGifFirstFrame(gifSrc) {
         return new Promise((resolve) => {
             const img = new Image();
@@ -1707,7 +1738,9 @@ div.innerHTML = `
                 const dataUrl = canvas.toDataURL('image/png');
                 resolve({
                     data: dataUrl.split(',')[1],
-                    mediaType: 'image/png'
+                    mediaType: 'image/png',
+                    width: canvas.width,
+                    height: canvas.height
                 });
             };
             img.onerror = () => resolve(null);
