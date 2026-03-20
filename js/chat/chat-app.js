@@ -44,6 +44,15 @@ class ChatApp {
         // 初始化时渲染聊天列表（修复：退掉后台重进后消息条目不显示的bug）
         this.renderChatList();
         
+        // IDB异步加载完成后重新渲染（防止数据延迟加载导致显示空白）
+        window.addEventListener('storage-ready', () => {
+            console.log('📦 IDB数据就绪，重新渲染列表');
+            this.renderChatList();
+            if (this.currentPage === 'friendListPage') {
+                this.renderFriendList();
+            }
+        });
+        
         console.log('✅ 聊天APP初始化完成');
     }
     

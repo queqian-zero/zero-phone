@@ -56,6 +56,8 @@ class StorageManager {
             this._dbReady = true;
             this._flushWriteQueue();
             console.log('✅ 大保险柜就绪（IndexedDB）');
+            // 通知页面数据已从IDB加载完成，可以重新渲染
+            window.dispatchEvent(new Event('storage-ready'));
         } catch(e) { console.warn('⚠️ IndexedDB初始化失败，继续使用内存缓存:', e.message); }
     }
     
@@ -64,20 +66,23 @@ class StorageManager {
         const keys = Object.keys(this._cache);
         for (const key of keys) await this._idbSet(key, this._cache[key]);
         await this._idbSet('__zp_migrated__', { time: new Date().toISOString() });
-        try {
-            const rm = [];
-            for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith('zero_phone')) rm.push(k); }
-            rm.forEach(k => localStorage.removeItem(k));
-            console.log('🧹 已清理localStorage', rm.length, '条旧数据');
-        } catch(e) {}
-        console.log('✅ 迁移完成！', keys.length, '条数据已转移到大保险柜');
+        // 不清理localStorage，保留作为兜底备份
+        console.log('✅ 迁移完成！', keys.length, '条数据已同步到大保险柜（localStorage保留备份）');
     }
     
     async _loadFromIDB() {
         try {
             const allKeys = await new Promise((res, rej) => { const r = this._db.transaction('data','readonly').objectStore('data').getAllKeys(); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); });
-            for (const key of allKeys) { if (key === '__zp_migrated__') continue; const v = await this._idbGet(key); if (v != null) this._cache[key] = v; }
-            console.log('📦 从IndexedDB加载了', allKeys.length - 1, '条数据');
+            for (const key of allKeys) {
+                if (key === '__zp_migrated__') continue;
+                const v = await this._idbGet(key);
+                if (v != null) {
+                    this._cache[key] = v;
+                    // 回写localStorage（恢复兜底数据）
+                    try { localStorage.setItem(key, JSON.stringify(v)); } catch(e) {}
+                }
+            }
+            console.log('📦 从IndexedDB加载了', allKeys.length - 1, '条数据（已同步到localStorage）');
         } catch(e) { console.warn('⚠️ IDB加载失败:', e); }
     }
     
@@ -105,6 +110,9 @@ class StorageManager {
     saveData(key, data) {
         try {
             this._cache[key] = data;
+            // 双写localStorage（兜底，永不丢数据）
+            try { localStorage.setItem(key, JSON.stringify(data)); } catch(e) {}
+            // 异步写IDB
             if (this._dbReady) { this._idbSet(key, data).catch(e => console.warn('⚠️ IDB写入失败:', key)); }
             else { this._writeQueue.push({key, data}); }
             return true;
@@ -112,7 +120,7 @@ class StorageManager {
     }
     getData(key) { try { return this._cache[key] || null; } catch(e) { return null; } }
     deleteData(key) {
-        try { delete this._cache[key]; if (this._dbReady) this._idbDelete(key).catch(e=>{}); return true; } catch(e) { return false; }
+        try { delete this._cache[key]; try { localStorage.removeItem(key); } catch(e) {} if (this._dbReady) this._idbDelete(key).catch(e=>{}); return true; } catch(e) { return false; }
     }
     clearAll() {
         try {
