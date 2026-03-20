@@ -5910,12 +5910,14 @@ renderWearingDisplay(lc) {
     // 逐字母点亮（用英文名，跳过空格）
     const charsEl = document.getElementById('luckyWearingChars');
     if (charsEl) {
-        const engName = wearing.engName || wearing.name;
+        const allC = this.getAllLuckyChars();
+        const cDef = allC.find(c => c.id === wearing.id);
+        const engName = wearing.engName || cDef?.engName || wearing.name;
         const letters = engName.split('');
         const litCount = wearing.litChars || 0;
         let letterIdx = 0;
         charsEl.innerHTML = letters.map(ch => {
-            if (ch === ' ') return `<span style="margin:0 3px;"></span>`; // 空格不算
+            if (ch === ' ') return `<span style="margin:0 3px;"></span>`;
             const isLit = letterIdx < litCount;
             letterIdx++;
             return `<span class="${isLit ? 'lit' : 'unlit'}">${ch}</span>`;
@@ -5925,10 +5927,12 @@ renderWearingDisplay(lc) {
     // 进度
     const progressEl = document.getElementById('luckyWearingProgress');
     if (progressEl) {
-        const engName = wearing.engName || wearing.name;
-        const total = wearing.totalChars || engName.replace(/\s/g, '').length;
+        const allC2 = this.getAllLuckyChars();
+        const cDef2 = allC2.find(c => c.id === wearing.id);
+        const engName2 = wearing.engName || cDef2?.engName || wearing.name;
+        const total = engName2.replace(/\s/g, '').length;
         const lit = wearing.litChars || 0;
-        const pct = total > 0 ? Math.round(lit / total * 100) : 0;
+        const pct = total > 0 ? Math.min(100, Math.round(lit / total * 100)) : 0;
         if (pct >= 100) {
             progressEl.textContent = `✨ 已完全点亮`;
         } else {
