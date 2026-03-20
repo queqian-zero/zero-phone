@@ -485,13 +485,13 @@
                 <button class="setting-action-btn"><span>🔥</span></button>
             </div>
             
-            <!-- 亲密关系绑定 -->
-            <div class="setting-item disabled">
+            <!-- 亲密关系 -->
+            <div class="setting-item" id="settingIntimacy" style="cursor: pointer;">
                 <div class="setting-info">
-                    <span class="setting-label">亲密关系绑定</span>
-                    <span class="setting-desc">情侣、基友等亲密关系</span>
+                    <span class="setting-label">亲密关系</span>
+                    <span class="setting-desc">幸运字符、关系绑定、亲密徽章</span>
                 </div>
-                <span class="setting-badge">待开发</span>
+                <button class="setting-action-btn"><span>💎</span></button>
             </div>
             
             <!-- 语音与视频 -->
@@ -1566,6 +1566,114 @@
     </div>
 </div>
 <!-- ==================== 头像框弹窗结束 ==================== -->
+
+<!-- ==================== 亲密关系全屏页 ==================== -->
+<div class="intimacy-page" id="intimacyPage" style="display:none;">
+    <!-- 背景层 -->
+    <div class="intimacy-bg" id="intimacyBg"></div>
+    <!-- 内容层 -->
+    <div class="intimacy-content">
+        <!-- 顶栏 -->
+        <div class="intimacy-header">
+            <button class="intimacy-back" id="intimacyBack">←</button>
+            <span class="intimacy-title">亲密关系</span>
+            <button class="intimacy-customize" id="intimacyCustomize">自定义</button>
+        </div>
+
+        <!-- 好友名 -->
+        <div class="intimacy-friend-name" id="intimacyFriendName">-</div>
+
+        <!-- 数据卡片 -->
+        <div class="intimacy-stats-card">
+            <div class="intimacy-stat">
+                <div class="intimacy-stat-num" id="intimacyValue">0</div>
+                <div class="intimacy-stat-label">亲密值</div>
+            </div>
+            <div class="intimacy-stat-divider"></div>
+            <div class="intimacy-stat">
+                <div class="intimacy-stat-num" id="intimacyFlame">0</div>
+                <div class="intimacy-stat-label">火花天数</div>
+            </div>
+            <div class="intimacy-stat-divider"></div>
+            <div class="intimacy-stat">
+                <div class="intimacy-stat-num" id="intimacyTodayMsgs">0</div>
+                <div class="intimacy-stat-label">今日消息</div>
+            </div>
+        </div>
+
+        <!-- 等级条 -->
+        <div class="intimacy-level-bar">
+            <div class="intimacy-level-info">
+                <span id="intimacyLevelText">Lv.1 初见</span>
+                <span id="intimacyLevelProgress">0 / 50</span>
+            </div>
+            <div class="intimacy-level-track">
+                <div class="intimacy-level-fill" id="intimacyLevelFill" style="width:0%"></div>
+            </div>
+        </div>
+
+        <!-- 模块入口（第一行3个） -->
+        <div class="intimacy-modules">
+            <div class="intimacy-module-row">
+                <div class="intimacy-module-card" data-module="lucky-char">
+                    <div class="intimacy-module-icon">🎲</div>
+                    <div class="intimacy-module-name">幸运字符</div>
+                    <div class="intimacy-module-status" id="intimacyModLucky">待开发</div>
+                </div>
+                <div class="intimacy-module-card" data-module="relationship">
+                    <div class="intimacy-module-icon">💍</div>
+                    <div class="intimacy-module-name">关系绑定</div>
+                    <div class="intimacy-module-status" id="intimacyModRelation">待开发</div>
+                </div>
+                <div class="intimacy-module-card" data-module="badge">
+                    <div class="intimacy-module-icon">🏅</div>
+                    <div class="intimacy-module-name">亲密徽章</div>
+                    <div class="intimacy-module-status" id="intimacyModBadge">待开发</div>
+                </div>
+            </div>
+            <!-- 第二行2个 -->
+            <div class="intimacy-module-row">
+                <div class="intimacy-module-card" data-module="exchange">
+                    <div class="intimacy-module-icon">🌀</div>
+                    <div class="intimacy-module-name">跨次元兑换所</div>
+                    <div class="intimacy-module-status" id="intimacyModExchange">待开发</div>
+                </div>
+                <div class="intimacy-module-card" data-module="capsule">
+                    <div class="intimacy-module-icon">⏳</div>
+                    <div class="intimacy-module-name">岁月胶囊</div>
+                    <div class="intimacy-module-status" id="intimacyModCapsule">待开发</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 星迹档案（解锁时间线） -->
+        <div class="intimacy-timeline-section">
+            <h3 class="intimacy-section-title">✦ 星迹档案</h3>
+            <div class="intimacy-timeline" id="intimacyTimeline">
+                <div class="intimacy-timeline-empty">还没有记录，快去创造属于你们的故事吧</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 自定义面板（背景图更换等） -->
+    <div class="intimacy-customize-panel" id="intimacyCustomizePanel" style="display:none;">
+        <div style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);" id="intimacyCustomizeOverlay"></div>
+        <div style="position:relative;z-index:1;width:100%;background:#1a1a1a;border-radius:16px 16px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom));animation:ctxSlideUp 0.25s ease-out;">
+            <div style="text-align:center;font-size:15px;font-weight:600;color:#fff;margin-bottom:16px;">自定义亲密关系页</div>
+            <div style="margin-bottom:12px;">
+                <div style="font-size:13px;color:rgba(255,255,255,0.6);margin-bottom:8px;">更换背景图</div>
+                <div style="display:flex;gap:8px;">
+                    <button id="intimacyBgUploadBtn" style="flex:1;padding:12px;border:1px dashed rgba(255,255,255,0.15);border-radius:10px;background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.5);font-size:13px;cursor:pointer;">📷 上传图片</button>
+                    <input type="file" id="intimacyBgUploadInput" accept="image/*" style="display:none;">
+                    <input type="text" id="intimacyBgUrlInput" placeholder="或粘贴图片URL" style="flex:1;padding:12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:13px;">
+                </div>
+            </div>
+            <button id="intimacyBgReset" style="width:100%;padding:12px;margin-bottom:8px;border:none;border-radius:10px;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.5);font-size:13px;cursor:pointer;">恢复默认背景</button>
+            <button id="intimacyCustomizeClose" style="width:100%;padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.4);font-size:13px;cursor:pointer;">关闭</button>
+        </div>
+    </div>
+</div>
+<!-- ==================== 亲密关系全屏页结束 ==================== -->
 
 <!-- ==================== 续火花系统弹窗 ==================== -->
 <div class="flame-modal" id="flameModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:3200;display:none;padding:20px;">
