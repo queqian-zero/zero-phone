@@ -1096,7 +1096,24 @@ user是次元壁那头的人。对user来说，你是一堆数据流里的某个
             if (avatarRecognitionOn) {
                 avatarImages = await this.prepareAvatarImages();
                 if (avatarImages && avatarImages.length > 0) {
-                    systemPrompt += `\n\n【头像识别已开启】你现在可以看到你自己的头像和user的头像。附带的图片中，第一张是你的头像，第二张是user的头像（如果有的话）。你可以准确描述你们的头像长什么样。`;
+                    // 按顺序描述图片内容
+                    const imgDesc = avatarImages.map((img, i) => {
+                        const roleMap = {
+                            'ai_avatar': '你的头像',
+                            'ai_avatar_frame': '你的头像框（围绕头像的装饰边框）',
+                            'user_avatar': 'user的头像',
+                            'user_avatar_frame': 'user的头像框（围绕头像的装饰边框）'
+                        };
+                        return `第${i+1}张：${roleMap[img.role] || '未知图片'}`;
+                    }).join('，');
+                    
+                    systemPrompt += `\n\n【头像识别已开启】你现在可以看到附带的图片。${imgDesc}。你可以准确描述你们的头像和头像框长什么样。如果有头像框，它是套在头像外面的装饰，可能是GIF动态的（你看到的是静态第一帧）。`;
+                    
+                    // 补充内置头像框信息（CSS做的没有图片）
+                    const builtinFrame = this.settings.avatarFrameType || 'none';
+                    if (builtinFrame !== 'none' && builtinFrame !== 'custom') {
+                        systemPrompt += `\n你的头像框是内置样式「${builtinFrame}」（无法用图片展示，但你知道它的存在）。`;
+                    }
                     console.log('🖼️ [头像识别] 已附带', avatarImages.length, '张头像图片');
                 } else {
                     avatarImages = null;
@@ -1661,12 +1678,28 @@ div.innerHTML = `
                 }
             }
             
+            // AI头像框（自定义上传的）
+            if (this.settings.avatarFrameType === 'custom' && this.settings.avatarFrameSrc) {
+                const aiFrameData = await this.imageToBase64(this.settings.avatarFrameSrc);
+                if (aiFrameData) {
+                    images.push({ role: 'ai_avatar_frame', data: aiFrameData.data, mediaType: aiFrameData.mediaType });
+                }
+            }
+            
             // 用户头像
             const userSettings = this.storage.getUserSettings();
             if (userSettings && userSettings.userAvatar) {
                 const userAvatarData = await this.imageToBase64(userSettings.userAvatar);
                 if (userAvatarData) {
                     images.push({ role: 'user_avatar', data: userAvatarData.data, mediaType: userAvatarData.mediaType });
+                }
+            }
+            
+            // 用户头像框（自定义上传的）
+            if (this.settings.userAvatarFrameType === 'custom' && this.settings.userAvatarFrameSrc) {
+                const userFrameData = await this.imageToBase64(this.settings.userAvatarFrameSrc);
+                if (userFrameData) {
+                    images.push({ role: 'user_avatar_frame', data: userFrameData.data, mediaType: userFrameData.mediaType });
                 }
             }
             
