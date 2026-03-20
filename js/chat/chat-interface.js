@@ -5886,10 +5886,12 @@ renderWearingDisplay(lc) {
     if (iconEl) {
         const allChars = this.getAllLuckyChars();
         const charDef = allChars.find(c => c.id === wearing.id);
+        const pct = wearing.totalChars > 0 ? Math.round(wearing.litChars / wearing.totalChars * 100) : 0;
+        const grayStyle = pct >= 100 ? '' : `filter:grayscale(${100 - pct}%);`;
         if (charDef?.iconType === 'image') {
-            iconEl.innerHTML = `<img src="${charDef.icon}" style="width:120px;height:120px;object-fit:contain;display:block;margin:0 auto;">`;
+            iconEl.innerHTML = `<img src="${charDef.icon}" style="width:120px;height:120px;object-fit:contain;display:block;margin:0 auto;${grayStyle}">`;
         } else {
-            iconEl.textContent = charDef?.icon || '✦';
+            iconEl.innerHTML = `<span style="${grayStyle}">${charDef?.icon || '✦'}</span>`;
         }
     }
     
@@ -5933,28 +5935,54 @@ renderOwnedChars(lc) {
     
     const allChars = this.getAllLuckyChars();
     const wearingId = lc.userWearing || lc.aiWearing;
+    const config = this.storage.getIntimacyConfig();
+    const customIds = (config.customLuckyChars || []).map(c => c.id);
     
     grid.innerHTML = owned.map(oc => {
         const charDef = allChars.find(c => c.id === oc.id);
         const isWearing = oc.id === wearingId;
         const pct = oc.totalChars > 0 ? Math.round(oc.litChars / oc.totalChars * 100) : 0;
+        const isLit = pct >= 100;
+        const isCustom = customIds.includes(oc.id);
+        // 未完全点亮的用灰色滤镜
+        const grayStyle = isLit ? '' : 'filter:grayscale(100%) opacity(0.5);';
         const iconHtml = charDef?.iconType === 'image' 
-            ? `<img src="${charDef.icon}" style="width:28px;height:28px;object-fit:contain;">` 
-            : (charDef?.icon || '✦');
+            ? `<img src="${charDef.icon}" style="width:28px;height:28px;object-fit:contain;${grayStyle}">` 
+            : `<span style="${grayStyle}">${charDef?.icon || '✦'}</span>`;
         
         return `
             <div class="lucky-owned-item ${isWearing ? 'wearing' : ''}" data-char-id="${oc.id}">
                 <div class="owned-icon">${iconHtml}</div>
-                <div class="owned-name">${oc.name}</div>
+                <div class="owned-name" style="${isLit ? '' : 'color:rgba(255,255,255,0.3);'}">${oc.name}</div>
                 <div class="owned-pct">${pct}%</div>
+                ${isWearing ? '<div style="font-size:9px;color:#f0932b;margin-top:2px;">佩戴中 · 点击取消</div>' : ''}
+                ${isCustom ? `<div class="lucky-delete-btn" data-del-id="${oc.id}" style="font-size:9px;color:rgba(255,100,100,0.5);margin-top:2px;cursor:pointer;">删除</div>` : ''}
             </div>`;
     }).join('');
     
-    // 点击佩戴
+    // 点击佩戴/取消佩戴
     grid.querySelectorAll('.lucky-owned-item').forEach(item => {
-        item.addEventListener('click', () => {
+        item.addEventListener('click', (e) => {
+            // 如果点的是删除按钮，不触发佩戴
+            if (e.target.classList.contains('lucky-delete-btn')) return;
             const charId = item.getAttribute('data-char-id');
-            this.wearLuckyChar(charId, 'user');
+            if (charId === wearingId) {
+                // 取消佩戴
+                this.unwearLuckyChar('user');
+            } else {
+                this.wearLuckyChar(charId, 'user');
+            }
+        });
+    });
+    
+    // 删除自定义字符
+    grid.querySelectorAll('.lucky-delete-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const delId = btn.getAttribute('data-del-id');
+            if (confirm('确定删除这个自定义字符吗？')) {
+                this.deleteCustomLuckyChar(delId);
+            }
         });
     });
 }
@@ -6048,6 +6076,47 @@ wearLuckyChar(charId, who = 'user') {
     data.luckyChars = lc;
     this.storage.saveIntimacyData(this.currentFriendCode, data);
     this.showCssToast(`已佩戴「${owned.find(o => o.id === charId).name}」`);
+    this.refreshLuckyCharPage();
+    this.updateBadgePanel();
+}
+
+// 取消佩戴
+unwearLuckyChar(who = 'user') {
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    const lc = data.luckyChars || {};
+    
+    if (who === 'user') {
+        lc.userWearing = '';
+    } else {
+        lc.aiWearing = '';
+    }
+    
+    data.luckyChars = lc;
+    this.storage.saveIntimacyData(this.currentFriendCode, data);
+    this.showCssToast('已取消佩戴');
+    this.refreshLuckyCharPage();
+    this.updateBadgePanel();
+}
+
+// 删除自定义字符
+deleteCustomLuckyChar(charId) {
+    // 从config中删除定义
+    const config = this.storage.getIntimacyConfig();
+    config.customLuckyChars = (config.customLuckyChars || []).filter(c => c.id !== charId);
+    this.storage.saveIntimacyConfig(config);
+    
+    // 从当前好友的owned中删除
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    const lc = data.luckyChars || {};
+    lc.owned = (lc.owned || []).filter(o => o.id !== charId);
+    
+    // 如果正在佩戴这个，取消佩戴
+    if (lc.userWearing === charId) lc.userWearing = '';
+    if (lc.aiWearing === charId) lc.aiWearing = '';
+    
+    data.luckyChars = lc;
+    this.storage.saveIntimacyData(this.currentFriendCode, data);
+    this.showCssToast('已删除');
     this.refreshLuckyCharPage();
     this.updateBadgePanel();
 }
