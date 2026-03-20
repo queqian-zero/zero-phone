@@ -485,7 +485,7 @@ class ChatInterface {
         
         if (chat && chat.messages) {
             console.log('📜 加载历史消息:', chat.messages.length, '条');
-            this.messages = chat.messages;
+            this.messages = [...chat.messages];
             this.renderMessages();
             
             if (chat.tokenStats) {
@@ -3699,7 +3699,7 @@ overwriteMessages(messages) {
     }
     
     // 更新内存
-    this.messages = messages;
+    this.messages = [...messages];
     
     // 更新storage
     this.storage.setMessages(this.currentFriendCode, messages);
