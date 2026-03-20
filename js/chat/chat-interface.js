@@ -5507,7 +5507,7 @@ getIntimacyStatusForAI() {
         }
         const drawsLeft = 3 - (lc.drawDate === new Date().toISOString().split('T')[0] ? (lc.todayDrawsAI || 0) : 0);
         desc += `\n  你今天还能抽${drawsLeft}次幸运字符（在6张牌里翻1张，每张35%概率出字符）`;
-        desc += `\n  你可以用 [LUCKY_DRAW] 抽一次，用 [LUCKY_WEAR:字符id] 选择佩戴`;
+        desc += `\n  你可以用 [LUCKY_DRAW] 抽一次，用 [LUCKY_WEAR:字符id] 选择佩戴，用 [LUCKY_UNWEAR] 取消佩戴`;
     } else {
         desc += `\n- 幸运字符：还没有，可以用 [LUCKY_DRAW] 抽卡`;
     }
@@ -5936,7 +5936,7 @@ renderWearingDisplay(lc) {
         if (pct >= 100) {
             progressEl.textContent = `✨ 已完全点亮`;
         } else {
-            progressEl.textContent = `${pct}% · 还需 ${(total - lit) * 10} 条消息`;
+            progressEl.textContent = `${pct}% · 还需 ${(total - lit) * 100} 条消息`;
         }
     }
 }
@@ -6144,7 +6144,7 @@ deleteCustomLuckyChar(charId) {
     this.updateBadgePanel();
 }
 
-// 聊天时点亮字符（每10条消息亮一个字母）
+// 聊天时点亮字符（每100条消息亮一个字母）
 updateLuckyCharOnMessage() {
     if (!this.currentFriendCode) return;
     const data = this.storage.getIntimacyData(this.currentFriendCode);
@@ -6168,7 +6168,7 @@ updateLuckyCharOnMessage() {
     if (!lc._litAccumulator) lc._litAccumulator = 0;
     lc._litAccumulator++;
     
-    if (lc._litAccumulator >= 10) {
+    if (lc._litAccumulator >= 100) {
         lc._litAccumulator = 0;
         wearing.litChars++;
         
@@ -6228,7 +6228,15 @@ processLuckyCharCommands(text) {
             this.storage.saveIntimacyData(this.currentFriendCode, data);
             this.showCssSystemMessage(`✦ ${friendName} 选择佩戴「${target.name}」`);
             this.showCssToast(`✦ ${friendName} 佩戴了「${target.name}」`);
+            this.updateBadgePanel();
         }
+    }
+    
+    // [LUCKY_UNWEAR] - AI取消佩戴
+    if (text.includes('[LUCKY_UNWEAR]')) {
+        text = text.replace('[LUCKY_UNWEAR]', '');
+        this.unwearLuckyChar('ai');
+        this.showCssSystemMessage(`✦ ${friendName} 取消了佩戴幸运字符`);
     }
     
     return text;
