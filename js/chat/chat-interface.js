@@ -6210,6 +6210,7 @@ bindLuckyCharEvents() {
     // 自定义面板
     document.getElementById('luckyCharCustomize')?.addEventListener('click', () => {
         document.getElementById('luckyCustomizePanel').style.display = 'flex';
+        this.renderCustomCharList();
     });
     document.getElementById('luckyCustomizeClose')?.addEventListener('click', () => {
         document.getElementById('luckyCustomizePanel').style.display = 'none';
@@ -6303,7 +6304,9 @@ bindLuckyCharEvents() {
             this.showCssToast(`已添加「${name}」`);
             document.getElementById('luckyCustomName').value = '';
             document.getElementById('luckyCustomUrl').value = '';
-            document.getElementById('luckyCustomizePanel').style.display = 'none';
+            if (document.getElementById('luckyCustomUploadInput')) document.getElementById('luckyCustomUploadInput').value = '';
+            document.getElementById('luckyCustomUploadBtn').textContent = '📷 上传图片';
+            this.renderCustomCharList();
         };
         
         if (url) {
@@ -6380,6 +6383,51 @@ bindLuckyCharEvents() {
             if (url) this.setLuckyCardBack(url);
         });
     }
+    
+    // 重置卡牌背面
+    document.getElementById('luckyCardBackReset')?.addEventListener('click', () => {
+        this.setLuckyCardBack('');
+    });
+    
+    // 重置背景图
+    document.getElementById('luckyBgReset')?.addEventListener('click', () => {
+        this.setLuckyCharBg('');
+    });
+}
+
+// 渲染自定义字符列表（在自定义面板里）
+renderCustomCharList() {
+    const listEl = document.getElementById('luckyCustomList');
+    if (!listEl) return;
+    
+    const config = this.storage.getIntimacyConfig();
+    const customs = config.customLuckyChars || [];
+    
+    if (customs.length === 0) {
+        listEl.innerHTML = '';
+        return;
+    }
+    
+    listEl.innerHTML = `<div style="font-size:13px;color:rgba(255,255,255,0.6);margin-bottom:6px;">已添加的自定义字符</div>` +
+        customs.map(c => {
+            const iconHtml = c.iconType === 'image' 
+                ? `<img src="${c.icon}" style="width:20px;height:20px;object-fit:contain;vertical-align:middle;">` 
+                : (c.icon || '✦');
+            return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;margin-bottom:4px;background:rgba(255,255,255,0.04);border-radius:8px;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span>${iconHtml}</span>
+                    <span style="font-size:13px;color:rgba(255,255,255,0.7);">${this.escapeHtml(c.name)}</span>
+                </div>
+                <button onclick="window.chatInterface.deleteCustomLuckyCharFromPanel('${c.id}')" style="background:none;border:none;color:rgba(255,100,100,0.6);font-size:12px;cursor:pointer;padding:4px 8px;">删除</button>
+            </div>`;
+        }).join('');
+}
+
+// 从自定义面板删除字符（不需要抽到也能删）
+deleteCustomLuckyCharFromPanel(charId) {
+    if (!confirm('确定删除这个自定义字符吗？')) return;
+    this.deleteCustomLuckyChar(charId);
+    this.renderCustomCharList();
 }
 
 setLuckyCharBg(bgImage) {
