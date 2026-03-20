@@ -532,7 +532,6 @@ class ChatInterface {
         if (chat && chat.messages) {
             console.log('📜 加载历史消息:', chat.messages.length, '条');
             this.messages = [...chat.messages];
-            this.renderMessages();
             
             if (chat.tokenStats) {
                 this.updateTokenStatsFromStorage(chat.tokenStats);
@@ -540,10 +539,16 @@ class ChatInterface {
         } else {
             console.log('🆕 新聊天，添加欢迎消息');
             this.messages = [];
-            this.addWelcomeMessage(friend);
         }
         
+        // 先加载设置（头像框、气泡样式等），再渲染消息
         this.loadSettings();
+        
+        if (this.messages.length > 0) {
+            this.renderMessages();
+        } else {
+            this.addWelcomeMessage(friend);
+        }
         
         setTimeout(() => this.scrollToBottom(), 100);
         
