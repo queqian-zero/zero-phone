@@ -165,6 +165,11 @@
                     <span class="badge-item-icon" id="badgeLuckyIcon">🎲</span>
                     <span class="badge-item-text" id="badgeLuckyText">未佩戴</span>
                 </div>
+                <div class="badge-item" id="badgeRelationItem" style="display:none;">
+                    <span class="badge-item-icon" id="badgeRelationIcon">💍</span>
+                    <span class="badge-item-text" id="badgeRelationText">未绑定</span>
+                </div>
+                </div>
                 <!-- 以后扩展：勋章、亲密关系 -->
             </div>
         </div>
@@ -1770,6 +1775,97 @@
     </div>
 </div>
 <!-- ==================== 幸运字符子页结束 ==================== -->
+
+<!-- ==================== 关系绑定子页 ==================== -->
+<div class="relation-bind-page" id="relationBindPage" style="display:none;">
+    <div class="intimacy-bg" id="relationBindBg"></div>
+    <div class="intimacy-content">
+        <!-- 顶栏 -->
+        <div class="intimacy-header">
+            <button class="intimacy-back" id="relationBindBack">←</button>
+            <span class="intimacy-title">关系绑定</span>
+            <button class="intimacy-customize" id="relationBindCustomize">自定义</button>
+        </div>
+
+        <!-- 当前绑定状态 -->
+        <div class="relation-bind-section">
+            <div class="relation-current-card" id="relationCurrentCard">
+                <div class="relation-current-empty" id="relationCurrentEmpty">还没有绑定关系<br><span style="font-size:11px;color:rgba(255,255,255,0.2);">选择下方的关系类型，向TA发起绑定邀请吧</span></div>
+                <div id="relationCurrentBound" style="display:none;">
+                    <div class="relation-current-icon" id="relationCurrentIcon">💍</div>
+                    <div class="relation-current-name" id="relationCurrentName">-</div>
+                    <div class="relation-current-date" id="relationCurrentDate">-</div>
+                    <div class="relation-current-days" id="relationCurrentDays">已绑定 <em>0</em> 天</div>
+                    <div class="relation-wear-row">
+                        <span class="relation-wear-label">在聊天中显示关系标识</span>
+                        <label class="toggle-switch"><input type="checkbox" id="relationWearToggle" checked><span class="toggle-slider"></span></label>
+                    </div>
+                    <div style="margin-top:16px;">
+                        <button class="relation-break-btn" id="relationBreakBtn">解除绑定</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 待处理邀请 -->
+        <div class="relation-bind-section" id="relationPendingSection" style="display:none;">
+            <div class="relation-bind-section-title">📨 待处理邀请</div>
+            <div class="relation-pending-card">
+                <div class="relation-pending-from" id="relationPendingFrom">-</div>
+                <div class="relation-pending-name" id="relationPendingName">-</div>
+                <div class="relation-pending-actions">
+                    <button class="relation-accept-btn" id="relationAcceptBtn">接受</button>
+                    <button class="relation-reject-btn" id="relationRejectBtn">拒绝</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 关系类型选择（未绑定时显示） -->
+        <div class="relation-bind-section" id="relationTypeSection">
+            <div class="relation-bind-section-title">✦ 选择关系类型</div>
+            <div class="relation-type-grid" id="relationTypeGrid">
+                <!-- JS动态渲染 -->
+            </div>
+            <button class="relation-invite-btn" id="relationInviteBtn" disabled>发起绑定邀请</button>
+        </div>
+    </div>
+
+    <!-- 自定义面板 -->
+    <div class="relation-customize-panel" id="relationCustomizePanel" style="display:none;">
+        <div style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);" id="relationCustomizeOverlay"></div>
+        <div style="position:relative;z-index:1;width:100%;background:#1a1a1a;border-radius:16px 16px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom));max-height:70vh;overflow-y:auto;animation:ctxSlideUp 0.25s ease-out;">
+            <div style="text-align:center;font-size:15px;font-weight:600;color:#fff;margin-bottom:16px;">自定义关系绑定</div>
+            <!-- 背景图 -->
+            <div style="margin-bottom:16px;">
+                <div style="font-size:13px;color:rgba(255,255,255,0.6);margin-bottom:8px;">更换背景图</div>
+                <div style="display:flex;gap:8px;">
+                    <button id="relationBgUploadBtn" style="flex:1;padding:12px;border:1px dashed rgba(255,255,255,0.15);border-radius:10px;background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.5);font-size:13px;cursor:pointer;">📷 上传图片</button>
+                    <input type="file" id="relationBgUploadInput" accept="image/*" style="display:none;">
+                    <input type="text" id="relationBgUrlInput" placeholder="或粘贴图片URL" style="flex:1;padding:12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:13px;">
+                </div>
+                <button id="relationBgReset" style="width:100%;margin-top:8px;padding:10px;border:none;border-radius:10px;background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.4);font-size:12px;cursor:pointer;">恢复默认背景</button>
+            </div>
+            <!-- 添加自定义关系 -->
+            <div style="margin-bottom:16px;">
+                <div style="font-size:13px;color:rgba(255,255,255,0.6);margin-bottom:8px;">添加自定义关系</div>
+                <div style="display:flex;gap:8px;margin-bottom:8px;">
+                    <input type="text" id="customRelIcon" placeholder="emoji图标" maxlength="4" style="width:60px;padding:10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:16px;text-align:center;">
+                    <input type="text" id="customRelName" placeholder="关系名称" style="flex:1;padding:10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:13px;">
+                    <input type="text" id="customRelDesc" placeholder="描述(可选)" style="flex:1;padding:10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:13px;">
+                </div>
+                <div style="display:flex;gap:8px;margin-bottom:8px;">
+                    <button id="customRelImgUploadBtn" style="flex:1;padding:10px;border:1px dashed rgba(255,255,255,0.15);border-radius:10px;background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.5);font-size:12px;cursor:pointer;">📷 或上传图片图标</button>
+                    <input type="file" id="customRelImgUploadInput" accept="image/*" style="display:none;">
+                </div>
+                <button id="customRelAddBtn" style="width:100%;padding:10px;border:none;border-radius:10px;background:rgba(240,147,43,0.15);color:#f0932b;font-size:13px;font-weight:600;cursor:pointer;">+ 添加关系</button>
+            </div>
+            <!-- 已添加的自定义关系列表 -->
+            <div id="customRelList" style="margin-bottom:12px;"></div>
+            <button id="relationCustomizeClose" style="width:100%;padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.4);font-size:13px;cursor:pointer;">关闭</button>
+        </div>
+    </div>
+</div>
+<!-- ==================== 关系绑定子页结束 ==================== -->
 
 <!-- ==================== 续火花系统弹窗 ==================== -->
 <div class="flame-modal" id="flameModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:3200;display:none;padding:20px;">
