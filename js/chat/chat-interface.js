@@ -1258,6 +1258,15 @@ class ChatInterface {
     async sendAIMessage() {
         console.log('🤖 sendAIMessage() 被调用');
         
+        // 防止重复点击：如果上一轮还没完成（包括后台总结/记忆），排队等
+        if (this._isSendingAI) {
+            console.warn('⚠️ 上一轮AI消息还在处理中，排队等待...');
+            // 标记需要重发，等上一轮结束后检查
+            this._pendingAIResend = true;
+            return;
+        }
+        this._isSendingAI = true;
+        
         this.showTypingIndicator();
         
         try {
@@ -1492,28 +1501,52 @@ ${archiveListText}
                 timestamp: new Date().toISOString()
             });
 
-// 渲染关系绑定邀请卡（如果有）
-this.renderRelationInviteInChat();
-
 if (result.tokens) {
     const duration = Date.now() - apiStartTime;
     this.updateTokenRound(result.tokens, duration);
 }
 
-// 后台静默检测是否有值得记住的内容
-this.silentMemoryCheck(result.text);
+// ====== 后台任务串行执行（不再与聊天API并发）======
+// 先同步更新UI状态
 this.updateFlameOnChat(); // 续火花
 this.updateIntimacyOnMessage(); // 亲密值
 this.updateLuckyCharOnMessage(); // 点亮字符
 this.checkGreetings(aiText, 'ai'); // 早晚安检测
             
             this.scrollToBottom();
+
+// 异步后台任务：等聊天消息完全处理完，再串行执行
+// 用 setTimeout 让UI先渲染，然后后台跑
+setTimeout(async () => {
+    try {
+        // 1. 静默记忆检测（await 确保完成后再下一步）
+        await this.silentMemoryCheck(result.text);
+    } catch(e) { console.log('🧠 记忆检测出错（静默）:', e.message); }
+    
+    try {
+        // 2. 检查是否需要自动总结（await 确保完成后再释放）
+        if (this.settings.autoSummary) {
+            await this._runAutoSummaryIfNeeded();
+        }
+    } catch(e) { console.log('📝 自动总结出错（静默）:', e.message); }
+    
+    // 3. 全部完成，释放忙标记
+    this._isSendingAI = false;
+    
+    // 4. 如果等待期间用户又点了AI发送，现在执行
+    if (this._pendingAIResend) {
+        this._pendingAIResend = false;
+        console.log('🔄 执行排队中的AI发送请求');
+        this.sendAIMessage();
+    }
+}, 100);
             
         } catch (e) {
             console.error('❌ 发送AI消息时出错:', e);
             this.hideTypingIndicator();
             this.updateTokenRoundError(e.message || '未知错误', 0);
             this.showErrorAlert('发送失败\n\n' + e.message);
+            this._isSendingAI = false;
         }
     }
     
@@ -1612,10 +1645,8 @@ this.checkGreetings(aiText, 'ai'); // 早晚安检测
         
         this.messages.push(message);
         
-        // 检查是否需要自动总结
-        if (this.settings.autoSummary) {
-            this.checkAutoSummary();
-        }
+        // 注意：autoSummary 不在这里触发了
+        // 改为在 sendAIMessage 完成后串行执行，避免与聊天API竞态
     }
     
     // 将一条消息拆成多个DOM元素（文字→气泡，HTML→独立块）
@@ -3406,6 +3437,19 @@ handleEditSummaryConfirm() {
         if (unsummarizedCount >= interval) {
             console.log('🎯 达到自动总结条件，开始生成总结...');
             this.generateAutoSummary(summarizedCount, this.messages.length);
+        }
+    }
+    
+    // 自动总结的 await 包装（供 sendAIMessage 串行调用）
+    async _runAutoSummaryIfNeeded() {
+        const interval = this.settings.summaryInterval || 50;
+        const summaries = this.storage.getChatSummaries(this.currentFriendCode);
+        const summarizedCount = summaries.reduce((sum, s) => sum + s.messageCount, 0);
+        const unsummarizedCount = this.messages.length - summarizedCount;
+        
+        if (unsummarizedCount >= interval) {
+            console.log('🎯 达到自动总结条件，开始生成总结...');
+            await this.generateAutoSummary(summarizedCount, this.messages.length);
         }
     }
     
@@ -5663,7 +5707,8 @@ getIntimacyStatusForAI() {
         const typeNames = allTypes.map(t => t.name).join('、');
         desc += `\n- 关系绑定：未绑定`;
         desc += `\n  可选关系：${typeNames}`;
-        desc += `\n  你可以用 [RELATION_INVITE:关系名] 向user发起绑定邀请（会生成一张邀请卡，user需要同意）`;
+        desc += `\n  你可以用 [RELATION_INVITE:关系名] 或 [RELATION_INVITE:关系名:1] 用深空风格邀请卡，[RELATION_INVITE:关系名:2] 用明信片风格邀请卡`;
+        desc += `\n  你也可以自己写HTML邀请卡：在回复中用 [RENDER_HTML]你的HTML[/RENDER_HTML] 渲染，然后用 [RELATION_INVITE:关系名] 写入绑定状态（两个指令放一起用）`;
     }
     if (rel.pendingInvite) {
         const from = rel.pendingInvite.from === 'user' ? 'user' : '你';
@@ -8350,11 +8395,14 @@ deleteCustomRelation(relId) {
 // ===== AI 关系绑定指令处理 =====
 processRelationBindCommands(text) {
     const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
+    const dateStr = new Date().toLocaleDateString('zh-CN', { year:'numeric', month:'long', day:'numeric' });
     
-    // [RELATION_INVITE:关系名] - AI发起绑定邀请
+    // [RELATION_INVITE:关系名] 或 [RELATION_INVITE:关系名:1|2|custom] - AI发起绑定邀请
     const inviteMatch = text.match(/\[RELATION_INVITE:([^\]]+)\]/);
     if (inviteMatch) {
-        const relName = inviteMatch[1].trim();
+        const parts = inviteMatch[1].split(':');
+        const relName = parts[0].trim();
+        const cardStyle = parts[1]?.trim() || '1'; // 默认风格1
         text = text.replace(/\[RELATION_INVITE:[^\]]+\]/, '');
         
         const data = this.storage.getIntimacyData(this.currentFriendCode);
@@ -8365,28 +8413,29 @@ processRelationBindCommands(text) {
             let typeDef = allTypes.find(t => t.name === relName);
             if (!typeDef) typeDef = allTypes.find(t => t.name.includes(relName) || relName.includes(t.name));
             
-            if (typeDef) {
-                rel.pendingInvite = {
-                    from: 'ai', relId: typeDef.id, relName: typeDef.name,
-                    relIcon: typeDef.icon, relIconType: typeDef.iconType,
-                    timestamp: new Date().toISOString()
-                };
-                this._pendingRelInviteCard = typeDef;
-            } else {
-                rel.pendingInvite = {
-                    from: 'ai', relId: 'temp_' + Date.now(), relName: relName,
-                    relIcon: '💍', relIconType: 'emoji',
-                    timestamp: new Date().toISOString()
-                };
-                this._pendingRelInviteCard = { id: rel.pendingInvite.relId, name: relName, icon: '💍', iconType: 'emoji' };
-            }
+            const finalName = typeDef?.name || relName;
+            const finalId = typeDef?.id || ('temp_' + Date.now());
+            const finalIcon = typeDef?.icon || '💍';
+            const finalIconType = typeDef?.iconType || 'emoji';
+            
+            rel.pendingInvite = {
+                from: 'ai', relId: finalId, relName: finalName,
+                relIcon: finalIcon, relIconType: finalIconType,
+                timestamp: new Date().toISOString()
+            };
             data.relationship = rel;
             this.storage.saveIntimacyData(this.currentFriendCode, data);
             
-            this.showCssSystemMessage(`💍 ${friendName} 向你发起了「${rel.pendingInvite.relName}」绑定邀请！`);
-            this.showCssToast(`${friendName} 想和你绑定为「${rel.pendingInvite.relName}」`);
+            // 生成邀请卡HTML
+            const cardHtml = this._buildAIInviteCardHtml(finalName, finalIcon, finalIconType, friendName, dateStr, cardStyle);
+            text += `\n[RENDER_HTML]${cardHtml}[/RENDER_HTML]`;
+            
+            this.showCssToast(`${friendName} 想和你绑定为「${finalName}」`);
             this.refreshRelationBindPage();
             this.refreshIntimacyPage();
+            
+            // 延迟显示悬浮条（等消息渲染完）
+            setTimeout(() => this.showPendingRelationBar(), 500);
         }
     }
     
@@ -8418,9 +8467,20 @@ processRelationBindCommands(text) {
                 type: 'relation_bind', title: `绑定了「${invite.relName}」关系`, icon: '💍'
             });
             
+            // 生成绑定成功卡
+            const icon = rel.bound.icon;
+            const iconType = rel.bound.iconType;
+            const iconHtml = iconType === 'image' ? `<img src="${icon}" style="width:56px;height:56px;object-fit:contain;">` : (icon || '💍');
+            const successCard = `<div style="width:100%;max-width:320px;margin:0 auto;padding:24px 20px;background:linear-gradient(145deg,#1a1a2e,#16213e);border-radius:20px;text-align:center;font-family:system-ui,sans-serif;color:#fff;">
+  <div style="font-size:48px;margin-bottom:10px;">${iconHtml}</div>
+  <div style="font-size:20px;font-weight:800;margin-bottom:6px;background:linear-gradient(90deg,#f0932b,#fdcb6e);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">绑定成功！</div>
+  <div style="font-size:15px;color:rgba(255,255,255,0.7);margin-bottom:4px;">我们现在是「${this.escapeHtml(invite.relName)}」了</div>
+  <div style="font-size:11px;color:rgba(255,255,255,0.25);margin-top:10px;">${dateStr} · 亲密值 +20</div>
+</div>`;
+            text += `\n[RENDER_HTML]${successCard}[/RENDER_HTML]`;
+            
             this.showRelationCeremony(rel.bound);
             this.showCssSystemMessage(`💍 ${friendName} 接受了绑定！你们现在是「${invite.relName}」了！亲密值 +20`);
-            this.showCssToast(`绑定成功！`);
             this.updateBadgePanel();
             this.refreshRelationBindPage();
             this.refreshIntimacyPage();
@@ -8465,8 +8525,16 @@ processRelationBindCommands(text) {
             data.relationship = rel;
             this.storage.saveIntimacyData(this.currentFriendCode, data);
             
+            // 解绑通知卡
+            const breakCard = `<div style="width:100%;max-width:320px;margin:0 auto;padding:24px 20px;background:linear-gradient(145deg,#2d1b1b,#1a1a2e);border-radius:20px;text-align:center;font-family:system-ui,sans-serif;color:#fff;border:1px solid rgba(255,100,100,0.15);">
+  <div style="font-size:48px;margin-bottom:10px;">💔</div>
+  <div style="font-size:18px;font-weight:700;color:rgba(255,120,120,0.9);margin-bottom:6px;">关系已解除</div>
+  <div style="font-size:13px;color:rgba(255,255,255,0.4);">「${this.escapeHtml(oldName)}」关系绑定已解除</div>
+  <div style="font-size:11px;color:rgba(255,255,255,0.2);margin-top:10px;">${dateStr}</div>
+</div>`;
+            text += `\n[RENDER_HTML]${breakCard}[/RENDER_HTML]`;
+            
             this.showCssSystemMessage(`💔 ${friendName} 解除了「${oldName}」关系绑定`);
-            this.showCssToast(`${friendName} 解除了关系`);
             this.updateBadgePanel();
             this.refreshRelationBindPage();
             this.refreshIntimacyPage();
@@ -8482,17 +8550,29 @@ processRelationBindCommands(text) {
         const rel = data.relationship || {};
         
         if (rel.bound && !rel.pendingBreak) {
+            const relName = rel.bound.name;
             rel.pendingBreak = {
                 from: 'ai',
-                relName: rel.bound.name,
+                relName: relName,
                 timestamp: new Date().toISOString()
             };
             data.relationship = rel;
             this.storage.saveIntimacyData(this.currentFriendCode, data);
             
-            this.showCssSystemMessage(`📨 ${friendName} 申请解除「${rel.bound.name}」关系，等待你的回应...`);
+            // 解绑申请卡（带按钮）
+            const breakReqCard = `<div style="width:100%;max-width:320px;margin:0 auto;padding:24px 20px;background:linear-gradient(145deg,#2d1b1b,#1a1a2e);border-radius:20px;text-align:center;font-family:system-ui,sans-serif;color:#fff;border:1px solid rgba(255,100,100,0.12);">
+  <div style="font-size:40px;margin-bottom:10px;">📨</div>
+  <div style="font-size:16px;font-weight:700;color:rgba(255,160,140,0.9);margin-bottom:6px;">申请解除关系</div>
+  <div style="font-size:13px;color:rgba(255,255,255,0.45);margin-bottom:16px;">${this.escapeHtml(friendName)} 申请解除「${this.escapeHtml(relName)}」关系</div>
+  <div style="display:flex;gap:10px;justify-content:center;">
+    <button onclick="(window.parent||window).chatInterface.acceptBreakRelation()" style="padding:8px 24px;border:none;border-radius:16px;background:rgba(255,100,100,0.2);color:rgba(255,140,140,0.9);font-size:13px;font-weight:600;cursor:pointer;">同意解绑</button>
+    <button onclick="(window.parent||window).chatInterface.rejectBreakRelation()" style="padding:8px 24px;border:none;border-radius:16px;background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.4);font-size:13px;cursor:pointer;">拒绝</button>
+  </div>
+</div>`;
+            text += `\n[RENDER_HTML]${breakReqCard}[/RENDER_HTML]`;
+            
             this.showCssToast(`${friendName} 想解除关系`);
-            this.showPendingRelationBar();
+            setTimeout(() => this.showPendingRelationBar(), 500);
             this.refreshRelationBindPage();
         }
     }
@@ -8516,8 +8596,14 @@ processRelationBindCommands(text) {
             data.relationship = rel;
             this.storage.saveIntimacyData(this.currentFriendCode, data);
             
+            const breakDoneCard = `<div style="width:100%;max-width:320px;margin:0 auto;padding:24px 20px;background:linear-gradient(145deg,#2d1b1b,#1a1a2e);border-radius:20px;text-align:center;font-family:system-ui,sans-serif;color:#fff;border:1px solid rgba(255,100,100,0.1);">
+  <div style="font-size:40px;margin-bottom:10px;">💔</div>
+  <div style="font-size:16px;font-weight:700;color:rgba(255,120,120,0.8);margin-bottom:6px;">已同意解绑</div>
+  <div style="font-size:13px;color:rgba(255,255,255,0.35);">「${this.escapeHtml(oldName)}」关系已解除</div>
+</div>`;
+            text += `\n[RENDER_HTML]${breakDoneCard}[/RENDER_HTML]`;
+            
             this.showCssSystemMessage(`💔 ${friendName} 同意了解绑请求，「${oldName}」关系已解除`);
-            this.showCssToast('关系已解除');
             this.updateBadgePanel();
             this.refreshRelationBindPage();
             this.refreshIntimacyPage();
@@ -8543,6 +8629,44 @@ processRelationBindCommands(text) {
     }
     
     return text;
+}
+
+// AI邀请卡HTML生成（2种风格 + 自定义）
+_buildAIInviteCardHtml(relName, icon, iconType, friendName, dateStr, style) {
+    const iconHtml = iconType === 'image' 
+        ? `<img src="${icon}" style="width:64px;height:64px;object-fit:contain;">` 
+        : `<span style="font-size:48px;">${icon || '💍'}</span>`;
+    
+    const acceptBtn = `<button onclick="(window.parent||window).chatInterface.acceptRelationInvite()" style="padding:8px 28px;border:none;border-radius:16px;background:linear-gradient(135deg,#f0932b,#e17055);color:#fff;font-size:13px;font-weight:600;cursor:pointer;">接受 💍</button>`;
+    const rejectBtn = `<button onclick="(window.parent||window).chatInterface.rejectRelationInvite()" style="padding:8px 20px;border:none;border-radius:16px;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.4);font-size:13px;cursor:pointer;border:1px solid rgba(255,255,255,0.1);">婉拒</button>`;
+    const btnRow = `<div style="display:flex;gap:10px;justify-content:center;margin-top:18px;">${acceptBtn}${rejectBtn}</div>`;
+    
+    if (style === '2') {
+        // 明信片风格
+        return `<div style="width:100%;max-width:320px;margin:0 auto;padding:0;border-radius:16px;overflow:hidden;font-family:system-ui,-apple-system,sans-serif;box-shadow:0 4px 24px rgba(0,0,0,0.2);">
+  <div style="background:linear-gradient(135deg,#f0932b,#e17055);padding:24px 20px;text-align:center;">
+    <div style="margin-bottom:8px;">${iconHtml}</div>
+    <div style="font-size:20px;font-weight:700;color:#fff;">关系绑定邀请</div>
+  </div>
+  <div style="background:rgba(26,26,46,0.95);padding:20px;text-align:center;">
+    <div style="font-size:15px;color:rgba(255,255,255,0.8);font-weight:600;margin-bottom:4px;">${this.escapeHtml(friendName)} 想和你成为</div>
+    <div style="font-size:22px;font-weight:800;color:#f0932b;margin:8px 0;">「${this.escapeHtml(relName)}」</div>
+    <div style="font-size:11px;color:rgba(255,255,255,0.25);margin-bottom:4px;">${dateStr}</div>
+    ${btnRow}
+  </div>
+</div>`;
+    }
+    
+    // 默认：深空风格
+    return `<div style="width:100%;max-width:320px;margin:0 auto;padding:28px 20px;background:linear-gradient(145deg,#1a1a2e,#16213e,#0f3460);border-radius:20px;text-align:center;font-family:system-ui,-apple-system,sans-serif;color:#fff;box-shadow:0 8px 32px rgba(0,0,0,0.3);">
+  <div style="font-size:12px;color:rgba(255,255,255,0.25);letter-spacing:6px;margin-bottom:16px;">INVITATION</div>
+  <div style="margin-bottom:12px;">${iconHtml}</div>
+  <div style="font-size:22px;font-weight:800;margin-bottom:6px;background:linear-gradient(90deg,#f0932b,#fdcb6e);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">「${this.escapeHtml(relName)}」</div>
+  <div style="font-size:13px;color:rgba(255,255,255,0.45);margin-bottom:4px;">${this.escapeHtml(friendName)} 向你发起了关系绑定邀请</div>
+  <div style="width:60px;height:1px;background:linear-gradient(90deg,transparent,rgba(240,147,43,0.4),transparent);margin:12px auto;"></div>
+  <div style="font-size:11px;color:rgba(255,255,255,0.2);">${dateStr}</div>
+  ${btnRow}
+</div>`;
 }
 
 // 在聊天消息中渲染邀请卡（在addMessage后调用）
