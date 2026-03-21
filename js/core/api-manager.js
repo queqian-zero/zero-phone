@@ -256,7 +256,7 @@ class APIManager {
      * @param {String} systemPrompt - 系统提示词（人设）
      * @returns {Object} { success, text, tokens, error }
      */
-    async callAI(messages, systemPrompt = '', avatarImages = null) {
+    async callAI(messages, systemPrompt = '', options = {}) {
         try {
             console.log('🤖 开始调用AI API');
             
@@ -279,7 +279,7 @@ class APIManager {
             });
             
             // 2. 构建请求体（根据不同provider调整格式）
-            const requestBody = this.buildRequestBody(config, messages, systemPrompt, avatarImages);
+            const requestBody = this.buildRequestBody(config, messages, systemPrompt, options);
             
             console.log('📦 请求体:', requestBody);
             
@@ -311,9 +311,11 @@ class APIManager {
             const result = this.parseAPIResponse(config.provider, data);
             
             console.log('✅ AI调用成功');
+            if (result.thinking) console.log('💭 思维链:', result.thinking.substring(0, 80) + '...');
             return {
                 success: true,
                 text: result.text,
+                thinking: result.thinking || '',
                 tokens: result.tokens
             };
             
@@ -327,164 +329,136 @@ class APIManager {
     }
     
     // 构建请求体
-    buildRequestBody(config, messages, systemPrompt, avatarImages = null) {
+    buildRequestBody(config, messages, systemPrompt, options = {}) {
         const { provider, model, maxTokens, temperature } = config;
-        
-        // 转换消息格式
+        const { avatarImages } = options;
+
+        // ── 需求5：格式化消息时间戳（只供AI看，不显示给用户）──
+        const fmtTime = (iso) => {
+            if (!iso) return '';
+            const d = new Date(iso);
+            const p = n => String(n).padStart(2, '0');
+            return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+        };
+
+        // ── 需求1：保留消息粒度，每条消息独立，加时间戳前缀 ──
         const formattedMessages = messages.map(msg => ({
             role: msg.type === 'user' ? 'user' : 'assistant',
-            content: msg.text
+            content: msg.timestamp
+                ? `[${fmtTime(msg.timestamp)}] ${msg.text}`
+                : msg.text
         }));
-        
-        // ====== 需求2：构建第一条用户消息的多模态内容（含头像图片）======
-        const buildFirstUserContentWithImages = (formattedMsgs) => {
-            if (!avatarImages || avatarImages.length === 0) return formattedMsgs;
-            
-            // 找到第一条user消息，把图片附加进去
-            const firstUserIdx = formattedMsgs.findIndex(m => m.role === 'user');
-            if (firstUserIdx === -1) return formattedMsgs;
-            
-            const result = [...formattedMsgs];
-            const firstUserMsg = result[firstUserIdx];
-            
-            // 构建multimodal content数组
-            const contentParts = [];
-            
-            // 先加图片
-            avatarImages.forEach(img => {
-                contentParts.push({
-                    type: 'image_url',
-                    image_url: {
-                        url: `data:${img.mediaType};base64,${img.data}`
-                    }
-                });
-            });
-            
-            // 再加文字
-            contentParts.push({
-                type: 'text',
-                text: firstUserMsg.content
-            });
-            
-            result[firstUserIdx] = {
-                role: 'user',
-                content: contentParts
-            };
-            
-            return result;
+
+        // ── 需求2：构建头像视觉前置消息（各provider格式不同）──
+        // Google格式的头像parts
+        const buildGoogleAvatarContents = () => {
+            if (!avatarImages) return [];
+            const parts = [{ text: '【头像视觉信息】以下是对话双方的头像图片：' }];
+            if (avatarImages.ai) {
+                parts.push({ text: '↓ 这是你自己的头像：' });
+                parts.push({ inline_data: { mime_type: avatarImages.ai.mimeType, data: avatarImages.ai.data } });
+            }
+            if (avatarImages.user) {
+                parts.push({ text: '↓ 这是user的头像：' });
+                parts.push({ inline_data: { mime_type: avatarImages.user.mimeType, data: avatarImages.user.data } });
+            }
+            return [
+                { role: 'user', parts },
+                { role: 'model', parts: [{ text: '好的，我已经看到了双方的头像。' }] }
+            ];
         };
-        
+
+        // OpenAI格式的头像消息
+        const buildOpenAIAvatarMessages = () => {
+            if (!avatarImages) return [];
+            const content = [{ type: 'text', text: '【头像视觉信息】以下是对话双方的头像图片：' }];
+            if (avatarImages.ai) {
+                content.push({ type: 'image_url', image_url: { url: `data:${avatarImages.ai.mimeType};base64,${avatarImages.ai.data}` } });
+                content.push({ type: 'text', text: '↑ 这是你自己的头像' });
+            }
+            if (avatarImages.user) {
+                content.push({ type: 'image_url', image_url: { url: `data:${avatarImages.user.mimeType};base64,${avatarImages.user.data}` } });
+                content.push({ type: 'text', text: '↑ 这是user的头像' });
+            }
+            return [
+                { role: 'user', content },
+                { role: 'assistant', content: '好的，我已经看到了双方的头像。' }
+            ];
+        };
+
         // 根据provider构建不同格式
         switch (provider) {
             case 'google': {
-                // ====== 需求1：Google Gemini格式 - 合并连续同角色消息 ======
-                const mergedContents = [];
-                let lastRole = null;
-                
-                formattedMessages.forEach(msg => {
-                    const geminiRole = msg.role === 'assistant' ? 'model' : 'user';
-                    
-                    if (geminiRole === lastRole && mergedContents.length > 0) {
-                        // 同角色连续消息，合并到上一条（用换行分隔）
-                        const lastContent = mergedContents[mergedContents.length - 1];
-                        lastContent.parts.push({ text: msg.content });
-                    } else {
-                        mergedContents.push({
-                            role: geminiRole,
-                            parts: [{ text: msg.content }]
-                        });
-                        lastRole = geminiRole;
-                    }
-                });
-                
-                // Google Gemini的图片处理
-                if (avatarImages && avatarImages.length > 0 && mergedContents.length > 0) {
-                    // 找第一个user消息加图片
-                    const firstUser = mergedContents.find(c => c.role === 'user');
-                    if (firstUser) {
-                        const imgParts = avatarImages.map(img => ({
-                            inline_data: {
-                                mime_type: img.mediaType,
-                                data: img.data
-                            }
-                        }));
-                        firstUser.parts = [...imgParts, ...firstUser.parts];
-                    }
-                }
-                
+                // Google Gemini格式
+                const contents = [
+                    ...buildGoogleAvatarContents(),
+                    ...formattedMessages.map(msg => ({
+                        role: msg.role === 'assistant' ? 'model' : 'user',
+                        parts: [{ text: msg.content }]
+                    }))
+                ];
                 return {
-                    contents: mergedContents,
-                    systemInstruction: systemPrompt ? {
-                        parts: [{ text: systemPrompt }]
-                    } : undefined,
-                    generationConfig: {
-                        temperature: temperature,
-                        maxOutputTokens: maxTokens
-                    }
+                    contents,
+                    systemInstruction: systemPrompt ? { parts: [{ text: systemPrompt }] } : undefined,
+                    generationConfig: { temperature, maxOutputTokens: maxTokens }
                 };
             }
-                
+
             case 'anthropic': {
-                // Anthropic Claude格式 - 支持multimodal
-                let anthropicMessages = formattedMessages.map(msg => ({
-                    role: msg.role,
-                    content: msg.content
-                }));
-                
-                // 添加头像图片
-                if (avatarImages && avatarImages.length > 0) {
-                    const firstUserIdx = anthropicMessages.findIndex(m => m.role === 'user');
-                    if (firstUserIdx !== -1) {
-                        const contentParts = [];
-                        avatarImages.forEach(img => {
-                            contentParts.push({
-                                type: 'image',
-                                source: {
-                                    type: 'base64',
-                                    media_type: img.mediaType,
-                                    data: img.data
-                                }
-                            });
-                        });
-                        contentParts.push({
-                            type: 'text',
-                            text: anthropicMessages[firstUserIdx].content
-                        });
-                        anthropicMessages[firstUserIdx] = {
-                            role: 'user',
-                            content: contentParts
-                        };
+                // ── 需求1：Anthropic不允许连续同角色消息，合并时保留各条时间戳 ──
+                const merged = [];
+                for (const msg of formattedMessages) {
+                    const last = merged[merged.length - 1];
+                    if (last && last.role === msg.role) {
+                        last.content += '\n' + msg.content;
+                    } else {
+                        merged.push({ role: msg.role, content: msg.content });
                     }
                 }
-                
+
+                // ── 需求2：Anthropic头像注入到第一条user消息 ──
+                if (avatarImages) {
+                    const firstUser = merged.find(m => m.role === 'user');
+                    if (firstUser) {
+                        const parts = [];
+                        if (avatarImages.ai) {
+                            parts.push({ type: 'image', source: { type: 'base64', media_type: avatarImages.ai.mimeType, data: avatarImages.ai.data } });
+                            parts.push({ type: 'text', text: '↑ 你自己的头像' });
+                        }
+                        if (avatarImages.user) {
+                            parts.push({ type: 'image', source: { type: 'base64', media_type: avatarImages.user.mimeType, data: avatarImages.user.data } });
+                            parts.push({ type: 'text', text: '↑ user的头像' });
+                        }
+                        parts.push({ type: 'text', text: firstUser.content });
+                        firstUser.content = parts;
+                    }
+                }
+
                 return {
-                    model: model,
+                    model,
                     max_tokens: maxTokens,
-                    temperature: temperature,
+                    temperature,
                     system: systemPrompt,
-                    messages: anthropicMessages
+                    messages: merged
                 };
             }
-                
+
             default: {
                 // OpenAI / SiliconFlow / 自定义（通用格式）
                 const allMessages = [];
                 if (systemPrompt) {
-                    allMessages.push({
-                        role: 'system',
-                        content: systemPrompt
-                    });
+                    allMessages.push({ role: 'system', content: systemPrompt });
                 }
-                
-                // 添加头像图片到第一条user消息
-                const messagesWithImages = buildFirstUserContentWithImages(formattedMessages);
-                allMessages.push(...messagesWithImages);
-                
+                allMessages.push(...buildOpenAIAvatarMessages());
+                allMessages.push(...formattedMessages.map(msg => ({
+                    role: msg.role,
+                    content: msg.content
+                })));
                 return {
-                    model: model,
+                    model,
                     messages: allMessages,
                     max_tokens: maxTokens,
-                    temperature: temperature
+                    temperature
                 };
             }
         }
@@ -531,8 +505,21 @@ class APIManager {
                     throw new Error('API返回格式错误：找不到candidates');
                 }
                 
+                // Gemini thinking: parts中可能有thought:true的项
+                let gText = '';
+                let gThinking = '';
+                const parts = candidate.content?.parts || [];
+                for (const part of parts) {
+                    if (part.thought) {
+                        gThinking += (part.text || '') + '\n';
+                    } else {
+                        gText += (part.text || '');
+                    }
+                }
+                
                 return {
-                    text: candidate.content?.parts?.[0]?.text || '',
+                    text: gText || parts[0]?.text || '',
+                    thinking: gThinking.trim() || '',
                     tokens: {
                         input: data.usageMetadata?.promptTokenCount || 0,
                         output: data.usageMetadata?.candidatesTokenCount || 0,
@@ -541,13 +528,24 @@ class APIManager {
                 };
                 
             case 'anthropic':
-                // Anthropic Claude响应格式
-                if (!data.content?.[0]) {
+                // Anthropic Claude响应格式 — content数组中可能有thinking块
+                if (!data.content || data.content.length === 0) {
                     throw new Error('API返回格式错误：找不到content');
                 }
                 
+                let aText = '';
+                let aThinking = '';
+                for (const block of data.content) {
+                    if (block.type === 'thinking') {
+                        aThinking += (block.thinking || '') + '\n';
+                    } else if (block.type === 'text') {
+                        aText += (block.text || '');
+                    }
+                }
+                
                 return {
-                    text: data.content[0].text || '',
+                    text: aText || data.content[0].text || '',
+                    thinking: aThinking.trim() || '',
                     tokens: {
                         input: data.usage?.input_tokens || 0,
                         output: data.usage?.output_tokens || 0,
@@ -556,13 +554,18 @@ class APIManager {
                 };
                 
             default:
-                // OpenAI / SiliconFlow / 自定义（通用格式）
+                // OpenAI / SiliconFlow / DeepSeek / 自定义
                 if (!data.choices?.[0]) {
                     throw new Error('API返回格式错误：找不到choices');
                 }
                 
+                const msg = data.choices[0].message || {};
+                // DeepSeek/QwQ等模型的思维链字段
+                const oThinking = msg.reasoning_content || msg.thinking || '';
+                
                 return {
-                    text: data.choices[0].message?.content || '',
+                    text: msg.content || '',
+                    thinking: oThinking,
                     tokens: {
                         input: data.usage?.prompt_tokens || 0,
                         output: data.usage?.completion_tokens || 0,
