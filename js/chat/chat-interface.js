@@ -264,6 +264,71 @@ class ChatInterface {
             .lucky-owned-item .owned-name { font-size:10px;color:rgba(255,255,255,0.6);overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
             .lucky-owned-item .owned-pct { font-size:9px;color:rgba(255,255,255,0.3); }
             .lucky-wear-toggle-section { padding:0 20px; }
+            /* ====== 关系绑定页 ====== */
+            .relation-bind-page { position:fixed;top:0;left:0;right:0;bottom:0;z-index:3550;overflow-y:auto;-webkit-overflow-scrolling:touch; }
+            .relation-bind-section { padding:0 20px;margin-bottom:20px; }
+            .relation-bind-section-title { font-size:14px;font-weight:600;color:rgba(255,255,255,0.75);margin-bottom:12px;display:flex;align-items:center;gap:6px; }
+            /* 当前绑定展示 */
+            .relation-current-card { padding:28px 20px;background:rgba(255,255,255,0.06);backdrop-filter:blur(10px);border-radius:16px;border:1px solid rgba(255,255,255,0.08);text-align:center; }
+            .relation-current-empty { font-size:13px;color:rgba(255,255,255,0.3);padding:10px 0; }
+            .relation-current-icon { font-size:72px;margin-bottom:10px; }
+            .relation-current-icon img { width:100px;height:100px;object-fit:contain;display:block;margin:0 auto; }
+            .relation-current-name { font-size:22px;font-weight:700;color:#fff;margin-bottom:6px; }
+            .relation-current-date { font-size:12px;color:rgba(255,255,255,0.35);margin-bottom:14px; }
+            .relation-current-days { font-size:15px;color:rgba(255,255,255,0.6);margin-bottom:16px; }
+            .relation-current-days em { font-style:normal;font-weight:700;color:#f0932b;font-size:22px;margin:0 3px; }
+            .relation-break-btn { padding:8px 24px;border:1px solid rgba(255,100,100,0.3);border-radius:20px;background:rgba(255,60,60,0.08);color:rgba(255,100,100,0.7);font-size:12px;cursor:pointer;transition:all 0.2s; }
+            .relation-break-btn:active { transform:scale(0.95);background:rgba(255,60,60,0.15); }
+            /* 待处理邀请 */
+            .relation-pending-card { padding:20px;background:linear-gradient(135deg,rgba(240,147,43,0.08),rgba(240,100,43,0.04));backdrop-filter:blur(10px);border-radius:16px;border:1px solid rgba(240,147,43,0.15);text-align:center;margin-bottom:20px; }
+            .relation-pending-from { font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:6px; }
+            .relation-pending-name { font-size:18px;font-weight:700;color:#f0932b;margin-bottom:12px; }
+            .relation-pending-actions { display:flex;gap:10px;justify-content:center; }
+            .relation-accept-btn { flex:1;max-width:120px;padding:10px;border:none;border-radius:20px;background:linear-gradient(135deg,#f0932b,#e17055);color:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s; }
+            .relation-accept-btn:active { transform:scale(0.95); }
+            .relation-reject-btn { flex:1;max-width:120px;padding:10px;border:1px solid rgba(255,255,255,0.12);border-radius:20px;background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.5);font-size:13px;cursor:pointer;transition:all 0.2s; }
+            .relation-reject-btn:active { transform:scale(0.95); }
+            /* 关系类型选择 */
+            .relation-type-grid { display:grid;grid-template-columns:repeat(2,1fr);gap:10px; }
+            .relation-type-item { padding:16px 10px;background:rgba(255,255,255,0.05);border-radius:14px;border:1px solid rgba(255,255,255,0.06);text-align:center;cursor:pointer;transition:all 0.2s; }
+            .relation-type-item:active { transform:scale(0.96); }
+            .relation-type-item.selected { border-color:rgba(240,147,43,0.4);background:rgba(240,147,43,0.08); }
+            .relation-type-icon { font-size:40px;margin-bottom:6px; }
+            .relation-type-icon img { width:56px;height:56px;object-fit:contain;display:block;margin:0 auto; }
+            .relation-type-name { font-size:14px;font-weight:600;color:#fff;margin-bottom:2px; }
+            .relation-type-desc { font-size:10px;color:rgba(255,255,255,0.3); }
+            .relation-invite-btn { width:100%;margin-top:14px;padding:14px;border:none;border-radius:14px;background:linear-gradient(135deg,#f0932b,#e17055);color:#fff;font-size:15px;font-weight:600;cursor:pointer;transition:all 0.2s;opacity:0.4; }
+            .relation-invite-btn.active { opacity:1; }
+            .relation-invite-btn.active:active { transform:scale(0.97); }
+            /* 绑定仪式动画 */
+            .relation-ceremony-overlay { position:fixed;top:0;left:0;right:0;bottom:0;z-index:4000;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;opacity:0;animation:relCeremonyFadeIn 0.5s ease forwards; }
+            @keyframes relCeremonyFadeIn { to { opacity:1; } }
+            .relation-ceremony-card { text-align:center;padding:40px 30px;max-width:300px;width:90%;animation:relCeremonyScale 0.6s ease forwards; }
+            @keyframes relCeremonyScale { from { transform:scale(0.6);opacity:0; } to { transform:scale(1);opacity:1; } }
+            .relation-ceremony-icon { font-size:80px;margin-bottom:16px;animation:relCeremonyPulse 1.5s ease infinite; }
+            .relation-ceremony-icon img { width:100px;height:100px;object-fit:contain;display:block;margin:0 auto; }
+            @keyframes relCeremonyPulse { 0%,100% { transform:scale(1); } 50% { transform:scale(1.08); } }
+            .relation-ceremony-title { font-size:24px;font-weight:800;color:#fff;margin-bottom:8px; }
+            .relation-ceremony-sub { font-size:14px;color:rgba(255,255,255,0.5);margin-bottom:6px; }
+            .relation-ceremony-date { font-size:12px;color:rgba(255,255,255,0.3);margin-bottom:24px; }
+            .relation-ceremony-particles { position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;overflow:hidden; }
+            .relation-ceremony-particle { position:absolute;width:6px;height:6px;border-radius:50%;animation:relParticleFall linear forwards; }
+            @keyframes relParticleFall { 0% { transform:translateY(-20px) rotate(0deg);opacity:1; } 100% { transform:translateY(100vh) rotate(720deg);opacity:0; } }
+            .relation-ceremony-close { padding:10px 32px;border:1px solid rgba(255,255,255,0.2);border-radius:20px;background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.7);font-size:13px;cursor:pointer; }
+            /* 佩戴开关 */
+            .relation-wear-row { display:flex;justify-content:space-between;align-items:center;padding:14px 16px;background:rgba(255,255,255,0.04);border-radius:12px;margin-top:10px; }
+            .relation-wear-label { font-size:13px;color:rgba(255,255,255,0.6); }
+            /* 聊天中的邀请卡 */
+            .chat-relation-invite { margin:8px 0;padding:16px;background:linear-gradient(135deg,rgba(240,147,43,0.1),rgba(240,100,43,0.05));border-radius:14px;border:1px solid rgba(240,147,43,0.2);text-align:center; }
+            .chat-relation-invite-icon { font-size:36px;margin-bottom:6px; }
+            .chat-relation-invite-icon img { width:48px;height:48px;object-fit:contain; }
+            .chat-relation-invite-text { font-size:13px;color:rgba(255,255,255,0.7);margin-bottom:10px; }
+            .chat-relation-invite-btns { display:flex;gap:8px;justify-content:center; }
+            .chat-relation-invite-btns button { padding:6px 20px;border-radius:16px;font-size:12px;cursor:pointer;border:none; }
+            .chat-rel-accept { background:linear-gradient(135deg,#f0932b,#e17055);color:#fff;font-weight:600; }
+            .chat-rel-reject { background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.5);border:1px solid rgba(255,255,255,0.1); }
+            /* 自定义面板 */
+            .relation-customize-panel { position:fixed;top:0;left:0;right:0;bottom:0;z-index:3650;display:flex;align-items:flex-end;justify-content:center; }
             /* 统一信息面板 */
             .info-panel {
                 position: absolute;
@@ -567,6 +632,9 @@ class ChatInterface {
             console.log('✅ 设置好友名称:', displayName);
         }
         
+        // 关系标识（显示在名字旁边）
+        this.updateChatHeaderRelationBadge();
+        
         const chat = this.storage.getChatByFriendCode(friendCode);
         
         if (chat && chat.messages) {
@@ -753,6 +821,43 @@ class ChatInterface {
             }
             luckyItem.style.display = 'flex';
         }
+        
+        // 关系绑定条目
+        const relIcon = document.getElementById('badgeRelationIcon');
+        const relText = document.getElementById('badgeRelationText');
+        const relItem = document.getElementById('badgeRelationItem');
+        
+        if (relItem && this.currentFriendCode) {
+            const data2 = this.storage.getIntimacyData(this.currentFriendCode);
+            const rel = data2.relationship || {};
+            
+            if (rel.bound && rel.bound.wearing !== false) {
+                const allTypes = this.getAllRelationTypes ? this.getAllRelationTypes() : [];
+                const typeDef = allTypes.find(t => t.id === rel.bound.id) || {};
+                const iconType = rel.bound.iconType || typeDef.iconType;
+                const icon = rel.bound.icon || typeDef.icon;
+                
+                if (relIcon) {
+                    if (iconType === 'image' && icon) {
+                        relIcon.innerHTML = `<img src="${icon}" style="width:16px;height:16px;object-fit:contain;">`;
+                    } else {
+                        relIcon.textContent = icon || '💍';
+                    }
+                }
+                if (relText) {
+                    const days = Math.floor((Date.now() - new Date(rel.bound.boundDate).getTime()) / 86400000);
+                    relText.textContent = `${rel.bound.name} · ${days}天`;
+                }
+                relItem.style.display = 'flex';
+            } else {
+                if (relIcon) relIcon.textContent = '💍';
+                if (relText) relText.textContent = '未绑定';
+                relItem.style.display = 'none';
+            }
+        }
+        
+        // 同步聊天顶部关系标识
+        if (this.updateChatHeaderRelationBadge) this.updateChatHeaderRelationBadge();
     }
     
     updateTokenStatsFromStorage(tokenStats) {
@@ -1342,6 +1447,7 @@ ${archiveListText}
             aiText = this.processAICssCommands(aiText);
             aiText = this.processFlameCommands(aiText);
             aiText = this.processLuckyCharCommands(aiText);
+            aiText = this.processRelationBindCommands(aiText);
             
             this.addMessage({
                 type: 'ai',
@@ -1354,6 +1460,9 @@ ${archiveListText}
                 text: aiText,
                 timestamp: new Date().toISOString()
             });
+
+// 渲染关系绑定邀请卡（如果有）
+this.renderRelationInviteInChat();
 
 if (result.tokens) {
     const duration = Date.now() - apiStartTime;
@@ -5515,14 +5624,22 @@ getIntimacyStatusForAI() {
     // 关系绑定
     const rel = data.relationship || {};
     if (rel.bound) {
-        desc += `\n- 关系绑定：已绑定「${rel.bound.name}」`;
+        const days = Math.floor((Date.now() - new Date(rel.bound.boundDate).getTime()) / 86400000);
+        desc += `\n- 关系绑定：已绑定「${rel.bound.name}」(${days}天)`;
+        desc += `\n  你可以用 [RELATION_BREAK] 解除绑定（慎用）`;
     } else {
+        const allTypes = this.getAllRelationTypes ? this.getAllRelationTypes() : [];
+        const typeNames = allTypes.map(t => t.name).join('、');
         desc += `\n- 关系绑定：未绑定`;
+        desc += `\n  可选关系：${typeNames}`;
         desc += `\n  你可以用 [RELATION_INVITE:关系名] 向user发起绑定邀请（会生成一张邀请卡，user需要同意）`;
     }
     if (rel.pendingInvite) {
         const from = rel.pendingInvite.from === 'user' ? 'user' : '你';
         desc += `\n  ⏳ 当前有一个待处理的邀请（${from}发起的「${rel.pendingInvite.relName}」），等待回应中`;
+        if (rel.pendingInvite.from === 'user') {
+            desc += `\n  你可以用 [RELATION_ACCEPT] 接受或 [RELATION_REJECT] 拒绝`;
+        }
     }
     
     // 亲密徽章
@@ -5632,6 +5749,21 @@ refreshIntimacyPage() {
     const luckyOwned = (data.luckyChars?.owned || []).length;
     const modLucky = document.getElementById('intimacyModLucky');
     if (modLucky) modLucky.textContent = luckyOwned > 0 ? `已拥有 ${luckyOwned} 个` : '点击进入';
+    
+    // 关系绑定模块入口状态
+    const modRelation = document.getElementById('intimacyModRelation');
+    if (modRelation) {
+        const rel = data.relationship || {};
+        if (rel.bound) {
+            modRelation.textContent = `已绑定「${rel.bound.name}」`;
+        } else if (rel.pendingInvite) {
+            modRelation.textContent = '有待处理邀请';
+            modRelation.style.color = '#f0932b';
+        } else {
+            modRelation.textContent = '点击进入';
+            modRelation.style.color = '';
+        }
+    }
     
     // 星迹档案
     this.renderTimeline(data.timeline);
@@ -5760,6 +5892,8 @@ bindIntimacyEvents() {
             const mod = card.getAttribute('data-module');
             if (mod === 'lucky-char') {
                 this.openLuckyCharPage();
+            } else if (mod === 'relationship') {
+                this.openRelationBindPage();
             } else {
                 this.showCssToast(`${card.querySelector('.intimacy-module-name').textContent} 开发中...`);
             }
@@ -7363,6 +7497,806 @@ applyAvatarFrameCss(save = true) {
 removeAvatarFrameCss() {
     const old = document.getElementById('customAvatarFrameCssTag');
     if (old) old.remove();
+}
+
+// ==================== 关系绑定系统 ====================
+
+// 内置4种关系类型
+_builtinRelationTypes = [
+    { id: 'rel_couple', name: '情侣', icon: 'assets/images/relationship/rel-couple.png', iconType: 'image', desc: '心跳同步的两个人' },
+    { id: 'rel_besties', name: '闺蜜', icon: 'assets/images/relationship/rel-besties.png', iconType: 'image', desc: '灵魂知己' },
+    { id: 'rel_partners', name: '搭档', icon: 'assets/images/relationship/rel-partners.png', iconType: 'image', desc: '并肩作战的伙伴' },
+    { id: 'rel_bros', name: '兄弟', icon: 'assets/images/relationship/rel-bros.png', iconType: 'image', desc: '过命的交情' }
+];
+
+getAllRelationTypes() {
+    const config = this.storage.getIntimacyConfig();
+    return [...this._builtinRelationTypes, ...(config.customRelationships || [])];
+}
+
+openRelationBindPage() {
+    const page = document.getElementById('relationBindPage');
+    if (!page) return;
+    page.style.display = 'block';
+    
+    this.refreshRelationBindPage();
+    
+    if (!this._relationEventsBound) {
+        this.bindRelationBindEvents();
+        this._relationEventsBound = true;
+    }
+}
+
+closeRelationBindPage() {
+    const page = document.getElementById('relationBindPage');
+    if (page) page.style.display = 'none';
+}
+
+refreshRelationBindPage() {
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    const rel = data.relationship || {};
+    const friend = this.currentFriend || this.storage.getFriendByCode(this.currentFriendCode);
+    const friendName = friend?.nickname || friend?.name || 'TA';
+    
+    // 背景图
+    const bg = document.getElementById('relationBindBg');
+    if (bg) {
+        if (rel.bgImage) {
+            bg.style.backgroundImage = `url(${rel.bgImage})`;
+            bg.style.backgroundSize = 'cover';
+            bg.style.backgroundPosition = 'center';
+        } else {
+            bg.style.background = '#111111';
+            bg.style.backgroundImage = '';
+        }
+    }
+    
+    // 当前绑定状态
+    const emptyEl = document.getElementById('relationCurrentEmpty');
+    const boundEl = document.getElementById('relationCurrentBound');
+    const typeSection = document.getElementById('relationTypeSection');
+    
+    if (rel.bound) {
+        // 已绑定
+        if (emptyEl) emptyEl.style.display = 'none';
+        if (boundEl) boundEl.style.display = 'block';
+        if (typeSection) typeSection.style.display = 'none';
+        
+        const allTypes = this.getAllRelationTypes();
+        const typeDef = allTypes.find(t => t.id === rel.bound.id) || {};
+        
+        const iconEl = document.getElementById('relationCurrentIcon');
+        if (iconEl) {
+            const iconType = rel.bound.iconType || typeDef.iconType;
+            const icon = rel.bound.icon || typeDef.icon;
+            if (iconType === 'image' && icon) {
+                iconEl.innerHTML = `<img src="${icon}">`;
+            } else {
+                iconEl.textContent = icon || '💍';
+            }
+        }
+        
+        const nameEl = document.getElementById('relationCurrentName');
+        if (nameEl) nameEl.textContent = rel.bound.name;
+        
+        const dateEl = document.getElementById('relationCurrentDate');
+        if (dateEl && rel.bound.boundDate) {
+            const d = new Date(rel.bound.boundDate);
+            dateEl.textContent = `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} 绑定`;
+        }
+        
+        const daysEl = document.getElementById('relationCurrentDays');
+        if (daysEl && rel.bound.boundDate) {
+            const days = Math.floor((Date.now() - new Date(rel.bound.boundDate).getTime()) / 86400000);
+            daysEl.innerHTML = `已绑定 <em>${days}</em> 天`;
+        }
+        
+        const toggle = document.getElementById('relationWearToggle');
+        if (toggle) toggle.checked = rel.bound.wearing !== false;
+    } else {
+        // 未绑定
+        if (emptyEl) emptyEl.style.display = 'block';
+        if (boundEl) boundEl.style.display = 'none';
+        if (typeSection) typeSection.style.display = 'block';
+        
+        this.renderRelationTypeGrid();
+    }
+    
+    // 待处理邀请
+    const pendingSection = document.getElementById('relationPendingSection');
+    if (rel.pendingInvite) {
+        if (pendingSection) pendingSection.style.display = 'block';
+        const fromEl = document.getElementById('relationPendingFrom');
+        const nameEl = document.getElementById('relationPendingName');
+        if (fromEl) fromEl.textContent = rel.pendingInvite.from === 'ai' ? `${friendName} 向你发起了绑定邀请` : `你向 ${friendName} 发起了邀请，等待回应中...`;
+        if (nameEl) nameEl.textContent = `「${rel.pendingInvite.relName}」`;
+        
+        // 只有AI发起的邀请，user才能接受/拒绝
+        const acceptBtn = document.getElementById('relationAcceptBtn');
+        const rejectBtn = document.getElementById('relationRejectBtn');
+        if (rel.pendingInvite.from === 'ai') {
+            if (acceptBtn) acceptBtn.style.display = '';
+            if (rejectBtn) rejectBtn.style.display = '';
+        } else {
+            if (acceptBtn) acceptBtn.style.display = 'none';
+            if (rejectBtn) rejectBtn.style.display = 'none';
+        }
+    } else {
+        if (pendingSection) pendingSection.style.display = 'none';
+    }
+}
+
+renderRelationTypeGrid() {
+    const grid = document.getElementById('relationTypeGrid');
+    if (!grid) return;
+    
+    const allTypes = this.getAllRelationTypes();
+    grid.innerHTML = allTypes.map(t => {
+        const iconHtml = t.iconType === 'image' 
+            ? `<img src="${t.icon}">` 
+            : (t.icon || '💍');
+        return `
+            <div class="relation-type-item" data-rel-id="${t.id}">
+                <div class="relation-type-icon">${iconHtml}</div>
+                <div class="relation-type-name">${this.escapeHtml(t.name)}</div>
+                <div class="relation-type-desc">${this.escapeHtml(t.desc || '')}</div>
+            </div>`;
+    }).join('');
+    
+    // 点击选择
+    grid.querySelectorAll('.relation-type-item').forEach(item => {
+        item.addEventListener('click', () => {
+            grid.querySelectorAll('.relation-type-item').forEach(i => i.classList.remove('selected'));
+            item.classList.add('selected');
+            this._selectedRelId = item.getAttribute('data-rel-id');
+            const btn = document.getElementById('relationInviteBtn');
+            if (btn) { btn.disabled = false; btn.classList.add('active'); }
+        });
+    });
+    
+    this._selectedRelId = null;
+    const btn = document.getElementById('relationInviteBtn');
+    if (btn) { btn.disabled = true; btn.classList.remove('active'); }
+}
+
+// 发起绑定邀请（user侧）
+sendRelationInvite(relId) {
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    const rel = data.relationship || {};
+    
+    if (rel.bound) {
+        this.showCssToast('已经绑定了关系，需要先解除');
+        return;
+    }
+    if (rel.pendingInvite) {
+        this.showCssToast('已有待处理的邀请');
+        return;
+    }
+    
+    const allTypes = this.getAllRelationTypes();
+    const typeDef = allTypes.find(t => t.id === relId);
+    if (!typeDef) { this.showCssToast('找不到该关系类型'); return; }
+    
+    rel.pendingInvite = {
+        from: 'user',
+        relId: typeDef.id,
+        relName: typeDef.name,
+        relIcon: typeDef.icon,
+        relIconType: typeDef.iconType,
+        timestamp: new Date().toISOString()
+    };
+    data.relationship = rel;
+    
+    // 添加通知让AI知道
+    if (!data._pendingNotifications) data._pendingNotifications = [];
+    data._pendingNotifications.push(`user向你发起了「${typeDef.name}」关系绑定邀请！你可以用 [RELATION_ACCEPT] 接受或 [RELATION_REJECT] 拒绝。`);
+    
+    this.storage.saveIntimacyData(this.currentFriendCode, data);
+    this.showCssToast(`已向TA发起「${typeDef.name}」绑定邀请`);
+    this.showCssSystemMessage(`💍 你向TA发起了「${typeDef.name}」关系绑定邀请`);
+    this.refreshRelationBindPage();
+    this.refreshIntimacyPage();
+}
+
+// 接受绑定邀请（user侧）
+acceptRelationInvite() {
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    const rel = data.relationship || {};
+    const invite = rel.pendingInvite;
+    
+    if (!invite) { this.showCssToast('没有待处理的邀请'); return; }
+    
+    const allTypes = this.getAllRelationTypes();
+    const typeDef = allTypes.find(t => t.id === invite.relId) || {};
+    
+    rel.bound = {
+        id: invite.relId,
+        name: invite.relName,
+        icon: invite.relIcon || typeDef.icon,
+        iconType: invite.relIconType || typeDef.iconType,
+        boundDate: new Date().toISOString(),
+        wearing: true
+    };
+    rel.pendingInvite = null;
+    data.relationship = rel;
+    
+    // 通知AI
+    if (!data._pendingNotifications) data._pendingNotifications = [];
+    data._pendingNotifications.push(`user接受了「${invite.relName}」关系绑定！你们现在是「${invite.relName}」了！`);
+    
+    this.storage.saveIntimacyData(this.currentFriendCode, data);
+    
+    // 星迹档案
+    this.storage.addTimelineEntry(this.currentFriendCode, {
+        type: 'relation_bind',
+        title: `绑定了「${invite.relName}」关系`,
+        icon: '💍'
+    });
+    
+    // 亲密值奖励
+    data.value = (data.value || 0) + 20;
+    this.storage.saveIntimacyData(this.currentFriendCode, data);
+    
+    // 绑定仪式
+    this.showRelationCeremony(rel.bound);
+    
+    this.showCssSystemMessage(`💍 你们正式绑定为「${invite.relName}」！亲密值 +20`);
+    this.updateBadgePanel();
+    this.refreshRelationBindPage();
+    this.refreshIntimacyPage();
+}
+
+// 拒绝绑定邀请
+rejectRelationInvite() {
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    const rel = data.relationship || {};
+    const invite = rel.pendingInvite;
+    
+    if (!invite) return;
+    
+    if (!data._pendingNotifications) data._pendingNotifications = [];
+    data._pendingNotifications.push(`user拒绝了「${invite.relName}」关系绑定邀请。`);
+    
+    rel.pendingInvite = null;
+    data.relationship = rel;
+    this.storage.saveIntimacyData(this.currentFriendCode, data);
+    
+    this.showCssToast('已拒绝邀请');
+    this.showCssSystemMessage(`已拒绝「${invite.relName}」绑定邀请`);
+    this.refreshRelationBindPage();
+    this.refreshIntimacyPage();
+}
+
+// 解除绑定
+breakRelation() {
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    const rel = data.relationship || {};
+    
+    if (!rel.bound) return;
+    
+    const oldName = rel.bound.name;
+    
+    if (!data._pendingNotifications) data._pendingNotifications = [];
+    data._pendingNotifications.push(`user解除了「${oldName}」关系绑定。`);
+    
+    // 星迹档案
+    this.storage.addTimelineEntry(this.currentFriendCode, {
+        type: 'relation_break',
+        title: `解除了「${oldName}」关系`,
+        icon: '💔'
+    });
+    
+    rel.bound = null;
+    data.relationship = rel;
+    this.storage.saveIntimacyData(this.currentFriendCode, data);
+    
+    this.showCssToast(`已解除「${oldName}」关系`);
+    this.showCssSystemMessage(`💔 已解除「${oldName}」关系绑定`);
+    this.updateBadgePanel();
+    this.refreshRelationBindPage();
+    this.refreshIntimacyPage();
+}
+
+// 绑定仪式动画
+showRelationCeremony(bound) {
+    const allTypes = this.getAllRelationTypes();
+    const typeDef = allTypes.find(t => t.id === bound.id) || {};
+    const iconType = bound.iconType || typeDef.iconType;
+    const icon = bound.icon || typeDef.icon;
+    
+    const iconHtml = iconType === 'image' 
+        ? `<img src="${icon}">` 
+        : (icon || '💍');
+    
+    const d = new Date(bound.boundDate);
+    const dateStr = `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+    
+    // 粒子
+    let particlesHtml = '';
+    const colors = ['#f0932b','#e17055','#fdcb6e','#fab1a0','#ffeaa7','#ff7675','#fd79a8'];
+    for (let i = 0; i < 40; i++) {
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const left = Math.random() * 100;
+        const delay = Math.random() * 2;
+        const duration = 2 + Math.random() * 3;
+        const size = 4 + Math.random() * 6;
+        particlesHtml += `<div class="relation-ceremony-particle" style="left:${left}%;top:-10px;width:${size}px;height:${size}px;background:${color};animation-delay:${delay}s;animation-duration:${duration}s;"></div>`;
+    }
+    
+    const overlay = document.createElement('div');
+    overlay.className = 'relation-ceremony-overlay';
+    overlay.id = 'relationCeremonyOverlay';
+    overlay.innerHTML = `
+        <div class="relation-ceremony-particles">${particlesHtml}</div>
+        <div class="relation-ceremony-card">
+            <div class="relation-ceremony-icon">${iconHtml}</div>
+            <div class="relation-ceremony-title">${this.escapeHtml(bound.name)}</div>
+            <div class="relation-ceremony-sub">关系绑定成功</div>
+            <div class="relation-ceremony-date">${dateStr}</div>
+            <button class="relation-ceremony-close" id="relationCeremonyClose">确认</button>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+    
+    document.getElementById('relationCeremonyClose')?.addEventListener('click', () => {
+        overlay.style.opacity = '0';
+        overlay.style.transition = 'opacity 0.3s';
+        setTimeout(() => overlay.remove(), 300);
+    });
+    
+    // 自动关闭
+    setTimeout(() => {
+        if (document.getElementById('relationCeremonyOverlay')) {
+            overlay.style.opacity = '0';
+            overlay.style.transition = 'opacity 0.3s';
+            setTimeout(() => overlay.remove(), 300);
+        }
+    }, 8000);
+}
+
+// 绑定事件
+bindRelationBindEvents() {
+    // 返回
+    document.getElementById('relationBindBack')?.addEventListener('click', () => this.closeRelationBindPage());
+    
+    // 自定义面板
+    document.getElementById('relationBindCustomize')?.addEventListener('click', () => {
+        document.getElementById('relationCustomizePanel').style.display = 'flex';
+        this.renderCustomRelList();
+    });
+    document.getElementById('relationCustomizeClose')?.addEventListener('click', () => {
+        document.getElementById('relationCustomizePanel').style.display = 'none';
+    });
+    document.getElementById('relationCustomizeOverlay')?.addEventListener('click', () => {
+        document.getElementById('relationCustomizePanel').style.display = 'none';
+    });
+    
+    // 背景图上传
+    const bgUploadBtn = document.getElementById('relationBgUploadBtn');
+    const bgUploadInput = document.getElementById('relationBgUploadInput');
+    if (bgUploadBtn && bgUploadInput) {
+        bgUploadBtn.addEventListener('click', () => bgUploadInput.click());
+        bgUploadInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const maxW = 1080;
+                    const scale = Math.min(1, maxW / img.width);
+                    canvas.width = img.width * scale;
+                    canvas.height = img.height * scale;
+                    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                    const compressed = canvas.toDataURL('image/jpeg', 0.7);
+                    this.setRelationBg(compressed);
+                };
+                img.src = ev.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+    
+    // 背景图URL
+    const bgUrlInput = document.getElementById('relationBgUrlInput');
+    if (bgUrlInput) {
+        bgUrlInput.addEventListener('change', (e) => {
+            const url = e.target.value.trim();
+            if (url) this.setRelationBg(url);
+        });
+    }
+    
+    // 重置背景
+    document.getElementById('relationBgReset')?.addEventListener('click', () => {
+        this.setRelationBg('');
+        this.showCssToast('已恢复默认背景');
+    });
+    
+    // 发起邀请按钮
+    document.getElementById('relationInviteBtn')?.addEventListener('click', () => {
+        if (!this._selectedRelId) return;
+        this.sendRelationInvite(this._selectedRelId);
+    });
+    
+    // 接受 / 拒绝
+    document.getElementById('relationAcceptBtn')?.addEventListener('click', () => this.acceptRelationInvite());
+    document.getElementById('relationRejectBtn')?.addEventListener('click', () => this.rejectRelationInvite());
+    
+    // 解除绑定
+    document.getElementById('relationBreakBtn')?.addEventListener('click', () => {
+        if (confirm('确定要解除关系绑定吗？')) {
+            this.breakRelation();
+        }
+    });
+    
+    // 佩戴开关
+    document.getElementById('relationWearToggle')?.addEventListener('change', (e) => {
+        const data = this.storage.getIntimacyData(this.currentFriendCode);
+        if (data.relationship?.bound) {
+            data.relationship.bound.wearing = e.target.checked;
+            this.storage.saveIntimacyData(this.currentFriendCode, data);
+            this.updateBadgePanel();
+            this.showCssToast(e.target.checked ? '已开启关系标识' : '已关闭关系标识');
+        }
+    });
+    
+    // 自定义关系 - 图片上传
+    const customImgBtn = document.getElementById('customRelImgUploadBtn');
+    const customImgInput = document.getElementById('customRelImgUploadInput');
+    this._customRelImgData = null;
+    if (customImgBtn && customImgInput) {
+        customImgBtn.addEventListener('click', () => customImgInput.click());
+        customImgInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const maxW = 200;
+                    const scale = Math.min(1, maxW / img.width);
+                    canvas.width = img.width * scale;
+                    canvas.height = img.height * scale;
+                    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                    this._customRelImgData = canvas.toDataURL('image/png', 0.9);
+                    customImgBtn.textContent = '✅ 已上传图片';
+                };
+                img.src = ev.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+    
+    // 添加自定义关系
+    document.getElementById('customRelAddBtn')?.addEventListener('click', () => {
+        const iconInput = document.getElementById('customRelIcon');
+        const nameInput = document.getElementById('customRelName');
+        const descInput = document.getElementById('customRelDesc');
+        
+        const name = nameInput?.value.trim();
+        if (!name) { this.showCssToast('请输入关系名称'); return; }
+        
+        const emoji = iconInput?.value.trim();
+        const desc = descInput?.value.trim() || '';
+        
+        const config = this.storage.getIntimacyConfig();
+        if (!config.customRelationships) config.customRelationships = [];
+        
+        const newRel = {
+            id: 'crel_' + Date.now(),
+            name: name,
+            desc: desc
+        };
+        
+        if (this._customRelImgData) {
+            newRel.icon = this._customRelImgData;
+            newRel.iconType = 'image';
+        } else {
+            newRel.icon = emoji || '💎';
+            newRel.iconType = 'emoji';
+        }
+        
+        config.customRelationships.push(newRel);
+        this.storage.saveIntimacyConfig(config);
+        
+        // 清空
+        if (iconInput) iconInput.value = '';
+        if (nameInput) nameInput.value = '';
+        if (descInput) descInput.value = '';
+        this._customRelImgData = null;
+        if (customImgBtn) customImgBtn.textContent = '📷 或上传图片图标';
+        
+        this.showCssToast(`已添加「${name}」关系`);
+        this.renderCustomRelList();
+        this.renderRelationTypeGrid();
+    });
+}
+
+setRelationBg(bgImage) {
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    if (!data.relationship) data.relationship = {};
+    data.relationship.bgImage = bgImage;
+    this.storage.saveIntimacyData(this.currentFriendCode, data);
+    
+    const bg = document.getElementById('relationBindBg');
+    if (bg) {
+        if (bgImage) {
+            bg.style.backgroundImage = `url(${bgImage})`;
+            bg.style.backgroundSize = 'cover';
+            bg.style.backgroundPosition = 'center';
+        } else {
+            bg.style.backgroundImage = '';
+            bg.style.background = '#111111';
+        }
+    }
+    document.getElementById('relationCustomizePanel').style.display = 'none';
+}
+
+renderCustomRelList() {
+    const container = document.getElementById('customRelList');
+    if (!container) return;
+    
+    const config = this.storage.getIntimacyConfig();
+    const customs = config.customRelationships || [];
+    
+    if (customs.length === 0) {
+        container.innerHTML = '<div style="font-size:12px;color:rgba(255,255,255,0.2);text-align:center;padding:8px 0;">暂无自定义关系</div>';
+        return;
+    }
+    
+    container.innerHTML = customs.map(c => {
+        const iconHtml = c.iconType === 'image' 
+            ? `<img src="${c.icon}" style="width:20px;height:20px;object-fit:contain;vertical-align:middle;">` 
+            : (c.icon || '💎');
+        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px;margin-bottom:4px;background:rgba(255,255,255,0.04);border-radius:8px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:20px;">${iconHtml}</span>
+                <span style="font-size:13px;color:#fff;">${this.escapeHtml(c.name)}</span>
+                ${c.desc ? `<span style="font-size:11px;color:rgba(255,255,255,0.3);">${this.escapeHtml(c.desc)}</span>` : ''}
+            </div>
+            <button onclick="window.chatInterface.deleteCustomRelation('${c.id}')" style="padding:4px 10px;border:none;border-radius:6px;background:rgba(255,60,60,0.1);color:rgba(255,100,100,0.6);font-size:11px;cursor:pointer;">删除</button>
+        </div>`;
+    }).join('');
+}
+
+deleteCustomRelation(relId) {
+    const config = this.storage.getIntimacyConfig();
+    config.customRelationships = (config.customRelationships || []).filter(c => c.id !== relId);
+    this.storage.saveIntimacyConfig(config);
+    this.showCssToast('已删除');
+    this.renderCustomRelList();
+    this.renderRelationTypeGrid();
+}
+
+// ===== AI 关系绑定指令处理 =====
+processRelationBindCommands(text) {
+    const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
+    
+    // [RELATION_INVITE:关系名] - AI发起绑定邀请
+    const inviteMatch = text.match(/\[RELATION_INVITE:([^\]]+)\]/);
+    if (inviteMatch) {
+        const relName = inviteMatch[1].trim();
+        text = text.replace(/\[RELATION_INVITE:[^\]]+\]/, '');
+        
+        const data = this.storage.getIntimacyData(this.currentFriendCode);
+        const rel = data.relationship || {};
+        
+        if (!rel.bound && !rel.pendingInvite) {
+            // 查找匹配的关系类型
+            const allTypes = this.getAllRelationTypes();
+            let typeDef = allTypes.find(t => t.name === relName);
+            
+            // 如果找不到精确匹配，模糊搜索
+            if (!typeDef) {
+                typeDef = allTypes.find(t => t.name.includes(relName) || relName.includes(t.name));
+            }
+            
+            if (typeDef) {
+                rel.pendingInvite = {
+                    from: 'ai',
+                    relId: typeDef.id,
+                    relName: typeDef.name,
+                    relIcon: typeDef.icon,
+                    relIconType: typeDef.iconType,
+                    timestamp: new Date().toISOString()
+                };
+                data.relationship = rel;
+                this.storage.saveIntimacyData(this.currentFriendCode, data);
+                
+                this.showCssSystemMessage(`💍 ${friendName} 向你发起了「${typeDef.name}」绑定邀请！`);
+                this.showCssToast(`${friendName} 想和你绑定为「${typeDef.name}」`);
+                
+                // 在聊天中插入邀请卡
+                this._pendingRelInviteCard = typeDef;
+            } else {
+                // 自动创建临时关系类型
+                rel.pendingInvite = {
+                    from: 'ai',
+                    relId: 'temp_' + Date.now(),
+                    relName: relName,
+                    relIcon: '💍',
+                    relIconType: 'emoji',
+                    timestamp: new Date().toISOString()
+                };
+                data.relationship = rel;
+                this.storage.saveIntimacyData(this.currentFriendCode, data);
+                
+                this.showCssSystemMessage(`💍 ${friendName} 向你发起了「${relName}」绑定邀请！`);
+                this.showCssToast(`${friendName} 想和你绑定为「${relName}」`);
+                
+                this._pendingRelInviteCard = { id: rel.pendingInvite.relId, name: relName, icon: '💍', iconType: 'emoji' };
+            }
+            
+            this.refreshRelationBindPage();
+            this.refreshIntimacyPage();
+        }
+    }
+    
+    // [RELATION_ACCEPT] - AI接受user的邀请
+    if (text.includes('[RELATION_ACCEPT]')) {
+        text = text.replace('[RELATION_ACCEPT]', '');
+        
+        const data = this.storage.getIntimacyData(this.currentFriendCode);
+        const rel = data.relationship || {};
+        const invite = rel.pendingInvite;
+        
+        if (invite && invite.from === 'user') {
+            const allTypes = this.getAllRelationTypes();
+            const typeDef = allTypes.find(t => t.id === invite.relId) || {};
+            
+            rel.bound = {
+                id: invite.relId,
+                name: invite.relName,
+                icon: invite.relIcon || typeDef.icon,
+                iconType: invite.relIconType || typeDef.iconType,
+                boundDate: new Date().toISOString(),
+                wearing: true
+            };
+            rel.pendingInvite = null;
+            data.relationship = rel;
+            
+            // 亲密值奖励
+            data.value = (data.value || 0) + 20;
+            this.storage.saveIntimacyData(this.currentFriendCode, data);
+            
+            // 星迹档案
+            this.storage.addTimelineEntry(this.currentFriendCode, {
+                type: 'relation_bind',
+                title: `绑定了「${invite.relName}」关系`,
+                icon: '💍'
+            });
+            
+            this.showRelationCeremony(rel.bound);
+            this.showCssSystemMessage(`💍 ${friendName} 接受了绑定！你们现在是「${invite.relName}」了！亲密值 +20`);
+            this.showCssToast(`绑定成功！`);
+            this.updateBadgePanel();
+            this.refreshRelationBindPage();
+            this.refreshIntimacyPage();
+        }
+    }
+    
+    // [RELATION_REJECT] - AI拒绝user的邀请
+    if (text.includes('[RELATION_REJECT]')) {
+        text = text.replace('[RELATION_REJECT]', '');
+        
+        const data = this.storage.getIntimacyData(this.currentFriendCode);
+        const rel = data.relationship || {};
+        const invite = rel.pendingInvite;
+        
+        if (invite && invite.from === 'user') {
+            rel.pendingInvite = null;
+            data.relationship = rel;
+            this.storage.saveIntimacyData(this.currentFriendCode, data);
+            
+            this.showCssSystemMessage(`${friendName} 婉拒了绑定邀请`);
+            this.showCssToast(`${friendName} 拒绝了邀请`);
+            this.refreshRelationBindPage();
+            this.refreshIntimacyPage();
+        }
+    }
+    
+    // [RELATION_BREAK] - AI解除绑定
+    if (text.includes('[RELATION_BREAK]')) {
+        text = text.replace('[RELATION_BREAK]', '');
+        
+        const data = this.storage.getIntimacyData(this.currentFriendCode);
+        const rel = data.relationship || {};
+        
+        if (rel.bound) {
+            const oldName = rel.bound.name;
+            
+            this.storage.addTimelineEntry(this.currentFriendCode, {
+                type: 'relation_break',
+                title: `${friendName} 解除了「${oldName}」关系`,
+                icon: '💔'
+            });
+            
+            rel.bound = null;
+            data.relationship = rel;
+            this.storage.saveIntimacyData(this.currentFriendCode, data);
+            
+            this.showCssSystemMessage(`💔 ${friendName} 解除了「${oldName}」关系绑定`);
+            this.showCssToast(`${friendName} 解除了关系`);
+            this.updateBadgePanel();
+            this.refreshRelationBindPage();
+            this.refreshIntimacyPage();
+        }
+    }
+    
+    return text;
+}
+
+// 在聊天消息中渲染邀请卡（在addMessage后调用）
+renderRelationInviteInChat() {
+    if (!this._pendingRelInviteCard) return;
+    const card = this._pendingRelInviteCard;
+    this._pendingRelInviteCard = null;
+    
+    const iconHtml = card.iconType === 'image' 
+        ? `<img src="${card.icon}">` 
+        : (card.icon || '💍');
+    
+    const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
+    
+    const inviteHtml = `
+        <div class="chat-relation-invite">
+            <div class="chat-relation-invite-icon">${iconHtml}</div>
+            <div class="chat-relation-invite-text">${friendName} 邀请你绑定为「${this.escapeHtml(card.name)}」</div>
+            <div class="chat-relation-invite-btns">
+                <button class="chat-rel-accept" onclick="window.chatInterface.acceptRelationInvite()">接受 💍</button>
+                <button class="chat-rel-reject" onclick="window.chatInterface.rejectRelationInvite()">婉拒</button>
+            </div>
+        </div>
+    `;
+    
+    // 附加到最后一条AI消息
+    const messages = document.querySelectorAll('.message-row.ai');
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg) {
+        const bubble = lastMsg.querySelector('.message-bubble');
+        if (bubble) {
+            bubble.insertAdjacentHTML('beforeend', inviteHtml);
+        }
+    }
+}
+
+// 获取当前关系标识（用于聊天界面显示）
+getRelationBadgeHtml() {
+    if (!this.currentFriendCode) return '';
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    const rel = data.relationship || {};
+    if (!rel.bound || rel.bound.wearing === false) return '';
+    
+    const allTypes = this.getAllRelationTypes();
+    const typeDef = allTypes.find(t => t.id === rel.bound.id) || {};
+    const iconType = rel.bound.iconType || typeDef.iconType;
+    const icon = rel.bound.icon || typeDef.icon;
+    
+    if (iconType === 'image' && icon) {
+        return `<span style="display:inline-flex;align-items:center;margin-left:4px;"><img src="${icon}" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;"></span>`;
+    }
+    return `<span style="margin-left:3px;font-size:12px;">${icon || '💍'}</span>`;
+}
+
+// 更新聊天顶部名字旁的关系标识
+updateChatHeaderRelationBadge() {
+    const nameContainer = document.getElementById('chatFriendName');
+    if (!nameContainer) return;
+    
+    // 移除旧标识
+    const oldBadge = nameContainer.querySelector('.chat-header-rel-badge');
+    if (oldBadge) oldBadge.remove();
+    
+    const badgeHtml = this.getRelationBadgeHtml();
+    if (badgeHtml) {
+        const badge = document.createElement('span');
+        badge.className = 'chat-header-rel-badge';
+        badge.innerHTML = badgeHtml;
+        badge.style.cssText = 'display:inline;vertical-align:middle;';
+        nameContainer.appendChild(badge);
+    }
 }
 
 }
