@@ -424,6 +424,8 @@ class ChatInterface {
             /* 幸运字符图标放大3倍 */
             #badgeLuckyItem .badge-item-icon { font-size:36px; }
             #badgeLuckyItem .badge-item-icon img { width:36px;height:36px; }
+            #badgeRelationItem .badge-item-icon { font-size:48px; }
+            #badgeRelationItem .badge-item-icon img { width:48px;height:48px; }
             /* Token本轮概要 */
             .token-round-summary { padding: 4px 0; }
             .token-round-row { display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:13px;color:#000; }
@@ -870,7 +872,7 @@ class ChatInterface {
                 
                 if (relIcon) {
                     if (iconType === 'image' && icon) {
-                        relIcon.innerHTML = `<img src="${icon}" style="width:16px;height:16px;object-fit:contain;">`;
+                        relIcon.innerHTML = `<img src="${icon}" style="width:48px;height:48px;object-fit:contain;">`;
                     } else {
                         relIcon.textContent = icon || '💍';
                     }
@@ -5701,14 +5703,19 @@ getIntimacyStatusForAI() {
     if (rel.bound) {
         const days = Math.floor((Date.now() - new Date(rel.bound.boundDate).getTime()) / 86400000);
         desc += `\n- 关系绑定：已绑定「${rel.bound.name}」(${days}天)`;
-        desc += `\n  你可以用 [RELATION_BREAK] 单方面解除绑定，或用 [RELATION_BREAK_REQUEST] 申请解绑（需user同意）`;
+        desc += `\n  解绑有2种方式：`;
+        desc += `\n  [RELATION_BREAK] → 单方面直接解绑（会生成解绑通知卡）`;
+        desc += `\n  [RELATION_BREAK_REQUEST] → 申请解绑，需要user同意（会生成带按钮的申请卡）`;
     } else {
         const allTypes = this.getAllRelationTypes ? this.getAllRelationTypes() : [];
         const typeNames = allTypes.map(t => t.name).join('、');
         desc += `\n- 关系绑定：未绑定`;
         desc += `\n  可选关系：${typeNames}`;
-        desc += `\n  你可以用 [RELATION_INVITE:关系名] 或 [RELATION_INVITE:关系名:1] 用深空风格邀请卡，[RELATION_INVITE:关系名:2] 用明信片风格邀请卡`;
-        desc += `\n  你也可以自己写HTML邀请卡：在回复中用 [RENDER_HTML]你的HTML[/RENDER_HTML] 渲染，然后用 [RELATION_INVITE:关系名] 写入绑定状态（两个指令放一起用）`;
+        desc += `\n  发起绑定邀请有3种方式（都会生成一张精美卡片展示在聊天里）：`;
+        desc += `\n  方式1: [RELATION_INVITE:关系名] 或 [RELATION_INVITE:关系名:1] → 自动生成深空风格邀请卡`;
+        desc += `\n  方式2: [RELATION_INVITE:关系名:2] → 自动生成明信片风格邀请卡`;
+        desc += `\n  方式3: 自己手搓HTML卡片 → 用 [RENDER_HTML]你的HTML代码[/RENDER_HTML] 写自定义卡片，同时加上 [RELATION_INVITE:关系名] 来写入绑定状态（系统检测到你已经写了RENDER_HTML就不会再自动生成卡片）`;
+        desc += `\n  注意：方式3中你的HTML里需要包含接受/拒绝按钮，onclick用 (window.parent||window).chatInterface.acceptRelationInvite() 和 (window.parent||window).chatInterface.rejectRelationInvite()`;
     }
     if (rel.pendingInvite) {
         const from = rel.pendingInvite.from === 'user' ? 'user' : '你';
@@ -8426,9 +8433,13 @@ processRelationBindCommands(text) {
             data.relationship = rel;
             this.storage.saveIntimacyData(this.currentFriendCode, data);
             
-            // 生成邀请卡HTML
-            const cardHtml = this._buildAIInviteCardHtml(finalName, finalIcon, finalIconType, friendName, dateStr, cardStyle);
-            text += `\n[RENDER_HTML]${cardHtml}[/RENDER_HTML]`;
+            // 如果AI已经自己写了 [RENDER_HTML] 卡片，就不再自动生成
+            // 否则根据 cardStyle 参数生成内置邀请卡
+            const hasCustomHtml = text.includes('[RENDER_HTML]');
+            if (!hasCustomHtml) {
+                const cardHtml = this._buildAIInviteCardHtml(finalName, finalIcon, finalIconType, friendName, dateStr, cardStyle);
+                text += `\n[RENDER_HTML]${cardHtml}[/RENDER_HTML]`;
+            }
             
             this.showCssToast(`${friendName} 想和你绑定为「${finalName}」`);
             this.refreshRelationBindPage();
