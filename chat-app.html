@@ -169,7 +169,11 @@
                     <span class="badge-item-icon" id="badgeRelationIcon">💍</span>
                     <span class="badge-item-text" id="badgeRelationText">未绑定</span>
                 </div>
-                <!-- 以后扩展：勋章、亲密关系 -->
+                <div class="badge-item" id="badgeWornBadgesItem" style="display:none;">
+                    <span class="badge-item-icon" id="badgeWornBadgesIcon">🏅</span>
+                    <span class="badge-item-text" id="badgeWornBadgesText">-</span>
+                </div>
+                <!-- 以后扩展 -->
             </div>
         </div>
     </div>
@@ -1865,6 +1869,73 @@
     </div>
 </div>
 <!-- ==================== 关系绑定子页结束 ==================== -->
+
+<!-- ==================== 亲密徽章子页 ==================== -->
+<div class="badge-page" id="badgePage" style="display:none;">
+    <div class="intimacy-bg" id="badgePageBg"></div>
+    <div class="intimacy-content">
+        <div class="intimacy-header">
+            <button class="intimacy-back" id="badgePageBack">←</button>
+            <span class="intimacy-title">亲密徽章</span>
+            <button class="intimacy-customize" id="badgePageCustomize">自定义</button>
+        </div>
+
+        <!-- 佩戴中 -->
+        <div class="badge-wearing-section">
+            <div class="badge-section-title">✦ 当前佩戴</div>
+            <div class="badge-wearing-row" id="badgeWearingRow">
+                <span class="badge-wearing-row-empty">还没有佩戴徽章</span>
+            </div>
+        </div>
+
+        <!-- 内置徽章 -->
+        <div class="badge-section">
+            <div class="badge-section-title">🏅 徽章收藏</div>
+            <div class="badge-grid" id="badgeGridBuiltin"></div>
+        </div>
+
+        <!-- 自定义徽章 -->
+        <div class="badge-section" id="badgeCustomSection" style="display:none;">
+            <div class="badge-section-title">✎ 自定义徽章</div>
+            <div class="badge-grid" id="badgeGridCustom"></div>
+        </div>
+    </div>
+
+    <!-- 自定义面板 -->
+    <div class="badge-customize-panel" id="badgeCustomizePanel" style="display:none;">
+        <div style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);" id="badgeCustomizeOverlay"></div>
+        <div style="position:relative;z-index:1;width:100%;background:#1a1a1a;border-radius:16px 16px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom));max-height:70vh;overflow-y:auto;animation:ctxSlideUp 0.25s ease-out;">
+            <div style="text-align:center;font-size:15px;font-weight:600;color:#fff;margin-bottom:16px;">自定义亲密徽章</div>
+            <!-- 背景图 -->
+            <div style="margin-bottom:16px;">
+                <div style="font-size:13px;color:rgba(255,255,255,0.6);margin-bottom:8px;">更换背景图</div>
+                <div style="display:flex;gap:8px;">
+                    <button id="badgeBgUploadBtn" style="flex:1;padding:12px;border:1px dashed rgba(255,255,255,0.15);border-radius:10px;background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.5);font-size:13px;cursor:pointer;">📷 上传图片</button>
+                    <input type="file" id="badgeBgUploadInput" accept="image/*" style="display:none;">
+                    <input type="text" id="badgeBgUrlInput" placeholder="或粘贴图片URL" style="flex:1;padding:12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:13px;">
+                </div>
+                <button id="badgeBgReset" style="width:100%;margin-top:8px;padding:10px;border:none;border-radius:10px;background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.4);font-size:12px;cursor:pointer;">恢复默认背景</button>
+            </div>
+            <!-- 添加自定义徽章 -->
+            <div style="margin-bottom:16px;">
+                <div style="font-size:13px;color:rgba(255,255,255,0.6);margin-bottom:8px;">添加自定义徽章（图片+名字+条件 缺一不可）</div>
+                <div style="display:flex;gap:8px;margin-bottom:8px;">
+                    <button id="customBadgeImgBtn" style="width:60px;height:60px;border:1px dashed rgba(255,255,255,0.15);border-radius:10px;background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.4);font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;">📷 图片</button>
+                    <input type="file" id="customBadgeImgInput" accept="image/*" style="display:none;">
+                    <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
+                        <input type="text" id="customBadgeName" placeholder="徽章名称" style="padding:8px 10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:13px;">
+                        <input type="text" id="customBadgeCondition" placeholder="解锁条件描述" style="padding:8px 10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:12px;">
+                    </div>
+                </div>
+                <button id="customBadgeAddBtn" style="width:100%;padding:10px;border:none;border-radius:10px;background:rgba(240,147,43,0.15);color:#f0932b;font-size:13px;font-weight:600;cursor:pointer;">+ 添加徽章</button>
+            </div>
+            <!-- 已添加列表 -->
+            <div id="customBadgeList" style="margin-bottom:12px;"></div>
+            <button id="badgeCustomizeClose" style="width:100%;padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.4);font-size:13px;cursor:pointer;">关闭</button>
+        </div>
+    </div>
+</div>
+<!-- ==================== 亲密徽章子页结束 ==================== -->
 
 <!-- ==================== 续火花系统弹窗 ==================== -->
 <div class="flame-modal" id="flameModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:3200;display:none;padding:20px;">
