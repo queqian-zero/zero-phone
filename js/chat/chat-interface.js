@@ -329,6 +329,34 @@ class ChatInterface {
             .chat-rel-reject { background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.5);border:1px solid rgba(255,255,255,0.1); }
             /* 自定义面板 */
             .relation-customize-panel { position:fixed;top:0;left:0;right:0;bottom:0;z-index:3650;display:flex;align-items:flex-end;justify-content:center; }
+            /* 邀请卡片选择器 */
+            .relation-card-picker { position:fixed;top:0;left:0;right:0;bottom:0;z-index:3700;display:flex;align-items:flex-end;justify-content:center; }
+            .relation-card-picker-body { position:relative;z-index:1;width:100%;background:#1a1a1a;border-radius:16px 16px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom));max-height:80vh;overflow-y:auto;animation:ctxSlideUp 0.25s ease-out; }
+            .relation-card-preview { margin:10px 0;padding:2px;border-radius:14px;border:2px solid transparent;cursor:pointer;transition:all 0.2s; }
+            .relation-card-preview.selected { border-color:#f0932b; }
+            .relation-card-preview:active { transform:scale(0.98); }
+            .relation-card-preview-inner { border-radius:12px;overflow:hidden;max-height:220px;pointer-events:none; }
+            .relation-card-preview-inner iframe { width:100%;height:200px;border:none;pointer-events:none;border-radius:12px; }
+            .relation-card-label { font-size:12px;color:rgba(255,255,255,0.4);text-align:center;padding:4px 0; }
+            .relation-card-custom-area { margin-top:10px; }
+            .relation-card-custom-area textarea { width:100%;height:100px;padding:10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:12px;font-family:monospace;resize:vertical; }
+            .relation-card-send-btn { width:100%;margin-top:12px;padding:14px;border:none;border-radius:14px;background:linear-gradient(135deg,#f0932b,#e17055);color:#fff;font-size:15px;font-weight:600;cursor:pointer;transition:all 0.2s; }
+            .relation-card-send-btn:active { transform:scale(0.97); }
+            /* 解绑选择面板 */
+            .relation-break-choice { position:fixed;top:0;left:0;right:0;bottom:0;z-index:3700;display:flex;align-items:flex-end;justify-content:center; }
+            .relation-break-choice-body { position:relative;z-index:1;width:100%;background:#1a1a1a;border-radius:16px 16px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom));animation:ctxSlideUp 0.25s ease-out; }
+            .relation-break-option { padding:16px;margin-bottom:10px;background:rgba(255,255,255,0.05);border-radius:14px;border:1px solid rgba(255,255,255,0.06);cursor:pointer;transition:all 0.2s; }
+            .relation-break-option:active { transform:scale(0.98);background:rgba(255,255,255,0.08); }
+            .relation-break-option-title { font-size:15px;font-weight:600;color:#fff;margin-bottom:4px; }
+            .relation-break-option-desc { font-size:12px;color:rgba(255,255,255,0.35); }
+            /* 聊天中的待处理邀请悬浮条 */
+            .chat-relation-pending-bar { position:sticky;top:0;z-index:100;margin:0 12px 8px;padding:10px 14px;background:linear-gradient(135deg,rgba(240,147,43,0.9),rgba(225,112,85,0.9));backdrop-filter:blur(10px);border-radius:12px;display:flex;align-items:center;justify-content:space-between;gap:8px;animation:relBarSlideDown 0.3s ease; }
+            @keyframes relBarSlideDown { from { transform:translateY(-20px);opacity:0; } to { transform:translateY(0);opacity:1; } }
+            .chat-relation-pending-bar-text { font-size:13px;color:#fff;font-weight:500;flex:1; }
+            .chat-relation-pending-bar-btns { display:flex;gap:6px; }
+            .chat-relation-pending-bar-btns button { padding:5px 14px;border-radius:14px;font-size:12px;font-weight:600;cursor:pointer;border:none; }
+            .chat-rpb-accept { background:#fff;color:#e17055; }
+            .chat-rpb-reject { background:rgba(255,255,255,0.2);color:#fff; }
             /* 统一信息面板 */
             .info-panel {
                 position: absolute;
@@ -659,6 +687,9 @@ class ChatInterface {
         }
         
         setTimeout(() => this.scrollToBottom(), 100);
+        
+        // 显示待处理的关系邀请/解绑悬浮条
+        setTimeout(() => this.showPendingRelationBar(), 200);
         
         window.chatInterface = this;
     }
@@ -5626,7 +5657,7 @@ getIntimacyStatusForAI() {
     if (rel.bound) {
         const days = Math.floor((Date.now() - new Date(rel.bound.boundDate).getTime()) / 86400000);
         desc += `\n- 关系绑定：已绑定「${rel.bound.name}」(${days}天)`;
-        desc += `\n  你可以用 [RELATION_BREAK] 解除绑定（慎用）`;
+        desc += `\n  你可以用 [RELATION_BREAK] 单方面解除绑定，或用 [RELATION_BREAK_REQUEST] 申请解绑（需user同意）`;
     } else {
         const allTypes = this.getAllRelationTypes ? this.getAllRelationTypes() : [];
         const typeNames = allTypes.map(t => t.name).join('、');
@@ -5636,9 +5667,16 @@ getIntimacyStatusForAI() {
     }
     if (rel.pendingInvite) {
         const from = rel.pendingInvite.from === 'user' ? 'user' : '你';
-        desc += `\n  ⏳ 当前有一个待处理的邀请（${from}发起的「${rel.pendingInvite.relName}」），等待回应中`;
+        desc += `\n  ⏳ 当前有一个待处理的绑定邀请（${from}发起的「${rel.pendingInvite.relName}」），等待回应中`;
         if (rel.pendingInvite.from === 'user') {
             desc += `\n  你可以用 [RELATION_ACCEPT] 接受或 [RELATION_REJECT] 拒绝`;
+        }
+    }
+    if (rel.pendingBreak) {
+        const from = rel.pendingBreak.from === 'user' ? 'user' : '你';
+        desc += `\n  ⏳ 当前有一个待处理的解绑请求（${from}发起的，解除「${rel.pendingBreak.relName}」）`;
+        if (rel.pendingBreak.from === 'user') {
+            desc += `\n  你可以用 [RELATION_BREAK_ACCEPT] 同意解绑或 [RELATION_BREAK_REJECT] 拒绝解绑`;
         }
     }
     
@@ -7615,9 +7653,29 @@ refreshRelationBindPage() {
         const acceptBtn = document.getElementById('relationAcceptBtn');
         const rejectBtn = document.getElementById('relationRejectBtn');
         if (rel.pendingInvite.from === 'ai') {
-            if (acceptBtn) acceptBtn.style.display = '';
-            if (rejectBtn) rejectBtn.style.display = '';
+            if (acceptBtn) { acceptBtn.style.display = ''; acceptBtn.textContent = '接受'; }
+            if (rejectBtn) { rejectBtn.style.display = ''; rejectBtn.textContent = '拒绝'; }
         } else {
+            if (acceptBtn) acceptBtn.style.display = 'none';
+            if (rejectBtn) rejectBtn.style.display = 'none';
+        }
+    } else if (rel.pendingBreak) {
+        // 待处理的解绑请求
+        if (pendingSection) pendingSection.style.display = 'block';
+        const fromEl = document.getElementById('relationPendingFrom');
+        const nameEl = document.getElementById('relationPendingName');
+        if (rel.pendingBreak.from === 'ai') {
+            if (fromEl) fromEl.textContent = `${friendName} 申请解除关系绑定`;
+            if (nameEl) nameEl.textContent = `解除「${rel.pendingBreak.relName}」`;
+            const acceptBtn = document.getElementById('relationAcceptBtn');
+            const rejectBtn = document.getElementById('relationRejectBtn');
+            if (acceptBtn) { acceptBtn.style.display = ''; acceptBtn.textContent = '同意解绑'; acceptBtn.onclick = () => window.chatInterface.acceptBreakRelation(); }
+            if (rejectBtn) { rejectBtn.style.display = ''; rejectBtn.textContent = '拒绝'; rejectBtn.onclick = () => window.chatInterface.rejectBreakRelation(); }
+        } else {
+            if (fromEl) fromEl.textContent = `你申请解除关系，等待 ${friendName} 回应中...`;
+            if (nameEl) nameEl.textContent = `解除「${rel.pendingBreak.relName}」`;
+            const acceptBtn = document.getElementById('relationAcceptBtn');
+            const rejectBtn = document.getElementById('relationRejectBtn');
             if (acceptBtn) acceptBtn.style.display = 'none';
             if (rejectBtn) rejectBtn.style.display = 'none';
         }
@@ -7659,7 +7717,7 @@ renderRelationTypeGrid() {
     if (btn) { btn.disabled = true; btn.classList.remove('active'); }
 }
 
-// 发起绑定邀请（user侧）
+// 发起绑定邀请（user侧）—— 弹出卡片选择器
 sendRelationInvite(relId) {
     const data = this.storage.getIntimacyData(this.currentFriendCode);
     const rel = data.relationship || {};
@@ -7677,12 +7735,136 @@ sendRelationInvite(relId) {
     const typeDef = allTypes.find(t => t.id === relId);
     if (!typeDef) { this.showCssToast('找不到该关系类型'); return; }
     
+    this._inviteRelType = typeDef;
+    this.showInviteCardPicker(typeDef);
+}
+
+// 内置邀请卡HTML模板
+_getInviteCardTemplates(typeDef, friendName) {
+    const relName = typeDef.name;
+    const iconSrc = typeDef.iconType === 'image' ? typeDef.icon : '';
+    const iconEmoji = typeDef.iconType !== 'image' ? (typeDef.icon || '💍') : '';
+    const dateStr = new Date().toLocaleDateString('zh-CN', { year:'numeric', month:'long', day:'numeric' });
+    
+    const card1 = `<div style="width:100%;max-width:320px;margin:0 auto;padding:28px 20px;background:linear-gradient(145deg,#1a1a2e,#16213e,#0f3460);border-radius:20px;text-align:center;font-family:system-ui,-apple-system,sans-serif;color:#fff;box-shadow:0 8px 32px rgba(0,0,0,0.3);">
+  <div style="font-size:12px;color:rgba(255,255,255,0.3);letter-spacing:6px;margin-bottom:16px;">INVITATION</div>
+  <div style="font-size:48px;margin-bottom:12px;">${iconSrc ? `<img src="${iconSrc}" style="width:64px;height:64px;object-fit:contain;">` : iconEmoji}</div>
+  <div style="font-size:22px;font-weight:800;margin-bottom:6px;background:linear-gradient(90deg,#f0932b,#fdcb6e);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">「${relName}」</div>
+  <div style="font-size:13px;color:rgba(255,255,255,0.5);margin-bottom:20px;">向你发起了关系绑定邀请</div>
+  <div style="width:60px;height:1px;background:linear-gradient(90deg,transparent,rgba(240,147,43,0.5),transparent);margin:0 auto 16px;"></div>
+  <div style="font-size:11px;color:rgba(255,255,255,0.25);">${dateStr}</div>
+</div>`;
+
+    const card2 = `<div style="width:100%;max-width:320px;margin:0 auto;padding:0;border-radius:16px;overflow:hidden;font-family:system-ui,-apple-system,sans-serif;box-shadow:0 4px 24px rgba(0,0,0,0.2);">
+  <div style="background:linear-gradient(135deg,#f0932b,#e17055);padding:24px 20px;text-align:center;">
+    <div style="font-size:48px;margin-bottom:8px;">${iconSrc ? `<img src="${iconSrc}" style="width:56px;height:56px;object-fit:contain;">` : iconEmoji}</div>
+    <div style="font-size:20px;font-weight:700;color:#fff;">关系绑定邀请</div>
+  </div>
+  <div style="background:#fff;padding:20px;text-align:center;">
+    <div style="font-size:16px;color:#333;font-weight:600;margin-bottom:8px;">想和你成为「${relName}」</div>
+    <div style="font-size:12px;color:#999;margin-bottom:14px;">${dateStr}</div>
+    <div style="display:inline-block;padding:4px 16px;border-radius:20px;background:rgba(240,147,43,0.1);color:#f0932b;font-size:12px;font-weight:600;">等待回应中 ✦</div>
+  </div>
+</div>`;
+
+    return [
+        { label: '深空邀请', html: card1 },
+        { label: '明信片风格', html: card2 }
+    ];
+}
+
+showInviteCardPicker(typeDef) {
+    const friend = this.currentFriend || this.storage.getFriendByCode(this.currentFriendCode);
+    const friendName = friend?.nickname || friend?.name || 'TA';
+    const templates = this._getInviteCardTemplates(typeDef, friendName);
+    
+    // 移除旧的
+    document.getElementById('relationCardPicker')?.remove();
+    
+    const picker = document.createElement('div');
+    picker.className = 'relation-card-picker';
+    picker.id = 'relationCardPicker';
+    picker.innerHTML = `
+        <div style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);" id="relationCardPickerOverlay"></div>
+        <div class="relation-card-picker-body">
+            <div style="text-align:center;font-size:16px;font-weight:600;color:#fff;margin-bottom:4px;">选择邀请卡片</div>
+            <div style="text-align:center;font-size:12px;color:rgba(255,255,255,0.3);margin-bottom:14px;">发送一张邀请卡给 ${this.escapeHtml(friendName)}</div>
+            
+            ${templates.map((t, i) => `
+                <div class="relation-card-preview${i === 0 ? ' selected' : ''}" data-card-idx="${i}">
+                    <div class="relation-card-label">${t.label}</div>
+                    <div class="relation-card-preview-inner">
+                        <iframe srcdoc="${this.escapeHtml(t.html).replace(/"/g, '&quot;')}"></iframe>
+                    </div>
+                </div>
+            `).join('')}
+            
+            <div class="relation-card-preview" data-card-idx="custom">
+                <div class="relation-card-label">✎ 自定义 HTML 卡片</div>
+                <div class="relation-card-custom-area" id="relationCardCustomArea" style="display:none;">
+                    <textarea id="relationCardCustomHtml" placeholder="在这里写你的 HTML 邀请卡代码..."></textarea>
+                </div>
+            </div>
+            
+            <button class="relation-card-send-btn" id="relationCardSendBtn">发送邀请卡 💌</button>
+            <button style="width:100%;margin-top:8px;padding:12px;border:none;border-radius:12px;background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.4);font-size:13px;cursor:pointer;" id="relationCardCancelBtn">取消</button>
+        </div>
+    `;
+    document.body.appendChild(picker);
+    
+    this._selectedCardIdx = 0;
+    this._inviteCardTemplates = templates;
+    
+    // 选择卡片
+    picker.querySelectorAll('.relation-card-preview').forEach(card => {
+        card.addEventListener('click', () => {
+            picker.querySelectorAll('.relation-card-preview').forEach(c => c.classList.remove('selected'));
+            card.classList.add('selected');
+            const idx = card.getAttribute('data-card-idx');
+            if (idx === 'custom') {
+                this._selectedCardIdx = 'custom';
+                document.getElementById('relationCardCustomArea').style.display = 'block';
+            } else {
+                this._selectedCardIdx = parseInt(idx);
+                document.getElementById('relationCardCustomArea').style.display = 'none';
+            }
+        });
+    });
+    
+    // 发送
+    document.getElementById('relationCardSendBtn').addEventListener('click', () => {
+        this.confirmSendInviteCard();
+    });
+    
+    // 取消
+    document.getElementById('relationCardCancelBtn').addEventListener('click', () => picker.remove());
+    document.getElementById('relationCardPickerOverlay').addEventListener('click', () => picker.remove());
+}
+
+confirmSendInviteCard() {
+    const typeDef = this._inviteRelType;
+    if (!typeDef) return;
+    
+    // 获取选中的卡片HTML
+    let cardHtml = '';
+    if (this._selectedCardIdx === 'custom') {
+        cardHtml = document.getElementById('relationCardCustomHtml')?.value?.trim();
+        if (!cardHtml) { this.showCssToast('请输入自定义卡片HTML'); return; }
+    } else {
+        cardHtml = this._inviteCardTemplates[this._selectedCardIdx]?.html || '';
+    }
+    
+    // 写入邀请状态
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    const rel = data.relationship || {};
+    
     rel.pendingInvite = {
         from: 'user',
         relId: typeDef.id,
         relName: typeDef.name,
         relIcon: typeDef.icon,
         relIconType: typeDef.iconType,
+        cardHtml: cardHtml,
         timestamp: new Date().toISOString()
     };
     data.relationship = rel;
@@ -7692,8 +7874,18 @@ sendRelationInvite(relId) {
     data._pendingNotifications.push(`user向你发起了「${typeDef.name}」关系绑定邀请！你可以用 [RELATION_ACCEPT] 接受或 [RELATION_REJECT] 拒绝。`);
     
     this.storage.saveIntimacyData(this.currentFriendCode, data);
-    this.showCssToast(`已向TA发起「${typeDef.name}」绑定邀请`);
+    
+    // 发送卡片到聊天（作为用户消息用 RENDER_HTML）
+    const msgText = `[RENDER_HTML]${cardHtml}[/RENDER_HTML]`;
+    this.addMessage({ type: 'user', text: msgText, timestamp: new Date().toISOString() });
+    this.storage.addMessage(this.currentFriendCode, { type: 'user', text: msgText, timestamp: new Date().toISOString() });
+    
     this.showCssSystemMessage(`💍 你向TA发起了「${typeDef.name}」关系绑定邀请`);
+    this.scrollToBottom();
+    
+    // 关闭选择器
+    document.getElementById('relationCardPicker')?.remove();
+    
     this.refreshRelationBindPage();
     this.refreshIntimacyPage();
 }
@@ -7718,12 +7910,15 @@ acceptRelationInvite() {
         wearing: true
     };
     rel.pendingInvite = null;
+    rel.pendingBreak = null;
     data.relationship = rel;
     
     // 通知AI
     if (!data._pendingNotifications) data._pendingNotifications = [];
     data._pendingNotifications.push(`user接受了「${invite.relName}」关系绑定！你们现在是「${invite.relName}」了！`);
     
+    // 亲密值奖励
+    data.value = (data.value || 0) + 20;
     this.storage.saveIntimacyData(this.currentFriendCode, data);
     
     // 星迹档案
@@ -7733,12 +7928,14 @@ acceptRelationInvite() {
         icon: '💍'
     });
     
-    // 亲密值奖励
-    data.value = (data.value || 0) + 20;
-    this.storage.saveIntimacyData(this.currentFriendCode, data);
-    
     // 绑定仪式
     this.showRelationCeremony(rel.bound);
+    
+    // 移除悬浮条 & 聊天中的邀请卡按钮
+    document.getElementById('chatRelationPendingBar')?.remove();
+    document.querySelectorAll('.chat-relation-invite').forEach(el => {
+        el.innerHTML = `<div style="text-align:center;padding:8px;color:rgba(255,255,255,0.4);font-size:12px;">✅ 已接受绑定</div>`;
+    });
     
     this.showCssSystemMessage(`💍 你们正式绑定为「${invite.relName}」！亲密值 +20`);
     this.updateBadgePanel();
@@ -7761,40 +7958,122 @@ rejectRelationInvite() {
     data.relationship = rel;
     this.storage.saveIntimacyData(this.currentFriendCode, data);
     
+    // 移除悬浮条 & 聊天中的邀请卡按钮
+    document.getElementById('chatRelationPendingBar')?.remove();
+    document.querySelectorAll('.chat-relation-invite').forEach(el => {
+        el.innerHTML = `<div style="text-align:center;padding:8px;color:rgba(255,255,255,0.3);font-size:12px;">已拒绝</div>`;
+    });
+    
     this.showCssToast('已拒绝邀请');
     this.showCssSystemMessage(`已拒绝「${invite.relName}」绑定邀请`);
     this.refreshRelationBindPage();
     this.refreshIntimacyPage();
 }
 
-// 解除绑定
+// 解除绑定 —— 弹出选择面板
 breakRelation() {
     const data = this.storage.getIntimacyData(this.currentFriendCode);
     const rel = data.relationship || {};
+    if (!rel.bound) return;
     
+    // 如果已有待审批的解绑请求
+    if (rel.pendingBreak) {
+        this.showCssToast('已有待处理的解绑请求');
+        return;
+    }
+    
+    const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
+    
+    // 移除旧的
+    document.getElementById('relationBreakChoice')?.remove();
+    
+    const panel = document.createElement('div');
+    panel.className = 'relation-break-choice';
+    panel.id = 'relationBreakChoice';
+    panel.innerHTML = `
+        <div style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);" id="relationBreakChoiceOverlay"></div>
+        <div class="relation-break-choice-body">
+            <div style="text-align:center;font-size:16px;font-weight:600;color:#fff;margin-bottom:16px;">解除「${this.escapeHtml(rel.bound.name)}」关系</div>
+            
+            <div class="relation-break-option" id="breakOptionUnilateral">
+                <div class="relation-break-option-title">💔 单方面解绑</div>
+                <div class="relation-break-option-desc">立即解除关系，无需对方同意</div>
+            </div>
+            
+            <div class="relation-break-option" id="breakOptionMutual">
+                <div class="relation-break-option-title">📨 申请解绑</div>
+                <div class="relation-break-option-desc">向 ${this.escapeHtml(friendName)} 发送解绑请求，需要对方同意才能解除</div>
+            </div>
+            
+            <button style="width:100%;margin-top:8px;padding:12px;border:none;border-radius:12px;background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.4);font-size:13px;cursor:pointer;" id="breakOptionCancel">取消</button>
+        </div>
+    `;
+    document.body.appendChild(panel);
+    
+    document.getElementById('breakOptionCancel').addEventListener('click', () => panel.remove());
+    document.getElementById('relationBreakChoiceOverlay').addEventListener('click', () => panel.remove());
+    
+    // 单方面解绑
+    document.getElementById('breakOptionUnilateral').addEventListener('click', () => {
+        panel.remove();
+        this.doBreakRelation('unilateral');
+    });
+    
+    // 申请解绑
+    document.getElementById('breakOptionMutual').addEventListener('click', () => {
+        panel.remove();
+        this.doBreakRelation('mutual');
+    });
+}
+
+doBreakRelation(mode) {
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    const rel = data.relationship || {};
     if (!rel.bound) return;
     
     const oldName = rel.bound.name;
+    const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
     
-    if (!data._pendingNotifications) data._pendingNotifications = [];
-    data._pendingNotifications.push(`user解除了「${oldName}」关系绑定。`);
-    
-    // 星迹档案
-    this.storage.addTimelineEntry(this.currentFriendCode, {
-        type: 'relation_break',
-        title: `解除了「${oldName}」关系`,
-        icon: '💔'
-    });
-    
-    rel.bound = null;
-    data.relationship = rel;
-    this.storage.saveIntimacyData(this.currentFriendCode, data);
-    
-    this.showCssToast(`已解除「${oldName}」关系`);
-    this.showCssSystemMessage(`💔 已解除「${oldName}」关系绑定`);
-    this.updateBadgePanel();
-    this.refreshRelationBindPage();
-    this.refreshIntimacyPage();
+    if (mode === 'unilateral') {
+        // 立即解绑
+        if (!data._pendingNotifications) data._pendingNotifications = [];
+        data._pendingNotifications.push(`user单方面解除了「${oldName}」关系绑定。`);
+        
+        this.storage.addTimelineEntry(this.currentFriendCode, {
+            type: 'relation_break',
+            title: `解除了「${oldName}」关系`,
+            icon: '💔'
+        });
+        
+        rel.bound = null;
+        rel.pendingInvite = null;
+        rel.pendingBreak = null;
+        data.relationship = rel;
+        this.storage.saveIntimacyData(this.currentFriendCode, data);
+        
+        this.showCssToast(`已解除「${oldName}」关系`);
+        this.showCssSystemMessage(`💔 已解除「${oldName}」关系绑定`);
+        this.updateBadgePanel();
+        this.refreshRelationBindPage();
+        this.refreshIntimacyPage();
+    } else {
+        // 申请解绑（等待对方同意）
+        rel.pendingBreak = {
+            from: 'user',
+            relName: oldName,
+            timestamp: new Date().toISOString()
+        };
+        data.relationship = rel;
+        
+        if (!data._pendingNotifications) data._pendingNotifications = [];
+        data._pendingNotifications.push(`user申请解除「${oldName}」关系绑定，请你决定是否同意。你可以用 [RELATION_BREAK_ACCEPT] 同意解绑或 [RELATION_BREAK_REJECT] 拒绝解绑。`);
+        
+        this.storage.saveIntimacyData(this.currentFriendCode, data);
+        
+        this.showCssToast(`已发送解绑请求，等待 ${friendName} 回应`);
+        this.showCssSystemMessage(`📨 你向 ${friendName} 申请解除「${oldName}」关系，等待回应中...`);
+        this.refreshRelationBindPage();
+    }
 }
 
 // 绑定仪式动画
@@ -7925,9 +8204,7 @@ bindRelationBindEvents() {
     
     // 解除绑定
     document.getElementById('relationBreakBtn')?.addEventListener('click', () => {
-        if (confirm('确定要解除关系绑定吗？')) {
-            this.breakRelation();
-        }
+        this.breakRelation();
     });
     
     // 佩戴开关
@@ -8084,51 +8361,30 @@ processRelationBindCommands(text) {
         const rel = data.relationship || {};
         
         if (!rel.bound && !rel.pendingInvite) {
-            // 查找匹配的关系类型
             const allTypes = this.getAllRelationTypes();
             let typeDef = allTypes.find(t => t.name === relName);
-            
-            // 如果找不到精确匹配，模糊搜索
-            if (!typeDef) {
-                typeDef = allTypes.find(t => t.name.includes(relName) || relName.includes(t.name));
-            }
+            if (!typeDef) typeDef = allTypes.find(t => t.name.includes(relName) || relName.includes(t.name));
             
             if (typeDef) {
                 rel.pendingInvite = {
-                    from: 'ai',
-                    relId: typeDef.id,
-                    relName: typeDef.name,
-                    relIcon: typeDef.icon,
-                    relIconType: typeDef.iconType,
+                    from: 'ai', relId: typeDef.id, relName: typeDef.name,
+                    relIcon: typeDef.icon, relIconType: typeDef.iconType,
                     timestamp: new Date().toISOString()
                 };
-                data.relationship = rel;
-                this.storage.saveIntimacyData(this.currentFriendCode, data);
-                
-                this.showCssSystemMessage(`💍 ${friendName} 向你发起了「${typeDef.name}」绑定邀请！`);
-                this.showCssToast(`${friendName} 想和你绑定为「${typeDef.name}」`);
-                
-                // 在聊天中插入邀请卡
                 this._pendingRelInviteCard = typeDef;
             } else {
-                // 自动创建临时关系类型
                 rel.pendingInvite = {
-                    from: 'ai',
-                    relId: 'temp_' + Date.now(),
-                    relName: relName,
-                    relIcon: '💍',
-                    relIconType: 'emoji',
+                    from: 'ai', relId: 'temp_' + Date.now(), relName: relName,
+                    relIcon: '💍', relIconType: 'emoji',
                     timestamp: new Date().toISOString()
                 };
-                data.relationship = rel;
-                this.storage.saveIntimacyData(this.currentFriendCode, data);
-                
-                this.showCssSystemMessage(`💍 ${friendName} 向你发起了「${relName}」绑定邀请！`);
-                this.showCssToast(`${friendName} 想和你绑定为「${relName}」`);
-                
                 this._pendingRelInviteCard = { id: rel.pendingInvite.relId, name: relName, icon: '💍', iconType: 'emoji' };
             }
+            data.relationship = rel;
+            this.storage.saveIntimacyData(this.currentFriendCode, data);
             
+            this.showCssSystemMessage(`💍 ${friendName} 向你发起了「${rel.pendingInvite.relName}」绑定邀请！`);
+            this.showCssToast(`${friendName} 想和你绑定为「${rel.pendingInvite.relName}」`);
             this.refreshRelationBindPage();
             this.refreshIntimacyPage();
         }
@@ -8136,7 +8392,7 @@ processRelationBindCommands(text) {
     
     // [RELATION_ACCEPT] - AI接受user的邀请
     if (text.includes('[RELATION_ACCEPT]')) {
-        text = text.replace('[RELATION_ACCEPT]', '');
+        text = text.replace(/\[RELATION_ACCEPT\]/g, '');
         
         const data = this.storage.getIntimacyData(this.currentFriendCode);
         const rel = data.relationship || {};
@@ -8147,25 +8403,19 @@ processRelationBindCommands(text) {
             const typeDef = allTypes.find(t => t.id === invite.relId) || {};
             
             rel.bound = {
-                id: invite.relId,
-                name: invite.relName,
+                id: invite.relId, name: invite.relName,
                 icon: invite.relIcon || typeDef.icon,
                 iconType: invite.relIconType || typeDef.iconType,
-                boundDate: new Date().toISOString(),
-                wearing: true
+                boundDate: new Date().toISOString(), wearing: true
             };
             rel.pendingInvite = null;
+            rel.pendingBreak = null;
             data.relationship = rel;
-            
-            // 亲密值奖励
             data.value = (data.value || 0) + 20;
             this.storage.saveIntimacyData(this.currentFriendCode, data);
             
-            // 星迹档案
             this.storage.addTimelineEntry(this.currentFriendCode, {
-                type: 'relation_bind',
-                title: `绑定了「${invite.relName}」关系`,
-                icon: '💍'
+                type: 'relation_bind', title: `绑定了「${invite.relName}」关系`, icon: '💍'
             });
             
             this.showRelationCeremony(rel.bound);
@@ -8179,13 +8429,12 @@ processRelationBindCommands(text) {
     
     // [RELATION_REJECT] - AI拒绝user的邀请
     if (text.includes('[RELATION_REJECT]')) {
-        text = text.replace('[RELATION_REJECT]', '');
+        text = text.replace(/\[RELATION_REJECT\]/g, '');
         
         const data = this.storage.getIntimacyData(this.currentFriendCode);
         const rel = data.relationship || {};
-        const invite = rel.pendingInvite;
         
-        if (invite && invite.from === 'user') {
+        if (rel.pendingInvite && rel.pendingInvite.from === 'user') {
             rel.pendingInvite = null;
             data.relationship = rel;
             this.storage.saveIntimacyData(this.currentFriendCode, data);
@@ -8197,23 +8446,22 @@ processRelationBindCommands(text) {
         }
     }
     
-    // [RELATION_BREAK] - AI解除绑定
+    // [RELATION_BREAK] - AI单方面解除绑定
     if (text.includes('[RELATION_BREAK]')) {
-        text = text.replace('[RELATION_BREAK]', '');
+        text = text.replace(/\[RELATION_BREAK\]/g, '');
         
         const data = this.storage.getIntimacyData(this.currentFriendCode);
         const rel = data.relationship || {};
         
         if (rel.bound) {
             const oldName = rel.bound.name;
-            
             this.storage.addTimelineEntry(this.currentFriendCode, {
-                type: 'relation_break',
-                title: `${friendName} 解除了「${oldName}」关系`,
-                icon: '💔'
+                type: 'relation_break', title: `${friendName} 解除了「${oldName}」关系`, icon: '💔'
             });
             
             rel.bound = null;
+            rel.pendingInvite = null;
+            rel.pendingBreak = null;
             data.relationship = rel;
             this.storage.saveIntimacyData(this.currentFriendCode, data);
             
@@ -8222,6 +8470,75 @@ processRelationBindCommands(text) {
             this.updateBadgePanel();
             this.refreshRelationBindPage();
             this.refreshIntimacyPage();
+        }
+    }
+    
+    // [RELATION_BREAK_REQUEST] - AI申请解绑（需user同意）
+    const breakReqMatch = text.match(/\[RELATION_BREAK_REQUEST\]/);
+    if (breakReqMatch) {
+        text = text.replace(/\[RELATION_BREAK_REQUEST\]/g, '');
+        
+        const data = this.storage.getIntimacyData(this.currentFriendCode);
+        const rel = data.relationship || {};
+        
+        if (rel.bound && !rel.pendingBreak) {
+            rel.pendingBreak = {
+                from: 'ai',
+                relName: rel.bound.name,
+                timestamp: new Date().toISOString()
+            };
+            data.relationship = rel;
+            this.storage.saveIntimacyData(this.currentFriendCode, data);
+            
+            this.showCssSystemMessage(`📨 ${friendName} 申请解除「${rel.bound.name}」关系，等待你的回应...`);
+            this.showCssToast(`${friendName} 想解除关系`);
+            this.showPendingRelationBar();
+            this.refreshRelationBindPage();
+        }
+    }
+    
+    // [RELATION_BREAK_ACCEPT] - AI同意user的解绑请求
+    if (text.includes('[RELATION_BREAK_ACCEPT]')) {
+        text = text.replace(/\[RELATION_BREAK_ACCEPT\]/g, '');
+        
+        const data = this.storage.getIntimacyData(this.currentFriendCode);
+        const rel = data.relationship || {};
+        
+        if (rel.pendingBreak && rel.pendingBreak.from === 'user' && rel.bound) {
+            const oldName = rel.bound.name;
+            this.storage.addTimelineEntry(this.currentFriendCode, {
+                type: 'relation_break', title: `解除了「${oldName}」关系（双方同意）`, icon: '💔'
+            });
+            
+            rel.bound = null;
+            rel.pendingInvite = null;
+            rel.pendingBreak = null;
+            data.relationship = rel;
+            this.storage.saveIntimacyData(this.currentFriendCode, data);
+            
+            this.showCssSystemMessage(`💔 ${friendName} 同意了解绑请求，「${oldName}」关系已解除`);
+            this.showCssToast('关系已解除');
+            this.updateBadgePanel();
+            this.refreshRelationBindPage();
+            this.refreshIntimacyPage();
+        }
+    }
+    
+    // [RELATION_BREAK_REJECT] - AI拒绝user的解绑请求
+    if (text.includes('[RELATION_BREAK_REJECT]')) {
+        text = text.replace(/\[RELATION_BREAK_REJECT\]/g, '');
+        
+        const data = this.storage.getIntimacyData(this.currentFriendCode);
+        const rel = data.relationship || {};
+        
+        if (rel.pendingBreak && rel.pendingBreak.from === 'user') {
+            rel.pendingBreak = null;
+            data.relationship = rel;
+            this.storage.saveIntimacyData(this.currentFriendCode, data);
+            
+            this.showCssSystemMessage(`${friendName} 拒绝了解绑请求，关系继续保持`);
+            this.showCssToast(`${friendName} 不同意解绑`);
+            this.refreshRelationBindPage();
         }
     }
     
@@ -8251,8 +8568,8 @@ renderRelationInviteInChat() {
         </div>
     `;
     
-    // 附加到最后一条AI消息
-    const messages = document.querySelectorAll('.message-row.ai');
+    // 附加到最后一条AI消息（修正选择器）
+    const messages = document.querySelectorAll('.message.message-ai');
     const lastMsg = messages[messages.length - 1];
     if (lastMsg) {
         const bubble = lastMsg.querySelector('.message-bubble');
@@ -8260,6 +8577,106 @@ renderRelationInviteInChat() {
             bubble.insertAdjacentHTML('beforeend', inviteHtml);
         }
     }
+    
+    // 同时在聊天顶部显示悬浮条
+    this.showPendingRelationBar();
+}
+
+// 聊天界面顶部悬浮邀请/解绑请求条
+showPendingRelationBar() {
+    // 移除旧的
+    document.getElementById('chatRelationPendingBar')?.remove();
+    
+    if (!this.currentFriendCode) return;
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    const rel = data.relationship || {};
+    const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
+    
+    // AI发起的绑定邀请 → user可以接受/拒绝
+    if (rel.pendingInvite && rel.pendingInvite.from === 'ai') {
+        const bar = document.createElement('div');
+        bar.className = 'chat-relation-pending-bar';
+        bar.id = 'chatRelationPendingBar';
+        bar.innerHTML = `
+            <span class="chat-relation-pending-bar-text">💍 ${friendName} 邀请你绑定为「${this.escapeHtml(rel.pendingInvite.relName)}」</span>
+            <div class="chat-relation-pending-bar-btns">
+                <button class="chat-rpb-accept" onclick="window.chatInterface.acceptRelationInvite()">接受</button>
+                <button class="chat-rpb-reject" onclick="window.chatInterface.rejectRelationInvite()">拒绝</button>
+            </div>
+        `;
+        const msgContainer = document.getElementById('messagesContainer');
+        if (msgContainer) {
+            msgContainer.insertBefore(bar, msgContainer.firstChild);
+        }
+        return;
+    }
+    
+    // AI发起的解绑请求 → user可以同意/拒绝
+    if (rel.pendingBreak && rel.pendingBreak.from === 'ai') {
+        const bar = document.createElement('div');
+        bar.className = 'chat-relation-pending-bar';
+        bar.id = 'chatRelationPendingBar';
+        bar.style.background = 'linear-gradient(135deg,rgba(255,100,100,0.9),rgba(200,60,60,0.9))';
+        bar.innerHTML = `
+            <span class="chat-relation-pending-bar-text">💔 ${friendName} 申请解除「${this.escapeHtml(rel.pendingBreak.relName)}」关系</span>
+            <div class="chat-relation-pending-bar-btns">
+                <button class="chat-rpb-accept" onclick="window.chatInterface.acceptBreakRelation()">同意</button>
+                <button class="chat-rpb-reject" onclick="window.chatInterface.rejectBreakRelation()">拒绝</button>
+            </div>
+        `;
+        const msgContainer = document.getElementById('messagesContainer');
+        if (msgContainer) {
+            msgContainer.insertBefore(bar, msgContainer.firstChild);
+        }
+    }
+}
+
+// user同意AI的解绑请求
+acceptBreakRelation() {
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    const rel = data.relationship || {};
+    if (!rel.pendingBreak || !rel.bound) return;
+    
+    const oldName = rel.bound.name;
+    
+    this.storage.addTimelineEntry(this.currentFriendCode, {
+        type: 'relation_break',
+        title: `解除了「${oldName}」关系（双方同意）`,
+        icon: '💔'
+    });
+    
+    if (!data._pendingNotifications) data._pendingNotifications = [];
+    data._pendingNotifications.push(`user同意了解除「${oldName}」关系绑定的请求。`);
+    
+    rel.bound = null;
+    rel.pendingInvite = null;
+    rel.pendingBreak = null;
+    data.relationship = rel;
+    this.storage.saveIntimacyData(this.currentFriendCode, data);
+    
+    document.getElementById('chatRelationPendingBar')?.remove();
+    this.showCssToast(`已同意解除「${oldName}」关系`);
+    this.showCssSystemMessage(`💔 双方同意解除「${oldName}」关系绑定`);
+    this.updateBadgePanel();
+    this.refreshRelationBindPage();
+    this.refreshIntimacyPage();
+}
+
+// user拒绝AI的解绑请求
+rejectBreakRelation() {
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    const rel = data.relationship || {};
+    
+    if (!data._pendingNotifications) data._pendingNotifications = [];
+    data._pendingNotifications.push(`user拒绝了解除「${rel.pendingBreak?.relName || ''}」关系的请求。`);
+    
+    rel.pendingBreak = null;
+    data.relationship = rel;
+    this.storage.saveIntimacyData(this.currentFriendCode, data);
+    
+    document.getElementById('chatRelationPendingBar')?.remove();
+    this.showCssToast('已拒绝解绑请求');
+    this.showCssSystemMessage(`你拒绝了解绑请求，关系继续保持`);
 }
 
 // 获取当前关系标识（用于聊天界面显示）
