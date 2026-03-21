@@ -373,6 +373,23 @@
     • 但会消耗更多Token，响应可能更慢<br>
     • 推荐设置：10-30条
 </div>
+
+<!-- ========== AI消息显示模式 ========== -->
+<div class="setting-item">
+    <div class="setting-info">
+        <span class="setting-label">AI消息显示模式</span>
+        <span class="setting-desc">整段=一大块气泡 | 逐条=按段落拆开</span>
+    </div>
+    <select id="settingAiMsgSplitMode" style="padding:6px 10px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);border-radius:6px;color:rgba(255,255,255,0.9);font-size:13px;">
+        <option value="whole">整段</option>
+        <option value="split">逐条</option>
+    </select>
+</div>
+<div style="padding: 10px 16px; margin: 0 16px 16px 16px; background: rgba(139,0,0,0.1); border-left: 3px solid rgba(139,0,0,0.5); border-radius: 4px; font-size: 12px; color: rgba(255,255,255,0.7); line-height: 1.6;">
+    💡 提示：<br>
+    • 无论哪种模式，AI都可以用 [MSG_SPLIT] 标签自己决定在哪里断开<br>
+    • 「逐条」模式下，没有标签时自动按段落拆
+</div>
 <!-- ========== 新增结束 ========== -->
 
 <!-- 记忆模块入口 -->
