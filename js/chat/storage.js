@@ -321,8 +321,9 @@ class StorageManager {
                 bgImage: ''
             },
             badges: {                    // 亲密徽章
-                unlocked: [],            // 已解锁 [{id, name, icon, unlockedDate:''}]
-                progress: {},            // 解锁进度 {badgeId: {current:0, target:0, ...}}
+                unlocked: [],            // 已解锁 [{id, name, icon, iconType, unlockedDate:'', permanent:true}]
+                wearing: [],             // 佩戴中的ID列表（多个）
+                progress: {},            // 解锁进度 {badgeId: {...}}
                 bgImage: ''
             },
             exchange: {                  // 跨次元兑换所

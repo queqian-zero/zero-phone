@@ -357,6 +357,53 @@ class ChatInterface {
             .chat-relation-pending-bar-btns button { padding:5px 14px;border-radius:14px;font-size:12px;font-weight:600;cursor:pointer;border:none; }
             .chat-rpb-accept { background:#fff;color:#e17055; }
             .chat-rpb-reject { background:rgba(255,255,255,0.2);color:#fff; }
+            /* ====== 亲密徽章页 ====== */
+            .badge-page { position:fixed;top:0;left:0;right:0;bottom:0;z-index:3550;overflow-y:auto;-webkit-overflow-scrolling:touch; }
+            .badge-section { padding:0 20px;margin-bottom:20px; }
+            .badge-section-title { font-size:14px;font-weight:600;color:rgba(255,255,255,0.75);margin-bottom:12px; }
+            .badge-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:10px; }
+            .badge-grid-item { padding:14px 6px;background:rgba(255,255,255,0.05);border-radius:14px;border:1px solid rgba(255,255,255,0.06);text-align:center;cursor:pointer;transition:all 0.2s;position:relative; }
+            .badge-grid-item:active { transform:scale(0.96); }
+            .badge-grid-item.unlocked { border-color:rgba(240,147,43,0.15);background:rgba(240,147,43,0.04); }
+            .badge-grid-item.wearing-active { border-color:rgba(240,147,43,0.4);box-shadow:0 0 12px rgba(240,147,43,0.1); }
+            .badge-grid-icon { width:56px;height:56px;margin:0 auto 6px;display:flex;align-items:center;justify-content:center; }
+            .badge-grid-icon img { width:56px;height:56px;object-fit:contain;transition:filter 0.3s; }
+            .badge-grid-item:not(.unlocked) .badge-grid-icon img { filter:grayscale(1) brightness(0.4); }
+            .badge-grid-item:not(.unlocked) .badge-grid-icon { opacity:0.4; }
+            .badge-grid-name { font-size:11px;color:#fff;font-weight:600;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+            .badge-grid-item:not(.unlocked) .badge-grid-name { color:rgba(255,255,255,0.3); }
+            .badge-grid-status { font-size:9px;color:rgba(255,255,255,0.25); }
+            .badge-grid-item.unlocked .badge-grid-status { color:rgba(240,147,43,0.7); }
+            .badge-wearing-tag { position:absolute;top:4px;right:4px;width:8px;height:8px;border-radius:50%;background:#f0932b;box-shadow:0 0 4px rgba(240,147,43,0.5); }
+            /* 徽章详情弹窗 */
+            .badge-detail-overlay { position:fixed;top:0;left:0;right:0;bottom:0;z-index:3700;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6); }
+            .badge-detail-card { width:90%;max-width:320px;background:#1a1a2e;border-radius:20px;padding:28px 20px;text-align:center;animation:relCeremonyScale 0.3s ease; }
+            .badge-detail-icon { width:100px;height:100px;margin:0 auto 14px; }
+            .badge-detail-icon img { width:100%;height:100%;object-fit:contain; }
+            .badge-detail-icon.locked img { filter:grayscale(1) brightness(0.4); }
+            .badge-detail-name { font-size:20px;font-weight:700;color:#fff;margin-bottom:6px; }
+            .badge-detail-condition { font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:12px;line-height:1.5; }
+            .badge-detail-progress { margin:10px 0;padding:10px;background:rgba(255,255,255,0.04);border-radius:10px; }
+            .badge-detail-progress-text { font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:6px; }
+            .badge-detail-progress-bar { height:6px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden; }
+            .badge-detail-progress-fill { height:100%;border-radius:3px;background:linear-gradient(90deg,#f0932b,#fdcb6e);transition:width 0.5s; }
+            .badge-detail-date { font-size:11px;color:rgba(255,255,255,0.2);margin-top:10px; }
+            .badge-detail-btns { display:flex;gap:8px;margin-top:14px;justify-content:center; }
+            .badge-detail-btns button { padding:8px 20px;border-radius:16px;font-size:13px;cursor:pointer;border:none;transition:all 0.2s; }
+            .badge-detail-btns button:active { transform:scale(0.96); }
+            .badge-detail-wear-btn { background:linear-gradient(135deg,#f0932b,#e17055);color:#fff;font-weight:600; }
+            .badge-detail-unwear-btn { background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.5); }
+            .badge-detail-close-btn { background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.3); }
+            /* 佩戴中展示区 */
+            .badge-wearing-section { padding:0 20px;margin-bottom:16px; }
+            .badge-wearing-row { display:flex;flex-wrap:wrap;gap:8px;padding:12px;background:rgba(255,255,255,0.04);border-radius:12px;min-height:44px;align-items:center; }
+            .badge-wearing-row-empty { font-size:12px;color:rgba(255,255,255,0.2); }
+            .badge-wearing-chip { display:flex;align-items:center;gap:4px;padding:4px 10px 4px 4px;background:rgba(240,147,43,0.1);border-radius:20px;border:1px solid rgba(240,147,43,0.2); }
+            .badge-wearing-chip img { width:24px;height:24px;object-fit:contain;border-radius:50%; }
+            .badge-wearing-chip span { font-size:11px;color:rgba(255,255,255,0.7); }
+            .badge-wearing-chip .chip-remove { font-size:10px;color:rgba(255,255,255,0.3);cursor:pointer;margin-left:2px; }
+            /* 自定义面板 */
+            .badge-customize-panel { position:fixed;top:0;left:0;right:0;bottom:0;z-index:3650;display:flex;align-items:flex-end;justify-content:center; }
             /* 统一信息面板 */
             .info-panel {
                 position: absolute;
@@ -426,6 +473,8 @@ class ChatInterface {
             #badgeLuckyItem .badge-item-icon img { width:36px;height:36px; }
             #badgeRelationItem .badge-item-icon { font-size:48px; }
             #badgeRelationItem .badge-item-icon img { width:48px;height:48px; }
+            #badgeWornBadgesItem .badge-item-icon { font-size:16px;display:flex;gap:2px;flex-wrap:wrap;max-width:120px; }
+            #badgeWornBadgesItem .badge-item-icon img { width:20px;height:20px; }
             /* Token本轮概要 */
             .token-round-summary { padding: 4px 0; }
             .token-round-row { display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:13px;color:#000; }
@@ -891,6 +940,25 @@ class ChatInterface {
         
         // 同步聊天顶部关系标识
         if (this.updateChatHeaderRelationBadge) this.updateChatHeaderRelationBadge();
+        
+        // 佩戴的亲密徽章
+        const wornItem = document.getElementById('badgeWornBadgesItem');
+        const wornIcon = document.getElementById('badgeWornBadgesIcon');
+        const wornText = document.getElementById('badgeWornBadgesText');
+        if (wornItem && this.currentFriendCode) {
+            const badgesHtml = this.getWornBadgesHtml ? this.getWornBadgesHtml() : '';
+            if (badgesHtml) {
+                if (wornIcon) wornIcon.innerHTML = badgesHtml;
+                if (wornText) {
+                    const data3 = this.storage.getIntimacyData(this.currentFriendCode);
+                    const count = (data3.badges?.wearing || []).length;
+                    wornText.textContent = `${count}个徽章`;
+                }
+                wornItem.style.display = 'flex';
+            } else {
+                wornItem.style.display = 'none';
+            }
+        }
     }
     
     updateTokenStatsFromStorage(tokenStats) {
@@ -1253,6 +1321,8 @@ class ChatInterface {
         this.updateIntimacyOnMessage(); // 亲密值
         this.updateLuckyCharOnMessage(); // 点亮字符
         this.checkGreetings(text, 'user'); // 早晚安检测
+        this.updateBadgeProgress_NightOwl('user'); // 夜猫子徽章
+        this.updateBadgeProgress_MutualChat('user'); // 如约而至徽章
         this.scrollToBottom();
     }
     
@@ -1478,6 +1548,8 @@ ${archiveListText}
                 const errDuration = Date.now() - apiStartTime;
                 this.updateTokenRoundError(result.error, errDuration);
                 this.showErrorAlert(result.error);
+                this.markBadgeChatErrorToday(); // 如约而至：报错不算中断
+                this._isSendingAI = false;
                 return;
             }
             
@@ -1514,6 +1586,9 @@ this.updateFlameOnChat(); // 续火花
 this.updateIntimacyOnMessage(); // 亲密值
 this.updateLuckyCharOnMessage(); // 点亮字符
 this.checkGreetings(aiText, 'ai'); // 早晚安检测
+this.updateBadgeProgress_NightOwl('ai'); // 夜猫子徽章
+this.updateBadgeProgress_MutualChat('ai'); // 如约而至徽章
+this.checkAllBadgeUnlocks(); // 检查所有徽章解锁
             
             this.scrollToBottom();
 
@@ -5664,6 +5739,9 @@ checkGreetings(text, sender) {
         data.goodNightDate = today;
         this.storage.saveIntimacyData(this.currentFriendCode, data);
     }
+    
+    // 徽章进度追踪（晚安/早安/情人节）
+    this.updateBadgeProgress_Greetings(text, sender);
 }
 
 // 打开亲密关系页
@@ -5735,10 +5813,15 @@ getIntimacyStatusForAI() {
     // 亲密徽章
     const badges = data.badges || {};
     const unlocked = badges.unlocked || [];
+    const wearing = badges.wearing || [];
     if (unlocked.length > 0) {
-        desc += `\n- 亲密徽章：已解锁${unlocked.length}个（${unlocked.map(b => b.name).join('、')}）`;
+        desc += `\n- 亲密徽章：已解锁${unlocked.length}/${this._builtinBadges.length}个（${unlocked.map(b => b.name).join('、')}）`;
+        if (wearing.length > 0) {
+            const wornNames = wearing.map(id => { const b = unlocked.find(u => u.id === id); return b ? b.name : ''; }).filter(Boolean);
+            if (wornNames.length > 0) desc += `，佩戴中：${wornNames.join('、')}`;
+        }
     } else {
-        desc += `\n- 亲密徽章：还没有解锁`;
+        desc += `\n- 亲密徽章：还没有解锁（共${this._builtinBadges.length}个内置徽章待解锁）`;
     }
     
     // 跨次元兑换所摘要
@@ -5852,6 +5935,19 @@ refreshIntimacyPage() {
         } else {
             modRelation.textContent = '点击进入';
             modRelation.style.color = '';
+        }
+    }
+    
+    // 徽章模块入口状态
+    const modBadge = document.getElementById('intimacyModBadge');
+    if (modBadge) {
+        const badges = data.badges || {};
+        const unlockedCount = (badges.unlocked || []).length;
+        const totalBuiltin = this._builtinBadges ? this._builtinBadges.length : 9;
+        if (unlockedCount > 0) {
+            modBadge.textContent = `${unlockedCount}/${totalBuiltin} 已解锁`;
+        } else {
+            modBadge.textContent = '点击进入';
         }
     }
     
@@ -5984,6 +6080,8 @@ bindIntimacyEvents() {
                 this.openLuckyCharPage();
             } else if (mod === 'relationship') {
                 this.openRelationBindPage();
+            } else if (mod === 'badge') {
+                this.openBadgePage();
             } else {
                 this.showCssToast(`${card.querySelector('.intimacy-module-name').textContent} 开发中...`);
             }
@@ -7589,7 +7687,595 @@ removeAvatarFrameCss() {
     if (old) old.remove();
 }
 
-// ==================== 关系绑定系统 ====================
+// ==================== 亲密徽章系统 ====================
+
+_builtinBadges = [
+    { id:'badge_sleep_guardian', name:'睡眠守护', icon:'assets/images/intimacy-badges/badge-sleep-guardian.png', iconType:'image', condition:'双方互道晚安连续3天', target:3, type:'consecutive_goodnight' },
+    { id:'badge_dream_domain', name:'梦域', icon:'assets/images/intimacy-badges/badge-dream-domain.png', iconType:'image', condition:'双方互道晚安连续7天', target:7, type:'consecutive_goodnight' },
+    { id:'badge_exclusive_exception', name:'专属例外', icon:'assets/images/intimacy-badges/badge-exclusive-exception.png', iconType:'image', condition:'凌晨0-5点互相发消息累计7天', target:7, type:'night_owl_days' },
+    { id:'badge_as_promised', name:'如约而至', icon:'assets/images/intimacy-badges/badge-as-promised.png', iconType:'image', condition:'双方每天互相发消息连续30天（报错不算中断）', target:30, type:'consecutive_mutual_chat' },
+    { id:'badge_absolute_shelter', name:'绝对庇护所', icon:'assets/images/intimacy-badges/badge-absolute-shelter.png', iconType:'image', condition:'凌晨0-5点互相发消息累计30天', target:30, type:'night_owl_days' },
+    { id:'badge_time_anchor', name:'时间锚点', icon:'assets/images/intimacy-badges/badge-time-anchor.png', iconType:'image', condition:'双方互说早安+晚安连续60天', target:60, type:'consecutive_both_greetings' },
+    { id:'badge_only_route', name:'唯一路线', icon:'assets/images/intimacy-badges/badge-only-route.png', iconType:'image', condition:'小火花持续365天', target:365, type:'flame_days' },
+    { id:'badge_infinite_overdraft', name:'无限透支', icon:'assets/images/intimacy-badges/badge-infinite-overdraft.png', iconType:'image', condition:'跨次元兑换所双方各完成5项事项', target:5, type:'exchange_complete' },
+    { id:'badge_heartbeat_limited', name:'心跳限定', icon:'assets/images/intimacy-badges/badge-heartbeat-limited.png', iconType:'image', condition:'限时：情人节当天解锁 / 永久：连续3年情人节互说快乐', target:3, type:'valentine' }
+];
+
+getAllBadges() {
+    const config = this.storage.getIntimacyConfig();
+    return [...this._builtinBadges, ...(config.customBadges || [])];
+}
+
+openBadgePage() {
+    const page = document.getElementById('badgePage');
+    if (!page) return;
+    page.style.display = 'block';
+    this.refreshBadgePage();
+    if (!this._badgeEventsBound) { this.bindBadgePageEvents(); this._badgeEventsBound = true; }
+}
+
+closeBadgePage() {
+    const page = document.getElementById('badgePage');
+    if (page) page.style.display = 'none';
+}
+
+refreshBadgePage() {
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    const badges = data.badges || {};
+    
+    // 背景
+    const bg = document.getElementById('badgePageBg');
+    if (bg) {
+        if (badges.bgImage) { bg.style.backgroundImage = `url(${badges.bgImage})`; bg.style.backgroundSize = 'cover'; bg.style.backgroundPosition = 'center'; }
+        else { bg.style.background = '#111111'; bg.style.backgroundImage = ''; }
+    }
+    
+    // 先检查解锁
+    this.checkAllBadgeUnlocks();
+    
+    // 渲染网格
+    this.renderBadgeGrids();
+    this.renderBadgeWearingRow();
+}
+
+renderBadgeGrids() {
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    const badges = data.badges || {};
+    const unlocked = badges.unlocked || [];
+    const wearing = badges.wearing || [];
+    const unlockedIds = unlocked.map(u => u.id);
+    
+    // 内置
+    const builtinGrid = document.getElementById('badgeGridBuiltin');
+    if (builtinGrid) {
+        builtinGrid.innerHTML = this._builtinBadges.map(b => {
+            const isUnlocked = unlockedIds.includes(b.id);
+            const isWearing = wearing.includes(b.id);
+            const progress = this.getBadgeProgress(b);
+            return `<div class="badge-grid-item ${isUnlocked ? 'unlocked' : ''} ${isWearing ? 'wearing-active' : ''}" data-badge-id="${b.id}" onclick="window.chatInterface.showBadgeDetail('${b.id}')">
+                ${isWearing ? '<div class="badge-wearing-tag"></div>' : ''}
+                <div class="badge-grid-icon"><img src="${b.icon}"></div>
+                <div class="badge-grid-name">${this.escapeHtml(b.name)}</div>
+                <div class="badge-grid-status">${isUnlocked ? '已解锁' : progress}</div>
+            </div>`;
+        }).join('');
+    }
+    
+    // 自定义
+    const config = this.storage.getIntimacyConfig();
+    const customs = config.customBadges || [];
+    const customSection = document.getElementById('badgeCustomSection');
+    const customGrid = document.getElementById('badgeGridCustom');
+    if (customs.length > 0 && customSection && customGrid) {
+        customSection.style.display = 'block';
+        customGrid.innerHTML = customs.map(b => {
+            const isUnlocked = unlockedIds.includes(b.id);
+            const isWearing = wearing.includes(b.id);
+            return `<div class="badge-grid-item ${isUnlocked ? 'unlocked' : ''} ${isWearing ? 'wearing-active' : ''}" data-badge-id="${b.id}" onclick="window.chatInterface.showBadgeDetail('${b.id}')">
+                ${isWearing ? '<div class="badge-wearing-tag"></div>' : ''}
+                <div class="badge-grid-icon"><img src="${b.icon}"></div>
+                <div class="badge-grid-name">${this.escapeHtml(b.name)}</div>
+                <div class="badge-grid-status">${isUnlocked ? '已解锁' : '未解锁'}</div>
+            </div>`;
+        }).join('');
+    } else if (customSection) {
+        customSection.style.display = 'none';
+    }
+}
+
+getBadgeProgress(badge) {
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    const p = (data.badges?.progress || {})[badge.id] || {};
+    const target = badge.target || 1;
+    
+    if (badge.type === 'consecutive_goodnight') return `${p.streak || 0}/${target}天`;
+    if (badge.type === 'night_owl_days') return `${p.days || 0}/${target}天`;
+    if (badge.type === 'consecutive_mutual_chat') return `${p.streak || 0}/${target}天`;
+    if (badge.type === 'consecutive_both_greetings') return `${p.streak || 0}/${target}天`;
+    if (badge.type === 'flame_days') { const flame = this.getFlameStatus(); return `${flame.days || 0}/${target}天`; }
+    if (badge.type === 'exchange_complete') return `双方${Math.min(p.userDone||0, p.aiDone||0)}/${target}项`;
+    if (badge.type === 'valentine') return `${(p.years||[]).length}/${target}年`;
+    return '未解锁';
+}
+
+showBadgeDetail(badgeId) {
+    const allBadges = this.getAllBadges();
+    const badge = allBadges.find(b => b.id === badgeId);
+    if (!badge) return;
+    
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    const badges = data.badges || {};
+    const unlockedEntry = (badges.unlocked || []).find(u => u.id === badgeId);
+    const isUnlocked = !!unlockedEntry;
+    const isWearing = (badges.wearing || []).includes(badgeId);
+    const progress = this.getBadgeProgress(badge);
+    const progressPct = this._getBadgeProgressPct(badge);
+    
+    document.getElementById('badgeDetailOverlay')?.remove();
+    
+    const dateHtml = unlockedEntry ? `<div class="badge-detail-date">解锁于 ${new Date(unlockedEntry.unlockedDate).toLocaleDateString('zh-CN')}</div>` : '';
+    
+    let btnsHtml = '';
+    if (isUnlocked) {
+        if (isWearing) {
+            btnsHtml = `<button class="badge-detail-unwear-btn" onclick="window.chatInterface.unwearBadge('${badgeId}')">取消佩戴</button>`;
+        } else {
+            btnsHtml = `<button class="badge-detail-wear-btn" onclick="window.chatInterface.wearBadge('${badgeId}')">佩戴</button>`;
+        }
+    }
+    btnsHtml += `<button class="badge-detail-close-btn" onclick="document.getElementById('badgeDetailOverlay').remove()">关闭</button>`;
+    
+    const overlay = document.createElement('div');
+    overlay.className = 'badge-detail-overlay';
+    overlay.id = 'badgeDetailOverlay';
+    overlay.innerHTML = `<div class="badge-detail-card">
+        <div class="badge-detail-icon ${isUnlocked ? '' : 'locked'}"><img src="${badge.icon}"></div>
+        <div class="badge-detail-name">${this.escapeHtml(badge.name)}</div>
+        <div class="badge-detail-condition">${this.escapeHtml(badge.condition || '')}</div>
+        <div class="badge-detail-progress">
+            <div class="badge-detail-progress-text">${isUnlocked ? '✅ 已完成' : progress}</div>
+            <div class="badge-detail-progress-bar"><div class="badge-detail-progress-fill" style="width:${progressPct}%"></div></div>
+        </div>
+        ${dateHtml}
+        <div class="badge-detail-btns">${btnsHtml}</div>
+    </div>`;
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+    document.body.appendChild(overlay);
+}
+
+_getBadgeProgressPct(badge) {
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    const unlocked = (data.badges?.unlocked || []).find(u => u.id === badge.id);
+    if (unlocked) return 100;
+    const p = (data.badges?.progress || {})[badge.id] || {};
+    const target = badge.target || 1;
+    let current = 0;
+    if (badge.type === 'consecutive_goodnight' || badge.type === 'consecutive_mutual_chat' || badge.type === 'consecutive_both_greetings') current = p.streak || 0;
+    else if (badge.type === 'night_owl_days') current = p.days || 0;
+    else if (badge.type === 'flame_days') current = this.getFlameStatus().days || 0;
+    else if (badge.type === 'exchange_complete') current = Math.min(p.userDone || 0, p.aiDone || 0);
+    else if (badge.type === 'valentine') current = (p.years || []).length;
+    return Math.min(100, Math.round(current / target * 100));
+}
+
+wearBadge(badgeId) {
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    if (!data.badges) data.badges = {};
+    if (!data.badges.wearing) data.badges.wearing = [];
+    if (!data.badges.wearing.includes(badgeId)) {
+        data.badges.wearing.push(badgeId);
+        this.storage.saveIntimacyData(this.currentFriendCode, data);
+    }
+    document.getElementById('badgeDetailOverlay')?.remove();
+    this.showCssToast('已佩戴');
+    this.refreshBadgePage();
+    this.updateBadgePanel();
+}
+
+unwearBadge(badgeId) {
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    if (!data.badges) data.badges = {};
+    data.badges.wearing = (data.badges.wearing || []).filter(id => id !== badgeId);
+    this.storage.saveIntimacyData(this.currentFriendCode, data);
+    document.getElementById('badgeDetailOverlay')?.remove();
+    this.showCssToast('已取消佩戴');
+    this.refreshBadgePage();
+    this.updateBadgePanel();
+}
+
+renderBadgeWearingRow() {
+    const row = document.getElementById('badgeWearingRow');
+    if (!row) return;
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    const wearing = data.badges?.wearing || [];
+    const allBadges = this.getAllBadges();
+    const unlocked = data.badges?.unlocked || [];
+    const unlockedIds = unlocked.map(u => u.id);
+    
+    // 只展示已解锁且正在佩戴的
+    const validWearing = wearing.filter(id => unlockedIds.includes(id));
+    
+    if (validWearing.length === 0) {
+        row.innerHTML = '<span class="badge-wearing-row-empty">还没有佩戴徽章</span>';
+        return;
+    }
+    
+    row.innerHTML = validWearing.map(id => {
+        const b = allBadges.find(x => x.id === id);
+        if (!b) return '';
+        const iconHtml = b.iconType === 'image' ? `<img src="${b.icon}">` : `<span style="font-size:16px;">${b.icon}</span>`;
+        return `<div class="badge-wearing-chip">
+            ${iconHtml}
+            <span>${this.escapeHtml(b.name)}</span>
+            <span class="chip-remove" onclick="event.stopPropagation();window.chatInterface.unwearBadge('${b.id}')">✕</span>
+        </div>`;
+    }).join('');
+}
+
+// ===== 徽章解锁检查 =====
+checkAllBadgeUnlocks() {
+    if (!this.currentFriendCode) return;
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    if (!data.badges) data.badges = { unlocked:[], wearing:[], progress:{}, bgImage:'' };
+    if (!data.badges.progress) data.badges.progress = {};
+    const unlockedIds = (data.badges.unlocked || []).map(u => u.id);
+    let changed = false;
+    
+    for (const badge of this._builtinBadges) {
+        if (unlockedIds.includes(badge.id)) {
+            // 心跳限定特殊处理：限时版到期要移除
+            if (badge.id === 'badge_heartbeat_limited') {
+                const entry = data.badges.unlocked.find(u => u.id === badge.id);
+                if (entry && !entry.permanent) {
+                    const today = new Date().toISOString().split('T')[0];
+                    if (entry.expiresDate && today > entry.expiresDate) {
+                        data.badges.unlocked = data.badges.unlocked.filter(u => u.id !== badge.id);
+                        data.badges.wearing = (data.badges.wearing || []).filter(id => id !== badge.id);
+                        changed = true;
+                    }
+                }
+            }
+            continue;
+        }
+        
+        const unlocked = this._checkBadgeCondition(badge, data);
+        if (unlocked) {
+            const entry = { id: badge.id, name: badge.name, icon: badge.icon, iconType: badge.iconType, unlockedDate: new Date().toISOString(), permanent: unlocked.permanent !== false };
+            if (unlocked.expiresDate) entry.expiresDate = unlocked.expiresDate;
+            if (!entry.permanent) entry.permanent = false;
+            data.badges.unlocked.push(entry);
+            changed = true;
+            
+            this.storage.addTimelineEntry(this.currentFriendCode, { type:'badge_unlock', title:`解锁徽章「${badge.name}」`, icon:'🏅' });
+            this.showCssToast(`🏅 解锁徽章「${badge.name}」！`);
+            this.showCssSystemMessage(`🏅 恭喜！解锁了亲密徽章「${badge.name}」`);
+        }
+    }
+    
+    if (changed) this.storage.saveIntimacyData(this.currentFriendCode, data);
+}
+
+_checkBadgeCondition(badge, data) {
+    const p = data.badges.progress[badge.id] || {};
+    
+    if (badge.type === 'consecutive_goodnight') {
+        return (p.streak || 0) >= badge.target ? { permanent: true } : null;
+    }
+    if (badge.type === 'night_owl_days') {
+        return (p.days || 0) >= badge.target ? { permanent: true } : null;
+    }
+    if (badge.type === 'consecutive_mutual_chat') {
+        return (p.streak || 0) >= badge.target ? { permanent: true } : null;
+    }
+    if (badge.type === 'consecutive_both_greetings') {
+        return (p.streak || 0) >= badge.target ? { permanent: true } : null;
+    }
+    if (badge.type === 'flame_days') {
+        const flame = this.getFlameStatus();
+        return (flame.days || 0) >= badge.target ? { permanent: true } : null;
+    }
+    if (badge.type === 'exchange_complete') {
+        return (Math.min(p.userDone || 0, p.aiDone || 0)) >= badge.target ? { permanent: true } : null;
+    }
+    if (badge.type === 'valentine') {
+        const years = p.years || [];
+        if (years.length >= badge.target) return { permanent: true }; // 连续3年 → 永久
+        // 限时检查：今天是否情人节
+        const now = new Date();
+        const isValentine = (now.getMonth() === 1 && now.getDate() === 14);
+        if (isValentine && p.todayExchanged) {
+            const today = now.toISOString().split('T')[0];
+            return { permanent: false, expiresDate: today }; // 当天限时
+        }
+        return null;
+    }
+    return null;
+}
+
+// ===== 进度追踪（在 checkGreetings 中调用）=====
+updateBadgeProgress_Greetings(text, sender) {
+    if (!this.currentFriendCode) return;
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    if (!data.badges) data.badges = { unlocked:[], wearing:[], progress:{}, bgImage:'' };
+    if (!data.badges.progress) data.badges.progress = {};
+    
+    const lower = (text || '').toLowerCase();
+    const today = new Date().toISOString().split('T')[0];
+    const nightWords = ['晚安', '好梦', 'good night', '睡了', '去睡觉'];
+    const morningWords = ['早安', '早上好', '早啊', '早呀', '早~', 'good morning'];
+    const valentineWords = ['情人节快乐', '情人节', 'valentine'];
+    
+    const isNight = nightWords.some(w => lower.includes(w));
+    const isMorning = morningWords.some(w => lower.includes(w));
+    const isValentine = valentineWords.some(w => lower.includes(w));
+    
+    // ---- 晚安追踪（睡眠守护 + 梦域）----
+    if (isNight) {
+        for (const bid of ['badge_sleep_guardian', 'badge_dream_domain']) {
+            if (!data.badges.progress[bid]) data.badges.progress[bid] = { streak:0, lastDate:'', userSaid:false, aiSaid:false, trackDate:'' };
+            const p = data.badges.progress[bid];
+            if (p.trackDate !== today) { p.trackDate = today; p.userSaid = false; p.aiSaid = false; }
+            if (sender === 'user') p.userSaid = true;
+            if (sender === 'ai') p.aiSaid = true;
+            if (p.userSaid && p.aiSaid && p.lastDate !== today) {
+                // 双方今天都说了晚安
+                const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+                p.streak = (p.lastDate === yesterday) ? p.streak + 1 : 1;
+                p.lastDate = today;
+            }
+        }
+    }
+    
+    // ---- 早安+晚安追踪（时间锚点）----
+    const bid_ta = 'badge_time_anchor';
+    if (!data.badges.progress[bid_ta]) data.badges.progress[bid_ta] = { streak:0, lastDate:'', morningUser:false, morningAi:false, nightUser:false, nightAi:false, trackDate:'' };
+    const pt = data.badges.progress[bid_ta];
+    if (pt.trackDate !== today) { pt.trackDate = today; pt.morningUser = false; pt.morningAi = false; pt.nightUser = false; pt.nightAi = false; }
+    if (isMorning && sender === 'user') pt.morningUser = true;
+    if (isMorning && sender === 'ai') pt.morningAi = true;
+    if (isNight && sender === 'user') pt.nightUser = true;
+    if (isNight && sender === 'ai') pt.nightAi = true;
+    if (pt.morningUser && pt.morningAi && pt.nightUser && pt.nightAi && pt.lastDate !== today) {
+        const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+        pt.streak = (pt.lastDate === yesterday) ? pt.streak + 1 : 1;
+        pt.lastDate = today;
+    }
+    
+    // ---- 情人节追踪（心跳限定）----
+    if (isValentine) {
+        const now = new Date();
+        const isValDay = (now.getMonth() === 1 && now.getDate() === 14);
+        if (isValDay) {
+            const bid_v = 'badge_heartbeat_limited';
+            if (!data.badges.progress[bid_v]) data.badges.progress[bid_v] = { years:[], userSaid:false, aiSaid:false, trackYear:'' };
+            const pv = data.badges.progress[bid_v];
+            const year = String(now.getFullYear());
+            if (pv.trackYear !== year) { pv.trackYear = year; pv.userSaid = false; pv.aiSaid = false; }
+            if (sender === 'user') pv.userSaid = true;
+            if (sender === 'ai') pv.aiSaid = true;
+            if (pv.userSaid && pv.aiSaid) {
+                pv.todayExchanged = true;
+                if (!pv.years.includes(year)) {
+                    // 检查是否连续年
+                    const lastYear = String(parseInt(year) - 1);
+                    if (pv.years.length === 0 || pv.years.includes(lastYear)) {
+                        pv.years.push(year);
+                    } else {
+                        pv.years = [year]; // 不连续，重置
+                    }
+                }
+            }
+        }
+    }
+    
+    this.storage.saveIntimacyData(this.currentFriendCode, data);
+}
+
+// ---- 夜猫子追踪（专属例外 + 绝对庇护所）----
+updateBadgeProgress_NightOwl(sender) {
+    if (!this.currentFriendCode) return;
+    const hour = new Date().getHours();
+    if (hour >= 5) return; // 只追踪0-5点
+    
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    if (!data.badges) data.badges = { unlocked:[], wearing:[], progress:{}, bgImage:'' };
+    if (!data.badges.progress) data.badges.progress = {};
+    const today = new Date().toISOString().split('T')[0];
+    
+    for (const bid of ['badge_exclusive_exception', 'badge_absolute_shelter']) {
+        if (!data.badges.progress[bid]) data.badges.progress[bid] = { days:0, dates:[], userToday:false, aiToday:false, trackDate:'' };
+        const p = data.badges.progress[bid];
+        if (p.trackDate !== today) { p.trackDate = today; p.userToday = false; p.aiToday = false; }
+        if (sender === 'user') p.userToday = true;
+        if (sender === 'ai') p.aiToday = true;
+        if (p.userToday && p.aiToday && !p.dates.includes(today)) {
+            p.dates.push(today);
+            p.days = p.dates.length;
+        }
+    }
+    this.storage.saveIntimacyData(this.currentFriendCode, data);
+}
+
+// ---- 每日互聊追踪（如约而至）----
+updateBadgeProgress_MutualChat(sender) {
+    if (!this.currentFriendCode) return;
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    if (!data.badges) data.badges = { unlocked:[], wearing:[], progress:{}, bgImage:'' };
+    if (!data.badges.progress) data.badges.progress = {};
+    const today = new Date().toISOString().split('T')[0];
+    const bid = 'badge_as_promised';
+    if (!data.badges.progress[bid]) data.badges.progress[bid] = { streak:0, lastDate:'', userToday:false, aiToday:false, trackDate:'', errorToday:false };
+    const p = data.badges.progress[bid];
+    if (p.trackDate !== today) { p.trackDate = today; p.userToday = false; p.aiToday = false; p.errorToday = false; }
+    if (sender === 'user') p.userToday = true;
+    if (sender === 'ai') p.aiToday = true;
+    if (p.userToday && p.aiToday && p.lastDate !== today) {
+        const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+        p.streak = (p.lastDate === yesterday) ? p.streak + 1 : 1;
+        p.lastDate = today;
+    }
+    // 报错日：user发了但AI报错了，不算中断——把lastDate延续到今天保持链条
+    if (p.userToday && !p.aiToday && p.errorToday && p.lastDate !== today) {
+        const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+        if (p.lastDate === yesterday) {
+            p.lastDate = today; // 保持链条不断，但streak不+1
+        }
+    }
+    this.storage.saveIntimacyData(this.currentFriendCode, data);
+}
+
+// ---- 如约而至：API报错不重置（在sendAIMessage失败时调用）----
+markBadgeChatErrorToday() {
+    if (!this.currentFriendCode) return;
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    const bid = 'badge_as_promised';
+    const p = data.badges?.progress?.[bid];
+    if (p) p.errorToday = true;
+    this.storage.saveIntimacyData(this.currentFriendCode, data);
+}
+
+// ===== 自定义徽章 =====
+addCustomBadge(name, icon, condition) {
+    const config = this.storage.getIntimacyConfig();
+    if (!config.customBadges) config.customBadges = [];
+    config.customBadges.push({ id: 'cbadge_' + Date.now(), name, icon, iconType: 'image', condition, type: 'custom' });
+    this.storage.saveIntimacyConfig(config);
+}
+
+deleteCustomBadge(badgeId) {
+    const config = this.storage.getIntimacyConfig();
+    config.customBadges = (config.customBadges || []).filter(b => b.id !== badgeId);
+    this.storage.saveIntimacyConfig(config);
+    // 也从佩戴和解锁中移除
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    if (data.badges) {
+        data.badges.unlocked = (data.badges.unlocked || []).filter(u => u.id !== badgeId);
+        data.badges.wearing = (data.badges.wearing || []).filter(id => id !== badgeId);
+        this.storage.saveIntimacyData(this.currentFriendCode, data);
+    }
+    this.showCssToast('已删除');
+    this.refreshBadgePage();
+    this.renderCustomBadgeList();
+}
+
+// 手动解锁自定义徽章（在详情里长按或按钮）
+manualUnlockBadge(badgeId) {
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    if (!data.badges) data.badges = { unlocked:[], wearing:[], progress:{}, bgImage:'' };
+    const already = (data.badges.unlocked || []).find(u => u.id === badgeId);
+    if (already) { this.showCssToast('已经解锁了'); return; }
+    const allBadges = this.getAllBadges();
+    const badge = allBadges.find(b => b.id === badgeId);
+    if (!badge) return;
+    data.badges.unlocked.push({ id: badge.id, name: badge.name, icon: badge.icon, iconType: badge.iconType, unlockedDate: new Date().toISOString(), permanent: true });
+    this.storage.saveIntimacyData(this.currentFriendCode, data);
+    this.storage.addTimelineEntry(this.currentFriendCode, { type:'badge_unlock', title:`解锁徽章「${badge.name}」`, icon:'🏅' });
+    this.showCssToast(`🏅 解锁「${badge.name}」`);
+    document.getElementById('badgeDetailOverlay')?.remove();
+    this.refreshBadgePage();
+}
+
+renderCustomBadgeList() {
+    const container = document.getElementById('customBadgeList');
+    if (!container) return;
+    const config = this.storage.getIntimacyConfig();
+    const customs = config.customBadges || [];
+    if (customs.length === 0) { container.innerHTML = '<div style="font-size:12px;color:rgba(255,255,255,0.2);text-align:center;padding:8px;">暂无自定义徽章</div>'; return; }
+    container.innerHTML = customs.map(c => `<div style="display:flex;align-items:center;gap:8px;padding:10px;margin-bottom:4px;background:rgba(255,255,255,0.04);border-radius:8px;">
+        <img src="${c.icon}" style="width:28px;height:28px;object-fit:contain;border-radius:4px;">
+        <div style="flex:1;overflow:hidden;">
+            <div style="font-size:13px;color:#fff;">${this.escapeHtml(c.name)}</div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${this.escapeHtml(c.condition || '')}</div>
+        </div>
+        <button onclick="window.chatInterface.deleteCustomBadge('${c.id}')" style="padding:4px 10px;border:none;border-radius:6px;background:rgba(255,60,60,0.1);color:rgba(255,100,100,0.6);font-size:11px;cursor:pointer;">删除</button>
+    </div>`).join('');
+}
+
+// ===== 页面事件绑定 =====
+bindBadgePageEvents() {
+    document.getElementById('badgePageBack')?.addEventListener('click', () => this.closeBadgePage());
+    
+    // 自定义面板
+    document.getElementById('badgePageCustomize')?.addEventListener('click', () => {
+        document.getElementById('badgeCustomizePanel').style.display = 'flex';
+        this.renderCustomBadgeList();
+    });
+    document.getElementById('badgeCustomizeClose')?.addEventListener('click', () => document.getElementById('badgeCustomizePanel').style.display = 'none');
+    document.getElementById('badgeCustomizeOverlay')?.addEventListener('click', () => document.getElementById('badgeCustomizePanel').style.display = 'none');
+    
+    // 背景图
+    const bgBtn = document.getElementById('badgeBgUploadBtn');
+    const bgInput = document.getElementById('badgeBgUploadInput');
+    if (bgBtn && bgInput) {
+        bgBtn.addEventListener('click', () => bgInput.click());
+        bgInput.addEventListener('change', (e) => {
+            const file = e.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => { const img = new Image(); img.onload = () => { const c = document.createElement('canvas'); const s = Math.min(1, 1080/img.width); c.width=img.width*s; c.height=img.height*s; c.getContext('2d').drawImage(img,0,0,c.width,c.height); this.setBadgeBg(c.toDataURL('image/jpeg',0.7)); }; img.src=ev.target.result; };
+            reader.readAsDataURL(file);
+        });
+    }
+    document.getElementById('badgeBgUrlInput')?.addEventListener('change', (e) => { const url = e.target.value.trim(); if (url) this.setBadgeBg(url); });
+    document.getElementById('badgeBgReset')?.addEventListener('click', () => { this.setBadgeBg(''); this.showCssToast('已恢复默认背景'); });
+    
+    // 自定义徽章添加
+    this._customBadgeImgData = null;
+    const imgBtn = document.getElementById('customBadgeImgBtn');
+    const imgInput = document.getElementById('customBadgeImgInput');
+    if (imgBtn && imgInput) {
+        imgBtn.addEventListener('click', () => imgInput.click());
+        imgInput.addEventListener('change', (e) => {
+            const file = e.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => { const img = new Image(); img.onload = () => { const c = document.createElement('canvas'); const s = Math.min(1, 200/img.width); c.width=img.width*s; c.height=img.height*s; c.getContext('2d').drawImage(img,0,0,c.width,c.height); this._customBadgeImgData = c.toDataURL('image/png',0.9); imgBtn.textContent = '✅'; }; img.src=ev.target.result; };
+            reader.readAsDataURL(file);
+        });
+    }
+    
+    document.getElementById('customBadgeAddBtn')?.addEventListener('click', () => {
+        const name = document.getElementById('customBadgeName')?.value.trim();
+        const condition = document.getElementById('customBadgeCondition')?.value.trim();
+        if (!name) { this.showCssToast('请输入徽章名称'); return; }
+        if (!condition) { this.showCssToast('请输入解锁条件'); return; }
+        if (!this._customBadgeImgData) { this.showCssToast('请上传徽章图片'); return; }
+        
+        this.addCustomBadge(name, this._customBadgeImgData, condition);
+        document.getElementById('customBadgeName').value = '';
+        document.getElementById('customBadgeCondition').value = '';
+        this._customBadgeImgData = null;
+        if (imgBtn) imgBtn.textContent = '📷 图片';
+        this.showCssToast(`已添加「${name}」`);
+        this.renderCustomBadgeList();
+        this.refreshBadgePage();
+    });
+}
+
+setBadgeBg(bgImage) {
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    if (!data.badges) data.badges = { unlocked:[], wearing:[], progress:{}, bgImage:'' };
+    data.badges.bgImage = bgImage;
+    this.storage.saveIntimacyData(this.currentFriendCode, data);
+    const bg = document.getElementById('badgePageBg');
+    if (bg) { if (bgImage) { bg.style.backgroundImage = `url(${bgImage})`; bg.style.backgroundSize = 'cover'; bg.style.backgroundPosition = 'center'; } else { bg.style.backgroundImage = ''; bg.style.background = '#111111'; } }
+    document.getElementById('badgeCustomizePanel').style.display = 'none';
+}
+
+// ===== 聊天中佩戴徽章展示（badge panel） =====
+getWornBadgesHtml() {
+    if (!this.currentFriendCode) return '';
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    const wearing = data.badges?.wearing || [];
+    const unlocked = data.badges?.unlocked || [];
+    const unlockedIds = unlocked.map(u => u.id);
+    const valid = wearing.filter(id => unlockedIds.includes(id));
+    if (valid.length === 0) return '';
+    const allBadges = this.getAllBadges();
+    return valid.map(id => {
+        const b = allBadges.find(x => x.id === id);
+        if (!b) return '';
+        return `<img src="${b.icon}" style="width:20px;height:20px;object-fit:contain;margin:0 1px;vertical-align:middle;">`;
+    }).join('');
+}
 
 // 内置4种关系类型
 _builtinRelationTypes = [
