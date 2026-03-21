@@ -5551,6 +5551,15 @@ getIntimacyStatusForAI() {
         desc += `\n- 亲密关系页面有自定义背景图（附带的图片中能看到）`;
     }
     
+    // 待处理通知（user的操作通知AI）
+    if (data._pendingNotifications && data._pendingNotifications.length > 0) {
+        desc += `\n\n📢 最近发生的事：`;
+        data._pendingNotifications.forEach(n => { desc += `\n- ${n}`; });
+        // 阅后即焚
+        data._pendingNotifications = [];
+        this.storage.saveIntimacyData(this.currentFriendCode, data);
+    }
+    
     desc += `\n\n你可以自然地在聊天中提及亲密关系相关的事情（比如吐槽界面、讨论怎么获得徽章、提起幸运字符等），但不要刻意，根据你的人设和聊天氛围来。`;
     
     return desc;
@@ -6074,6 +6083,17 @@ drawLuckyCard(cardIndex, drawer = 'user') {
     }
     
     data.luckyChars = lc;
+    
+    // 保存抽卡通知（让AI下次回复时看到）
+    if (!data._pendingNotifications) data._pendingNotifications = [];
+    if (drawer === 'user') {
+        if (result.hit) {
+            data._pendingNotifications.push(`user刚刚抽到了幸运字符「${result.char.name}」${result.isNew ? '（新的！）' : '（已拥有）'}`);
+        } else {
+            data._pendingNotifications.push('user刚刚翻了一张空牌');
+        }
+    }
+    
     this.storage.saveIntimacyData(this.currentFriendCode, data);
     
     return result;
@@ -6097,8 +6117,14 @@ wearLuckyChar(charId, who = 'user') {
     }
     
     data.luckyChars = lc;
+    const charName = owned.find(o => o.id === charId).name;
+    // 通知对方
+    if (who === 'user') {
+        if (!data._pendingNotifications) data._pendingNotifications = [];
+        data._pendingNotifications.push(`user佩戴了幸运字符「${charName}」`);
+    }
     this.storage.saveIntimacyData(this.currentFriendCode, data);
-    this.showCssToast(`已佩戴「${owned.find(o => o.id === charId).name}」`);
+    this.showCssToast(`已佩戴「${charName}」`);
     this.refreshLuckyCharPage();
     this.updateBadgePanel();
 }
@@ -6110,6 +6136,8 @@ unwearLuckyChar(who = 'user') {
     
     if (who === 'user') {
         lc.userWearing = '';
+        if (!data._pendingNotifications) data._pendingNotifications = [];
+        data._pendingNotifications.push('user取消了佩戴幸运字符');
     } else {
         lc.aiWearing = '';
     }
@@ -6237,6 +6265,8 @@ processLuckyCharCommands(text) {
         text = text.replace('[LUCKY_UNWEAR]', '');
         this.unwearLuckyChar('ai');
         this.showCssSystemMessage(`✦ ${friendName} 取消了佩戴幸运字符`);
+        // 强制刷新（unwearLuckyChar里已经调了一次，这里再确保一下）
+        setTimeout(() => this.updateBadgePanel(), 100);
     }
     
     return text;
