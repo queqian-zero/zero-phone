@@ -45,7 +45,9 @@ class ChatInterface {
             flameCustomIcon: '',      // 空=默认🔥
             flameCustomIconType: 'emoji',  // 'emoji' 或 'image'
             flameCustomDeadIcon: '',   // 空=默认💔
-            flameCustomDeadIconType: 'emoji'  // 'emoji' 或 'image'
+            flameCustomDeadIconType: 'emoji',  // 'emoji' 或 'image'
+            // AI消息显示模式
+            aiMsgSplitMode: 'whole'   // 'whole'=整段 | 'split'=逐条
 };
 
         
@@ -357,6 +359,19 @@ class ChatInterface {
             .chat-relation-pending-bar-btns button { padding:5px 14px;border-radius:14px;font-size:12px;font-weight:600;cursor:pointer;border:none; }
             .chat-rpb-accept { background:#fff;color:#e17055; }
             .chat-rpb-reject { background:rgba(255,255,255,0.2);color:#fff; }
+            /* ====== 思维链折叠 ====== */
+            .thinking-block { margin:0 0 4px;max-width:80%; }
+            .message-ai .thinking-block { margin-left:52px; }
+            .thinking-toggle { display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:rgba(0,0,0,0.03);border-radius:10px;border:1px solid rgba(0,0,0,0.05);cursor:pointer;font-size:11px;color:rgba(0,0,0,0.35);transition:all 0.2s;user-select:none; }
+            .thinking-toggle:hover { background:rgba(0,0,0,0.06); }
+            .thinking-toggle .thinking-arrow { transition:transform 0.2s;font-size:9px; }
+            .thinking-toggle.expanded .thinking-arrow { transform:rotate(90deg); }
+            .thinking-content { display:none;margin:6px 0 0;padding:10px 12px;background:rgba(0,0,0,0.02);border-radius:10px;border:1px solid rgba(0,0,0,0.04);font-size:12px;color:rgba(0,0,0,0.4);line-height:1.6;white-space:pre-wrap;word-break:break-word;max-height:300px;overflow-y:auto; }
+            .thinking-toggle.expanded + .thinking-content { display:block; }
+            /* 逐条模式的消息间距 */
+            .message.msg-sequential { margin-top:2px; }
+            .message.msg-sequential .message-avatar { visibility:hidden;height:0;margin:0;padding:0; }
+            .message.msg-sequential .message-time { display:none; }
             /* ====== 亲密徽章页 ====== */
             .badge-page { position:fixed;top:0;left:0;right:0;bottom:0;z-index:3550;overflow-y:auto;-webkit-overflow-scrolling:touch; }
             .badge-section { padding:0 20px;margin-bottom:20px; }
@@ -469,12 +484,14 @@ class ChatInterface {
             .badge-item-icon img { width:16px;height:16px;object-fit:contain;vertical-align:middle; }
             .badge-item-text { font-size:13px;color:#000;text-align:right; }
             /* 幸运字符图标放大3倍 */
-            #badgeLuckyItem .badge-item-icon { font-size:36px; }
-            #badgeLuckyItem .badge-item-icon img { width:36px;height:36px; }
-            #badgeRelationItem .badge-item-icon { font-size:48px; }
-            #badgeRelationItem .badge-item-icon img { width:48px;height:48px; }
-            #badgeWornBadgesItem .badge-item-icon { font-size:16px;display:flex;gap:2px;flex-wrap:wrap;max-width:120px; }
-            #badgeWornBadgesItem .badge-item-icon img { width:20px;height:20px; }
+            #badgeLuckyItem .badge-item-icon { font-size:16px; }
+            #badgeLuckyItem .badge-item-icon img { width:16px;height:16px; }
+            #badgeRelationItem .badge-item-icon { font-size:16px; }
+            #badgeRelationItem .badge-item-icon img { width:16px;height:16px; }
+            #badgeWornBadgesItem .badge-item-icon { font-size:16px; }
+            /* 星痕面板文字布局：隐藏左侧icon列，用text列全宽 */
+            #badgeLuckyItem .badge-item-icon, #badgeRelationItem .badge-item-icon, #badgeWornBadgesItem .badge-item-icon { display:none; }
+            #badgeLuckyItem .badge-item-text, #badgeRelationItem .badge-item-text, #badgeWornBadgesItem .badge-item-text { width:100%;text-align:left;font-size:13px; }
             /* Token本轮概要 */
             .token-round-summary { padding: 4px 0; }
             .token-round-row { display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:13px;color:#000; }
@@ -871,7 +888,7 @@ class ChatInterface {
             if (flameText) flameText.textContent = status.text;
         }
         
-        // 幸运字符条目
+        // 幸运字符条目 — 文字格式，不用图片
         const luckyIcon = document.getElementById('badgeLuckyIcon');
         const luckyText = document.getElementById('badgeLuckyText');
         const luckyItem = document.getElementById('badgeLuckyItem');
@@ -889,22 +906,19 @@ class ChatInterface {
                 const realTotal = engName.replace(/\s/g, '').length;
                 const pct = realTotal > 0 ? Math.min(100, Math.round(wearing.litChars / realTotal * 100)) : 0;
                 
-                if (luckyIcon) {
-                    if (charDef?.iconType === 'image') {
-                        luckyIcon.innerHTML = `<img src="${charDef.icon}" style="width:36px;height:36px;object-fit:contain;">`;
-                    } else {
-                        luckyIcon.textContent = charDef?.icon || '🎲';
-                    }
-                }
-                if (luckyText) luckyText.textContent = `${wearing.name} ${pct}%`;
+                if (luckyIcon) luckyIcon.textContent = '🍀';
+                if (luckyText) luckyText.textContent = `幸运字符·${wearing.name}`;
+                // 用右侧小字显示百分比
+                luckyText.innerHTML = `<span>🍀幸运字符·${this.escapeHtml(wearing.name)}</span><span style="float:right;color:rgba(0,0,0,0.35);">已点亮 ${pct}%</span>`;
+                luckyIcon.textContent = '';
             } else {
-                if (luckyIcon) luckyIcon.textContent = '🎲';
-                if (luckyText) luckyText.textContent = '未佩戴';
+                if (luckyIcon) luckyIcon.textContent = '🍀';
+                if (luckyText) luckyText.textContent = '幸运字符·未佩戴';
             }
             luckyItem.style.display = 'flex';
         }
         
-        // 关系绑定条目
+        // 关系绑定条目 — 文字格式
         const relIcon = document.getElementById('badgeRelationIcon');
         const relText = document.getElementById('badgeRelationText');
         const relItem = document.getElementById('badgeRelationItem');
@@ -914,26 +928,11 @@ class ChatInterface {
             const rel = data2.relationship || {};
             
             if (rel.bound && rel.bound.wearing !== false) {
-                const allTypes = this.getAllRelationTypes ? this.getAllRelationTypes() : [];
-                const typeDef = allTypes.find(t => t.id === rel.bound.id) || {};
-                const iconType = rel.bound.iconType || typeDef.iconType;
-                const icon = rel.bound.icon || typeDef.icon;
-                
-                if (relIcon) {
-                    if (iconType === 'image' && icon) {
-                        relIcon.innerHTML = `<img src="${icon}" style="width:48px;height:48px;object-fit:contain;">`;
-                    } else {
-                        relIcon.textContent = icon || '💍';
-                    }
-                }
-                if (relText) {
-                    const days = Math.floor((Date.now() - new Date(rel.bound.boundDate).getTime()) / 86400000);
-                    relText.textContent = `${rel.bound.name} · ${days}天`;
-                }
+                const days = Math.floor((Date.now() - new Date(rel.bound.boundDate).getTime()) / 86400000);
+                if (relIcon) relIcon.textContent = '💍';
+                if (relText) relText.innerHTML = `<span>💍关系绑定·${this.escapeHtml(rel.bound.name)}</span><span style="float:right;color:rgba(0,0,0,0.35);">${days}天</span>`;
                 relItem.style.display = 'flex';
             } else {
-                if (relIcon) relIcon.textContent = '💍';
-                if (relText) relText.textContent = '未绑定';
                 relItem.style.display = 'none';
             }
         }
@@ -941,19 +940,21 @@ class ChatInterface {
         // 同步聊天顶部关系标识
         if (this.updateChatHeaderRelationBadge) this.updateChatHeaderRelationBadge();
         
-        // 佩戴的亲密徽章
+        // 佩戴的亲密徽章 — 文字格式
         const wornItem = document.getElementById('badgeWornBadgesItem');
         const wornIcon = document.getElementById('badgeWornBadgesIcon');
         const wornText = document.getElementById('badgeWornBadgesText');
         if (wornItem && this.currentFriendCode) {
-            const badgesHtml = this.getWornBadgesHtml ? this.getWornBadgesHtml() : '';
-            if (badgesHtml) {
-                if (wornIcon) wornIcon.innerHTML = badgesHtml;
-                if (wornText) {
-                    const data3 = this.storage.getIntimacyData(this.currentFriendCode);
-                    const count = (data3.badges?.wearing || []).length;
-                    wornText.textContent = `${count}个徽章`;
-                }
+            const data3 = this.storage.getIntimacyData(this.currentFriendCode);
+            const wearingIds = data3.badges?.wearing || [];
+            const unlockedIds = (data3.badges?.unlocked || []).map(u => u.id);
+            const validWearing = wearingIds.filter(id => unlockedIds.includes(id));
+            
+            if (validWearing.length > 0) {
+                const allBadges = this.getAllBadges ? this.getAllBadges() : [];
+                const names = validWearing.map(id => { const b = allBadges.find(x => x.id === id); return b ? b.name : ''; }).filter(Boolean);
+                if (wornIcon) wornIcon.textContent = '🏅';
+                if (wornText) wornText.innerHTML = `<span>🏅亲密徽章·${names.join('、')}</span><span style="float:right;color:rgba(0,0,0,0.35);">${validWearing.length}个</span>`;
                 wornItem.style.display = 'flex';
             } else {
                 wornItem.style.display = 'none';
@@ -1562,18 +1563,50 @@ ${archiveListText}
             aiText = this.processFlameCommands(aiText);
             aiText = this.processLuckyCharCommands(aiText);
             aiText = this.processRelationBindCommands(aiText);
+            aiText = this.processBadgeCommands(aiText);
             
-            this.addMessage({
-                type: 'ai',
-                text: aiText,
-                timestamp: new Date().toISOString()
-            });
+            // ====== 思维链 ======
+            const thinkingText = result.thinking || '';
             
-            this.storage.addMessage(this.currentFriendCode, {
-                type: 'ai',
-                text: aiText,
-                timestamp: new Date().toISOString()
-            });
+            // ====== 消息拆分模式 ======
+            // AI可以用 [MSG_SPLIT] 标记分段点；或者设置里开了逐条模式就按段落自动拆
+            const hasSplitTag = aiText.includes('[MSG_SPLIT]');
+            const splitMode = this.settings.aiMsgSplitMode || 'whole'; // 'whole' | 'split'
+            let msgParts = [];
+            
+            if (hasSplitTag) {
+                // AI主动拆分
+                msgParts = aiText.split('[MSG_SPLIT]').map(s => s.trim()).filter(Boolean);
+            } else if (splitMode === 'split') {
+                // 设置开了自动拆分：按双换行拆
+                msgParts = aiText.split(/\n{2,}/).map(s => s.trim()).filter(Boolean);
+                if (msgParts.length <= 1) msgParts = [aiText]; // 没法拆就不拆
+            } else {
+                msgParts = [aiText];
+            }
+            
+            // 渲染思维链（气泡外，第一条消息上方）
+            if (thinkingText) {
+                this._renderThinkingBlock(thinkingText);
+            }
+            
+            // 渲染消息（单条或多条）
+            const now = new Date().toISOString();
+            if (msgParts.length === 1) {
+                // 整段模式
+                this.addMessage({ type: 'ai', text: msgParts[0], timestamp: now });
+                this.storage.addMessage(this.currentFriendCode, { type: 'ai', text: msgParts[0], timestamp: now, thinking: thinkingText || undefined });
+            } else {
+                // 逐条模式：第一条正常显示，后续条隐藏头像+时间（紧凑排列）
+                for (let i = 0; i < msgParts.length; i++) {
+                    const msg = { type: 'ai', text: msgParts[i], timestamp: now, _sequential: i > 0 };
+                    this.addMessage(msg);
+                    // 存储时合并为一条（方便历史查看）
+                    if (i === 0) {
+                        this.storage.addMessage(this.currentFriendCode, { type: 'ai', text: aiText.replace(/\[MSG_SPLIT\]/g, '\n\n'), timestamp: now, thinking: thinkingText || undefined });
+                    }
+                }
+            }
 
 if (result.tokens) {
     const duration = Date.now() - apiStartTime;
@@ -1715,6 +1748,10 @@ setTimeout(async () => {
         // 如果消息包含[RENDER_HTML]，拆分成多个DOM元素
         const elements = this.createMessageElements(message);
         elements.forEach(el => {
+            // 逐条模式：后续消息隐藏头像+时间
+            if (message._sequential) {
+                el.classList.add('msg-sequential');
+            }
             messagesList.appendChild(el);
             this.setupIframeAutoResize(el);
         });
@@ -1724,6 +1761,26 @@ setTimeout(async () => {
         
         // 注意：autoSummary 不在这里触发了
         // 改为在 sendAIMessage 完成后串行执行，避免与聊天API竞态
+    }
+    
+    // 思维链折叠块（渲染在消息列表中，气泡上方）
+    _renderThinkingBlock(thinkingText) {
+        const messagesList = document.getElementById('messagesList');
+        if (!messagesList || !thinkingText) return;
+        
+        const block = document.createElement('div');
+        block.className = 'thinking-block';
+        // 截取前30字做摘要
+        const summary = thinkingText.length > 30 ? thinkingText.substring(0, 30) + '...' : thinkingText;
+        block.innerHTML = `
+            <div class="thinking-toggle" onclick="this.classList.toggle('expanded')">
+                <span class="thinking-arrow">▶</span>
+                <span>💭 思考过程</span>
+                <span style="color:rgba(0,0,0,0.2);font-size:10px;margin-left:4px;">${this.escapeHtml(summary)}</span>
+            </div>
+            <div class="thinking-content">${this.escapeHtml(thinkingText)}</div>
+        `;
+        messagesList.appendChild(block);
     }
     
     // 将一条消息拆成多个DOM元素（文字→气泡，HTML→独立块）
@@ -2437,6 +2494,16 @@ div.innerHTML = `
             });
         }
         
+        // AI消息显示模式
+        const splitModeSelect = document.getElementById('settingAiMsgSplitMode');
+        if (splitModeSelect) {
+            splitModeSelect.addEventListener('change', (e) => {
+                this.settings.aiMsgSplitMode = e.target.value;
+                console.log('AI消息模式:', this.settings.aiMsgSplitMode);
+                this.saveSettings();
+            });
+        }
+        
         const importDataBtn = document.getElementById('settingImportData');
 if (importDataBtn) {
     importDataBtn.addEventListener('click', () => {
@@ -2570,6 +2637,12 @@ this.updateBadgePanel();
         const timeAwarenessSwitch = document.getElementById('settingTimeAwareness');
         if (timeAwarenessSwitch) {
             timeAwarenessSwitch.checked = this.settings.timeAwareness !== false;
+        }
+        
+        // AI消息显示模式
+        const splitModeSelect = document.getElementById('settingAiMsgSplitMode');
+        if (splitModeSelect) {
+            splitModeSelect.value = this.settings.aiMsgSplitMode || 'whole';
         }
         
         this.toggleTokenDisplay();
@@ -5814,14 +5887,23 @@ getIntimacyStatusForAI() {
     const badges = data.badges || {};
     const unlocked = badges.unlocked || [];
     const wearing = badges.wearing || [];
+    const allBadgesForAI = this.getAllBadges ? this.getAllBadges() : [];
+    const config = this.storage.getIntimacyConfig();
+    const customBadges = config.customBadges || [];
+    const totalCount = this._builtinBadges.length + customBadges.length;
+    
     if (unlocked.length > 0) {
-        desc += `\n- 亲密徽章：已解锁${unlocked.length}/${this._builtinBadges.length}个（${unlocked.map(b => b.name).join('、')}）`;
+        desc += `\n- 亲密徽章：已解锁${unlocked.length}/${totalCount}个（${unlocked.map(b => b.name).join('、')}）`;
         if (wearing.length > 0) {
             const wornNames = wearing.map(id => { const b = unlocked.find(u => u.id === id); return b ? b.name : ''; }).filter(Boolean);
             if (wornNames.length > 0) desc += `，佩戴中：${wornNames.join('、')}`;
         }
     } else {
-        desc += `\n- 亲密徽章：还没有解锁（共${this._builtinBadges.length}个内置徽章待解锁）`;
+        desc += `\n- 亲密徽章：还没有解锁（共${totalCount}个徽章）`;
+    }
+    if (customBadges.length > 0) {
+        desc += `\n  自定义徽章：${customBadges.map(b => `「${b.name}」(条件:${b.condition})`).join('、')}`;
+        desc += `\n  你可以用 [BADGE_UNLOCK:徽章名] 来解锁自定义徽章（当你认为条件已满足时）`;
     }
     
     // 跨次元兑换所摘要
@@ -5851,6 +5933,11 @@ getIntimacyStatusForAI() {
     }
     
     desc += `\n\n你可以自然地在聊天中提及亲密关系相关的事情（比如吐槽界面、讨论怎么获得徽章、提起幸运字符等），但不要刻意，根据你的人设和聊天氛围来。`;
+    
+    // 消息拆分说明
+    desc += `\n\n【消息格式】你可以选择一大段回复，也可以用 [MSG_SPLIT] 标签把回复拆成多条消息分开发送（像真人一条一条打字那样）。`;
+    desc += `\n例如：「你好啊[MSG_SPLIT]今天天气不错[MSG_SPLIT]要不要出去走走？」会被拆成3条独立消息。`;
+    desc += `\n什么时候用什么格式由你自己决定，根据对话语境自然选择就行。`;
     
     return desc;
 }
@@ -7822,6 +7909,9 @@ showBadgeDetail(badgeId) {
         } else {
             btnsHtml = `<button class="badge-detail-wear-btn" onclick="window.chatInterface.wearBadge('${badgeId}')">佩戴</button>`;
         }
+    } else if (badge.type === 'custom') {
+        // 自定义徽章：提供手动解锁按钮
+        btnsHtml = `<button class="badge-detail-wear-btn" onclick="window.chatInterface.manualUnlockBadge('${badgeId}')">手动解锁 🔓</button>`;
     }
     btnsHtml += `<button class="badge-detail-close-btn" onclick="document.getElementById('badgeDetailOverlay').remove()">关闭</button>`;
     
@@ -8277,6 +8367,35 @@ getWornBadgesHtml() {
     }).join('');
 }
 
+// AI徽章指令处理
+processBadgeCommands(text) {
+    // [BADGE_UNLOCK:徽章名] - AI解锁自定义徽章
+    const unlockMatch = text.match(/\[BADGE_UNLOCK:([^\]]+)\]/);
+    if (unlockMatch) {
+        const badgeName = unlockMatch[1].trim();
+        text = text.replace(/\[BADGE_UNLOCK:[^\]]+\]/, '');
+        
+        const allBadges = this.getAllBadges();
+        let badge = allBadges.find(b => b.name === badgeName);
+        if (!badge) badge = allBadges.find(b => b.name.includes(badgeName) || badgeName.includes(b.name));
+        
+        if (badge) {
+            const data = this.storage.getIntimacyData(this.currentFriendCode);
+            if (!data.badges) data.badges = { unlocked:[], wearing:[], progress:{}, bgImage:'' };
+            const already = (data.badges.unlocked || []).find(u => u.id === badge.id);
+            if (!already) {
+                data.badges.unlocked.push({ id: badge.id, name: badge.name, icon: badge.icon, iconType: badge.iconType, unlockedDate: new Date().toISOString(), permanent: true });
+                this.storage.saveIntimacyData(this.currentFriendCode, data);
+                this.storage.addTimelineEntry(this.currentFriendCode, { type:'badge_unlock', title:`解锁徽章「${badge.name}」`, icon:'🏅' });
+                this.showCssToast(`🏅 解锁「${badge.name}」！`);
+                this.showCssSystemMessage(`🏅 解锁了亲密徽章「${badge.name}」`);
+                this.updateBadgePanel();
+            }
+        }
+    }
+    return text;
+}
+
 // 内置4种关系类型
 _builtinRelationTypes = [
     { id: 'rel_couple', name: '情侣', icon: 'assets/images/relationship/rel-couple.png', iconType: 'image', desc: '心跳同步的两个人' },
@@ -8629,6 +8748,30 @@ confirmSendInviteCard() {
 }
 
 // 接受绑定邀请（user侧）
+// 操作完毕后禁用所有关系相关的按钮（防止重复点击）
+_disableAllRelationBtns(msg) {
+    document.getElementById('chatRelationPendingBar')?.remove();
+    // 聊天中的邀请卡/解绑卡按钮全部替换
+    document.querySelectorAll('.chat-relation-invite, .chat-relation-invite-btns').forEach(el => {
+        el.innerHTML = `<div style="text-align:center;padding:8px;color:rgba(255,255,255,0.4);font-size:12px;">${msg}</div>`;
+    });
+    // iframe 内的按钮（RENDER_HTML 生成的卡片）
+    document.querySelectorAll('iframe.rendered-html-frame').forEach(iframe => {
+        try {
+            const doc = iframe.contentDocument || iframe.contentWindow?.document;
+            if (!doc) return;
+            doc.querySelectorAll('button').forEach(btn => {
+                const text = btn.textContent || '';
+                if (text.includes('接受') || text.includes('婉拒') || text.includes('拒绝') || text.includes('同意')) {
+                    btn.disabled = true;
+                    btn.style.opacity = '0.3';
+                    btn.style.pointerEvents = 'none';
+                }
+            });
+        } catch(e) {}
+    });
+}
+
 acceptRelationInvite() {
     const data = this.storage.getIntimacyData(this.currentFriendCode);
     const rel = data.relationship || {};
@@ -8651,29 +8794,18 @@ acceptRelationInvite() {
     rel.pendingBreak = null;
     data.relationship = rel;
     
-    // 通知AI
     if (!data._pendingNotifications) data._pendingNotifications = [];
     data._pendingNotifications.push(`user接受了「${invite.relName}」关系绑定！你们现在是「${invite.relName}」了！`);
     
-    // 亲密值奖励
     data.value = (data.value || 0) + 20;
     this.storage.saveIntimacyData(this.currentFriendCode, data);
     
-    // 星迹档案
     this.storage.addTimelineEntry(this.currentFriendCode, {
-        type: 'relation_bind',
-        title: `绑定了「${invite.relName}」关系`,
-        icon: '💍'
+        type: 'relation_bind', title: `绑定了「${invite.relName}」关系`, icon: '💍'
     });
     
-    // 绑定仪式
     this.showRelationCeremony(rel.bound);
-    
-    // 移除悬浮条 & 聊天中的邀请卡按钮
-    document.getElementById('chatRelationPendingBar')?.remove();
-    document.querySelectorAll('.chat-relation-invite').forEach(el => {
-        el.innerHTML = `<div style="text-align:center;padding:8px;color:rgba(255,255,255,0.4);font-size:12px;">✅ 已接受绑定</div>`;
-    });
+    this._disableAllRelationBtns('✅ 已接受绑定');
     
     this.showCssSystemMessage(`💍 你们正式绑定为「${invite.relName}」！亲密值 +20`);
     this.updateBadgePanel();
@@ -8696,11 +8828,7 @@ rejectRelationInvite() {
     data.relationship = rel;
     this.storage.saveIntimacyData(this.currentFriendCode, data);
     
-    // 移除悬浮条 & 聊天中的邀请卡按钮
-    document.getElementById('chatRelationPendingBar')?.remove();
-    document.querySelectorAll('.chat-relation-invite').forEach(el => {
-        el.innerHTML = `<div style="text-align:center;padding:8px;color:rgba(255,255,255,0.3);font-size:12px;">已拒绝</div>`;
-    });
+    this._disableAllRelationBtns('已拒绝');
     
     this.showCssToast('已拒绝邀请');
     this.showCssSystemMessage(`已拒绝「${invite.relName}」绑定邀请`);
@@ -9461,21 +9589,17 @@ acceptBreakRelation() {
     const oldName = rel.bound.name;
     
     this.storage.addTimelineEntry(this.currentFriendCode, {
-        type: 'relation_break',
-        title: `解除了「${oldName}」关系（双方同意）`,
-        icon: '💔'
+        type: 'relation_break', title: `解除了「${oldName}」关系（双方同意）`, icon: '💔'
     });
     
     if (!data._pendingNotifications) data._pendingNotifications = [];
     data._pendingNotifications.push(`user同意了解除「${oldName}」关系绑定的请求。`);
     
-    rel.bound = null;
-    rel.pendingInvite = null;
-    rel.pendingBreak = null;
+    rel.bound = null; rel.pendingInvite = null; rel.pendingBreak = null;
     data.relationship = rel;
     this.storage.saveIntimacyData(this.currentFriendCode, data);
     
-    document.getElementById('chatRelationPendingBar')?.remove();
+    this._disableAllRelationBtns('💔 已解除');
     this.showCssToast(`已同意解除「${oldName}」关系`);
     this.showCssSystemMessage(`💔 双方同意解除「${oldName}」关系绑定`);
     this.updateBadgePanel();
@@ -9495,7 +9619,7 @@ rejectBreakRelation() {
     data.relationship = rel;
     this.storage.saveIntimacyData(this.currentFriendCode, data);
     
-    document.getElementById('chatRelationPendingBar')?.remove();
+    this._disableAllRelationBtns('已拒绝解绑');
     this.showCssToast('已拒绝解绑请求');
     this.showCssSystemMessage(`你拒绝了解绑请求，关系继续保持`);
 }
