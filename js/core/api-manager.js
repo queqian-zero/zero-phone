@@ -349,41 +349,49 @@ class APIManager {
                 : msg.text
         }));
 
-        // ── 需求2：构建头像视觉前置消息（各provider格式不同）──
-        // Google格式的头像parts
+        // ── 需求2：构建视觉前置消息（头像+徽章图片，各provider格式不同）──
+        // avatarImages 是数组: [{role, data, mediaType, badgeName?}, ...]
+        
+        // Google格式
         const buildGoogleAvatarContents = () => {
-            if (!avatarImages) return [];
-            const parts = [{ text: '【头像视觉信息】以下是对话双方的头像图片：' }];
-            if (avatarImages.ai) {
-                parts.push({ text: '↓ 这是你自己的头像：' });
-                parts.push({ inline_data: { mime_type: avatarImages.ai.mimeType, data: avatarImages.ai.data } });
-            }
-            if (avatarImages.user) {
-                parts.push({ text: '↓ 这是user的头像：' });
-                parts.push({ inline_data: { mime_type: avatarImages.user.mimeType, data: avatarImages.user.data } });
+            if (!avatarImages || !Array.isArray(avatarImages) || avatarImages.length === 0) return [];
+            const parts = [{ text: '【视觉信息】以下是图片：' }];
+            for (const img of avatarImages) {
+                const label = img.role === 'ai_avatar' ? '你的头像' : img.role === 'user_avatar' ? 'user的头像' : img.role === 'ai_avatar_frame' ? '你的头像框' : img.role === 'user_avatar_frame' ? 'user的头像框' : img.role === 'intimacy_bg' ? '亲密关系背景图' : img.badgeName ? `自定义徽章「${img.badgeName}」` : '图片';
+                parts.push({ text: `↓ ${label}：` });
+                parts.push({ inline_data: { mime_type: img.mediaType || 'image/png', data: img.data } });
             }
             return [
                 { role: 'user', parts },
-                { role: 'model', parts: [{ text: '好的，我已经看到了双方的头像。' }] }
+                { role: 'model', parts: [{ text: '好的，我已经看到了这些图片。' }] }
             ];
         };
 
-        // OpenAI格式的头像消息
+        // OpenAI格式
         const buildOpenAIAvatarMessages = () => {
-            if (!avatarImages) return [];
-            const content = [{ type: 'text', text: '【头像视觉信息】以下是对话双方的头像图片：' }];
-            if (avatarImages.ai) {
-                content.push({ type: 'image_url', image_url: { url: `data:${avatarImages.ai.mimeType};base64,${avatarImages.ai.data}` } });
-                content.push({ type: 'text', text: '↑ 这是你自己的头像' });
-            }
-            if (avatarImages.user) {
-                content.push({ type: 'image_url', image_url: { url: `data:${avatarImages.user.mimeType};base64,${avatarImages.user.data}` } });
-                content.push({ type: 'text', text: '↑ 这是user的头像' });
+            if (!avatarImages || !Array.isArray(avatarImages) || avatarImages.length === 0) return [];
+            const content = [{ type: 'text', text: '【视觉信息】以下是图片：' }];
+            for (const img of avatarImages) {
+                const label = img.role === 'ai_avatar' ? '你的头像' : img.role === 'user_avatar' ? 'user的头像' : img.role === 'ai_avatar_frame' ? '你的头像框' : img.role === 'user_avatar_frame' ? 'user的头像框' : img.role === 'intimacy_bg' ? '亲密关系背景图' : img.badgeName ? `自定义徽章「${img.badgeName}」` : '图片';
+                content.push({ type: 'image_url', image_url: { url: `data:${img.mediaType || 'image/png'};base64,${img.data}` } });
+                content.push({ type: 'text', text: `↑ ${label}` });
             }
             return [
                 { role: 'user', content },
-                { role: 'assistant', content: '好的，我已经看到了双方的头像。' }
+                { role: 'assistant', content: '好的，我已经看到了这些图片。' }
             ];
+        };
+
+        // Anthropic格式（注入到第一条user消息）
+        const buildAnthropicImageParts = () => {
+            if (!avatarImages || !Array.isArray(avatarImages) || avatarImages.length === 0) return [];
+            const parts = [];
+            for (const img of avatarImages) {
+                const label = img.role === 'ai_avatar' ? '你的头像' : img.role === 'user_avatar' ? 'user的头像' : img.role === 'ai_avatar_frame' ? '你的头像框' : img.role === 'user_avatar_frame' ? 'user的头像框' : img.role === 'intimacy_bg' ? '亲密关系背景图' : img.badgeName ? `自定义徽章「${img.badgeName}」` : '图片';
+                parts.push({ type: 'image', source: { type: 'base64', media_type: img.mediaType || 'image/png', data: img.data } });
+                parts.push({ type: 'text', text: `↑ ${label}` });
+            }
+            return parts;
         };
 
         // 根据provider构建不同格式
@@ -416,21 +424,12 @@ class APIManager {
                     }
                 }
 
-                // ── 需求2：Anthropic头像注入到第一条user消息 ──
-                if (avatarImages) {
+                // ── 需求2：Anthropic图片注入到第一条user消息 ──
+                const imgParts = buildAnthropicImageParts();
+                if (imgParts.length > 0) {
                     const firstUser = merged.find(m => m.role === 'user');
                     if (firstUser) {
-                        const parts = [];
-                        if (avatarImages.ai) {
-                            parts.push({ type: 'image', source: { type: 'base64', media_type: avatarImages.ai.mimeType, data: avatarImages.ai.data } });
-                            parts.push({ type: 'text', text: '↑ 你自己的头像' });
-                        }
-                        if (avatarImages.user) {
-                            parts.push({ type: 'image', source: { type: 'base64', media_type: avatarImages.user.mimeType, data: avatarImages.user.data } });
-                            parts.push({ type: 'text', text: '↑ user的头像' });
-                        }
-                        parts.push({ type: 'text', text: firstUser.content });
-                        firstUser.content = parts;
+                        firstUser.content = [...imgParts, { type: 'text', text: typeof firstUser.content === 'string' ? firstUser.content : '' }];
                     }
                 }
 
