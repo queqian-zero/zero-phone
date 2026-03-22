@@ -371,7 +371,6 @@ class ChatInterface {
             /* 逐条模式的消息间距 */
             .message.msg-sequential { margin-top:2px; }
             .message.msg-sequential .message-avatar { visibility:hidden;height:0;margin:0;padding:0; }
-            .message.msg-sequential .message-time { display:none; }
             /* ====== 亲密徽章页 ====== */
             .badge-page { position:fixed;top:0;left:0;right:0;bottom:0;z-index:3550;overflow-y:auto;-webkit-overflow-scrolling:touch; }
             .badge-section { padding:0 20px;margin-bottom:20px; }
@@ -1450,6 +1449,10 @@ user是次元壁那头的人。对user来说，你是一堆数据流里的某个
                             'user_avatar_frame': 'user的头像框（围绕头像的装饰边框）',
                             'intimacy_bg': '亲密关系页面的背景图'
                         };
+                        // 自定义徽章图片
+                        if (img.role.startsWith('badge_')) {
+                            return `第${i+1}张：自定义徽章「${img.badgeName || '未知'}」的图标`;
+                        }
                         return `第${i+1}张：${roleMap[img.role] || '未知图片'}`;
                     }).join('，');
                     
@@ -1540,7 +1543,7 @@ ${archiveListText}
             const apiStartTime = Date.now();
             
             // ====== 调用API（传入头像图片）======
-            const result = await this.apiManager.callAI(messagesWithTimestamps, systemPrompt, avatarImages);
+            const result = await this.apiManager.callAI(messagesWithTimestamps, systemPrompt, { avatarImages });
             
             this.hideTypingIndicator();
             
@@ -1559,6 +1562,10 @@ ${archiveListText}
             
             // ====== 需求4：检查AI是否发了APPLY_CSS ======
             let aiText = result.text;
+            
+            // 清除AI模仿的时间戳前缀（AI会学习输入格式，在回复中带上[2026-03-22 10:08:31]之类的）
+            aiText = aiText.replace(/^\[?\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}(?::\d{2})?\]?\s*/gm, '');
+            
             aiText = this.processAICssCommands(aiText);
             aiText = this.processFlameCommands(aiText);
             aiText = this.processLuckyCharCommands(aiText);
@@ -1585,25 +1592,32 @@ ${archiveListText}
                 msgParts = [aiText];
             }
             
+            // 二次清理：每个分段再清一次时间戳前缀（防止拆分后残留）
+            const tsRegex = /^\[?\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}(?::\d{2})?\]?\s*/;
+            msgParts = msgParts.map(s => s.replace(tsRegex, '').trim()).filter(Boolean);
+            
             // 渲染思维链（气泡外，第一条消息上方）
             if (thinkingText) {
                 this._renderThinkingBlock(thinkingText);
             }
             
             // 渲染消息（单条或多条）
-            const now = new Date().toISOString();
+            const nowMs = Date.now();
             if (msgParts.length === 1) {
                 // 整段模式
-                this.addMessage({ type: 'ai', text: msgParts[0], timestamp: now });
-                this.storage.addMessage(this.currentFriendCode, { type: 'ai', text: msgParts[0], timestamp: now, thinking: thinkingText || undefined });
+                const ts = new Date(nowMs).toISOString();
+                this.addMessage({ type: 'ai', text: msgParts[0], timestamp: ts });
+                this.storage.addMessage(this.currentFriendCode, { type: 'ai', text: msgParts[0], timestamp: ts, thinking: thinkingText || undefined });
             } else {
-                // 逐条模式：第一条正常显示，后续条隐藏头像+时间（紧凑排列）
+                // 逐条模式：每条有自己的递增时间戳（模拟真人打字间隔2-6秒）
                 for (let i = 0; i < msgParts.length; i++) {
-                    const msg = { type: 'ai', text: msgParts[i], timestamp: now, _sequential: i > 0 };
+                    const offset = i * (2000 + Math.floor(Math.random() * 4000)); // 2-6秒递增
+                    const partTs = new Date(nowMs + offset).toISOString();
+                    const msg = { type: 'ai', text: msgParts[i], timestamp: partTs, _sequential: i > 0 };
                     this.addMessage(msg);
-                    // 存储时合并为一条（方便历史查看）
+                    // 存储时合并为一条（方便历史查看/总结）
                     if (i === 0) {
-                        this.storage.addMessage(this.currentFriendCode, { type: 'ai', text: aiText.replace(/\[MSG_SPLIT\]/g, '\n\n'), timestamp: now, thinking: thinkingText || undefined });
+                        this.storage.addMessage(this.currentFriendCode, { type: 'ai', text: aiText.replace(/\[MSG_SPLIT\]/g, '\n\n'), timestamp: partTs, thinking: thinkingText || undefined });
                     }
                 }
             }
@@ -2149,6 +2163,20 @@ div.innerHTML = `
                 const bgData = await this.imageToBase64(intimacyData.bgImage);
                 if (bgData) {
                     images.push({ role: 'intimacy_bg', data: bgData.data, mediaType: bgData.mediaType });
+                }
+            }
+            
+            // 自定义徽章图片（让AI看到徽章长什么样）
+            const badgeConfig = this.storage.getIntimacyConfig();
+            const customBadges = badgeConfig?.customBadges || [];
+            for (const badge of customBadges) {
+                if (badge.icon) {
+                    try {
+                        const badgeData = await this.imageToBase64(badge.icon);
+                        if (badgeData) {
+                            images.push({ role: `badge_${badge.id}`, badgeName: badge.name, data: badgeData.data, mediaType: badgeData.mediaType });
+                        }
+                    } catch(e) { /* 静默跳过 */ }
                 }
             }
             
@@ -5905,6 +5933,7 @@ getIntimacyStatusForAI() {
         desc += `\n  自定义徽章：${customBadges.map(b => `「${b.name}」(条件:${b.condition})`).join('、')}`;
         desc += `\n  你可以用 [BADGE_UNLOCK:徽章名] 来解锁自定义徽章（当你认为条件已满足时）`;
     }
+    desc += `\n  注意：你能看到所有徽章的名字、解锁条件和进度。如果有自定义徽章图片，它们会作为图片附带给你，你可以描述它们的样子。内置徽章的图片只在user的界面上渲染，你看不到内置徽章图片。`;
     
     // 跨次元兑换所摘要
     const ex = data.exchange || {};
