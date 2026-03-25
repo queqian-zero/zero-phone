@@ -327,12 +327,15 @@ class StorageManager {
                 bgImage: ''
             },
             exchange: {                  // 跨次元兑换所
-                todos: [],               // 未来要做的事
-                funds: [],               // 亲密基金
-                shopping: [],            // 网购
-                delivery: [],            // 外卖
-                letters: [],             // 信件
-                bgImage: ''
+                todos: [],               // [{id, title, desc, from:'user'|'ai', target:'ai'|'user'|'both', completed:false, completedBy:'', completedDate:'', proof:'', notes:'', createdDate:'', revoked:false}]
+                funds: [],               // [{id, amount, currency:'CNY', from:'user'|'ai', note:'', createdDate:'', withdrawn:false, withdrawnBy:'', withdrawnDate:''}]
+                shopping: [],            // 网购(下轮)
+                delivery: [],            // 外卖(下轮)
+                letters: [],             // 信件(下轮)
+                wishStarBalance: { user: 0, ai: 0 },  // 许愿星余额
+                shop: { userItems:[], aiItems:[] },    // 小铺(下轮)
+                bgImage: '',
+                shopCss: ''              // 小铺自定义装修CSS(下轮)
             },
             capsule: {                   // 岁月胶囊
                 reports: [],             // 报告列表

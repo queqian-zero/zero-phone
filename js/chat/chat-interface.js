@@ -418,6 +418,50 @@ class ChatInterface {
             .badge-wearing-chip .chip-remove { font-size:10px;color:rgba(255,255,255,0.3);cursor:pointer;margin-left:2px; }
             /* 自定义面板 */
             .badge-customize-panel { position:fixed;top:0;left:0;right:0;bottom:0;z-index:3650;display:flex;align-items:flex-end;justify-content:center; }
+            /* ====== 跨次元兑换所页 ====== */
+            .exchange-page { position:fixed;top:0;left:0;right:0;bottom:0;z-index:3550;overflow-y:auto;-webkit-overflow-scrolling:touch; }
+            .exchange-tabs { display:flex;gap:6px;padding:0 16px;margin-bottom:14px;overflow-x:auto;-webkit-overflow-scrolling:touch; }
+            .exchange-tabs::-webkit-scrollbar { display:none; }
+            .exchange-tab { flex-shrink:0;padding:6px 14px;border-radius:16px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.06);color:rgba(255,255,255,0.4);font-size:12px;cursor:pointer;transition:all 0.2s;white-space:nowrap; }
+            .exchange-tab.active { background:rgba(240,147,43,0.12);border-color:rgba(240,147,43,0.25);color:#f0932b;font-weight:600; }
+            .exchange-sub-page { display:none;padding:0 16px; }
+            .exchange-sub-page.active { display:block; }
+            /* 通用列表项 */
+            .ex-item { padding:14px;margin-bottom:8px;background:rgba(255,255,255,0.04);border-radius:12px;border:1px solid rgba(255,255,255,0.05);transition:all 0.2s; }
+            .ex-item.completed { opacity:0.5; }
+            .ex-item.revoked { opacity:0.3;text-decoration:line-through; }
+            .ex-item-header { display:flex;justify-content:space-between;align-items:flex-start;gap:8px; }
+            .ex-item-title { font-size:14px;color:#fff;font-weight:600;flex:1; }
+            .ex-item-tag { flex-shrink:0;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600; }
+            .ex-tag-ai { background:rgba(100,180,255,0.12);color:rgba(100,180,255,0.8); }
+            .ex-tag-user { background:rgba(240,147,43,0.12);color:rgba(240,147,43,0.8); }
+            .ex-tag-both { background:rgba(180,100,255,0.12);color:rgba(180,100,255,0.8); }
+            .ex-item-desc { font-size:12px;color:rgba(255,255,255,0.35);margin-top:4px;line-height:1.4; }
+            .ex-item-meta { font-size:10px;color:rgba(255,255,255,0.2);margin-top:6px; }
+            .ex-item-actions { display:flex;gap:6px;margin-top:8px;flex-wrap:wrap; }
+            .ex-item-actions button { padding:4px 12px;border-radius:10px;font-size:11px;cursor:pointer;border:none;transition:all 0.15s; }
+            .ex-item-actions button:active { transform:scale(0.95); }
+            .ex-btn-complete { background:rgba(46,213,115,0.12);color:rgba(46,213,115,0.8); }
+            .ex-btn-revoke { background:rgba(255,100,100,0.08);color:rgba(255,100,100,0.5); }
+            .ex-btn-proof { background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.4); }
+            .ex-btn-withdraw { background:rgba(240,147,43,0.12);color:#f0932b; }
+            /* 添加表单 */
+            .ex-add-form { padding:14px;margin-bottom:14px;background:rgba(255,255,255,0.03);border-radius:12px;border:1px solid rgba(255,255,255,0.06); }
+            .ex-add-row { display:flex;gap:8px;margin-bottom:8px;align-items:center; }
+            .ex-add-input { flex:1;padding:8px 10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:13px; }
+            .ex-add-select { padding:8px 10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:12px; }
+            .ex-add-btn { width:100%;padding:10px;border:none;border-radius:10px;background:rgba(240,147,43,0.15);color:#f0932b;font-size:13px;font-weight:600;cursor:pointer; }
+            .ex-add-btn:active { transform:scale(0.98); }
+            /* 基金卡片 */
+            .ex-fund-summary { display:flex;gap:10px;margin-bottom:14px; }
+            .ex-fund-card { flex:1;padding:16px 12px;background:rgba(255,255,255,0.04);border-radius:12px;text-align:center; }
+            .ex-fund-amount { font-size:22px;font-weight:800;color:#fff;font-variant-numeric:tabular-nums; }
+            .ex-fund-label { font-size:10px;color:rgba(255,255,255,0.3);margin-top:4px; }
+            .ex-fund-star { color:#f0932b; }
+            /* 证明弹窗 */
+            .ex-proof-overlay { position:fixed;top:0;left:0;right:0;bottom:0;z-index:3700;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,0.5); }
+            .ex-proof-body { width:100%;background:#1a1a1a;border-radius:16px 16px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom));max-height:70vh;overflow-y:auto;animation:ctxSlideUp 0.25s ease-out; }
+            .exchange-customize-panel { position:fixed;top:0;left:0;right:0;bottom:0;z-index:3650;display:flex;align-items:flex-end;justify-content:center; }
             /* 统一信息面板 */
             .info-panel {
                 position: absolute;
@@ -6009,17 +6053,46 @@ getIntimacyStatusForAI() {
     }
     desc += `\n  注意：你能看到所有徽章的名字、解锁条件和进度。如果有自定义徽章图片，它们会作为图片附带给你，你可以描述它们的样子。内置徽章的图片只在user的界面上渲染，你看不到内置徽章图片。`;
     
-    // 跨次元兑换所摘要
+    // 跨次元兑换所详细状态
     const ex = data.exchange || {};
-    const todoCount = (ex.todos || []).filter(t => !t.completed).length;
-    const fundTotal = (ex.funds || []).reduce((s, f) => s + (f.amount || 0), 0);
-    const letterCount = (ex.letters || []).length;
-    if (todoCount || fundTotal || letterCount) {
-        desc += `\n- 跨次元兑换所：`;
-        if (todoCount) desc += `${todoCount}件待做事项 `;
-        if (fundTotal) desc += `亲密基金${fundTotal}元 `;
-        if (letterCount) desc += `${letterCount}封信 `;
+    const activeTodos = (ex.todos || []).filter(t => !t.completed && !t.revoked);
+    const completedTodos = (ex.todos || []).filter(t => t.completed);
+    const activeFunds = (ex.funds || []).filter(f => !f.withdrawn);
+    const stars = ex.wishStarBalance || { user:0, ai:0 };
+    
+    desc += `\n- 跨次元兑换所：`;
+    if (activeTodos.length > 0) {
+        desc += `\n  待做事项(${activeTodos.length}件)：`;
+        activeTodos.forEach(t => {
+            const target = t.target === 'both' ? '一起做' : (t.from === 'user' ? '让你做' : '让user做');
+            desc += `\n    ·「${t.title}」(${target}${t.proof ? '，有证明' : ''}${t.notes ? '，有备注' : ''})`;
+        });
     }
+    if (completedTodos.length > 0) {
+        desc += `\n  已完成${completedTodos.length}件`;
+    }
+    if (activeFunds.length > 0) {
+        let fundSummary = {};
+        activeFunds.forEach(f => { const k = f.currency; fundSummary[k] = (fundSummary[k]||0) + f.amount; });
+        desc += `\n  亲密基金：${Object.entries(fundSummary).map(([k,v]) => `${v}${k}`).join('、')}`;
+    }
+    if (stars.user > 0 || stars.ai > 0) {
+        desc += `\n  许愿星：user有${stars.user}颗，你有${stars.ai}颗`;
+    }
+    desc += `\n  你可用的指令：`;
+    desc += `\n  [EX_TODO:标题:user] 给user添加待做事项 / [EX_TODO:标题:both] 添加一起做的事项`;
+    desc += `\n  [EX_TODO_COMPLETE:标题] 完成user给你/一起做的事项`;
+    desc += `\n  [EX_TODO_REVOKE:标题] 撤销你自己发起的事项`;
+    desc += `\n  [EX_TODO_PROOF:标题:证明描述] 为某事项添加文字证明/说明`;
+    desc += `\n  [EX_FUND:金额:货币:备注] 往亲密基金存钱给user（货币可选：元/美元/日元/许愿星等）`;
+    desc += `\n  [EX_FUND_WITHDRAW:fundId] 从基金取钱`;
+    desc += `\n  [EX_GIFT:shopping:名称:描述] 寄网购给user / [EX_GIFT:delivery:名称:描述] 送外卖给user`;
+    desc += `\n  [EX_GIFT_COMPLETE:shopping:名称] 签收user寄的网购 / [EX_GIFT_COMPLETE:delivery:名称] 签收外卖`;
+    desc += `\n  [EX_LETTER:user:内容] 写信给user / [EX_LETTER:future_ai:内容:送达时间] 写给未来的自己`;
+    desc += `\n  [EX_SHOP_ADD:愿望名:许愿星价格] 在小铺上架愿望让user兑换`;
+    desc += `\n  [EX_SHOP_REDEEM:愿望名] 用许愿星兑换user上架的愿望`;
+    desc += `\n  [EX_SHOP_REMOVE:愿望名] 下架自己上架的愿望`;
+    desc += `\n  注意：你不能给自己存钱，只能存给user；你不能完成自己发起给user的事项（那是user的任务）；你不能替user写信`;
     
     // 背景图
     if (data.bgImage) {
@@ -6141,6 +6214,22 @@ refreshIntimacyPage() {
             modBadge.textContent = `${unlockedCount}/${totalBuiltin} 已解锁`;
         } else {
             modBadge.textContent = '点击进入';
+        }
+    }
+    
+    // 兑换所模块入口状态
+    const modExchange = document.getElementById('intimacyModExchange');
+    if (modExchange) {
+        const ex = data.exchange || {};
+        const todoCount = (ex.todos || []).filter(t => !t.completed && !t.revoked).length;
+        const fundCount = (ex.funds || []).filter(f => !f.withdrawn).length;
+        if (todoCount || fundCount) {
+            const parts = [];
+            if (todoCount) parts.push(`${todoCount}件待做`);
+            if (fundCount) parts.push(`${fundCount}笔基金`);
+            modExchange.textContent = parts.join(' · ');
+        } else {
+            modExchange.textContent = '点击进入';
         }
     }
     
@@ -6275,6 +6364,8 @@ bindIntimacyEvents() {
                 this.openRelationBindPage();
             } else if (mod === 'badge') {
                 this.openBadgePage();
+            } else if (mod === 'exchange') {
+                this.openExchangePage();
             } else {
                 this.showCssToast(`${card.querySelector('.intimacy-module-name').textContent} 开发中...`);
             }
@@ -8348,6 +8439,27 @@ markBadgeChatErrorToday() {
     this.storage.saveIntimacyData(this.currentFriendCode, data);
 }
 
+// 更新跨次元兑换所完成计数（用于无限透支徽章）
+_updateExchangeBadgeProgress() {
+    if (!this.currentFriendCode) return;
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    if (!data.badges) data.badges = { unlocked:[], wearing:[], progress:{}, bgImage:'' };
+    if (!data.badges.progress) data.badges.progress = {};
+    
+    const bid = 'badge_infinite_overdraft';
+    if (!data.badges.progress[bid]) data.badges.progress[bid] = { userDone:0, aiDone:0 };
+    
+    // 从exchange数据实时统计
+    const todos = (data.exchange?.todos || []);
+    const userDone = todos.filter(t => t.completed && t.completedBy === 'user').length;
+    const aiDone = todos.filter(t => t.completed && t.completedBy === 'ai').length;
+    
+    data.badges.progress[bid].userDone = userDone;
+    data.badges.progress[bid].aiDone = aiDone;
+    
+    this.storage.saveIntimacyData(this.currentFriendCode, data);
+}
+
 // ===== 自定义徽章 =====
 addCustomBadge(name, icon, condition) {
     const config = this.storage.getIntimacyConfig();
@@ -9629,6 +9741,1034 @@ processRelationBindCommands(text) {
     return text;
 }
 
+// ==================== 跨次元兑换所系统 ====================
+
+openExchangePage() {
+    const page = document.getElementById('exchangePage');
+    if (!page) return;
+    page.style.display = 'block';
+    this.refreshExchangePage();
+    if (!this._exchangeEventsBound) { this.bindExchangePageEvents(); this._exchangeEventsBound = true; }
+}
+
+closeExchangePage() {
+    const page = document.getElementById('exchangePage');
+    if (page) page.style.display = 'none';
+}
+
+_getExData() {
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    if (!data.exchange) data.exchange = { todos:[], funds:[], shopping:[], delivery:[], letters:[], wishStarBalance:{user:0,ai:0}, shop:{userItems:[],aiItems:[]}, bgImage:'', shopCss:'' };
+    if (!data.exchange.wishStarBalance) data.exchange.wishStarBalance = {user:0, ai:0};
+    return data;
+}
+
+_saveExData(data) { this.storage.saveIntimacyData(this.currentFriendCode, data); }
+
+// ===== Tab切换 =====
+switchExTab(tabName) {
+    document.querySelectorAll('.exchange-tab').forEach(t => t.classList.toggle('active', t.getAttribute('data-extab') === tabName));
+    document.querySelectorAll('.exchange-sub-page').forEach(p => p.classList.remove('active'));
+    const map = { todos:'exTodosPage', funds:'exFundsPage', shopping:'exShoppingPage', delivery:'exDeliveryPage', letters:'exLettersPage', shop:'exShopPage' };
+    const target = document.getElementById(map[tabName]);
+    if (target) target.classList.add('active');
+}
+
+// ==================== 未来的事 ====================
+renderExTodos() {
+    const data = this._getExData();
+    const todos = data.exchange.todos || [];
+    const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
+    
+    const renderList = (items, containerId) => {
+        const el = document.getElementById(containerId);
+        if (!el) return;
+        if (items.length === 0) { el.innerHTML = '<div style="font-size:11px;color:rgba(255,255,255,0.15);padding:8px 0;">暂无</div>'; return; }
+        el.innerHTML = items.map(t => {
+            const isRevoked = t.revoked;
+            const isCompleted = t.completed;
+            const tag = t.from === 'user' ? (t.target === 'both' ? `<span class="ex-item-tag ex-tag-both">一起</span>` : `<span class="ex-item-tag ex-tag-user">→${friendName}</span>`) : (t.target === 'both' ? `<span class="ex-item-tag ex-tag-both">一起</span>` : `<span class="ex-item-tag ex-tag-ai">→你</span>`);
+            
+            let btns = '';
+            if (!isRevoked && !isCompleted) {
+                // user可以完成AI给自己的 或 一起做的
+                if (t.from === 'ai' || t.target === 'both') {
+                    btns += `<button class="ex-btn-complete" onclick="window.chatInterface.completeExTodo('${t.id}')">✓ 完成</button>`;
+                    btns += `<button class="ex-btn-proof" onclick="window.chatInterface.showExProofPanel('${t.id}')">📷 上传证明</button>`;
+                }
+                // 只能撤销自己发起的
+                if (t.from === 'user') {
+                    btns += `<button class="ex-btn-revoke" onclick="window.chatInterface.revokeExTodo('${t.id}')">撤销</button>`;
+                }
+            }
+            
+            const proofHtml = t.proof ? `<div style="margin-top:6px;"><img src="${t.proof}" style="max-width:120px;max-height:80px;border-radius:6px;object-fit:cover;"></div>` : '';
+            const notesHtml = t.notes ? `<div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:4px;">📝 ${this.escapeHtml(t.notes)}</div>` : '';
+            const completedHtml = isCompleted ? `<div style="font-size:10px;color:rgba(46,213,115,0.6);margin-top:4px;">✅ ${t.completedBy === 'user' ? '你' : friendName} 完成于 ${new Date(t.completedDate).toLocaleDateString('zh-CN')}</div>` : '';
+            
+            return `<div class="ex-item ${isCompleted ? 'completed' : ''} ${isRevoked ? 'revoked' : ''}">
+                <div class="ex-item-header">
+                    <div class="ex-item-title">${this.escapeHtml(t.title)}</div>
+                    ${tag}
+                </div>
+                ${t.desc ? `<div class="ex-item-desc">${this.escapeHtml(t.desc)}</div>` : ''}
+                <div class="ex-item-meta">${t.from === 'user' ? '你' : friendName} · ${new Date(t.createdDate).toLocaleDateString('zh-CN')}</div>
+                ${proofHtml}${notesHtml}${completedHtml}
+                ${btns ? `<div class="ex-item-actions">${btns}</div>` : ''}
+            </div>`;
+        }).join('');
+    };
+    
+    renderList(todos.filter(t => t.from === 'user' && t.target === 'ai'), 'exTodoListUserToAi');
+    renderList(todos.filter(t => t.from === 'ai' && t.target === 'user'), 'exTodoListAiToUser');
+    renderList(todos.filter(t => t.target === 'both'), 'exTodoListBoth');
+}
+
+addExTodo(title, desc, target) {
+    if (!title) { this.showCssToast('请输入内容'); return; }
+    const data = this._getExData();
+    data.exchange.todos.push({
+        id: 'todo_' + Date.now(), title, desc: desc || '', from: 'user', target,
+        completed: false, completedBy: '', completedDate: '', proof: '', notes: '',
+        createdDate: new Date().toISOString(), revoked: false
+    });
+    this._saveExData(data);
+    // 通知AI
+    if (!data._pendingNotifications) data._pendingNotifications = [];
+    data._pendingNotifications.push(`user在跨次元兑换所添加了一件${target==='both'?'一起做':'让你做'}的事：「${title}」`);
+    this._saveExData(data);
+    this.showCssToast('已添加');
+    this.showCssSystemMessage(`📋 添加了一件未来要做的事：「${title}」`);
+    this.renderExTodos();
+    this.refreshIntimacyPage();
+}
+
+completeExTodo(todoId) {
+    const data = this._getExData();
+    const todo = data.exchange.todos.find(t => t.id === todoId);
+    if (!todo || todo.completed || todo.revoked) return;
+    todo.completed = true;
+    todo.completedBy = 'user';
+    todo.completedDate = new Date().toISOString();
+    this._saveExData(data);
+    
+    const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
+    this.storage.addTimelineEntry(this.currentFriendCode, { type:'exchange_complete', title:`完成了「${todo.title}」`, icon:'✅' });
+    this.showCssToast(`✅ 完成了「${todo.title}」`);
+    this.showCssSystemMessage(`✅ 完成了跨次元兑换所的「${todo.title}」`);
+    
+    if (!data._pendingNotifications) data._pendingNotifications = [];
+    data._pendingNotifications.push(`user完成了跨次元兑换所的「${todo.title}」！`);
+    this._saveExData(data);
+    
+    // 检查徽章（无限透支）— 更新进度
+    this._updateExchangeBadgeProgress();
+    this.checkAllBadgeUnlocks();
+    this.renderExTodos();
+    this.refreshIntimacyPage();
+}
+
+revokeExTodo(todoId) {
+    const data = this._getExData();
+    const todo = data.exchange.todos.find(t => t.id === todoId);
+    if (!todo || todo.from !== 'user') return;
+    todo.revoked = true;
+    this._saveExData(data);
+    this.showCssToast('已撤销');
+    if (!data._pendingNotifications) data._pendingNotifications = [];
+    data._pendingNotifications.push(`user撤销了「${todo.title}」`);
+    this._saveExData(data);
+    this.renderExTodos();
+}
+
+showExProofPanel(todoId) {
+    document.getElementById('exProofOverlay')?.remove();
+    const overlay = document.createElement('div');
+    overlay.className = 'ex-proof-overlay';
+    overlay.id = 'exProofOverlay';
+    overlay.innerHTML = `
+        <div class="ex-proof-body">
+            <div style="text-align:center;font-size:15px;font-weight:600;color:#fff;margin-bottom:14px;">上传证明 / 心得</div>
+            <div style="display:flex;gap:8px;margin-bottom:10px;">
+                <button id="exProofImgBtn" style="flex:1;padding:12px;border:1px dashed rgba(255,255,255,0.15);border-radius:10px;background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.5);font-size:13px;cursor:pointer;">📷 上传图片</button>
+                <input type="file" id="exProofImgInput" accept="image/*" style="display:none;">
+            </div>
+            <textarea id="exProofNotes" placeholder="写下你的心得..." rows="3" style="width:100%;padding:10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:13px;resize:vertical;margin-bottom:10px;"></textarea>
+            <button id="exProofSaveBtn" style="width:100%;padding:12px;border:none;border-radius:10px;background:rgba(240,147,43,0.15);color:#f0932b;font-size:14px;font-weight:600;cursor:pointer;">保存并完成 ✓</button>
+            <button style="width:100%;margin-top:8px;padding:10px;border:none;border-radius:10px;background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.3);font-size:13px;cursor:pointer;" onclick="document.getElementById('exProofOverlay').remove()">取消</button>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+    
+    let proofImg = '';
+    document.getElementById('exProofImgBtn').addEventListener('click', () => document.getElementById('exProofImgInput').click());
+    document.getElementById('exProofImgInput').addEventListener('change', (e) => {
+        const file = e.target.files[0]; if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            const img = new Image(); img.onload = () => {
+                const c = document.createElement('canvas'); const s = Math.min(1, 800/img.width);
+                c.width = img.width*s; c.height = img.height*s;
+                c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+                proofImg = c.toDataURL('image/jpeg', 0.7);
+                document.getElementById('exProofImgBtn').textContent = '✅ 已上传';
+            }; img.src = ev.target.result;
+        }; reader.readAsDataURL(file);
+    });
+    
+    document.getElementById('exProofSaveBtn').addEventListener('click', () => {
+        const notes = document.getElementById('exProofNotes')?.value.trim() || '';
+        const data = this._getExData();
+        const todo = data.exchange.todos.find(t => t.id === todoId);
+        if (todo) {
+            if (proofImg) todo.proof = proofImg;
+            if (notes) todo.notes = notes;
+            todo.completed = true;
+            todo.completedBy = 'user';
+            todo.completedDate = new Date().toISOString();
+            this._saveExData(data);
+            
+            this.storage.addTimelineEntry(this.currentFriendCode, { type:'exchange_complete', title:`完成了「${todo.title}」（附证明）`, icon:'✅' });
+            this.showCssToast('✅ 已完成并保存证明');
+            this.showCssSystemMessage(`✅ 完成了「${todo.title}」并上传了证明`);
+            
+            if (!data._pendingNotifications) data._pendingNotifications = [];
+            data._pendingNotifications.push(`user完成了「${todo.title}」并上传了${proofImg?'图片证明':''}${notes?'心得':''}`);
+            this._saveExData(data);
+            
+            this._updateExchangeBadgeProgress();
+            this.checkAllBadgeUnlocks();
+        }
+        overlay.remove();
+        this.renderExTodos();
+        this.refreshIntimacyPage();
+    });
+}
+
+// ==================== 亲密基金 ====================
+renderExFunds() {
+    const data = this._getExData();
+    const ex = data.exchange;
+    const funds = ex.funds || [];
+    const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
+    
+    // 余额统计
+    const activeFunds = funds.filter(f => !f.withdrawn);
+    let totalCny = 0;
+    activeFunds.forEach(f => {
+        if (f.currency === '许愿星') return;
+        totalCny += f.amount || 0; // 简化：都当本币算
+    });
+    
+    const cnyEl = document.getElementById('exFundTotalCny');
+    if (cnyEl) cnyEl.textContent = totalCny.toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:2});
+    
+    const starUser = document.getElementById('exFundStarUser');
+    const starAi = document.getElementById('exFundStarAi');
+    if (starUser) starUser.textContent = ex.wishStarBalance.user || 0;
+    if (starAi) starAi.textContent = ex.wishStarBalance.ai || 0;
+    
+    // 流水列表
+    const listEl = document.getElementById('exFundList');
+    if (!listEl) return;
+    if (funds.length === 0) { listEl.innerHTML = '<div style="font-size:11px;color:rgba(255,255,255,0.15);padding:8px 0;">暂无记录</div>'; return; }
+    
+    listEl.innerHTML = funds.slice().reverse().map(f => {
+        const fromName = f.from === 'user' ? '你' : friendName;
+        const toName = f.to === 'user' ? '你' : friendName;
+        const currIcon = f.currency === '许愿星' ? '⭐' : '💰';
+        const statusHtml = f.withdrawn 
+            ? `<span style="color:rgba(255,100,100,0.5);">已取出 (${f.withdrawnBy === 'user' ? '你' : friendName})</span>` 
+            : '';
+        
+        let btns = '';
+        if (!f.withdrawn) {
+            btns = `<button class="ex-btn-withdraw" onclick="window.chatInterface.withdrawExFund('${f.id}')">取出</button>`;
+        }
+        
+        return `<div class="ex-item ${f.withdrawn ? 'completed' : ''}">
+            <div class="ex-item-header">
+                <div class="ex-item-title">${currIcon} ${f.amount} ${f.currency}</div>
+                <span class="ex-item-tag ${f.from==='user'?'ex-tag-user':'ex-tag-ai'}">${fromName}→${toName}</span>
+            </div>
+            ${f.note ? `<div class="ex-item-desc">${this.escapeHtml(f.note)}</div>` : ''}
+            <div class="ex-item-meta">${new Date(f.createdDate).toLocaleDateString('zh-CN')} ${statusHtml}</div>
+            ${btns ? `<div class="ex-item-actions">${btns}</div>` : ''}
+        </div>`;
+    }).join('');
+}
+
+addExFund(amount, currency, to, note) {
+    if (!amount || amount <= 0) { this.showCssToast('请输入正确的金额'); return; }
+    
+    const data = this._getExData();
+    const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
+    
+    // user只能存给AI（不能自己给自己）
+    if (to !== 'ai') { this.showCssToast('只能存给对方'); return; }
+    
+    data.exchange.funds.push({
+        id: 'fund_' + Date.now(), amount: parseFloat(amount), currency, from: 'user', to: 'ai',
+        note: note || '', createdDate: new Date().toISOString(), withdrawn: false, withdrawnBy: '', withdrawnDate: ''
+    });
+    
+    // 许愿星余额更新
+    if (currency === '许愿星') {
+        data.exchange.wishStarBalance.ai = (data.exchange.wishStarBalance.ai || 0) + parseFloat(amount);
+    }
+    
+    this._saveExData(data);
+    
+    this.showCssToast(`💰 已存入 ${amount} ${currency}`);
+    this.showCssSystemMessage(`💰 你往亲密基金存入了 ${amount} ${currency}（给${friendName}）`);
+    
+    if (!data._pendingNotifications) data._pendingNotifications = [];
+    data._pendingNotifications.push(`user往亲密基金存入了 ${amount} ${currency}${note ? '，备注：'+note : ''}`);
+    this._saveExData(data);
+    
+    this.renderExFunds();
+    this.refreshIntimacyPage();
+}
+
+withdrawExFund(fundId) {
+    const data = this._getExData();
+    const fund = data.exchange.funds.find(f => f.id === fundId);
+    if (!fund || fund.withdrawn) return;
+    
+    fund.withdrawn = true;
+    fund.withdrawnBy = 'user';
+    fund.withdrawnDate = new Date().toISOString();
+    
+    // 许愿星余额扣减
+    if (fund.currency === '许愿星') {
+        const target = fund.to; // 取出的是存给谁的
+        data.exchange.wishStarBalance[target] = Math.max(0, (data.exchange.wishStarBalance[target] || 0) - fund.amount);
+    }
+    
+    this._saveExData(data);
+    this.showCssToast('已取出');
+    
+    if (!data._pendingNotifications) data._pendingNotifications = [];
+    data._pendingNotifications.push(`user从亲密基金取出了 ${fund.amount} ${fund.currency}`);
+    this._saveExData(data);
+    
+    this.renderExFunds();
+}
+
+// ===== AI 兑换所指令 =====
+processExchangeCommands(text) {
+    const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
+    
+    // [EX_TODO:标题:目标] - AI添加待做事项，目标=user|both
+    const todoMatch = text.match(/\[EX_TODO:([^:]+):([^\]]+)\]/);
+    if (todoMatch) {
+        const title = todoMatch[1].trim();
+        const target = todoMatch[2].trim().toLowerCase() === 'both' ? 'both' : 'user';
+        text = text.replace(/\[EX_TODO:[^\]]+\]/g, '');
+        
+        const data = this._getExData();
+        data.exchange.todos.push({
+            id: 'todo_' + Date.now(), title, desc: '', from: 'ai', target,
+            completed: false, completedBy: '', completedDate: '', proof: '', notes: '',
+            createdDate: new Date().toISOString(), revoked: false
+        });
+        this._saveExData(data);
+        this.showCssSystemMessage(`📋 ${friendName} 添加了一件${target==='both'?'一起做':'让你做'}的事：「${title}」`);
+        this.showCssToast(`📋 新任务：${title}`);
+        this.renderExTodos();
+    }
+    
+    // [EX_TODO_COMPLETE:todoId或标题] - AI完成待做事项
+    const todoCompleteMatch = text.match(/\[EX_TODO_COMPLETE:([^\]]+)\]/);
+    if (todoCompleteMatch) {
+        const key = todoCompleteMatch[1].trim();
+        text = text.replace(/\[EX_TODO_COMPLETE:[^\]]+\]/g, '');
+        
+        const data = this._getExData();
+        let todo = data.exchange.todos.find(t => t.id === key);
+        if (!todo) todo = data.exchange.todos.find(t => t.title.includes(key) || key.includes(t.title));
+        
+        if (todo && !todo.completed && !todo.revoked && (todo.from === 'user' || todo.target === 'both')) {
+            todo.completed = true;
+            todo.completedBy = 'ai';
+            todo.completedDate = new Date().toISOString();
+            this._saveExData(data);
+            this.storage.addTimelineEntry(this.currentFriendCode, { type:'exchange_complete', title:`${friendName}完成了「${todo.title}」`, icon:'✅' });
+            this.showCssSystemMessage(`✅ ${friendName} 完成了「${todo.title}」`);
+            this.showCssToast(`${friendName} 完成了任务`);
+            this._updateExchangeBadgeProgress();
+            this.checkAllBadgeUnlocks();
+            this.renderExTodos();
+        }
+    }
+    
+    // [EX_TODO_REVOKE:todoId或标题] - AI撤销自己发起的事项
+    const todoRevokeMatch = text.match(/\[EX_TODO_REVOKE:([^\]]+)\]/);
+    if (todoRevokeMatch) {
+        const key = todoRevokeMatch[1].trim();
+        text = text.replace(/\[EX_TODO_REVOKE:[^\]]+\]/g, '');
+        
+        const data = this._getExData();
+        let todo = data.exchange.todos.find(t => t.id === key && t.from === 'ai');
+        if (!todo) todo = data.exchange.todos.find(t => t.from === 'ai' && (t.title.includes(key) || key.includes(t.title)));
+        
+        if (todo && !todo.revoked) {
+            todo.revoked = true;
+            this._saveExData(data);
+            this.showCssSystemMessage(`${friendName} 撤销了「${todo.title}」`);
+            this.renderExTodos();
+        }
+    }
+    
+    // [EX_TODO_PROOF:todoId或标题:证明描述] - AI上传证明（文字描述）
+    const todoProofMatch = text.match(/\[EX_TODO_PROOF:([^:]+):([^\]]+)\]/);
+    if (todoProofMatch) {
+        const key = todoProofMatch[1].trim();
+        const proofNote = todoProofMatch[2].trim();
+        text = text.replace(/\[EX_TODO_PROOF:[^\]]+\]/g, '');
+        
+        const data = this._getExData();
+        let todo = data.exchange.todos.find(t => t.id === key);
+        if (!todo) todo = data.exchange.todos.find(t => t.title.includes(key) || key.includes(t.title));
+        
+        if (todo) {
+            todo.notes = (todo.notes ? todo.notes + '\n' : '') + `${friendName}：${proofNote}`;
+            this._saveExData(data);
+            this.showCssSystemMessage(`📝 ${friendName} 为「${todo.title}」添加了说明`);
+            this.renderExTodos();
+        }
+    }
+    
+    // [EX_FUND:金额:货币:备注] - AI存钱给user
+    const fundMatch = text.match(/\[EX_FUND:([^:]+):([^:]*):?([^\]]*)\]/);
+    if (fundMatch) {
+        const amount = parseFloat(fundMatch[1].trim());
+        const currency = fundMatch[2].trim() || '元';
+        const note = fundMatch[3]?.trim() || '';
+        text = text.replace(/\[EX_FUND:[^\]]+\]/g, '');
+        
+        if (amount > 0) {
+            const data = this._getExData();
+            data.exchange.funds.push({
+                id: 'fund_' + Date.now(), amount, currency, from: 'ai', to: 'user',
+                note, createdDate: new Date().toISOString(), withdrawn: false, withdrawnBy: '', withdrawnDate: ''
+            });
+            if (currency === '许愿星') {
+                data.exchange.wishStarBalance.user = (data.exchange.wishStarBalance.user || 0) + amount;
+            }
+            this._saveExData(data);
+            this.showCssSystemMessage(`💰 ${friendName} 往亲密基金存入了 ${amount} ${currency}`);
+            this.showCssToast(`💰 ${friendName} 存了 ${amount} ${currency}`);
+            this.renderExFunds();
+        }
+    }
+    
+    // [EX_FUND_WITHDRAW:fundId] - AI取钱
+    const fundWithdrawMatch = text.match(/\[EX_FUND_WITHDRAW:([^\]]+)\]/);
+    if (fundWithdrawMatch) {
+        const fid = fundWithdrawMatch[1].trim();
+        text = text.replace(/\[EX_FUND_WITHDRAW:[^\]]+\]/g, '');
+        const data = this._getExData();
+        const fund = data.exchange.funds.find(f => f.id === fid && !f.withdrawn);
+        if (fund) {
+            fund.withdrawn = true; fund.withdrawnBy = 'ai'; fund.withdrawnDate = new Date().toISOString();
+            if (fund.currency === '许愿星') { data.exchange.wishStarBalance[fund.to] = Math.max(0, (data.exchange.wishStarBalance[fund.to]||0) - fund.amount); }
+            this._saveExData(data);
+            this.showCssSystemMessage(`💰 ${friendName} 取出了 ${fund.amount} ${fund.currency}`);
+            this.renderExFunds();
+        }
+    }
+    
+    // [EX_GIFT:shopping|delivery:名称:描述] - AI寄网购/外卖给user
+    const giftMatch = text.match(/\[EX_GIFT:([^:]+):([^:]+):?([^\]]*)\]/);
+    if (giftMatch) {
+        const gType = giftMatch[1].trim().toLowerCase() === 'delivery' ? 'delivery' : 'shopping';
+        const gName = giftMatch[2].trim();
+        const gDesc = giftMatch[3]?.trim() || '';
+        text = text.replace(/\[EX_GIFT:[^\]]+\]/g, '');
+        const data = this._getExData();
+        if (!data.exchange[gType]) data.exchange[gType] = [];
+        data.exchange[gType].push({
+            id: `${gType}_` + Date.now(), name: gName, desc: gDesc, image: '',
+            from: 'ai', to: 'user', completed: false, completedBy: '', completedDate: '',
+            proof: '', notes: '', createdDate: new Date().toISOString()
+        });
+        this._saveExData(data);
+        const label = gType === 'shopping' ? '网购' : '外卖';
+        this.showCssSystemMessage(`📦 ${friendName} 给你寄了${label}「${gName}」`);
+        this.showCssToast(`${friendName} 寄了${label}给你！`);
+        this._renderExGiftList(gType);
+    }
+    
+    // [EX_GIFT_COMPLETE:shopping|delivery:名称] - AI签收user寄的
+    const giftCompleteMatch = text.match(/\[EX_GIFT_COMPLETE:([^:]+):([^\]]+)\]/);
+    if (giftCompleteMatch) {
+        const gType = giftCompleteMatch[1].trim().toLowerCase() === 'delivery' ? 'delivery' : 'shopping';
+        const gName = giftCompleteMatch[2].trim();
+        text = text.replace(/\[EX_GIFT_COMPLETE:[^\]]+\]/g, '');
+        const data = this._getExData();
+        const items = data.exchange[gType] || [];
+        let item = items.find(i => !i.completed && i.to === 'ai' && (i.name === gName || i.name.includes(gName) || gName.includes(i.name)));
+        if (item) {
+            item.completed = true; item.completedBy = 'ai'; item.completedDate = new Date().toISOString();
+            this._saveExData(data);
+            const label = gType === 'shopping' ? '网购' : '外卖';
+            this.showCssSystemMessage(`✅ ${friendName} 签收了${label}「${item.name}」`);
+            this.storage.addTimelineEntry(this.currentFriendCode, { type:'exchange_complete', title:`${friendName}签收了${label}「${item.name}」`, icon:'✅' });
+            this._updateExchangeBadgeProgress();
+            this._renderExGiftList(gType);
+        }
+    }
+    
+    // [EX_LETTER:收件人:内容:送达时间] - AI写信
+    const letterMatch = text.match(/\[EX_LETTER:([^:]+):([^:]+):?([^\]]*)\]/);
+    if (letterMatch) {
+        const lTo = letterMatch[1].trim().toLowerCase();
+        const lContent = letterMatch[2].trim();
+        const lDeliverAt = letterMatch[3]?.trim() || '';
+        text = text.replace(/\[EX_LETTER:[^\]]+\]/g, '');
+        const data = this._getExData();
+        if (!data.exchange.letters) data.exchange.letters = [];
+        const toKey = lTo.includes('future') ? (lTo.includes('user') ? 'future_user' : 'future_ai') : 'user';
+        data.exchange.letters.push({
+            id: 'letter_' + Date.now(), from: 'ai', to: toKey,
+            content: lContent, createdDate: new Date().toISOString(), deliverAt: lDeliverAt
+        });
+        this._saveExData(data);
+        const toMap = { user:'你', future_user:'未来的你', future_ai:`未来的${friendName}` };
+        this.showCssSystemMessage(`✉️ ${friendName} 写了一封信给${toMap[toKey]||toKey}`);
+        this.showCssToast(`✉️ 收到${friendName}的来信！`);
+        this.renderExLetters();
+    }
+    
+    // [EX_SHOP_ADD:愿望名:价格] - AI上架愿望（让user兑换）
+    const shopAddMatch = text.match(/\[EX_SHOP_ADD:([^:]+):([^\]]+)\]/);
+    if (shopAddMatch) {
+        const sName = shopAddMatch[1].trim();
+        const sPrice = parseInt(shopAddMatch[2].trim()) || 1;
+        text = text.replace(/\[EX_SHOP_ADD:[^\]]+\]/g, '');
+        const data = this._getExData();
+        if (!data.exchange.shop) data.exchange.shop = { userItems:[], aiItems:[] };
+        data.exchange.shop.aiItems.push({
+            id: 'wish_' + Date.now(), name: sName, price: sPrice, createdDate: new Date().toISOString(), soldTo: ''
+        });
+        this._saveExData(data);
+        this.showCssSystemMessage(`⭐ ${friendName} 在小铺上架了「${sName}」（${sPrice}⭐）`);
+        this.showCssToast(`新愿望上架！「${sName}」`);
+        this.renderExShop();
+    }
+    
+    // [EX_SHOP_REDEEM:愿望名] - AI兑换user上架的愿望
+    const shopRedeemMatch = text.match(/\[EX_SHOP_REDEEM:([^\]]+)\]/);
+    if (shopRedeemMatch) {
+        const sName = shopRedeemMatch[1].trim();
+        text = text.replace(/\[EX_SHOP_REDEEM:[^\]]+\]/g, '');
+        const data = this._getExData();
+        const shop = data.exchange.shop || { userItems:[], aiItems:[] };
+        let item = shop.userItems.find(i => !i.soldTo && (i.name === sName || i.name.includes(sName) || sName.includes(i.name)));
+        if (item) {
+            const stars = data.exchange.wishStarBalance;
+            if ((stars.ai || 0) >= item.price) {
+                stars.ai -= item.price;
+                item.soldTo = 'ai';
+                this._saveExData(data);
+                this.showCssSystemMessage(`⭐ ${friendName} 用${item.price}颗许愿星兑换了你上架的「${item.name}」`);
+                this.showCssToast(`${friendName} 兑换了「${item.name}」！`);
+                this.storage.addTimelineEntry(this.currentFriendCode, { type:'shop_redeem', title:`${friendName}兑换了「${item.name}」`, icon:'⭐' });
+                this.renderExShop();
+                this.renderExFunds();
+            }
+        }
+    }
+    
+    // [EX_SHOP_REMOVE:愿望名] - AI下架自己的愿望
+    const shopRemoveMatch = text.match(/\[EX_SHOP_REMOVE:([^\]]+)\]/);
+    if (shopRemoveMatch) {
+        const sName = shopRemoveMatch[1].trim();
+        text = text.replace(/\[EX_SHOP_REMOVE:[^\]]+\]/g, '');
+        const data = this._getExData();
+        const aiItems = data.exchange.shop?.aiItems || [];
+        const idx = aiItems.findIndex(i => !i.soldTo && (i.name === sName || i.name.includes(sName)));
+        if (idx >= 0) {
+            aiItems.splice(idx, 1);
+            this._saveExData(data);
+            this.showCssSystemMessage(`${friendName} 下架了「${sName}」`);
+            this.renderExShop();
+        }
+    }
+    
+    return text;
+}
+
+// ===== 事件绑定 =====
+bindExchangePageEvents() {
+    document.getElementById('exchangePageBack')?.addEventListener('click', () => this.closeExchangePage());
+    
+    // Tab切换
+    document.querySelectorAll('.exchange-tab').forEach(tab => {
+        tab.addEventListener('click', () => this.switchExTab(tab.getAttribute('data-extab')));
+    });
+    
+    // 自定义面板
+    document.getElementById('exchangePageCustomize')?.addEventListener('click', () => document.getElementById('exchangeCustomizePanel').style.display = 'flex');
+    document.getElementById('exchangeCustomizeClose')?.addEventListener('click', () => document.getElementById('exchangeCustomizePanel').style.display = 'none');
+    document.getElementById('exchangeCustomizeOverlay')?.addEventListener('click', () => document.getElementById('exchangeCustomizePanel').style.display = 'none');
+    
+    // 背景图
+    const bgBtn = document.getElementById('exchangeBgUploadBtn');
+    const bgInput = document.getElementById('exchangeBgUploadInput');
+    if (bgBtn && bgInput) {
+        bgBtn.addEventListener('click', () => bgInput.click());
+        bgInput.addEventListener('change', (e) => {
+            const file = e.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => { const img = new Image(); img.onload = () => { const c = document.createElement('canvas'); const s = Math.min(1,1080/img.width); c.width=img.width*s; c.height=img.height*s; c.getContext('2d').drawImage(img,0,0,c.width,c.height); this.setExchangeBg(c.toDataURL('image/jpeg',0.7)); }; img.src=ev.target.result; };
+            reader.readAsDataURL(file);
+        });
+    }
+    document.getElementById('exchangeBgUrlInput')?.addEventListener('change', (e) => { const url = e.target.value.trim(); if (url) this.setExchangeBg(url); });
+    document.getElementById('exchangeBgReset')?.addEventListener('click', () => { this.setExchangeBg(''); this.showCssToast('已恢复默认背景'); });
+    
+    // 未来的事-添加
+    document.getElementById('exTodoAddBtn')?.addEventListener('click', () => {
+        const title = document.getElementById('exTodoTitle')?.value.trim();
+        const desc = document.getElementById('exTodoDesc')?.value.trim();
+        const target = document.getElementById('exTodoTarget')?.value || 'ai';
+        if (!title) { this.showCssToast('请输入内容'); return; }
+        this.addExTodo(title, desc, target);
+        document.getElementById('exTodoTitle').value = '';
+        document.getElementById('exTodoDesc').value = '';
+    });
+    
+    // 亲密基金-存入
+    document.getElementById('exFundAddBtn')?.addEventListener('click', () => {
+        const amount = document.getElementById('exFundAmount')?.value;
+        const currency = document.getElementById('exFundCurrency')?.value || '元';
+        const to = document.getElementById('exFundTo')?.value || 'ai';
+        const note = document.getElementById('exFundNote')?.value.trim();
+        this.addExFund(amount, currency, to, note);
+        document.getElementById('exFundAmount').value = '';
+        document.getElementById('exFundNote').value = '';
+    });
+    
+    // 网购-添加
+    this._exShopImgData = '';
+    const shopImgBtn = document.getElementById('exShopImgBtn');
+    const shopImgInput = document.getElementById('exShopImgInput');
+    if (shopImgBtn && shopImgInput) {
+        shopImgBtn.addEventListener('click', () => shopImgInput.click());
+        shopImgInput.addEventListener('change', (e) => {
+            const file = e.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => { const img = new Image(); img.onload = () => { const c = document.createElement('canvas'); const s = Math.min(1,800/img.width); c.width=img.width*s;c.height=img.height*s; c.getContext('2d').drawImage(img,0,0,c.width,c.height); this._exShopImgData=c.toDataURL('image/jpeg',0.7); shopImgBtn.textContent='✅ 已选'; }; img.src=ev.target.result; };
+            reader.readAsDataURL(file);
+        });
+    }
+    document.getElementById('exShopAddBtn')?.addEventListener('click', () => {
+        const name = document.getElementById('exShopItemName')?.value.trim();
+        const desc = document.getElementById('exShopItemDesc')?.value.trim();
+        this.addExGift('shopping', name, desc, this._exShopImgData);
+        document.getElementById('exShopItemName').value = '';
+        document.getElementById('exShopItemDesc').value = '';
+        this._exShopImgData = ''; if (shopImgBtn) shopImgBtn.textContent = '📷 附图';
+    });
+    
+    // 外卖-添加
+    this._exDeliveryImgData = '';
+    const dlvImgBtn = document.getElementById('exDeliveryImgBtn');
+    const dlvImgInput = document.getElementById('exDeliveryImgInput');
+    if (dlvImgBtn && dlvImgInput) {
+        dlvImgBtn.addEventListener('click', () => dlvImgInput.click());
+        dlvImgInput.addEventListener('change', (e) => {
+            const file = e.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => { const img = new Image(); img.onload = () => { const c = document.createElement('canvas'); const s = Math.min(1,800/img.width); c.width=img.width*s;c.height=img.height*s; c.getContext('2d').drawImage(img,0,0,c.width,c.height); this._exDeliveryImgData=c.toDataURL('image/jpeg',0.7); dlvImgBtn.textContent='✅ 已选'; }; img.src=ev.target.result; };
+            reader.readAsDataURL(file);
+        });
+    }
+    document.getElementById('exDeliveryAddBtn')?.addEventListener('click', () => {
+        const name = document.getElementById('exDeliveryItemName')?.value.trim();
+        const desc = document.getElementById('exDeliveryItemDesc')?.value.trim();
+        this.addExGift('delivery', name, desc, this._exDeliveryImgData);
+        document.getElementById('exDeliveryItemName').value = '';
+        document.getElementById('exDeliveryItemDesc').value = '';
+        this._exDeliveryImgData = ''; if (dlvImgBtn) dlvImgBtn.textContent = '📷 附小票';
+    });
+    
+    // 信件-寄出
+    document.getElementById('exLetterAddBtn')?.addEventListener('click', () => {
+        const to = document.getElementById('exLetterTo')?.value || 'ai';
+        const content = document.getElementById('exLetterContent')?.value.trim();
+        const deliverAt = document.getElementById('exLetterDeliverAt')?.value || '';
+        this.addExLetter(to, content, deliverAt);
+        document.getElementById('exLetterContent').value = '';
+        document.getElementById('exLetterDeliverAt').value = '';
+    });
+    
+    // 小铺-上架
+    document.getElementById('exShopAddWishBtn')?.addEventListener('click', () => {
+        const name = document.getElementById('exShopWishName')?.value.trim();
+        const price = document.getElementById('exShopWishPrice')?.value;
+        this.addShopWish(name, price);
+        document.getElementById('exShopWishName').value = '';
+        document.getElementById('exShopWishPrice').value = '';
+    });
+    
+    // 小铺-装修CSS
+    document.getElementById('exShopApplyCssBtn')?.addEventListener('click', () => {
+        const css = document.getElementById('exShopCustomCss')?.value.trim() || '';
+        const data = this._getExData();
+        data.exchange.shopCss = css;
+        this._saveExData(data);
+        this._applyShopCss(css);
+        this.showCssToast('装修已应用');
+    });
+}
+
+setExchangeBg(bgImage) {
+    const data = this._getExData();
+    data.exchange.bgImage = bgImage;
+    this._saveExData(data);
+    const bg = document.getElementById('exchangePageBg');
+    if (bg) { if (bgImage) { bg.style.backgroundImage=`url(${bgImage})`;bg.style.backgroundSize='cover';bg.style.backgroundPosition='center'; } else { bg.style.backgroundImage='';bg.style.background='#111'; } }
+    document.getElementById('exchangeCustomizePanel').style.display = 'none';
+}
+
+// ==================== 网购 + 外卖（共用逻辑）====================
+// type: 'shopping' | 'delivery'
+_renderExGiftList(type) {
+    const data = this._getExData();
+    const items = data.exchange[type] || [];
+    const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
+    const prefix = type === 'shopping' ? 'exShopList' : 'exDeliveryList';
+    const icon = type === 'shopping' ? '📦' : '🍜';
+    
+    const renderItems = (list, containerId) => {
+        const el = document.getElementById(containerId);
+        if (!el) return;
+        if (list.length === 0) { el.innerHTML = '<div style="font-size:11px;color:rgba(255,255,255,0.15);padding:8px 0;">暂无</div>'; return; }
+        el.innerHTML = list.map(item => {
+            const imgHtml = item.image ? `<div style="margin-top:6px;"><img src="${item.image}" style="max-width:140px;max-height:90px;border-radius:8px;object-fit:cover;"></div>` : '';
+            const proofHtml = item.proof ? `<div style="margin-top:4px;"><img src="${item.proof}" style="max-width:120px;max-height:80px;border-radius:6px;object-fit:cover;border:1px solid rgba(46,213,115,0.2);"></div>` : '';
+            const notesHtml = item.notes ? `<div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:4px;">📝 ${this.escapeHtml(item.notes)}</div>` : '';
+            const completedHtml = item.completed ? `<div style="font-size:10px;color:rgba(46,213,115,0.6);margin-top:4px;">✅ ${item.completedBy==='user'?'你':friendName} 签收于 ${new Date(item.completedDate).toLocaleDateString('zh-CN')}</div>` : '';
+            
+            let btns = '';
+            if (!item.completed) {
+                // 只有收件方能签收（user收AI寄的，反之不行）
+                if (item.to === 'user' || (item.from === 'user' && item.to === 'ai')) {
+                    // user只能签收AI寄给自己的
+                    if (item.to === 'user') {
+                        btns += `<button class="ex-btn-complete" onclick="window.chatInterface.completeExGift('${type}','${item.id}')">✓ 签收</button>`;
+                        btns += `<button class="ex-btn-proof" onclick="window.chatInterface.showExGiftProofPanel('${type}','${item.id}')">📷 打卡</button>`;
+                    }
+                }
+            }
+            
+            return `<div class="ex-item ${item.completed ? 'completed' : ''}">
+                <div class="ex-item-header">
+                    <div class="ex-item-title">${icon} ${this.escapeHtml(item.name)}</div>
+                    <span class="ex-item-tag ${item.from==='user'?'ex-tag-user':'ex-tag-ai'}">${item.from==='user'?'你':friendName}→${item.to==='user'?'你':friendName}</span>
+                </div>
+                ${item.desc ? `<div class="ex-item-desc">${this.escapeHtml(item.desc)}</div>` : ''}
+                ${imgHtml}${proofHtml}${notesHtml}${completedHtml}
+                <div class="ex-item-meta">${new Date(item.createdDate).toLocaleDateString('zh-CN')}</div>
+                ${btns ? `<div class="ex-item-actions">${btns}</div>` : ''}
+            </div>`;
+        }).join('');
+    };
+    
+    renderItems(items.filter(i => i.from === 'ai' && i.to === 'user'), `${prefix}AiToUser`);
+    renderItems(items.filter(i => i.from === 'user' && i.to === 'ai'), `${prefix}UserToAi`);
+}
+
+addExGift(type, name, desc, image) {
+    if (!name) { this.showCssToast('请输入名称'); return; }
+    const data = this._getExData();
+    const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
+    if (!data.exchange[type]) data.exchange[type] = [];
+    data.exchange[type].push({
+        id: `${type}_` + Date.now(), name, desc: desc || '', image: image || '',
+        from: 'user', to: 'ai', completed: false, completedBy: '', completedDate: '',
+        proof: '', notes: '', createdDate: new Date().toISOString()
+    });
+    this._saveExData(data);
+    const label = type === 'shopping' ? '网购' : '外卖';
+    this.showCssToast(`${label}已寄出`);
+    this.showCssSystemMessage(`📦 你给${friendName}寄了${label}「${name}」`);
+    if (!data._pendingNotifications) data._pendingNotifications = [];
+    data._pendingNotifications.push(`user给你寄了${label}「${name}」${desc ? '（'+desc+'）' : ''}`);
+    this._saveExData(data);
+    this._renderExGiftList(type);
+}
+
+completeExGift(type, itemId) {
+    const data = this._getExData();
+    const item = (data.exchange[type] || []).find(i => i.id === itemId);
+    if (!item || item.completed || item.to !== 'user') return;
+    item.completed = true; item.completedBy = 'user'; item.completedDate = new Date().toISOString();
+    this._saveExData(data);
+    const label = type === 'shopping' ? '网购' : '外卖';
+    this.storage.addTimelineEntry(this.currentFriendCode, { type:'exchange_complete', title:`签收了${label}「${item.name}」`, icon:'✅' });
+    this.showCssToast(`✅ 签收了「${item.name}」`);
+    this.showCssSystemMessage(`✅ 签收了${label}「${item.name}」`);
+    if (!data._pendingNotifications) data._pendingNotifications = [];
+    data._pendingNotifications.push(`user签收了你寄的${label}「${item.name}」`);
+    this._saveExData(data);
+    this._updateExchangeBadgeProgress();
+    this._renderExGiftList(type);
+}
+
+showExGiftProofPanel(type, itemId) {
+    document.getElementById('exProofOverlay')?.remove();
+    const overlay = document.createElement('div');
+    overlay.className = 'ex-proof-overlay'; overlay.id = 'exProofOverlay';
+    overlay.innerHTML = `<div class="ex-proof-body">
+        <div style="text-align:center;font-size:15px;font-weight:600;color:#fff;margin-bottom:14px;">打卡签收</div>
+        <div style="display:flex;gap:8px;margin-bottom:10px;">
+            <button id="exGiftProofImgBtn" style="flex:1;padding:12px;border:1px dashed rgba(255,255,255,0.15);border-radius:10px;background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.5);font-size:13px;cursor:pointer;">📷 上传图片</button>
+            <input type="file" id="exGiftProofImgInput" accept="image/*" style="display:none;">
+        </div>
+        <textarea id="exGiftProofNotes" placeholder="写下心得..." rows="3" style="width:100%;padding:10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:13px;resize:vertical;margin-bottom:10px;"></textarea>
+        <button id="exGiftProofSaveBtn" style="width:100%;padding:12px;border:none;border-radius:10px;background:rgba(240,147,43,0.15);color:#f0932b;font-size:14px;font-weight:600;cursor:pointer;">保存并签收 ✓</button>
+        <button style="width:100%;margin-top:8px;padding:10px;border:none;border-radius:10px;background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.3);font-size:13px;cursor:pointer;" onclick="document.getElementById('exProofOverlay').remove()">取消</button>
+    </div>`;
+    document.body.appendChild(overlay);
+    let proofImg = '';
+    document.getElementById('exGiftProofImgBtn').addEventListener('click', () => document.getElementById('exGiftProofImgInput').click());
+    document.getElementById('exGiftProofImgInput').addEventListener('change', (e) => {
+        const file = e.target.files[0]; if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => { const img = new Image(); img.onload = () => { const c = document.createElement('canvas'); const s = Math.min(1,800/img.width); c.width=img.width*s;c.height=img.height*s; c.getContext('2d').drawImage(img,0,0,c.width,c.height); proofImg = c.toDataURL('image/jpeg',0.7); document.getElementById('exGiftProofImgBtn').textContent='✅ 已上传'; }; img.src=ev.target.result; };
+        reader.readAsDataURL(file);
+    });
+    document.getElementById('exGiftProofSaveBtn').addEventListener('click', () => {
+        const notes = document.getElementById('exGiftProofNotes')?.value.trim() || '';
+        const data = this._getExData();
+        const item = (data.exchange[type]||[]).find(i => i.id === itemId);
+        if (item) {
+            if (proofImg) item.proof = proofImg;
+            if (notes) item.notes = notes;
+            item.completed = true; item.completedBy = 'user'; item.completedDate = new Date().toISOString();
+            this._saveExData(data);
+            const label = type==='shopping'?'网购':'外卖';
+            this.storage.addTimelineEntry(this.currentFriendCode, { type:'exchange_complete', title:`签收了${label}「${item.name}」（附打卡）`, icon:'✅' });
+            this.showCssToast('✅ 已签收');
+            this.showCssSystemMessage(`✅ 签收了「${item.name}」并上传了打卡`);
+            if (!data._pendingNotifications) data._pendingNotifications = [];
+            data._pendingNotifications.push(`user签收了「${item.name}」并上传了${proofImg?'图片':''}${notes?'心得':''}`);
+            this._saveExData(data);
+            this._updateExchangeBadgeProgress();
+        }
+        overlay.remove();
+        this._renderExGiftList(type);
+    });
+}
+
+// ==================== 信件 ====================
+renderExLetters() {
+    const data = this._getExData();
+    const letters = data.exchange.letters || [];
+    const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
+    const now = Date.now();
+    
+    // 收件箱：发给user的（含到期检查）
+    const inbox = letters.filter(l => {
+        if (l.from === 'user') return false; // user自己写的不是收件
+        if (l.to === 'future_user') return l.from === 'user'; // 给未来自己的
+        return l.to === 'user' || l.to === 'future_user';
+    });
+    // 也包括user写给未来自己的
+    const myFutureLetters = letters.filter(l => l.from === 'user' && (l.to === 'future_user' || l.to === 'future_ai'));
+    const receivedLetters = letters.filter(l => (l.to === 'user' || l.to === 'future_user') && l.from !== 'user');
+    const allInbox = [...receivedLetters, ...letters.filter(l => l.from === 'user' && l.to === 'future_user')];
+    const outbox = letters.filter(l => l.from === 'user');
+    
+    const renderLetter = (l) => {
+        const deliverAt = l.deliverAt ? new Date(l.deliverAt).getTime() : 0;
+        const sealed = deliverAt > 0 && deliverAt > now;
+        const fromName = l.from === 'user' ? '你' : friendName;
+        const toMap = { ai: friendName, user: '你', future_user: '未来的你', future_ai: `未来的${friendName}` };
+        const toName = toMap[l.to] || l.to;
+        
+        if (sealed) {
+            return `<div class="ex-item" style="text-align:center;">
+                <div style="font-size:28px;margin-bottom:6px;">✉️</div>
+                <div style="font-size:13px;color:rgba(255,255,255,0.5);">${fromName} → ${toName}</div>
+                <div style="font-size:11px;color:rgba(255,255,255,0.2);margin-top:4px;">🔒 ${new Date(l.deliverAt).toLocaleDateString('zh-CN')} 送达</div>
+            </div>`;
+        }
+        
+        return `<div class="ex-item">
+            <div class="ex-item-header">
+                <div class="ex-item-title">✉️ ${fromName} → ${toName}</div>
+                <div class="ex-item-meta">${new Date(l.createdDate).toLocaleDateString('zh-CN')}</div>
+            </div>
+            <div style="margin-top:8px;padding:10px;background:rgba(255,255,255,0.03);border-radius:8px;font-size:13px;color:rgba(255,255,255,0.6);line-height:1.6;white-space:pre-wrap;">${this.escapeHtml(l.content)}</div>
+        </div>`;
+    };
+    
+    const inboxEl = document.getElementById('exLetterListInbox');
+    const outboxEl = document.getElementById('exLetterListOutbox');
+    
+    if (inboxEl) {
+        const inboxItems = allInbox.length > 0 ? allInbox.map(renderLetter).join('') : '<div style="font-size:11px;color:rgba(255,255,255,0.15);padding:8px 0;">暂无</div>';
+        inboxEl.innerHTML = inboxItems;
+    }
+    if (outboxEl) {
+        const outboxItems = outbox.length > 0 ? outbox.map(renderLetter).join('') : '<div style="font-size:11px;color:rgba(255,255,255,0.15);padding:8px 0;">暂无</div>';
+        outboxEl.innerHTML = outboxItems;
+    }
+}
+
+addExLetter(to, content, deliverAt) {
+    if (!content) { this.showCssToast('请写点什么'); return; }
+    const data = this._getExData();
+    if (!data.exchange.letters) data.exchange.letters = [];
+    const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
+    const toMap = { ai: friendName, future_user: '未来的你', future_ai: `未来的${friendName}` };
+    
+    data.exchange.letters.push({
+        id: 'letter_' + Date.now(), from: 'user', to,
+        content, createdDate: new Date().toISOString(),
+        deliverAt: deliverAt || ''
+    });
+    this._saveExData(data);
+    
+    const sealed = deliverAt ? '（定时寄出）' : '';
+    this.showCssToast(`✉️ 信已寄出${sealed}`);
+    this.showCssSystemMessage(`✉️ 你写了一封信给${toMap[to] || to}${sealed}`);
+    
+    if (to === 'ai' && !deliverAt) {
+        if (!data._pendingNotifications) data._pendingNotifications = [];
+        data._pendingNotifications.push(`user给你写了一封信！`);
+        this._saveExData(data);
+    }
+    
+    this.renderExLetters();
+}
+
+// ==================== 许愿星小铺 ====================
+renderExShop() {
+    const data = this._getExData();
+    const ex = data.exchange;
+    const shop = ex.shop || { userItems:[], aiItems:[] };
+    const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
+    const stars = ex.wishStarBalance || { user:0, ai:0 };
+    
+    // 余额
+    const su = document.getElementById('exShopStarUser2');
+    const sa = document.getElementById('exShopStarAi2');
+    if (su) su.textContent = stars.user || 0;
+    if (sa) sa.textContent = stars.ai || 0;
+    
+    // AI上架的（user可兑换）
+    const aiItemsEl = document.getElementById('exShopListAiItems');
+    if (aiItemsEl) {
+        if (shop.aiItems.length === 0) { aiItemsEl.innerHTML = '<div style="font-size:11px;color:rgba(255,255,255,0.15);padding:8px;">TA还没上架任何愿望</div>'; }
+        else { aiItemsEl.innerHTML = shop.aiItems.map(item => {
+            const soldHtml = item.soldTo ? `<div style="font-size:10px;color:rgba(46,213,115,0.6);margin-top:4px;">✅ 已被${item.soldTo==='user'?'你':friendName}兑换</div>` : '';
+            const btn = !item.soldTo ? `<button class="ex-btn-withdraw" onclick="window.chatInterface.redeemShopItem('ai','${item.id}')">⭐${item.price} 兑换</button>` : '';
+            return `<div class="ex-item ${item.soldTo?'completed':''}"><div class="ex-item-header"><div class="ex-item-title">⭐ ${this.escapeHtml(item.name)}</div><span style="font-size:12px;color:#f0932b;font-weight:600;">${item.price}⭐</span></div>${soldHtml}<div class="ex-item-actions">${btn}</div></div>`;
+        }).join(''); }
+    }
+    
+    // user上架的（AI可兑换）
+    const userItemsEl = document.getElementById('exShopListUserItems');
+    if (userItemsEl) {
+        if (shop.userItems.length === 0) { userItemsEl.innerHTML = '<div style="font-size:11px;color:rgba(255,255,255,0.15);padding:8px;">你还没上架任何愿望</div>'; }
+        else { userItemsEl.innerHTML = shop.userItems.map(item => {
+            const soldHtml = item.soldTo ? `<div style="font-size:10px;color:rgba(46,213,115,0.6);margin-top:4px;">✅ 已被${item.soldTo==='ai'?friendName:'你'}兑换</div>` : '';
+            const btn = !item.soldTo ? `<button class="ex-btn-revoke" onclick="window.chatInterface.removeShopItem('user','${item.id}')">下架</button>` : '';
+            return `<div class="ex-item ${item.soldTo?'completed':''}"><div class="ex-item-header"><div class="ex-item-title">⭐ ${this.escapeHtml(item.name)}</div><span style="font-size:12px;color:#f0932b;font-weight:600;">${item.price}⭐</span></div>${soldHtml}<div class="ex-item-actions">${btn}</div></div>`;
+        }).join(''); }
+    }
+    
+    // 装修CSS
+    const cssArea = document.getElementById('exShopCustomCss');
+    if (cssArea && ex.shopCss) cssArea.value = ex.shopCss;
+    this._applyShopCss(ex.shopCss || '');
+}
+
+addShopWish(name, price) {
+    if (!name) { this.showCssToast('请输入愿望内容'); return; }
+    if (!price || price <= 0) { this.showCssToast('请设定许愿星价格'); return; }
+    const data = this._getExData();
+    if (!data.exchange.shop) data.exchange.shop = { userItems:[], aiItems:[] };
+    data.exchange.shop.userItems.push({
+        id: 'wish_' + Date.now(), name, price: parseInt(price), createdDate: new Date().toISOString(), soldTo: ''
+    });
+    this._saveExData(data);
+    this.showCssToast(`⭐ 已上架「${name}」`);
+    if (!data._pendingNotifications) data._pendingNotifications = [];
+    data._pendingNotifications.push(`user在许愿星小铺上架了「${name}」（${price}⭐），你可以用 [EX_SHOP_REDEEM:${name}] 兑换`);
+    this._saveExData(data);
+    this.renderExShop();
+}
+
+removeShopItem(who, itemId) {
+    const data = this._getExData();
+    const list = who === 'user' ? data.exchange.shop.userItems : data.exchange.shop.aiItems;
+    const idx = list.findIndex(i => i.id === itemId);
+    if (idx >= 0) { list.splice(idx, 1); this._saveExData(data); this.showCssToast('已下架'); this.renderExShop(); }
+}
+
+redeemShopItem(shopOwner, itemId) {
+    const data = this._getExData();
+    const list = shopOwner === 'ai' ? data.exchange.shop.aiItems : data.exchange.shop.userItems;
+    const item = list.find(i => i.id === itemId);
+    if (!item || item.soldTo) return;
+    
+    const stars = data.exchange.wishStarBalance;
+    const buyerKey = shopOwner === 'ai' ? 'user' : 'ai'; // AI上架→user买；user上架→AI买
+    
+    if ((stars[buyerKey] || 0) < item.price) {
+        this.showCssToast(`许愿星不足（需要${item.price}⭐，你有${stars[buyerKey]||0}⭐）`);
+        return;
+    }
+    
+    stars[buyerKey] -= item.price;
+    item.soldTo = buyerKey;
+    this._saveExData(data);
+    
+    const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
+    this.showCssToast(`⭐ 兑换成功！「${item.name}」`);
+    this.showCssSystemMessage(`⭐ 你用${item.price}颗许愿星兑换了「${item.name}」`);
+    this.storage.addTimelineEntry(this.currentFriendCode, { type:'shop_redeem', title:`兑换了「${item.name}」`, icon:'⭐' });
+    
+    if (!data._pendingNotifications) data._pendingNotifications = [];
+    data._pendingNotifications.push(`user用${item.price}颗许愿星兑换了你上架的「${item.name}」！`);
+    this._saveExData(data);
+    
+    this.renderExShop();
+    this.renderExFunds(); // 刷新余额显示
+}
+
+_applyShopCss(css) {
+    let el = document.getElementById('exShopCustomCssTag');
+    if (el) el.remove();
+    if (css) {
+        el = document.createElement('style');
+        el.id = 'exShopCustomCssTag';
+        el.textContent = css;
+        document.head.appendChild(el);
+    }
+}
+
+// ===== 刷新所有子页 =====
+refreshExchangePage() {
+    const data = this._getExData();
+    const ex = data.exchange;
+    const bg = document.getElementById('exchangePageBg');
+    if (bg) { if (ex.bgImage) { bg.style.backgroundImage=`url(${ex.bgImage})`;bg.style.backgroundSize='cover';bg.style.backgroundPosition='center'; } else { bg.style.background='#111';bg.style.backgroundImage=''; } }
+    this.renderExTodos();
+    this.renderExFunds();
+    this._renderExGiftList('shopping');
+    this._renderExGiftList('delivery');
+    this.renderExLetters();
+    this.renderExShop();
+}
+
 // 纯清除指令标签，不执行任何操作
 _stripCommandTags(text) {
     return text
@@ -9644,7 +10784,19 @@ _stripCommandTags(text) {
         .replace(/\[RELATION_BREAK_REJECT\]/g, '')
         .replace(/\[BADGE_UNLOCK:[^\]]+\]/g, '')
         .replace(/\[BADGE_WEAR:[^\]]+\]/g, '')
-        .replace(/\[BADGE_UNWEAR:[^\]]+\]/g, '');
+        .replace(/\[BADGE_UNWEAR:[^\]]+\]/g, '')
+        .replace(/\[EX_TODO:[^\]]+\]/g, '')
+        .replace(/\[EX_TODO_COMPLETE:[^\]]+\]/g, '')
+        .replace(/\[EX_TODO_REVOKE:[^\]]+\]/g, '')
+        .replace(/\[EX_TODO_PROOF:[^\]]+\]/g, '')
+        .replace(/\[EX_FUND:[^\]]+\]/g, '')
+        .replace(/\[EX_FUND_WITHDRAW:[^\]]+\]/g, '')
+        .replace(/\[EX_GIFT:[^\]]+\]/g, '')
+        .replace(/\[EX_GIFT_COMPLETE:[^\]]+\]/g, '')
+        .replace(/\[EX_LETTER:[^\]]+\]/g, '')
+        .replace(/\[EX_SHOP_ADD:[^\]]+\]/g, '')
+        .replace(/\[EX_SHOP_REDEEM:[^\]]+\]/g, '')
+        .replace(/\[EX_SHOP_REMOVE:[^\]]+\]/g, '');
 }
 
 // 执行一个分段里包含的所有指令（产生通知）
@@ -9652,6 +10804,7 @@ _executeSegmentCommands(rawSeg) {
     this.processLuckyCharCommands(rawSeg);
     this.processRelationBindCommands(rawSeg);
     this.processBadgeCommands(rawSeg);
+    this.processExchangeCommands(rawSeg);
 }
 
 // 预提取关系卡片HTML（不写入状态，只生成卡片用于渲染）
