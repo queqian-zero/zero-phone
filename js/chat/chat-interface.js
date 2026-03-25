@@ -462,6 +462,11 @@ class ChatInterface {
             .ex-proof-overlay { position:fixed;top:0;left:0;right:0;bottom:0;z-index:3700;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,0.5); }
             .ex-proof-body { width:100%;background:#1a1a1a;border-radius:16px 16px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom));max-height:70vh;overflow-y:auto;animation:ctxSlideUp 0.25s ease-out; }
             .exchange-customize-panel { position:fixed;top:0;left:0;right:0;bottom:0;z-index:3650;display:flex;align-items:flex-end;justify-content:center; }
+            /* 图片点击放大 */
+            .ex-img-enlarge { position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;cursor:zoom-out; }
+            .ex-img-enlarge img { max-width:95%;max-height:90vh;object-fit:contain;border-radius:8px; }
+            .ex-thumb { cursor:zoom-in;transition:opacity 0.15s; }
+            .ex-thumb:hover { opacity:0.85; }
             /* 统一信息面板 */
             .info-panel {
                 position: absolute;
@@ -6084,8 +6089,9 @@ getIntimacyStatusForAI() {
     desc += `\n  [EX_TODO_COMPLETE:标题] 完成user给你/一起做的事项`;
     desc += `\n  [EX_TODO_REVOKE:标题] 撤销你自己发起的事项`;
     desc += `\n  [EX_TODO_PROOF:标题:证明描述] 为某事项添加文字证明/说明`;
-    desc += `\n  [EX_FUND:金额:货币:备注] 往亲密基金存钱给user（货币可选：元/美元/日元/许愿星等）`;
-    desc += `\n  [EX_FUND_WITHDRAW:fundId] 从基金取钱`;
+    desc += `\n  [EX_FUND:金额:货币:备注] 往亲密基金存钱给user（货币可选：元/美元/日元/欧元，不含许愿星）`;
+    desc += `\n  [EX_FUND_WITHDRAW:fundId:金额] 从基金部分取钱（不填金额=全部取出）`;
+    desc += `\n  [EX_STAR_GIVE:数量] 赠送许愿星给user（许愿星只能通过赠送获得，只在小铺使用）`;
     desc += `\n  [EX_GIFT:shopping:名称:描述] 寄网购给user / [EX_GIFT:delivery:名称:描述] 送外卖给user`;
     desc += `\n  [EX_GIFT_COMPLETE:shopping:名称] 签收user寄的网购 / [EX_GIFT_COMPLETE:delivery:名称] 签收外卖`;
     desc += `\n  [EX_LETTER:user:内容] 写信给user / [EX_LETTER:future_ai:内容:送达时间] 写给未来的自己`;
@@ -9952,12 +9958,12 @@ renderExFunds() {
     const funds = ex.funds || [];
     const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
     
-    // 余额统计
-    const activeFunds = funds.filter(f => !f.withdrawn);
+    // 余额统计（按剩余金额）
+    const activeFunds = funds.filter(f => (f.amount - (f.withdrawnAmount||0)) > 0);
     let totalCny = 0;
-    activeFunds.forEach(f => {
-        if (f.currency === '许愿星') return;
-        totalCny += f.amount || 0; // 简化：都当本币算
+    funds.forEach(f => {
+        const remaining = f.amount - (f.withdrawnAmount || 0);
+        if (remaining > 0) totalCny += remaining;
     });
     
     const cnyEl = document.getElementById('exFundTotalCny');
@@ -9976,19 +9982,26 @@ renderExFunds() {
     listEl.innerHTML = funds.slice().reverse().map(f => {
         const fromName = f.from === 'user' ? '你' : friendName;
         const toName = f.to === 'user' ? '你' : friendName;
-        const currIcon = f.currency === '许愿星' ? '⭐' : '💰';
-        const statusHtml = f.withdrawn 
-            ? `<span style="color:rgba(255,100,100,0.5);">已取出 (${f.withdrawnBy === 'user' ? '你' : friendName})</span>` 
-            : '';
+        const currIcon = '💰';
+        const wdAmt = f.withdrawnAmount || 0;
+        const remaining = f.amount - wdAmt;
+        const isFullyOut = remaining <= 0;
         
-        let btns = '';
-        if (!f.withdrawn) {
-            btns = `<button class="ex-btn-withdraw" onclick="window.chatInterface.withdrawExFund('${f.id}')">取出</button>`;
+        let statusHtml = '';
+        if (isFullyOut) {
+            statusHtml = `<span style="color:rgba(255,100,100,0.5);">已全部取出</span>`;
+        } else if (wdAmt > 0) {
+            statusHtml = `<span style="color:rgba(240,147,43,0.6);">已取${wdAmt}，剩余${remaining} ${f.currency}</span>`;
         }
         
-        return `<div class="ex-item ${f.withdrawn ? 'completed' : ''}">
+        let btns = '';
+        if (!isFullyOut) {
+            btns = `<button class="ex-btn-withdraw" onclick="window.chatInterface.showWithdrawPanel('${f.id}', ${remaining}, '${f.currency}')">取出</button>`;
+        }
+        
+        return `<div class="ex-item ${isFullyOut ? 'completed' : ''}">
             <div class="ex-item-header">
-                <div class="ex-item-title">${currIcon} ${f.amount} ${f.currency}</div>
+                <div class="ex-item-title">${currIcon} ${f.amount} ${f.currency}${wdAmt > 0 && !isFullyOut ? ` <span style="font-size:11px;color:rgba(46,213,115,0.6);">(余${remaining})</span>` : ''}</div>
                 <span class="ex-item-tag ${f.from==='user'?'ex-tag-user':'ex-tag-ai'}">${fromName}→${toName}</span>
             </div>
             ${f.note ? `<div class="ex-item-desc">${this.escapeHtml(f.note)}</div>` : ''}
@@ -10009,13 +10022,9 @@ addExFund(amount, currency, to, note) {
     
     data.exchange.funds.push({
         id: 'fund_' + Date.now(), amount: parseFloat(amount), currency, from: 'user', to: 'ai',
-        note: note || '', createdDate: new Date().toISOString(), withdrawn: false, withdrawnBy: '', withdrawnDate: ''
+        note: note || '', createdDate: new Date().toISOString(), withdrawn: false,
+        withdrawnAmount: 0, withdrawnBy: '', withdrawnDate: ''
     });
-    
-    // 许愿星余额更新
-    if (currency === '许愿星') {
-        data.exchange.wishStarBalance.ai = (data.exchange.wishStarBalance.ai || 0) + parseFloat(amount);
-    }
     
     this._saveExData(data);
     
@@ -10030,26 +10039,57 @@ addExFund(amount, currency, to, note) {
     this.refreshIntimacyPage();
 }
 
-withdrawExFund(fundId) {
+// 取款弹窗（支持自定义金额）
+showWithdrawPanel(fundId, maxAmount, currency) {
+    document.getElementById('exWithdrawOverlay')?.remove();
+    const overlay = document.createElement('div');
+    overlay.className = 'ex-proof-overlay'; overlay.id = 'exWithdrawOverlay';
+    overlay.innerHTML = `<div class="ex-proof-body">
+        <div style="text-align:center;font-size:15px;font-weight:600;color:#fff;margin-bottom:14px;">💰 取出金额</div>
+        <div style="text-align:center;font-size:12px;color:rgba(255,255,255,0.35);margin-bottom:12px;">可取：${maxAmount} ${currency}</div>
+        <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;">
+            <input type="number" id="exWithdrawAmountInput" placeholder="输入金额" step="0.01" min="0.01" max="${maxAmount}" value="${maxAmount}" style="flex:1;padding:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:10px;color:#fff;font-size:16px;text-align:center;">
+            <span style="color:rgba(255,255,255,0.4);font-size:13px;">${currency}</span>
+        </div>
+        <div style="display:flex;gap:6px;margin-bottom:12px;justify-content:center;">
+            <button onclick="document.getElementById('exWithdrawAmountInput').value=${maxAmount}" style="padding:6px 12px;border:none;border-radius:8px;background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.4);font-size:11px;cursor:pointer;">全部</button>
+            <button onclick="document.getElementById('exWithdrawAmountInput').value=${Math.round(maxAmount/2*100)/100}" style="padding:6px 12px;border:none;border-radius:8px;background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.4);font-size:11px;cursor:pointer;">一半</button>
+        </div>
+        <button id="exWithdrawConfirmBtn" style="width:100%;padding:12px;border:none;border-radius:10px;background:rgba(240,147,43,0.15);color:#f0932b;font-size:14px;font-weight:600;cursor:pointer;">确认取出</button>
+        <button style="width:100%;margin-top:8px;padding:10px;border:none;border-radius:10px;background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.3);font-size:13px;cursor:pointer;" onclick="document.getElementById('exWithdrawOverlay').remove()">取消</button>
+    </div>`;
+    document.body.appendChild(overlay);
+    
+    document.getElementById('exWithdrawConfirmBtn').addEventListener('click', () => {
+        const amt = parseFloat(document.getElementById('exWithdrawAmountInput')?.value);
+        if (!amt || amt <= 0) { this.showCssToast('请输入金额'); return; }
+        if (amt > maxAmount) { this.showCssToast(`最多可取 ${maxAmount}`); return; }
+        this.withdrawExFund(fundId, amt);
+        overlay.remove();
+    });
+}
+
+withdrawExFund(fundId, amount) {
     const data = this._getExData();
     const fund = data.exchange.funds.find(f => f.id === fundId);
-    if (!fund || fund.withdrawn) return;
+    if (!fund) return;
     
-    fund.withdrawn = true;
+    const wdAmt = fund.withdrawnAmount || 0;
+    const remaining = fund.amount - wdAmt;
+    const takeAmount = amount ? Math.min(amount, remaining) : remaining;
+    
+    if (takeAmount <= 0) return;
+    
+    fund.withdrawnAmount = (fund.withdrawnAmount || 0) + takeAmount;
     fund.withdrawnBy = 'user';
     fund.withdrawnDate = new Date().toISOString();
-    
-    // 许愿星余额扣减
-    if (fund.currency === '许愿星') {
-        const target = fund.to; // 取出的是存给谁的
-        data.exchange.wishStarBalance[target] = Math.max(0, (data.exchange.wishStarBalance[target] || 0) - fund.amount);
-    }
+    if (fund.withdrawnAmount >= fund.amount) fund.withdrawn = true;
     
     this._saveExData(data);
-    this.showCssToast('已取出');
+    this.showCssToast(`已取出 ${takeAmount} ${fund.currency}`);
     
     if (!data._pendingNotifications) data._pendingNotifications = [];
-    data._pendingNotifications.push(`user从亲密基金取出了 ${fund.amount} ${fund.currency}`);
+    data._pendingNotifications.push(`user从亲密基金取出了 ${takeAmount} ${fund.currency}（原存${fund.amount}）`);
     this._saveExData(data);
     
     this.renderExFunds();
@@ -10151,11 +10191,9 @@ processExchangeCommands(text) {
             const data = this._getExData();
             data.exchange.funds.push({
                 id: 'fund_' + Date.now(), amount, currency, from: 'ai', to: 'user',
-                note, createdDate: new Date().toISOString(), withdrawn: false, withdrawnBy: '', withdrawnDate: ''
+                note, createdDate: new Date().toISOString(), withdrawn: false,
+                withdrawnAmount: 0, withdrawnBy: '', withdrawnDate: ''
             });
-            if (currency === '许愿星') {
-                data.exchange.wishStarBalance.user = (data.exchange.wishStarBalance.user || 0) + amount;
-            }
             this._saveExData(data);
             this.showCssSystemMessage(`💰 ${friendName} 往亲密基金存入了 ${amount} ${currency}`);
             this.showCssToast(`💰 ${friendName} 存了 ${amount} ${currency}`);
@@ -10163,18 +10201,40 @@ processExchangeCommands(text) {
         }
     }
     
-    // [EX_FUND_WITHDRAW:fundId] - AI取钱
-    const fundWithdrawMatch = text.match(/\[EX_FUND_WITHDRAW:([^\]]+)\]/);
+    // [EX_FUND_WITHDRAW:fundId:金额] - AI取钱（金额可选，不填=全部）
+    const fundWithdrawMatch = text.match(/\[EX_FUND_WITHDRAW:([^:\]]+):?([^\]]*)\]/);
     if (fundWithdrawMatch) {
         const fid = fundWithdrawMatch[1].trim();
+        const reqAmt = fundWithdrawMatch[2] ? parseFloat(fundWithdrawMatch[2].trim()) : 0;
         text = text.replace(/\[EX_FUND_WITHDRAW:[^\]]+\]/g, '');
         const data = this._getExData();
-        const fund = data.exchange.funds.find(f => f.id === fid && !f.withdrawn);
+        const fund = data.exchange.funds.find(f => f.id === fid);
         if (fund) {
-            fund.withdrawn = true; fund.withdrawnBy = 'ai'; fund.withdrawnDate = new Date().toISOString();
-            if (fund.currency === '许愿星') { data.exchange.wishStarBalance[fund.to] = Math.max(0, (data.exchange.wishStarBalance[fund.to]||0) - fund.amount); }
+            const remaining = fund.amount - (fund.withdrawnAmount || 0);
+            const takeAmount = (reqAmt > 0 && reqAmt < remaining) ? reqAmt : remaining;
+            if (takeAmount > 0) {
+                fund.withdrawnAmount = (fund.withdrawnAmount || 0) + takeAmount;
+                fund.withdrawnBy = 'ai'; fund.withdrawnDate = new Date().toISOString();
+                if (fund.withdrawnAmount >= fund.amount) fund.withdrawn = true;
+                this._saveExData(data);
+                this.showCssSystemMessage(`💰 ${friendName} 取出了 ${takeAmount} ${fund.currency}`);
+                this.renderExFunds();
+            }
+        }
+    }
+    
+    // [EX_STAR_GIVE:数量] - AI赠送许愿星给user
+    const starGiveMatch = text.match(/\[EX_STAR_GIVE:([^\]]+)\]/);
+    if (starGiveMatch) {
+        const starAmount = parseInt(starGiveMatch[1].trim()) || 0;
+        text = text.replace(/\[EX_STAR_GIVE:[^\]]+\]/g, '');
+        if (starAmount > 0) {
+            const data = this._getExData();
+            data.exchange.wishStarBalance.user = (data.exchange.wishStarBalance.user || 0) + starAmount;
             this._saveExData(data);
-            this.showCssSystemMessage(`💰 ${friendName} 取出了 ${fund.amount} ${fund.currency}`);
+            this.showCssSystemMessage(`🌟 ${friendName} 送了你 ${starAmount} 颗许愿星！`);
+            this.showCssToast(`🌟 收到 ${starAmount} 颗许愿星！`);
+            this.renderExShop();
             this.renderExFunds();
         }
     }
@@ -10400,9 +10460,12 @@ bindExchangePageEvents() {
         const to = document.getElementById('exLetterTo')?.value || 'ai';
         const content = document.getElementById('exLetterContent')?.value.trim();
         const deliverAt = document.getElementById('exLetterDeliverAt')?.value || '';
-        this.addExLetter(to, content, deliverAt);
+        this.addExLetter(to, content, deliverAt, this._exLetterImgs || []);
         document.getElementById('exLetterContent').value = '';
         document.getElementById('exLetterDeliverAt').value = '';
+        this._exLetterImgs = [];
+        const lb = document.getElementById('exLetterImgBtn');
+        if (lb) lb.textContent = '📷 附图（可多张）';
     });
     
     // 小铺-上架
@@ -10423,6 +10486,29 @@ bindExchangePageEvents() {
         this._applyShopCss(css);
         this.showCssToast('装修已应用');
     });
+    
+    // 赠送许愿星
+    document.getElementById('exStarGiftBtn')?.addEventListener('click', () => {
+        const amount = document.getElementById('exStarGiftAmount')?.value;
+        const note = document.getElementById('exStarGiftNote')?.value.trim();
+        this.giveWishStar(amount, note);
+        document.getElementById('exStarGiftAmount').value = '';
+        document.getElementById('exStarGiftNote').value = '';
+    });
+    
+    // 信件图片上传
+    this._exLetterImgs = [];
+    const letterImgBtn = document.getElementById('exLetterImgBtn');
+    const letterImgInput = document.getElementById('exLetterImgInput');
+    if (letterImgBtn && letterImgInput) {
+        letterImgBtn.addEventListener('click', () => letterImgInput.click());
+        letterImgInput.addEventListener('change', (e) => {
+            const file = e.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => { const img = new Image(); img.onload = () => { const c = document.createElement('canvas'); const s = Math.min(1,800/img.width); c.width=img.width*s;c.height=img.height*s; c.getContext('2d').drawImage(img,0,0,c.width,c.height); this._exLetterImgs.push(c.toDataURL('image/jpeg',0.7)); letterImgBtn.textContent=`✅ ${this._exLetterImgs.length}张`; }; img.src=ev.target.result; };
+            reader.readAsDataURL(file);
+        });
+    }
 }
 
 setExchangeBg(bgImage) {
@@ -10448,8 +10534,8 @@ _renderExGiftList(type) {
         if (!el) return;
         if (list.length === 0) { el.innerHTML = '<div style="font-size:11px;color:rgba(255,255,255,0.15);padding:8px 0;">暂无</div>'; return; }
         el.innerHTML = list.map(item => {
-            const imgHtml = item.image ? `<div style="margin-top:6px;"><img src="${item.image}" style="max-width:140px;max-height:90px;border-radius:8px;object-fit:cover;"></div>` : '';
-            const proofHtml = item.proof ? `<div style="margin-top:4px;"><img src="${item.proof}" style="max-width:120px;max-height:80px;border-radius:6px;object-fit:cover;border:1px solid rgba(46,213,115,0.2);"></div>` : '';
+            const imgHtml = item.image ? `<div style="margin-top:6px;">${this._thumbHtml(item.image, 140, 90)}</div>` : '';
+            const proofHtml = item.proof ? `<div style="margin-top:4px;">${this._thumbHtml(item.proof, 120, 80)}</div>` : '';
             const notesHtml = item.notes ? `<div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:4px;">📝 ${this.escapeHtml(item.notes)}</div>` : '';
             const completedHtml = item.completed ? `<div style="font-size:10px;color:rgba(46,213,115,0.6);margin-top:4px;">✅ ${item.completedBy==='user'?'你':friendName} 签收于 ${new Date(item.completedDate).toLocaleDateString('zh-CN')}</div>` : '';
             
@@ -10599,12 +10685,15 @@ renderExLetters() {
             </div>`;
         }
         
+        const imgHtml = l.images && l.images.length > 0 ? `<div style="margin-top:8px;">${this._thumbHtml(l.images, 160, 100)}</div>` : '';
+        
         return `<div class="ex-item">
             <div class="ex-item-header">
                 <div class="ex-item-title">✉️ ${fromName} → ${toName}</div>
                 <div class="ex-item-meta">${new Date(l.createdDate).toLocaleDateString('zh-CN')}</div>
             </div>
             <div style="margin-top:8px;padding:10px;background:rgba(255,255,255,0.03);border-radius:8px;font-size:13px;color:rgba(255,255,255,0.6);line-height:1.6;white-space:pre-wrap;">${this.escapeHtml(l.content)}</div>
+            ${imgHtml}
         </div>`;
     };
     
@@ -10621,8 +10710,8 @@ renderExLetters() {
     }
 }
 
-addExLetter(to, content, deliverAt) {
-    if (!content) { this.showCssToast('请写点什么'); return; }
+addExLetter(to, content, deliverAt, images) {
+    if (!content && (!images || images.length === 0)) { this.showCssToast('请写点什么'); return; }
     const data = this._getExData();
     if (!data.exchange.letters) data.exchange.letters = [];
     const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
@@ -10630,7 +10719,7 @@ addExLetter(to, content, deliverAt) {
     
     data.exchange.letters.push({
         id: 'letter_' + Date.now(), from: 'user', to,
-        content, createdDate: new Date().toISOString(),
+        content: content || '', images: images || [], createdDate: new Date().toISOString(),
         deliverAt: deliverAt || ''
     });
     this._saveExData(data);
@@ -10646,6 +10735,24 @@ addExLetter(to, content, deliverAt) {
     }
     
     this.renderExLetters();
+}
+
+// 图片点击放大
+_enlargeImage(src) {
+    const overlay = document.createElement('div');
+    overlay.className = 'ex-img-enlarge';
+    overlay.innerHTML = `<img src="${src}">`;
+    overlay.addEventListener('click', () => overlay.remove());
+    document.body.appendChild(overlay);
+}
+
+// 生成可点击缩略图HTML（支持多图）
+_thumbHtml(images, maxW = 140, maxH = 90) {
+    if (!images) return '';
+    const arr = Array.isArray(images) ? images : [images];
+    return arr.filter(Boolean).map(src => 
+        `<img src="${src}" class="ex-thumb" style="max-width:${maxW}px;max-height:${maxH}px;border-radius:6px;object-fit:cover;margin:2px;" onclick="window.chatInterface._enlargeImage('${src.replace(/'/g, "\\'")}')">`
+    ).join('');
 }
 
 // ==================== 许愿星小铺 ====================
@@ -10704,6 +10811,22 @@ addShopWish(name, price) {
     data._pendingNotifications.push(`user在许愿星小铺上架了「${name}」（${price}⭐），你可以用 [EX_SHOP_REDEEM:${name}] 兑换`);
     this._saveExData(data);
     this.renderExShop();
+}
+
+// user赠送许愿星给AI
+giveWishStar(amount, note) {
+    if (!amount || amount <= 0) { this.showCssToast('请输入数量'); return; }
+    const data = this._getExData();
+    const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
+    data.exchange.wishStarBalance.ai = (data.exchange.wishStarBalance.ai || 0) + parseInt(amount);
+    this._saveExData(data);
+    this.showCssToast(`🌟 送出了 ${amount} 颗许愿星`);
+    this.showCssSystemMessage(`🌟 你送了 ${friendName} ${amount} 颗许愿星${note ? '（' + note + '）' : ''}`);
+    if (!data._pendingNotifications) data._pendingNotifications = [];
+    data._pendingNotifications.push(`user送了你 ${amount} 颗许愿星${note ? '，说：' + note : ''}`);
+    this._saveExData(data);
+    this.renderExShop();
+    this.renderExFunds();
 }
 
 removeShopItem(who, itemId) {
@@ -10796,7 +10919,8 @@ _stripCommandTags(text) {
         .replace(/\[EX_LETTER:[^\]]+\]/g, '')
         .replace(/\[EX_SHOP_ADD:[^\]]+\]/g, '')
         .replace(/\[EX_SHOP_REDEEM:[^\]]+\]/g, '')
-        .replace(/\[EX_SHOP_REMOVE:[^\]]+\]/g, '');
+        .replace(/\[EX_SHOP_REMOVE:[^\]]+\]/g, '')
+        .replace(/\[EX_STAR_GIVE:[^\]]+\]/g, '');
 }
 
 // 执行一个分段里包含的所有指令（产生通知）
