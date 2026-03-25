@@ -2024,7 +2024,6 @@
                         <option value="美元">美元</option>
                         <option value="日元">日元</option>
                         <option value="欧元">欧元</option>
-                        <option value="许愿星">⭐ 许愿星</option>
                     </select>
                     <select class="ex-add-select" id="exFundTo">
                         <option value="ai">存给TA</option>
@@ -2087,6 +2086,10 @@
                     <input type="datetime-local" class="ex-add-input" id="exLetterDeliverAt" style="flex:1;" title="送达时间（不填=立即送达）">
                 </div>
                 <textarea class="ex-add-input" id="exLetterContent" placeholder="写下你想说的话..." rows="4" style="width:100%;margin-bottom:8px;resize:vertical;"></textarea>
+                <div class="ex-add-row" style="margin-bottom:8px;">
+                    <button id="exLetterImgBtn" style="padding:8px 14px;border:1px dashed rgba(255,255,255,0.15);border-radius:8px;background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.4);font-size:12px;cursor:pointer;">📷 附图（可多张）</button>
+                    <input type="file" id="exLetterImgInput" accept="image/*" style="display:none;">
+                </div>
                 <button class="ex-add-btn" id="exLetterAddBtn">✉️ 寄出</button>
             </div>
             <div style="font-size:12px;color:rgba(255,255,255,0.3);margin-bottom:8px;">📬 收到的信</div>
@@ -2114,6 +2117,15 @@
                 </div>
                 <button class="ex-add-btn" id="exShopAddWishBtn">⭐ 上架</button>
             </div>
+            <!-- 赠送许愿星 -->
+            <div class="ex-add-form" style="border-color:rgba(240,147,43,0.15);">
+                <div style="font-size:13px;color:rgba(255,255,255,0.5);margin-bottom:8px;">🌟 赠送许愿星给TA</div>
+                <div class="ex-add-row">
+                    <input type="number" class="ex-add-input" id="exStarGiftAmount" placeholder="数量" min="1" style="width:80px;">
+                    <input type="text" class="ex-add-input" id="exStarGiftNote" placeholder="附言（可选）" style="flex:1;">
+                    <button id="exStarGiftBtn" style="padding:8px 16px;border:none;border-radius:10px;background:rgba(240,147,43,0.15);color:#f0932b;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">赠送 ⭐</button>
+                </div>
+            </div>
             <div style="font-size:12px;color:rgba(255,255,255,0.3);margin-bottom:8px;">🏪 TA上架的（你可以兑换）</div>
             <div id="exShopListAiItems"></div>
             <div style="font-size:12px;color:rgba(255,255,255,0.3);margin:12px 0 8px;">🏪 你上架的（TA可以兑换）</div>
@@ -2121,6 +2133,18 @@
             <!-- 小铺装修CSS -->
             <div style="margin-top:16px;padding:12px;background:rgba(255,255,255,0.03);border-radius:10px;">
                 <div style="font-size:12px;color:rgba(255,255,255,0.3);margin-bottom:6px;">🎨 小铺装修（自定义CSS）</div>
+                <div style="font-size:10px;color:rgba(255,255,255,0.15);margin-bottom:6px;line-height:1.5;font-family:monospace;">
+                    可用类名：<br>
+                    .exchange-sub-page#exShopPage — 小铺整体容器<br>
+                    .ex-fund-summary — 余额卡片区<br>
+                    .ex-fund-card — 单个余额卡<br>
+                    .ex-fund-amount — 余额数字<br>
+                    .ex-add-form — 表单区域<br>
+                    .ex-add-btn — 按钮<br>
+                    .ex-item — 每个愿望卡片<br>
+                    .ex-item-title — 愿望标题<br>
+                    .ex-btn-withdraw — 兑换按钮
+                </div>
                 <textarea id="exShopCustomCss" placeholder=".exchange-sub-page#exShopPage { ... }" rows="3" style="width:100%;padding:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#fff;font-size:11px;font-family:monospace;resize:vertical;margin-bottom:6px;"></textarea>
                 <button id="exShopApplyCssBtn" style="padding:6px 14px;border:none;border-radius:8px;background:rgba(240,147,43,0.12);color:#f0932b;font-size:12px;cursor:pointer;">应用装修</button>
             </div>
