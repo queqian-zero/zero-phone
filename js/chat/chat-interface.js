@@ -1619,64 +1619,66 @@ ${archiveListText}
             // ====== 需求4：检查AI是否发了APPLY_CSS ======
             let aiText = result.text;
             
-            // 清除AI模仿的时间戳前缀（AI会学习输入格式，在回复中带上[2026-03-22 10:08:31]之类的）
+            // 清除AI模仿的时间戳前缀
             aiText = aiText.replace(/^\[?\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}(?::\d{2})?\]?\s*/gm, '');
             
+            // CSS/火花命令立即执行（不产生聊天通知）
             aiText = this.processAICssCommands(aiText);
             aiText = this.processFlameCommands(aiText);
-            aiText = this.processLuckyCharCommands(aiText);
-            aiText = this.processRelationBindCommands(aiText);
-            aiText = this.processBadgeCommands(aiText);
             
             // ====== 思维链 ======
             const thinkingText = result.thinking || '';
             
-            // ====== 消息拆分模式 ======
-            // AI可以用 [MSG_SPLIT] 标记分段点；或者设置里开了逐条模式就按段落自动拆
+            // ====== 按 [MSG_SPLIT] 拆成原始分段（保留指令标签）======
             const hasSplitTag = aiText.includes('[MSG_SPLIT]');
-            const splitMode = this.settings.aiMsgSplitMode || 'whole'; // 'whole' | 'split'
-            let msgParts = [];
+            const splitMode = this.settings.aiMsgSplitMode || 'whole';
+            let rawSegments = [];
             
             if (hasSplitTag) {
-                // AI主动拆分
-                msgParts = aiText.split('[MSG_SPLIT]').map(s => s.trim()).filter(Boolean);
+                rawSegments = aiText.split('[MSG_SPLIT]').map(s => s.trim()).filter(Boolean);
             } else if (splitMode === 'split') {
-                // 设置开了自动拆分：按双换行拆
-                msgParts = aiText.split(/\n{2,}/).map(s => s.trim()).filter(Boolean);
-                if (msgParts.length <= 1) msgParts = [aiText]; // 没法拆就不拆
+                rawSegments = aiText.split(/\n{2,}/).map(s => s.trim()).filter(Boolean);
+                if (rawSegments.length <= 1) rawSegments = [aiText];
             } else {
-                msgParts = [aiText];
+                rawSegments = [aiText];
             }
-            
-            // 二次清理：每个分段再清一次时间戳前缀（防止拆分后残留）
-            const tsRegex = /^\[?\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}(?::\d{2})?\]?\s*/;
-            msgParts = msgParts.map(s => s.replace(tsRegex, '').trim()).filter(Boolean);
             
             // 渲染思维链（气泡外，第一条消息上方）
             if (thinkingText) {
                 this._renderThinkingBlock(thinkingText);
             }
             
-            // 渲染消息（单条或多条）
+            // ====== 逐段处理：渲染气泡 → 执行该段指令 → 通知跟在气泡后面 ======
             const nowMs = Date.now();
-            if (msgParts.length === 1) {
-                // 整段模式
-                const ts = new Date(nowMs).toISOString();
-                this.addMessage({ type: 'ai', text: msgParts[0], timestamp: ts });
-                this.storage.addMessage(this.currentFriendCode, { type: 'ai', text: msgParts[0], timestamp: ts, thinking: thinkingText || undefined });
-            } else {
-                // 逐条模式：每条独立存储（这样重新加载时也是分开的气泡）
-                for (let i = 0; i < msgParts.length; i++) {
-                    const offset = i * (2000 + Math.floor(Math.random() * 4000));
-                    const partTs = new Date(nowMs + offset).toISOString();
-                    const msg = { type: 'ai', text: msgParts[i], timestamp: partTs, _sequential: i > 0 };
-                    this.addMessage(msg);
-                    // 每条独立存储，thinking只存第一条
-                    const storeMsg = { type: 'ai', text: msgParts[i], timestamp: partTs };
-                    if (i === 0 && thinkingText) storeMsg.thinking = thinkingText;
-                    if (i > 0) storeMsg._sequential = true; // 标记后续条
-                    this.storage.addMessage(this.currentFriendCode, storeMsg);
+            const tsRegex = /^\[?\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}(?::\d{2})?\]?\s*/;
+            
+            for (let i = 0; i < rawSegments.length; i++) {
+                const rawSeg = rawSegments[i];
+                
+                // 1. 清除标签得到纯文本（+ 提取该段的关系卡片HTML）
+                let cleanText = this._stripCommandTags(rawSeg);
+                const segCardHtml = this._extractRelationInviteCardHtml(rawSeg);
+                if (segCardHtml && !cleanText.includes('[RENDER_HTML]')) {
+                    cleanText += `\n[RENDER_HTML]${segCardHtml}[/RENDER_HTML]`;
                 }
+                cleanText = cleanText.replace(tsRegex, '').trim();
+                
+                if (!cleanText) { this._executeSegmentCommands(rawSeg); continue; } // 空段：只执行指令
+                
+                // 2. 渲染气泡
+                const offset = i * (2000 + Math.floor(Math.random() * 4000));
+                const partTs = new Date(nowMs + offset).toISOString();
+                const msg = { type: 'ai', text: cleanText, timestamp: partTs, _sequential: i > 0 };
+                this.addMessage(msg);
+                
+                // 3. 存储（thinking只存第一条）
+                const storeMsg = { type: 'ai', text: cleanText, timestamp: partTs };
+                if (i === 0 && thinkingText) storeMsg.thinking = thinkingText;
+                if (i > 0) storeMsg._sequential = true;
+                this.storage.addMessage(this.currentFriendCode, storeMsg);
+                
+                // 4. 执行该段里的指令（通知自然出现在这个气泡下方）
+                this._executeSegmentCommands(rawSeg);
             }
 
 if (result.tokens) {
@@ -6039,6 +6041,9 @@ getIntimacyStatusForAI() {
     desc += `\n\n【消息格式】你可以选择一大段回复，也可以用 [MSG_SPLIT] 标签把回复拆成多条消息分开发送（像真人一条一条打字那样）。`;
     desc += `\n例如：「你好啊[MSG_SPLIT]今天天气不错[MSG_SPLIT]要不要出去走走？」会被拆成3条独立消息。`;
     desc += `\n什么时候用什么格式由你自己决定，根据对话语境自然选择就行。`;
+    desc += `\n\n【指令与通知位置】当你使用操作指令（如[LUCKY_DRAW]、[BADGE_WEAR:xxx]等）时，指令产生的系统通知会出现在指令所在那段话的下方。`;
+    desc += `\n所以如果你想先说一段话再操作，把指令放在那段话之后；如果用了[MSG_SPLIT]，指令放在哪个分段里，通知就跟在哪个气泡后面。`;
+    desc += `\n例如：「看我抽卡！[LUCKY_DRAW][LUCKY_DRAW][MSG_SPLIT]怎么样？」→ 第一个气泡后面出通知，第二个气泡在通知后面。`;
     
     return desc;
 }
@@ -9622,6 +9627,110 @@ processRelationBindCommands(text) {
     }
     
     return text;
+}
+
+// 纯清除指令标签，不执行任何操作
+_stripCommandTags(text) {
+    return text
+        .replace(/\[LUCKY_DRAW\]/g, '')
+        .replace(/\[LUCKY_WEAR:[^\]]+\]/g, '')
+        .replace(/\[LUCKY_UNWEAR\]/g, '')
+        .replace(/\[RELATION_INVITE:[^\]]+\]/g, '')
+        .replace(/\[RELATION_ACCEPT\]/g, '')
+        .replace(/\[RELATION_REJECT\]/g, '')
+        .replace(/\[RELATION_BREAK\]/g, '')
+        .replace(/\[RELATION_BREAK_REQUEST\]/g, '')
+        .replace(/\[RELATION_BREAK_ACCEPT\]/g, '')
+        .replace(/\[RELATION_BREAK_REJECT\]/g, '')
+        .replace(/\[BADGE_UNLOCK:[^\]]+\]/g, '')
+        .replace(/\[BADGE_WEAR:[^\]]+\]/g, '')
+        .replace(/\[BADGE_UNWEAR:[^\]]+\]/g, '');
+}
+
+// 执行一个分段里包含的所有指令（产生通知）
+_executeSegmentCommands(rawSeg) {
+    this.processLuckyCharCommands(rawSeg);
+    this.processRelationBindCommands(rawSeg);
+    this.processBadgeCommands(rawSeg);
+}
+
+// 预提取关系卡片HTML（不写入状态，只生成卡片用于渲染）
+_extractRelationInviteCardHtml(rawText) {
+    // 如果AI已经自己写了RENDER_HTML，不重复生成
+    if (rawText.includes('[RENDER_HTML]')) return '';
+    
+    const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
+    const dateStr = new Date().toLocaleDateString('zh-CN', { year:'numeric', month:'long', day:'numeric' });
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    const rel = data.relationship || {};
+    
+    // [RELATION_INVITE:xxx] → 邀请卡
+    const inviteMatch = rawText.match(/\[RELATION_INVITE:([^\]]+)\]/);
+    if (inviteMatch && !rel.bound && !rel.pendingInvite) {
+        const parts = inviteMatch[1].split(':');
+        const relName = parts[0].trim();
+        const cardStyle = parts[1]?.trim() || '1';
+        const allTypes = this.getAllRelationTypes();
+        let typeDef = allTypes.find(t => t.name === relName);
+        if (!typeDef) typeDef = allTypes.find(t => t.name.includes(relName) || relName.includes(t.name));
+        const finalName = typeDef?.name || relName;
+        const finalIcon = typeDef?.icon || '💍';
+        const finalIconType = typeDef?.iconType || 'emoji';
+        return this._buildAIInviteCardHtml(finalName, finalIcon, finalIconType, friendName, dateStr, cardStyle);
+    }
+    
+    // [RELATION_BREAK_REQUEST] → 解绑申请卡
+    if (rawText.includes('[RELATION_BREAK_REQUEST]') && rel.bound && !rel.pendingBreak) {
+        const relName = rel.bound.name;
+        return `<div style="width:100%;max-width:320px;margin:0 auto;padding:24px 20px;background:linear-gradient(145deg,#2d1b1b,#1a1a2e);border-radius:20px;text-align:center;font-family:system-ui,sans-serif;color:#fff;border:1px solid rgba(255,100,100,0.12);">
+  <div style="font-size:40px;margin-bottom:10px;">📨</div>
+  <div style="font-size:16px;font-weight:700;color:rgba(255,160,140,0.9);margin-bottom:6px;">申请解除关系</div>
+  <div style="font-size:13px;color:rgba(255,255,255,0.45);margin-bottom:16px;">${this.escapeHtml(friendName)} 申请解除「${this.escapeHtml(relName)}」关系</div>
+  <div style="display:flex;gap:10px;justify-content:center;">
+    <button onclick="(window.parent||window).chatInterface.acceptBreakRelation()" style="padding:8px 24px;border:none;border-radius:16px;background:rgba(255,100,100,0.2);color:rgba(255,140,140,0.9);font-size:13px;font-weight:600;cursor:pointer;">同意解绑</button>
+    <button onclick="(window.parent||window).chatInterface.rejectBreakRelation()" style="padding:8px 24px;border:none;border-radius:16px;background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.4);font-size:13px;cursor:pointer;">拒绝</button>
+  </div>
+</div>`;
+    }
+    
+    // [RELATION_BREAK] → 解绑通知卡
+    if (rawText.includes('[RELATION_BREAK]') && rel.bound) {
+        const oldName = rel.bound.name;
+        return `<div style="width:100%;max-width:320px;margin:0 auto;padding:24px 20px;background:linear-gradient(145deg,#2d1b1b,#1a1a2e);border-radius:20px;text-align:center;font-family:system-ui,sans-serif;color:#fff;border:1px solid rgba(255,100,100,0.15);">
+  <div style="font-size:48px;margin-bottom:10px;">💔</div>
+  <div style="font-size:18px;font-weight:700;color:rgba(255,120,120,0.9);margin-bottom:6px;">关系已解除</div>
+  <div style="font-size:13px;color:rgba(255,255,255,0.4);">「${this.escapeHtml(oldName)}」关系绑定已解除</div>
+  <div style="font-size:11px;color:rgba(255,255,255,0.2);margin-top:10px;">${dateStr}</div>
+</div>`;
+    }
+    
+    // [RELATION_ACCEPT] → 绑定成功卡
+    if (rawText.includes('[RELATION_ACCEPT]') && rel.pendingInvite && rel.pendingInvite.from === 'user') {
+        const invite = rel.pendingInvite;
+        const allTypes = this.getAllRelationTypes();
+        const typeDef = allTypes.find(t => t.id === invite.relId) || {};
+        const icon = invite.relIcon || typeDef.icon || '💍';
+        const iconType = invite.relIconType || typeDef.iconType || 'emoji';
+        const iconHtml = iconType === 'image' ? `<img src="${icon}" style="width:56px;height:56px;object-fit:contain;">` : (icon || '💍');
+        return `<div style="width:100%;max-width:320px;margin:0 auto;padding:24px 20px;background:linear-gradient(145deg,#1a1a2e,#16213e);border-radius:20px;text-align:center;font-family:system-ui,sans-serif;color:#fff;">
+  <div style="font-size:48px;margin-bottom:10px;">${iconHtml}</div>
+  <div style="font-size:20px;font-weight:800;margin-bottom:6px;background:linear-gradient(90deg,#f0932b,#fdcb6e);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">绑定成功！</div>
+  <div style="font-size:15px;color:rgba(255,255,255,0.7);margin-bottom:4px;">我们现在是「${this.escapeHtml(invite.relName)}」了</div>
+  <div style="font-size:11px;color:rgba(255,255,255,0.25);margin-top:10px;">${dateStr} · 亲密值 +20</div>
+</div>`;
+    }
+    
+    // [RELATION_BREAK_ACCEPT] → 已同意解绑卡
+    if (rawText.includes('[RELATION_BREAK_ACCEPT]') && rel.pendingBreak && rel.pendingBreak.from === 'user' && rel.bound) {
+        const oldName = rel.bound.name;
+        return `<div style="width:100%;max-width:320px;margin:0 auto;padding:24px 20px;background:linear-gradient(145deg,#2d1b1b,#1a1a2e);border-radius:20px;text-align:center;font-family:system-ui,sans-serif;color:#fff;border:1px solid rgba(255,100,100,0.1);">
+  <div style="font-size:40px;margin-bottom:10px;">💔</div>
+  <div style="font-size:16px;font-weight:700;color:rgba(255,120,120,0.8);margin-bottom:6px;">已同意解绑</div>
+  <div style="font-size:13px;color:rgba(255,255,255,0.35);">「${this.escapeHtml(oldName)}」关系已解除</div>
+</div>`;
+    }
+    
+    return '';
 }
 
 // AI邀请卡HTML生成（2种风格 + 自定义）
