@@ -730,6 +730,13 @@ class ChatInterface {
         // 关系标识（显示在名字旁边）
         this.updateChatHeaderRelationBadge();
         
+        // 清理上一个好友的自定义CSS
+        this.removeCustomCss();
+        this.removeAvatarFrameCss();
+        
+        // 重置Token面板
+        this._resetTokenPanel();
+        
         const chat = this.storage.getChatByFriendCode(friendCode);
         
         if (chat && chat.messages) {
@@ -760,6 +767,27 @@ class ChatInterface {
         
         window.chatInterface = this;
     }
+    
+    // 重置Token显示面板
+    _resetTokenPanel() {
+        const ids = ['tokenRoundInput', 'tokenRoundOutput', 'tokenRoundDuration'];
+        ids.forEach(id => { const el = document.getElementById(id); if (el) el.textContent = '-'; });
+        const tabBtn = document.getElementById('infoTabToken');
+        if (tabBtn) tabBtn.textContent = '📊 Token';
+        // 清空详情区的数值
+        ['tokenDetailInput','tokenDetailOutput','tokenDetailTotal','tokenDetailPersona','tokenDetailSystem','tokenDetailChat','tokenDetailMemory','tokenDetailImage','tokenDetailWorld'].forEach(id => {
+            const el = document.getElementById(id); if (el) el.textContent = '-';
+        });
+        ['tokenBarPersona','tokenBarSystem','tokenBarChat','tokenBarMemory','tokenBarImage','tokenBarWorld'].forEach(id => {
+            const el = document.getElementById(id); if (el) el.style.width = '0%';
+        });
+    }
+    
+    // 移除自定义CSS
+    removeCustomCss() {
+        const old = document.getElementById('customBubbleCssTag');
+        if (old) old.remove();
+    }
 
     addWelcomeMessage(friend) {
         console.log('👋 添加欢迎消息');
@@ -782,8 +810,18 @@ class ChatInterface {
         
         this.messages.forEach((msg, index) => {
             console.log(`  渲染消息 ${index + 1}:`, msg.type, msg.text.substring(0, 20));
+            
+            // 思维链（存储在消息的thinking字段里）
+            if (msg.thinking && msg.type === 'ai') {
+                this._renderThinkingBlock(msg.thinking);
+            }
+            
             const elements = this.createMessageElements(msg);
             elements.forEach(el => {
+                // 恢复逐条标记
+                if (msg._sequential) {
+                    el.classList.add('msg-sequential');
+                }
                 messagesList.appendChild(el);
                 this.setupIframeAutoResize(el);
             });
@@ -804,6 +842,10 @@ class ChatInterface {
     const inputFieldInline = document.getElementById('inputFieldInline');
     if (inputField) inputField.value = '';
     if (inputFieldInline) inputFieldInline.value = '';
+    
+    // 清理自定义CSS和头像框（防止泄漏到下一个聊天）
+    this.removeCustomCss();
+    this.removeAvatarFrameCss();
     
     this.currentFriendCode = null;
     this.currentFriend = null;
@@ -1339,6 +1381,10 @@ class ChatInterface {
         }
         this._isSendingAI = true;
         
+        // 捕获发送时的好友code（防止用户中途切走导致消息发到错误的聊天）
+        const sendFriendCode = this.currentFriendCode;
+        const sendFriend = this.currentFriend;
+        
         this.showTypingIndicator();
         
         try {
@@ -1557,6 +1603,16 @@ ${archiveListText}
                 return;
             }
             
+            // 用户切走了→消息静默保存到原好友的存储，不渲染到当前屏幕
+            const switched = (this.currentFriendCode !== sendFriendCode);
+            if (switched) {
+                console.warn('⚠️ 用户已切走，AI回复静默保存到', sendFriendCode);
+                const cleanText = result.text.replace(/^\[?\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}(?::\d{2})?\]?\s*/gm, '');
+                this.storage.addMessage(sendFriendCode, { type: 'ai', text: cleanText, timestamp: new Date().toISOString(), thinking: result.thinking || undefined });
+                this._isSendingAI = false;
+                return;
+            }
+            
             console.log('✅ API调用成功');
             console.log('💬 AI回复:', result.text.substring(0, 50), '...');
             
@@ -1609,16 +1665,17 @@ ${archiveListText}
                 this.addMessage({ type: 'ai', text: msgParts[0], timestamp: ts });
                 this.storage.addMessage(this.currentFriendCode, { type: 'ai', text: msgParts[0], timestamp: ts, thinking: thinkingText || undefined });
             } else {
-                // 逐条模式：每条有自己的递增时间戳（模拟真人打字间隔2-6秒）
+                // 逐条模式：每条独立存储（这样重新加载时也是分开的气泡）
                 for (let i = 0; i < msgParts.length; i++) {
-                    const offset = i * (2000 + Math.floor(Math.random() * 4000)); // 2-6秒递增
+                    const offset = i * (2000 + Math.floor(Math.random() * 4000));
                     const partTs = new Date(nowMs + offset).toISOString();
                     const msg = { type: 'ai', text: msgParts[i], timestamp: partTs, _sequential: i > 0 };
                     this.addMessage(msg);
-                    // 存储时合并为一条（方便历史查看/总结）
-                    if (i === 0) {
-                        this.storage.addMessage(this.currentFriendCode, { type: 'ai', text: aiText.replace(/\[MSG_SPLIT\]/g, '\n\n'), timestamp: partTs, thinking: thinkingText || undefined });
-                    }
+                    // 每条独立存储，thinking只存第一条
+                    const storeMsg = { type: 'ai', text: msgParts[i], timestamp: partTs };
+                    if (i === 0 && thinkingText) storeMsg.thinking = thinkingText;
+                    if (i > 0) storeMsg._sequential = true; // 标记后续条
+                    this.storage.addMessage(this.currentFriendCode, storeMsg);
                 }
             }
 
@@ -2578,6 +2635,20 @@ if (exportDataBtn) {
             console.warn('⚠️ 没有当前好友编码');
             return;
         }
+        
+        // 先重置为默认值（防止切换好友时泄漏上一个好友的设置）
+        const defaults = {
+            aiRecognizeImage: true, chatPin: false, hideToken: false,
+            autoSummary: true, summaryInterval: 20, contextMessages: 20,
+            timeAwareness: true, chatWallpaper: 'default', bubbleStyle: 'default',
+            avatarShape: 'circle', avatarBorderRadius: 50,
+            avatarFrameType: 'none', avatarFrameSrc: '', avatarFrameOffsetX: 0, avatarFrameOffsetY: 0, avatarFrameScale: 100, avatarFrameCss: '',
+            userAvatarFrameType: 'none', userAvatarFrameSrc: '', userAvatarFrameOffsetX: 0, userAvatarFrameOffsetY: 0, userAvatarFrameScale: 100,
+            flameEnabled: true, flameStartDate: '', flameExtinguishDays: 3, flameLastChatDate: '',
+            flameCustomIcon: '', flameCustomIconType: 'emoji', flameCustomDeadIcon: '', flameCustomDeadIconType: 'emoji',
+            aiMsgSplitMode: 'whole', customBubbleCss: ''
+        };
+        this.settings = { ...defaults };
         
         const savedSettings = this.storage.getChatSettings(this.currentFriendCode);
         
@@ -5926,6 +5997,7 @@ getIntimacyStatusForAI() {
             const wornNames = wearing.map(id => { const b = unlocked.find(u => u.id === id); return b ? b.name : ''; }).filter(Boolean);
             if (wornNames.length > 0) desc += `，佩戴中：${wornNames.join('、')}`;
         }
+        desc += `\n  你可以用 [BADGE_WEAR:徽章名] 佩戴已解锁的徽章，用 [BADGE_UNWEAR:徽章名] 取消佩戴`;
     } else {
         desc += `\n- 亲密徽章：还没有解锁（共${totalCount}个徽章）`;
     }
@@ -6660,9 +6732,10 @@ updateLuckyCharOnMessage() {
 processLuckyCharCommands(text) {
     const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
     
-    // [LUCKY_DRAW] - AI抽卡
-    if (text.includes('[LUCKY_DRAW]')) {
-        text = text.replace('[LUCKY_DRAW]', '');
+    // [LUCKY_DRAW] - AI抽卡（支持多次）
+    let drawCount = (text.match(/\[LUCKY_DRAW\]/g) || []).length;
+    text = text.replace(/\[LUCKY_DRAW\]/g, '');
+    for (let i = 0; i < drawCount; i++) {
         const result = this.drawLuckyCard(0, 'ai');
         if (result) {
             if (result.hit) {
@@ -6677,19 +6750,22 @@ processLuckyCharCommands(text) {
         }
     }
     
-    // [LUCKY_WEAR:id] - AI选择佩戴
+    // [LUCKY_WEAR:id或name] - AI选择佩戴（支持按名字匹配）
     const wearMatch = text.match(/\[LUCKY_WEAR:([^\]]+)\]/);
     if (wearMatch) {
-        const charId = wearMatch[1].trim();
-        text = text.replace(/\[LUCKY_WEAR:[^\]]+\]/, '');
+        const charKey = wearMatch[1].trim();
+        text = text.replace(/\[LUCKY_WEAR:[^\]]+\]/g, '');
         
         const data = this.storage.getIntimacyData(this.currentFriendCode);
         const lc = data.luckyChars || {};
         const owned = lc.owned || [];
-        const target = owned.find(o => o.id === charId);
+        // 按id或名字匹配
+        let target = owned.find(o => o.id === charKey);
+        if (!target) target = owned.find(o => o.name === charKey);
+        if (!target) target = owned.find(o => o.name.includes(charKey) || charKey.includes(o.name));
         
         if (target) {
-            lc.aiWearing = charId;
+            lc.aiWearing = target.id;
             data.luckyChars = lc;
             this.storage.saveIntimacyData(this.currentFriendCode, data);
             this.showCssSystemMessage(`✦ ${friendName} 选择佩戴「${target.name}」`);
@@ -6700,10 +6776,9 @@ processLuckyCharCommands(text) {
     
     // [LUCKY_UNWEAR] - AI取消佩戴
     if (text.includes('[LUCKY_UNWEAR]')) {
-        text = text.replace('[LUCKY_UNWEAR]', '');
+        text = text.replace(/\[LUCKY_UNWEAR\]/g, '');
         this.unwearLuckyChar('ai');
         this.showCssSystemMessage(`✦ ${friendName} 取消了佩戴幸运字符`);
-        // 强制刷新（unwearLuckyChar里已经调了一次，这里再确保一下）
         setTimeout(() => this.updateBadgePanel(), 100);
     }
     
@@ -6748,9 +6823,24 @@ bindLuckyCharEvents() {
                     ${result.isNew ? '<div style="font-size:9px;color:#f0932b;margin-top:2px;">NEW!</div>' : '<div style="font-size:9px;color:rgba(255,255,255,0.3);margin-top:2px;">已拥有</div>'}
                 </div>`;
                 if (navigator.vibrate) navigator.vibrate(100);
+                
+                // 在聊天框发送通知
+                const sysMsg = result.isNew 
+                    ? `🎲 你抽到了新的幸运字符「${result.char.name}」！`
+                    : `🎲 你抽到了「${result.char.name}」（已拥有，点亮+1）`;
+                this.showCssSystemMessage(sysMsg);
+                // 通知AI（用第三人称，不然AI以为是自己抽的）
+                const data2 = this.storage.getIntimacyData(this.currentFriendCode);
+                if (!data2._pendingNotifications) data2._pendingNotifications = [];
+                const aiNotify = result.isNew 
+                    ? `user抽到了新的幸运字符「${result.char.name}」！`
+                    : `user抽到了「${result.char.name}」（已拥有，点亮+1）`;
+                data2._pendingNotifications.push(aiNotify);
+                this.storage.saveIntimacyData(this.currentFriendCode, data2);
             } else {
                 card.classList.add('empty');
                 card.innerHTML = '<div class="lucky-card-front"><div class="char-empty">空</div></div>';
+                this.showCssSystemMessage('🎲 翻了一张空牌');
             }
             
             // 更新剩余次数和列表
@@ -8398,11 +8488,13 @@ getWornBadgesHtml() {
 
 // AI徽章指令处理
 processBadgeCommands(text) {
+    const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
+    
     // [BADGE_UNLOCK:徽章名] - AI解锁自定义徽章
     const unlockMatch = text.match(/\[BADGE_UNLOCK:([^\]]+)\]/);
     if (unlockMatch) {
         const badgeName = unlockMatch[1].trim();
-        text = text.replace(/\[BADGE_UNLOCK:[^\]]+\]/, '');
+        text = text.replace(/\[BADGE_UNLOCK:[^\]]+\]/g, '');
         
         const allBadges = this.getAllBadges();
         let badge = allBadges.find(b => b.name === badgeName);
@@ -8422,6 +8514,53 @@ processBadgeCommands(text) {
             }
         }
     }
+    
+    // [BADGE_WEAR:徽章名] - AI佩戴徽章
+    const wearBadgeMatch = text.match(/\[BADGE_WEAR:([^\]]+)\]/);
+    if (wearBadgeMatch) {
+        const badgeName = wearBadgeMatch[1].trim();
+        text = text.replace(/\[BADGE_WEAR:[^\]]+\]/g, '');
+        
+        const allBadges = this.getAllBadges();
+        let badge = allBadges.find(b => b.name === badgeName);
+        if (!badge) badge = allBadges.find(b => b.name.includes(badgeName) || badgeName.includes(b.name));
+        
+        if (badge) {
+            const data = this.storage.getIntimacyData(this.currentFriendCode);
+            if (!data.badges) data.badges = { unlocked:[], wearing:[], progress:{}, bgImage:'' };
+            const isUnlocked = (data.badges.unlocked || []).find(u => u.id === badge.id);
+            if (isUnlocked && !(data.badges.wearing || []).includes(badge.id)) {
+                if (!data.badges.wearing) data.badges.wearing = [];
+                data.badges.wearing.push(badge.id);
+                this.storage.saveIntimacyData(this.currentFriendCode, data);
+                this.showCssSystemMessage(`🏅 ${friendName} 佩戴了「${badge.name}」`);
+                this.showCssToast(`${friendName} 佩戴了「${badge.name}」`);
+                this.updateBadgePanel();
+            }
+        }
+    }
+    
+    // [BADGE_UNWEAR:徽章名] - AI取消佩戴徽章
+    const unwearBadgeMatch = text.match(/\[BADGE_UNWEAR:([^\]]+)\]/);
+    if (unwearBadgeMatch) {
+        const badgeName = unwearBadgeMatch[1].trim();
+        text = text.replace(/\[BADGE_UNWEAR:[^\]]+\]/g, '');
+        
+        const allBadges = this.getAllBadges();
+        let badge = allBadges.find(b => b.name === badgeName);
+        if (!badge) badge = allBadges.find(b => b.name.includes(badgeName) || badgeName.includes(b.name));
+        
+        if (badge) {
+            const data = this.storage.getIntimacyData(this.currentFriendCode);
+            if (data.badges?.wearing) {
+                data.badges.wearing = data.badges.wearing.filter(id => id !== badge.id);
+                this.storage.saveIntimacyData(this.currentFriendCode, data);
+                this.showCssSystemMessage(`🏅 ${friendName} 取消佩戴「${badge.name}」`);
+                this.updateBadgePanel();
+            }
+        }
+    }
+    
     return text;
 }
 
