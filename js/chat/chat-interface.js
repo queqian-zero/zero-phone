@@ -6136,6 +6136,7 @@ getIntimacyStatusForAI() {
     desc += `\n  [CAP_CAPSULE:标题:内容:开启日期] 封存一颗时间胶囊（开启日期格式YYYY-MM-DD）`;
     desc += `\n  [CAP_MILESTONE:标题:描述:图标] 标记一个里程碑`;
     desc += `\n  [CAP_COMMENT:memories|milestones|reports:文章标题:评语内容] 给回忆录/里程碑/报告写评语`;
+    desc += `\n  [TL_NOTE:星迹标题:寄语内容] 在星迹档案的某条记录下写寄语`;
     
     // 待处理通知（user的操作通知AI）
     if (data._pendingNotifications && data._pendingNotifications.length > 0) {
@@ -6297,26 +6298,58 @@ renderTimeline(timeline) {
         return;
     }
     
+    const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
+    
     container.innerHTML = timeline.map(item => {
         const date = new Date(item.date);
-        const dateStr = `${date.getFullYear()}.${String(date.getMonth()+1).padStart(2,'0')}.${String(date.getDate()).padStart(2,'0')}`;
-        const hasUserNote = item.userNote ? `<div class="intimacy-tl-note">📝 ${this.escapeHtml(item.userNote)}</div>` : '';
-        const hasAiNote = item.aiNote ? `<div class="intimacy-tl-note">🤖 ${this.escapeHtml(item.aiNote)}</div>` : '';
+        const dateStr = `${date.getFullYear()}.${String(date.getMonth()+1).padStart(2,'0')}.${String(date.getDate()).padStart(2,'0')} ${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}`;
+        
+        // 寄语展示（user和AI各自显示，带日期）
+        const hasUserNote = !!item.userNote;
+        const hasAiNote = !!item.aiNote;
+        const hasAnyNote = hasUserNote || hasAiNote;
+        
+        let notesHtml = '';
+        if (hasUserNote) {
+            const noteDate = item.userNoteDate ? new Date(item.userNoteDate) : null;
+            const noteDateStr = noteDate ? `${noteDate.getMonth()+1}/${noteDate.getDate()} ${String(noteDate.getHours()).padStart(2,'0')}:${String(noteDate.getMinutes()).padStart(2,'0')}` : '';
+            notesHtml += `<div class="intimacy-tl-note" style="margin-top:6px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-size:10px;color:rgba(240,147,43,0.6);font-weight:600;">📝 你的寄语${noteDateStr ? ' · ' + noteDateStr : ''}</span>
+                    <button onclick="window.chatInterface.deleteTimelineNote('${item.id}','user')" style="padding:2px 8px;border:none;border-radius:4px;background:rgba(255,60,60,0.08);color:rgba(255,100,100,0.5);font-size:9px;cursor:pointer;">删除</button>
+                </div>
+                <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-top:3px;line-height:1.5;">${this.escapeHtml(item.userNote)}</div>
+            </div>`;
+        }
+        if (hasAiNote) {
+            const noteDate = item.aiNoteDate ? new Date(item.aiNoteDate) : null;
+            const noteDateStr = noteDate ? `${noteDate.getMonth()+1}/${noteDate.getDate()} ${String(noteDate.getHours()).padStart(2,'0')}:${String(noteDate.getMinutes()).padStart(2,'0')}` : '';
+            notesHtml += `<div class="intimacy-tl-note" style="margin-top:6px;">
+                <div style="font-size:10px;color:rgba(100,180,255,0.6);font-weight:600;">🤖 ${friendName}的寄语${noteDateStr ? ' · ' + noteDateStr : ''}</div>
+                <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-top:3px;line-height:1.5;">${this.escapeHtml(item.aiNote)}</div>
+            </div>`;
+        }
+        
+        // 输入框：user没写过才显示
+        const inputHtml = hasUserNote ? '' : `
+            <div style="margin-top:8px;">
+                <textarea class="intimacy-tl-note-input" placeholder="写下你的寄语..." data-tl-id="${item.id}" rows="2"></textarea>
+                <div style="display:flex;gap:6px;margin-top:6px;">
+                    <button onclick="window.chatInterface.saveTimelineNote('${item.id}')" style="flex:1;padding:6px;border:none;border-radius:6px;background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.6);font-size:11px;cursor:pointer;">保存寄语</button>
+                </div>
+            </div>`;
+        
+        const toggleText = hasAnyNote ? '查看寄语' : '写寄语';
         
         return `
             <div class="intimacy-tl-item" data-tl-id="${item.id}">
                 <div class="intimacy-tl-dot"></div>
                 <div class="intimacy-tl-date">${dateStr}</div>
                 <div class="intimacy-tl-title">${item.icon || '✦'} ${this.escapeHtml(item.title)}</div>
-                <div class="intimacy-tl-toggle" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">展开寄语 ▾</div>
+                <div class="intimacy-tl-toggle" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">${toggleText} ▾</div>
                 <div class="intimacy-tl-notes" style="display:none;">
-                    ${hasUserNote}
-                    ${hasAiNote}
-                    <textarea class="intimacy-tl-note-input" placeholder="写下你的寄语..." data-tl-id="${item.id}" rows="2"></textarea>
-                    <div style="display:flex;gap:6px;margin-top:6px;">
-                        <button onclick="window.chatInterface.saveTimelineNote('${item.id}')" style="flex:1;padding:6px;border:none;border-radius:6px;background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.6);font-size:11px;cursor:pointer;">保存寄语</button>
-                        <button onclick="window.chatInterface.deleteTimelineNote('${item.id}')" style="flex:1;padding:6px;border:none;border-radius:6px;background:rgba(255,60,60,0.1);color:rgba(255,100,100,0.6);font-size:11px;cursor:pointer;">删除我的寄语</button>
-                    </div>
+                    ${notesHtml}
+                    ${inputHtml}
                 </div>
             </div>`;
     }).join('');
@@ -6331,17 +6364,24 @@ saveTimelineNote(tlId) {
     if (!textarea || !textarea.value.trim()) return;
     
     item.userNote = textarea.value.trim();
+    item.userNoteDate = new Date().toISOString();
     this.storage.saveIntimacyData(this.currentFriendCode, data);
     this.showCssToast('寄语已保存');
     this.renderTimeline(data.timeline);
 }
 
-deleteTimelineNote(tlId) {
+deleteTimelineNote(tlId, who) {
     const data = this.storage.getIntimacyData(this.currentFriendCode);
     const item = data.timeline.find(t => t.id === tlId);
     if (!item) return;
     
-    item.userNote = '';
+    if (who === 'user') {
+        item.userNote = '';
+        item.userNoteDate = '';
+    } else {
+        item.aiNote = '';
+        item.aiNoteDate = '';
+    }
     this.storage.saveIntimacyData(this.currentFriendCode, data);
     this.showCssToast('寄语已删除');
     this.renderTimeline(data.timeline);
@@ -11411,6 +11451,26 @@ processCapsuleCommands(text) {
         this.showCssSystemMessage(`🏆 ${friendName} 标记了里程碑「${title}」`);
     }
     
+    // [TL_NOTE:星迹标题:寄语内容] - AI在星迹档案写寄语
+    const tlNoteMatch = text.match(/\[TL_NOTE:([^:]+):([^\]]+)\]/);
+    if (tlNoteMatch) {
+        const tlTitle = tlNoteMatch[1].trim();
+        const noteText = tlNoteMatch[2].trim();
+        text = text.replace(/\[TL_NOTE:[^\]]*\]/g, '');
+        
+        const data = this.storage.getIntimacyData(this.currentFriendCode);
+        const tl = data.timeline || [];
+        let item = tl.find(t => t.id === tlTitle);
+        if (!item) item = tl.find(t => t.title?.includes(tlTitle) || tlTitle.includes(t.title));
+        if (item) {
+            item.aiNote = noteText;
+            item.aiNoteDate = new Date().toISOString();
+            this.storage.saveIntimacyData(this.currentFriendCode, data);
+            this.showCssSystemMessage(`💬 ${friendName} 在星迹档案写了寄语`);
+            this.renderTimeline(data.timeline);
+        }
+    }
+    
     return text;
 }
 
@@ -11544,7 +11604,8 @@ _stripCommandTags(text) {
         .replace(/\[CAP_MEMORY:[^\]]*\]/g, '')
         .replace(/\[CAP_CAPSULE:[^\]]*\]/g, '')
         .replace(/\[CAP_COMMENT:[^\]]*\]/g, '')
-        .replace(/\[CAP_MILESTONE:[^\]]*\]/g, '');
+        .replace(/\[CAP_MILESTONE:[^\]]*\]/g, '')
+        .replace(/\[TL_NOTE:[^\]]*\]/g, '');
 }
 
 // 执行一个分段里包含的所有指令（产生通知）
