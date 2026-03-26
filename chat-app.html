@@ -2177,6 +2177,95 @@
 </div>
 <!-- ==================== 跨次元兑换所子页结束 ==================== -->
 
+<!-- ==================== 岁月胶囊子页 ==================== -->
+<div class="exchange-page" id="capsulePage" style="display:none;">
+    <div class="intimacy-bg" id="capsulePageBg"></div>
+    <div class="intimacy-content">
+        <div class="intimacy-header">
+            <button class="intimacy-back" id="capsulePageBack">←</button>
+            <span class="intimacy-title">岁月胶囊</span>
+            <button class="intimacy-customize" id="capsulePageCustomize">自定义</button>
+        </div>
+
+        <!-- Tab导航 -->
+        <div class="exchange-tabs" id="capsuleTabs">
+            <div class="exchange-tab active" data-captab="reports">📊 关系报告</div>
+            <div class="exchange-tab" data-captab="capsules">💊 时间胶囊</div>
+            <div class="exchange-tab" data-captab="milestones">🏆 里程碑</div>
+            <div class="exchange-tab" data-captab="memories">📖 回忆录</div>
+        </div>
+
+        <!-- ===== 关系报告 ===== -->
+        <div class="exchange-sub-page active" id="capReportsPage">
+            <button class="ex-add-btn" id="capGenReportBtn" style="margin-bottom:14px;">📊 生成本周报告</button>
+            <div id="capReportList"></div>
+        </div>
+
+        <!-- ===== 时间胶囊 ===== -->
+        <div class="exchange-sub-page" id="capCapsulesPage">
+            <div class="ex-add-form">
+                <div style="font-size:13px;color:rgba(255,255,255,0.5);margin-bottom:8px;">💊 封存一颗时间胶囊</div>
+                <input type="text" class="ex-add-input" id="capCapsuleTitle" placeholder="胶囊标题" style="width:100%;margin-bottom:8px;">
+                <textarea class="ex-add-input" id="capCapsuleContent" placeholder="写下要封存的内容..." rows="3" style="width:100%;margin-bottom:8px;resize:vertical;"></textarea>
+                <div class="ex-add-row" style="margin-bottom:8px;">
+                    <button id="capCapsuleImgBtn" style="padding:8px 14px;border:1px dashed rgba(255,255,255,0.15);border-radius:8px;background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.4);font-size:12px;cursor:pointer;">📷 附图</button>
+                    <input type="file" id="capCapsuleImgInput" accept="image/*" style="display:none;">
+                    <input type="date" class="ex-add-input" id="capCapsuleOpenDate" style="flex:1;" title="开启日期">
+                </div>
+                <button class="ex-add-btn" id="capCapsuleAddBtn">💊 封存</button>
+            </div>
+            <div id="capCapsuleList"></div>
+        </div>
+
+        <!-- ===== 里程碑 ===== -->
+        <div class="exchange-sub-page" id="capMilestonesPage">
+            <div class="ex-add-form">
+                <div style="font-size:13px;color:rgba(255,255,255,0.5);margin-bottom:8px;">🏆 记录一个里程碑</div>
+                <div class="ex-add-row">
+                    <input type="text" class="ex-add-input" id="capMilestoneTitle" placeholder="里程碑名称">
+                    <input type="text" class="ex-add-input" id="capMilestoneIcon" placeholder="图标" style="width:50px;text-align:center;" value="🏆">
+                </div>
+                <input type="text" class="ex-add-input" id="capMilestoneDesc" placeholder="描述（可选）" style="width:100%;margin-bottom:8px;">
+                <button class="ex-add-btn" id="capMilestoneAddBtn">🏆 添加</button>
+            </div>
+            <div id="capMilestoneList"></div>
+        </div>
+
+        <!-- ===== 回忆录 ===== -->
+        <div class="exchange-sub-page" id="capMemoriesPage">
+            <div class="ex-add-form">
+                <div style="font-size:13px;color:rgba(255,255,255,0.5);margin-bottom:8px;">📖 写一篇回忆</div>
+                <input type="text" class="ex-add-input" id="capMemoryTitle" placeholder="标题" style="width:100%;margin-bottom:8px;">
+                <textarea class="ex-add-input" id="capMemoryContent" placeholder="写下你的回忆..." rows="5" style="width:100%;margin-bottom:8px;resize:vertical;"></textarea>
+                <div class="ex-add-row" style="margin-bottom:8px;">
+                    <button id="capMemoryImgBtn" style="padding:8px 14px;border:1px dashed rgba(255,255,255,0.15);border-radius:8px;background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.4);font-size:12px;cursor:pointer;">📷 附图（可多张）</button>
+                    <input type="file" id="capMemoryImgInput" accept="image/*" style="display:none;">
+                </div>
+                <button class="ex-add-btn" id="capMemoryAddBtn">📖 发布</button>
+            </div>
+            <div id="capMemoryList"></div>
+        </div>
+    </div>
+
+    <!-- 自定义面板 -->
+    <div class="exchange-customize-panel" id="capsuleCustomizePanel" style="display:none;">
+        <div style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);" id="capsuleCustomizeOverlay"></div>
+        <div style="position:relative;z-index:1;width:100%;background:#1a1a1a;border-radius:16px 16px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom));animation:ctxSlideUp 0.25s ease-out;">
+            <div style="text-align:center;font-size:15px;font-weight:600;color:#fff;margin-bottom:16px;">自定义岁月胶囊</div>
+            <div style="margin-bottom:12px;">
+                <div style="font-size:13px;color:rgba(255,255,255,0.6);margin-bottom:8px;">更换背景图</div>
+                <div style="display:flex;gap:8px;">
+                    <button id="capsuleBgUploadBtn" style="flex:1;padding:12px;border:1px dashed rgba(255,255,255,0.15);border-radius:10px;background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.5);font-size:13px;cursor:pointer;">📷 上传图片</button>
+                    <input type="file" id="capsuleBgUploadInput" accept="image/*" style="display:none;">
+                </div>
+                <button id="capsuleBgReset" style="width:100%;margin-top:8px;padding:10px;border:none;border-radius:10px;background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.4);font-size:12px;cursor:pointer;">恢复默认背景</button>
+            </div>
+            <button id="capsuleCustomizeClose" style="width:100%;padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.4);font-size:13px;cursor:pointer;">关闭</button>
+        </div>
+    </div>
+</div>
+<!-- ==================== 岁月胶囊子页结束 ==================== -->
+
 <!-- ==================== 续火花系统弹窗 ==================== -->
 <div class="flame-modal" id="flameModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:3200;display:none;padding:20px;">
     <div class="flame-overlay" id="flameOverlay" style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);"></div>
