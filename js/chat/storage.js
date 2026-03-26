@@ -338,7 +338,10 @@ class StorageManager {
                 shopCss: ''              // 小铺自定义装修CSS(下轮)
             },
             capsule: {                   // 岁月胶囊
-                reports: [],             // 报告列表
+                reports: [],             // 自动报告 [{id, type:'weekly'|'monthly', title, content, period, createdDate, comments:[]}]
+                capsules: [],            // 手动胶囊 [{id, title, content, images:[], from:'user'|'ai', sealedDate, openDate, opened:false}]
+                milestones: [],          // 里程碑 [{id, title, desc, icon, date, auto:true|false, comments:[]}]
+                memories: [],            // 回忆录 [{id, title, content, images:[], from:'user'|'ai', createdDate, comments:[]}]
                 bgImage: ''
             }
         };

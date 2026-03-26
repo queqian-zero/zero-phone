@@ -467,6 +467,19 @@ class ChatInterface {
             .ex-img-enlarge img { max-width:95%;max-height:90vh;object-fit:contain;border-radius:8px; }
             .ex-thumb { cursor:zoom-in;transition:opacity 0.15s; }
             .ex-thumb:hover { opacity:0.85; }
+            /* ====== 岁月胶囊 ====== */
+            .cap-sealed { text-align:center;padding:20px;border:2px dashed rgba(255,255,255,0.08); }
+            .cap-sealed-icon { font-size:36px;margin-bottom:8px; }
+            .cap-article { padding:12px;background:rgba(255,255,255,0.03);border-radius:10px;line-height:1.7;font-size:13px;color:rgba(255,255,255,0.6);white-space:pre-wrap;word-break:break-word; }
+            .cap-comments { margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.04); }
+            .cap-comment { display:flex;gap:6px;margin-bottom:6px;font-size:11px; }
+            .cap-comment-from { font-weight:600;color:rgba(240,147,43,0.7);flex-shrink:0; }
+            .cap-comment-text { color:rgba(255,255,255,0.4);flex:1;line-height:1.4; }
+            .cap-comment-form { display:flex;gap:6px;margin-top:6px; }
+            .cap-comment-input { flex:1;padding:6px 8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#fff;font-size:11px; }
+            .cap-comment-btn { padding:6px 12px;border:none;border-radius:8px;background:rgba(240,147,43,0.1);color:#f0932b;font-size:11px;cursor:pointer; }
+            .cap-milestone-icon { font-size:28px;margin-right:10px; }
+            .cap-report-card { padding:16px;margin-bottom:10px;background:rgba(255,255,255,0.04);border-radius:12px;border-left:3px solid rgba(240,147,43,0.3); }
             /* 统一信息面板 */
             .info-panel {
                 position: absolute;
@@ -6112,6 +6125,18 @@ getIntimacyStatusForAI() {
         desc += `\n- 亲密关系页面有自定义背景图（附带的图片中能看到）`;
     }
     
+    // 岁月胶囊状态
+    const cap = data.capsule || {};
+    const memCount = (cap.memories || []).length;
+    const msCount = (cap.milestones || []).length;
+    const capCount = (cap.capsules || []).length;
+    desc += `\n- 岁月胶囊：${memCount}篇回忆录，${msCount}个里程碑，${capCount}颗胶囊`;
+    desc += `\n  你可用的指令：`;
+    desc += `\n  [CAP_MEMORY:标题:内容] 写一篇回忆录（从你的视角写下回忆，可以抒情、叙事、感慨）`;
+    desc += `\n  [CAP_CAPSULE:标题:内容:开启日期] 封存一颗时间胶囊（开启日期格式YYYY-MM-DD）`;
+    desc += `\n  [CAP_MILESTONE:标题:描述:图标] 标记一个里程碑`;
+    desc += `\n  [CAP_COMMENT:memories|milestones|reports:文章标题:评语内容] 给回忆录/里程碑/报告写评语`;
+    
     // 待处理通知（user的操作通知AI）
     if (data._pendingNotifications && data._pendingNotifications.length > 0) {
         desc += `\n\n📢 最近发生的事：`;
@@ -6235,7 +6260,7 @@ refreshIntimacyPage() {
     if (modExchange) {
         const ex = data.exchange || {};
         const todoCount = (ex.todos || []).filter(t => !t.completed && !t.revoked).length;
-        const fundCount = (ex.funds || []).filter(f => !f.withdrawn).length;
+        const fundCount = (ex.funds || []).filter(f => (f.amount - (f.withdrawnAmount||0)) > 0).length;
         if (todoCount || fundCount) {
             const parts = [];
             if (todoCount) parts.push(`${todoCount}件待做`);
@@ -6243,6 +6268,19 @@ refreshIntimacyPage() {
             modExchange.textContent = parts.join(' · ');
         } else {
             modExchange.textContent = '点击进入';
+        }
+    }
+    
+    // 岁月胶囊模块入口状态
+    const modCapsule = document.getElementById('intimacyModCapsule');
+    if (modCapsule) {
+        const cap = data.capsule || {};
+        const memCount = (cap.memories || []).length;
+        const msCount = (cap.milestones || []).length;
+        if (memCount || msCount) {
+            modCapsule.textContent = `${memCount}篇回忆 · ${msCount}个里程碑`;
+        } else {
+            modCapsule.textContent = '点击进入';
         }
     }
     
@@ -6379,6 +6417,8 @@ bindIntimacyEvents() {
                 this.openBadgePage();
             } else if (mod === 'exchange') {
                 this.openExchangePage();
+            } else if (mod === 'capsule') {
+                this.openCapsulePage();
             } else {
                 this.showCssToast(`${card.querySelector('.intimacy-module-name').textContent} 开发中...`);
             }
@@ -11005,6 +11045,472 @@ refreshExchangePage() {
     this.renderExShop();
 }
 
+// ==================== 岁月胶囊系统 ====================
+
+openCapsulePage() {
+    const page = document.getElementById('capsulePage');
+    if (!page) return;
+    page.style.display = 'block';
+    this.refreshCapsulePage();
+    if (!this._capsuleEventsBound) { this.bindCapsulePageEvents(); this._capsuleEventsBound = true; }
+}
+
+closeCapsulePage() {
+    document.getElementById('capsulePage').style.display = 'none';
+}
+
+_getCapData() {
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    if (!data.capsule) data.capsule = { reports:[], capsules:[], milestones:[], memories:[], bgImage:'' };
+    if (!data.capsule.capsules) data.capsule.capsules = [];
+    if (!data.capsule.milestones) data.capsule.milestones = [];
+    if (!data.capsule.memories) data.capsule.memories = [];
+    return data;
+}
+
+refreshCapsulePage() {
+    const data = this._getCapData();
+    const bg = document.getElementById('capsulePageBg');
+    if (bg) { if (data.capsule.bgImage) { bg.style.backgroundImage=`url(${data.capsule.bgImage})`;bg.style.backgroundSize='cover';bg.style.backgroundPosition='center'; } else { bg.style.background='#111';bg.style.backgroundImage=''; } }
+    this.renderCapReports();
+    this.renderCapCapsules();
+    this.renderCapMilestones();
+    this.renderCapMemories();
+    this.checkAutoMilestones();
+}
+
+switchCapTab(tabName) {
+    document.querySelectorAll('[data-captab]').forEach(t => t.classList.toggle('active', t.getAttribute('data-captab') === tabName));
+    const map = { reports:'capReportsPage', capsules:'capCapsulesPage', milestones:'capMilestonesPage', memories:'capMemoriesPage' };
+    document.querySelectorAll('#capsulePage .exchange-sub-page').forEach(p => p.classList.remove('active'));
+    const target = document.getElementById(map[tabName]);
+    if (target) target.classList.add('active');
+}
+
+// ===== 评论系统（通用）=====
+_renderComments(comments, parentType, parentId) {
+    if (!comments || comments.length === 0) return '';
+    const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
+    const html = comments.map(c => `<div class="cap-comment"><span class="cap-comment-from">${c.from === 'user' ? '你' : friendName}：</span><span class="cap-comment-text">${this.escapeHtml(c.text)}</span></div>`).join('');
+    return `<div class="cap-comments">${html}</div>`;
+}
+
+_commentForm(parentType, parentId) {
+    return `<div class="cap-comment-form">
+        <input type="text" class="cap-comment-input" id="capComment_${parentType}_${parentId}" placeholder="写评语...">
+        <button class="cap-comment-btn" onclick="window.chatInterface.addCapComment('${parentType}','${parentId}')">评</button>
+    </div>`;
+}
+
+addCapComment(parentType, parentId) {
+    const input = document.getElementById(`capComment_${parentType}_${parentId}`);
+    const text = input?.value.trim();
+    if (!text) return;
+    
+    const data = this._getCapData();
+    const list = data.capsule[parentType] || [];
+    const item = list.find(i => i.id === parentId);
+    if (!item) return;
+    if (!item.comments) item.comments = [];
+    item.comments.push({ from: 'user', text, date: new Date().toISOString() });
+    this.storage.saveIntimacyData(this.currentFriendCode, data);
+    
+    input.value = '';
+    this.refreshCapsulePage();
+    
+    if (!data._pendingNotifications) data._pendingNotifications = [];
+    data._pendingNotifications.push(`user在岁月胶囊的${parentType==='reports'?'报告':parentType==='milestones'?'里程碑':'回忆录'}里写了评语：「${text}」`);
+    this.storage.saveIntimacyData(this.currentFriendCode, data);
+}
+
+// ===== 关系报告 =====
+renderCapReports() {
+    const data = this._getCapData();
+    const reports = data.capsule.reports || [];
+    const el = document.getElementById('capReportList');
+    if (!el) return;
+    if (reports.length === 0) { el.innerHTML = '<div style="font-size:11px;color:rgba(255,255,255,0.15);padding:20px 0;text-align:center;">还没有报告，点击上方按钮生成第一份</div>'; return; }
+    el.innerHTML = reports.slice().reverse().map(r => `<div class="cap-report-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <div style="font-size:14px;font-weight:600;color:#fff;">${this.escapeHtml(r.title || '关系报告')}</div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.2);">${new Date(r.createdDate).toLocaleDateString('zh-CN')}</div>
+        </div>
+        <div class="cap-article">${this.escapeHtml(r.content || '')}</div>
+        ${this._renderComments(r.comments, 'reports', r.id)}
+        ${this._commentForm('reports', r.id)}
+    </div>`).join('');
+}
+
+generateWeeklyReport() {
+    const data = this._getCapData();
+    const chat = this.storage.getChatByFriendCode(this.currentFriendCode);
+    const msgs = chat?.messages || [];
+    const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
+    
+    // 统计最近7天
+    const weekAgo = Date.now() - 7 * 86400000;
+    const recentMsgs = msgs.filter(m => new Date(m.timestamp).getTime() > weekAgo);
+    const userMsgs = recentMsgs.filter(m => m.type === 'user').length;
+    const aiMsgs = recentMsgs.filter(m => m.type === 'ai').length;
+    const totalDays = new Set(recentMsgs.map(m => new Date(m.timestamp).toISOString().split('T')[0])).size;
+    
+    const intimacy = data.value || 0;
+    const level = data.level || 1;
+    const flame = this.settings.flameEnabled !== false;
+    
+    const report = {
+        id: 'report_' + Date.now(),
+        type: 'weekly',
+        title: `第${(data.capsule.reports || []).length + 1}期周报`,
+        content: `📊 本周关系周报\n\n互动天数：${totalDays}/7 天\n你发了 ${userMsgs} 条消息\n${friendName}回了 ${aiMsgs} 条消息\n亲密值：${intimacy}（Lv.${level}）\n续火花：${flame ? '开启中 🔥' : '已关闭'}\n\n${totalDays >= 5 ? '✨ 本周互动频繁，你们的关系在稳步升温！' : totalDays >= 3 ? '💫 本周互动还不错，继续保持～' : totalDays > 0 ? '🌙 本周见面不多，找个时间聊聊吧' : '😴 本周还没互动过...好久不见呢'}`,
+        period: `${new Date(weekAgo).toLocaleDateString('zh-CN')} ~ ${new Date().toLocaleDateString('zh-CN')}`,
+        createdDate: new Date().toISOString(),
+        comments: []
+    };
+    
+    data.capsule.reports.push(report);
+    this.storage.saveIntimacyData(this.currentFriendCode, data);
+    this.showCssToast('📊 周报已生成');
+    this.renderCapReports();
+}
+
+// ===== 时间胶囊 =====
+renderCapCapsules() {
+    const data = this._getCapData();
+    const capsules = data.capsule.capsules || [];
+    const el = document.getElementById('capCapsuleList');
+    if (!el) return;
+    if (capsules.length === 0) { el.innerHTML = '<div style="font-size:11px;color:rgba(255,255,255,0.15);padding:20px 0;text-align:center;">还没有胶囊</div>'; return; }
+    const now = Date.now();
+    const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
+    
+    el.innerHTML = capsules.slice().reverse().map(c => {
+        const openTime = new Date(c.openDate).getTime();
+        const sealed = openTime > now && !c.opened;
+        const fromName = c.from === 'user' ? '你' : friendName;
+        
+        if (sealed) {
+            return `<div class="ex-item cap-sealed">
+                <div class="cap-sealed-icon">💊</div>
+                <div style="font-size:14px;font-weight:600;color:rgba(255,255,255,0.6);">${this.escapeHtml(c.title)}</div>
+                <div style="font-size:11px;color:rgba(255,255,255,0.25);margin-top:4px;">🔒 ${fromName}封存 · ${new Date(c.openDate).toLocaleDateString('zh-CN')} 开启</div>
+            </div>`;
+        }
+        
+        const imgHtml = c.images?.length > 0 ? `<div style="margin-top:8px;">${this._thumbHtml(c.images, 160, 100)}</div>` : '';
+        return `<div class="ex-item">
+            <div class="ex-item-header">
+                <div class="ex-item-title">💊 ${this.escapeHtml(c.title)}</div>
+                <div class="ex-item-meta">${fromName} · ${new Date(c.sealedDate).toLocaleDateString('zh-CN')}</div>
+            </div>
+            <div class="cap-article">${this.escapeHtml(c.content)}</div>
+            ${imgHtml}
+        </div>`;
+    }).join('');
+}
+
+addCapsule(title, content, images, openDate) {
+    if (!title || !content) { this.showCssToast('请填写标题和内容'); return; }
+    if (!openDate) { this.showCssToast('请选择开启日期'); return; }
+    const data = this._getCapData();
+    data.capsule.capsules.push({
+        id: 'cap_' + Date.now(), title, content, images: images || [],
+        from: 'user', sealedDate: new Date().toISOString(), openDate, opened: false
+    });
+    this.storage.saveIntimacyData(this.currentFriendCode, data);
+    this.showCssToast('💊 胶囊已封存');
+    this.showCssSystemMessage(`💊 封存了一颗时间胶囊「${title}」，${new Date(openDate).toLocaleDateString('zh-CN')} 开启`);
+    this.storage.addTimelineEntry(this.currentFriendCode, { type:'capsule_seal', title:`封存了胶囊「${title}」`, icon:'💊' });
+    
+    if (!data._pendingNotifications) data._pendingNotifications = [];
+    data._pendingNotifications.push(`user封存了一颗时间胶囊「${title}」，设定在${new Date(openDate).toLocaleDateString('zh-CN')}开启`);
+    this.storage.saveIntimacyData(this.currentFriendCode, data);
+    this.renderCapCapsules();
+}
+
+// ===== 里程碑 =====
+renderCapMilestones() {
+    const data = this._getCapData();
+    const ms = data.capsule.milestones || [];
+    const el = document.getElementById('capMilestoneList');
+    if (!el) return;
+    if (ms.length === 0) { el.innerHTML = '<div style="font-size:11px;color:rgba(255,255,255,0.15);padding:20px 0;text-align:center;">还没有里程碑</div>'; return; }
+    el.innerHTML = ms.slice().reverse().map(m => `<div class="ex-item" style="display:flex;align-items:flex-start;">
+        <span class="cap-milestone-icon">${m.icon || '🏆'}</span>
+        <div style="flex:1;">
+            <div style="font-size:14px;font-weight:600;color:#fff;">${this.escapeHtml(m.title)}</div>
+            ${m.desc ? `<div style="font-size:12px;color:rgba(255,255,255,0.35);margin-top:2px;">${this.escapeHtml(m.desc)}</div>` : ''}
+            <div style="font-size:10px;color:rgba(255,255,255,0.2);margin-top:4px;">${new Date(m.date).toLocaleDateString('zh-CN')}${m.auto ? ' · 自动记录' : ''}</div>
+            ${this._renderComments(m.comments, 'milestones', m.id)}
+            ${this._commentForm('milestones', m.id)}
+        </div>
+    </div>`).join('');
+}
+
+addMilestone(title, desc, icon, auto = false) {
+    const data = this._getCapData();
+    // 防重复（自动的）
+    if (auto && data.capsule.milestones.find(m => m.title === title)) return;
+    data.capsule.milestones.push({
+        id: 'ms_' + Date.now(), title, desc: desc || '', icon: icon || '🏆',
+        date: new Date().toISOString(), auto, comments: []
+    });
+    this.storage.saveIntimacyData(this.currentFriendCode, data);
+    if (!auto) {
+        this.showCssToast(`🏆 记录了里程碑「${title}」`);
+        this.showCssSystemMessage(`🏆 里程碑：${title}`);
+        this.storage.addTimelineEntry(this.currentFriendCode, { type:'milestone', title, icon: icon || '🏆' });
+    }
+}
+
+// 自动里程碑检测
+checkAutoMilestones() {
+    const chat = this.storage.getChatByFriendCode(this.currentFriendCode);
+    const msgs = chat?.messages || [];
+    if (msgs.length === 0) return;
+    
+    const data = this._getCapData();
+    const totalMsgs = msgs.length;
+    const firstMsgDate = msgs[0]?.timestamp;
+    const daysSinceFirst = firstMsgDate ? Math.floor((Date.now() - new Date(firstMsgDate).getTime()) / 86400000) : 0;
+    const chatDays = new Set(msgs.map(m => new Date(m.timestamp).toISOString().split('T')[0])).size;
+    
+    // 第一条消息
+    if (totalMsgs >= 1) this.addMilestone('第一次对话', `${new Date(firstMsgDate).toLocaleDateString('zh-CN')}`, '💬', true);
+    // 消息数里程碑
+    [100, 500, 1000, 5000, 10000].forEach(n => {
+        if (totalMsgs >= n) this.addMilestone(`第${n}条消息`, `总共交流了${totalMsgs}条消息`, '💬', true);
+    });
+    // 天数里程碑
+    [7, 30, 100, 365].forEach(n => {
+        if (daysSinceFirst >= n) this.addMilestone(`相识${n}天`, `从${new Date(firstMsgDate).toLocaleDateString('zh-CN')}到现在`, '📅', true);
+    });
+    // 互动天数
+    [10, 50, 100].forEach(n => {
+        if (chatDays >= n) this.addMilestone(`互动${n}天`, `有${chatDays}天都在聊天`, '🗓️', true);
+    });
+}
+
+// ===== 回忆录 =====
+renderCapMemories() {
+    const data = this._getCapData();
+    const memories = data.capsule.memories || [];
+    const el = document.getElementById('capMemoryList');
+    if (!el) return;
+    if (memories.length === 0) { el.innerHTML = '<div style="font-size:11px;color:rgba(255,255,255,0.15);padding:20px 0;text-align:center;">还没有回忆录</div>'; return; }
+    const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
+    
+    el.innerHTML = memories.slice().reverse().map(m => {
+        const fromName = m.from === 'user' ? '你' : friendName;
+        const imgHtml = m.images?.length > 0 ? `<div style="margin-top:8px;">${this._thumbHtml(m.images, 160, 100)}</div>` : '';
+        return `<div class="ex-item">
+            <div class="ex-item-header">
+                <div class="ex-item-title">📖 ${this.escapeHtml(m.title)}</div>
+                <span class="ex-item-tag ${m.from==='user'?'ex-tag-user':'ex-tag-ai'}">${fromName}</span>
+            </div>
+            <div class="cap-article">${this.escapeHtml(m.content)}</div>
+            ${imgHtml}
+            <div class="ex-item-meta">${new Date(m.createdDate).toLocaleDateString('zh-CN')}</div>
+            ${this._renderComments(m.comments, 'memories', m.id)}
+            ${this._commentForm('memories', m.id)}
+        </div>`;
+    }).join('');
+}
+
+addMemory(title, content, images) {
+    if (!title || !content) { this.showCssToast('请填写标题和内容'); return; }
+    const data = this._getCapData();
+    data.capsule.memories.push({
+        id: 'mem_' + Date.now(), title, content, images: images || [],
+        from: 'user', createdDate: new Date().toISOString(), comments: []
+    });
+    this.storage.saveIntimacyData(this.currentFriendCode, data);
+    this.showCssToast('📖 回忆录已发布');
+    this.showCssSystemMessage(`📖 你写了一篇回忆录「${title}」`);
+    this.storage.addTimelineEntry(this.currentFriendCode, { type:'memory', title:`写了回忆录「${title}」`, icon:'📖' });
+    
+    if (!data._pendingNotifications) data._pendingNotifications = [];
+    data._pendingNotifications.push(`user写了一篇回忆录「${title}」`);
+    this.storage.saveIntimacyData(this.currentFriendCode, data);
+    this.renderCapMemories();
+}
+
+// ===== AI 岁月胶囊指令 =====
+processCapsuleCommands(text) {
+    const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
+    
+    // [CAP_MEMORY:标题:内容] - AI写回忆录
+    const memMatch = text.match(/\[CAP_MEMORY:([^:]+):([\s\S]*?)\]/);
+    if (memMatch) {
+        const title = memMatch[1].trim();
+        const content = memMatch[2].trim();
+        text = text.replace(/\[CAP_MEMORY:[^\]]*\]/g, '');
+        if (title && content) {
+            const data = this._getCapData();
+            data.capsule.memories.push({
+                id: 'mem_' + Date.now(), title, content, images: [],
+                from: 'ai', createdDate: new Date().toISOString(), comments: []
+            });
+            this.storage.saveIntimacyData(this.currentFriendCode, data);
+            this.showCssSystemMessage(`📖 ${friendName} 写了一篇回忆录「${title}」`);
+            this.showCssToast(`📖 ${friendName}的新回忆录`);
+            this.storage.addTimelineEntry(this.currentFriendCode, { type:'memory', title:`${friendName}写了回忆录「${title}」`, icon:'📖' });
+            this.renderCapMemories();
+        }
+    }
+    
+    // [CAP_CAPSULE:标题:内容:开启日期] - AI封存胶囊
+    const capMatch = text.match(/\[CAP_CAPSULE:([^:]+):([^:]+):([^\]]+)\]/);
+    if (capMatch) {
+        const title = capMatch[1].trim();
+        const content = capMatch[2].trim();
+        const openDate = capMatch[3].trim();
+        text = text.replace(/\[CAP_CAPSULE:[^\]]*\]/g, '');
+        if (title && content && openDate) {
+            const data = this._getCapData();
+            data.capsule.capsules.push({
+                id: 'cap_' + Date.now(), title, content, images: [],
+                from: 'ai', sealedDate: new Date().toISOString(), openDate, opened: false
+            });
+            this.storage.saveIntimacyData(this.currentFriendCode, data);
+            this.showCssSystemMessage(`💊 ${friendName} 封存了胶囊「${title}」`);
+            this.showCssToast(`💊 ${friendName}封存了胶囊`);
+            this.renderCapCapsules();
+        }
+    }
+    
+    // [CAP_COMMENT:类型:parentId:评语] - AI写评语
+    const commentMatch = text.match(/\[CAP_COMMENT:([^:]+):([^:]+):([^\]]+)\]/);
+    if (commentMatch) {
+        const pType = commentMatch[1].trim();
+        const pId = commentMatch[2].trim();
+        const cText = commentMatch[3].trim();
+        text = text.replace(/\[CAP_COMMENT:[^\]]*\]/g, '');
+        if (pType && pId && cText) {
+            const data = this._getCapData();
+            const list = data.capsule[pType] || [];
+            const item = list.find(i => i.id === pId) || list.find(i => i.title?.includes(pId) || pId.includes(i.title));
+            if (item) {
+                if (!item.comments) item.comments = [];
+                item.comments.push({ from: 'ai', text: cText, date: new Date().toISOString() });
+                this.storage.saveIntimacyData(this.currentFriendCode, data);
+                this.showCssSystemMessage(`💬 ${friendName} 在「${item.title}」下写了评语`);
+                this.renderCapMemories(); this.renderCapMilestones(); this.renderCapReports();
+            }
+        }
+    }
+    
+    // [CAP_MILESTONE:标题:描述:图标] - AI添加里程碑
+    const msMatch = text.match(/\[CAP_MILESTONE:([^:]+):?([^:]*):?([^\]]*)\]/);
+    if (msMatch) {
+        const title = msMatch[1].trim();
+        const desc = msMatch[2]?.trim() || '';
+        const icon = msMatch[3]?.trim() || '🏆';
+        text = text.replace(/\[CAP_MILESTONE:[^\]]*\]/g, '');
+        this.addMilestone(title, desc, icon, false);
+        this.showCssSystemMessage(`🏆 ${friendName} 标记了里程碑「${title}」`);
+    }
+    
+    return text;
+}
+
+// ===== 事件绑定 =====
+bindCapsulePageEvents() {
+    document.getElementById('capsulePageBack')?.addEventListener('click', () => this.closeCapsulePage());
+    
+    document.querySelectorAll('[data-captab]').forEach(tab => {
+        tab.addEventListener('click', () => this.switchCapTab(tab.getAttribute('data-captab')));
+    });
+    
+    // 自定义面板
+    document.getElementById('capsulePageCustomize')?.addEventListener('click', () => document.getElementById('capsuleCustomizePanel').style.display = 'flex');
+    document.getElementById('capsuleCustomizeClose')?.addEventListener('click', () => document.getElementById('capsuleCustomizePanel').style.display = 'none');
+    document.getElementById('capsuleCustomizeOverlay')?.addEventListener('click', () => document.getElementById('capsuleCustomizePanel').style.display = 'none');
+    
+    // 背景图
+    const bgBtn = document.getElementById('capsuleBgUploadBtn');
+    const bgInput = document.getElementById('capsuleBgUploadInput');
+    if (bgBtn && bgInput) {
+        bgBtn.addEventListener('click', () => bgInput.click());
+        bgInput.addEventListener('change', (e) => {
+            const file = e.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => { const img = new Image(); img.onload = () => { const c = document.createElement('canvas'); const s = Math.min(1,1080/img.width); c.width=img.width*s;c.height=img.height*s; c.getContext('2d').drawImage(img,0,0,c.width,c.height); this.setCapsuleBg(c.toDataURL('image/jpeg',0.7)); }; img.src=ev.target.result; };
+            reader.readAsDataURL(file);
+        });
+    }
+    document.getElementById('capsuleBgReset')?.addEventListener('click', () => { this.setCapsuleBg(''); this.showCssToast('已恢复默认背景'); });
+    
+    // 生成报告
+    document.getElementById('capGenReportBtn')?.addEventListener('click', () => this.generateWeeklyReport());
+    
+    // 时间胶囊
+    this._capCapsuleImgs = [];
+    const capImgBtn = document.getElementById('capCapsuleImgBtn');
+    const capImgInput = document.getElementById('capCapsuleImgInput');
+    if (capImgBtn && capImgInput) {
+        capImgBtn.addEventListener('click', () => capImgInput.click());
+        capImgInput.addEventListener('change', (e) => {
+            const file = e.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => { const img = new Image(); img.onload = () => { const c = document.createElement('canvas'); const s = Math.min(1,800/img.width); c.width=img.width*s;c.height=img.height*s; c.getContext('2d').drawImage(img,0,0,c.width,c.height); this._capCapsuleImgs.push(c.toDataURL('image/jpeg',0.7)); capImgBtn.textContent=`✅ ${this._capCapsuleImgs.length}张`; }; img.src=ev.target.result; };
+            reader.readAsDataURL(file);
+        });
+    }
+    document.getElementById('capCapsuleAddBtn')?.addEventListener('click', () => {
+        const title = document.getElementById('capCapsuleTitle')?.value.trim();
+        const content = document.getElementById('capCapsuleContent')?.value.trim();
+        const openDate = document.getElementById('capCapsuleOpenDate')?.value;
+        this.addCapsule(title, content, this._capCapsuleImgs, openDate);
+        document.getElementById('capCapsuleTitle').value = '';
+        document.getElementById('capCapsuleContent').value = '';
+        document.getElementById('capCapsuleOpenDate').value = '';
+        this._capCapsuleImgs = []; if (capImgBtn) capImgBtn.textContent = '📷 附图';
+    });
+    
+    // 里程碑
+    document.getElementById('capMilestoneAddBtn')?.addEventListener('click', () => {
+        const title = document.getElementById('capMilestoneTitle')?.value.trim();
+        const desc = document.getElementById('capMilestoneDesc')?.value.trim();
+        const icon = document.getElementById('capMilestoneIcon')?.value.trim() || '🏆';
+        if (!title) { this.showCssToast('请输入里程碑名称'); return; }
+        this.addMilestone(title, desc, icon, false);
+        document.getElementById('capMilestoneTitle').value = '';
+        document.getElementById('capMilestoneDesc').value = '';
+    });
+    
+    // 回忆录
+    this._capMemoryImgs = [];
+    const memImgBtn = document.getElementById('capMemoryImgBtn');
+    const memImgInput = document.getElementById('capMemoryImgInput');
+    if (memImgBtn && memImgInput) {
+        memImgBtn.addEventListener('click', () => memImgInput.click());
+        memImgInput.addEventListener('change', (e) => {
+            const file = e.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => { const img = new Image(); img.onload = () => { const c = document.createElement('canvas'); const s = Math.min(1,800/img.width); c.width=img.width*s;c.height=img.height*s; c.getContext('2d').drawImage(img,0,0,c.width,c.height); this._capMemoryImgs.push(c.toDataURL('image/jpeg',0.7)); memImgBtn.textContent=`✅ ${this._capMemoryImgs.length}张`; }; img.src=ev.target.result; };
+            reader.readAsDataURL(file);
+        });
+    }
+    document.getElementById('capMemoryAddBtn')?.addEventListener('click', () => {
+        const title = document.getElementById('capMemoryTitle')?.value.trim();
+        const content = document.getElementById('capMemoryContent')?.value.trim();
+        this.addMemory(title, content, this._capMemoryImgs);
+        document.getElementById('capMemoryTitle').value = '';
+        document.getElementById('capMemoryContent').value = '';
+        this._capMemoryImgs = []; if (memImgBtn) memImgBtn.textContent = '📷 附图（可多张）';
+    });
+}
+
+setCapsuleBg(bgImage) {
+    const data = this._getCapData();
+    data.capsule.bgImage = bgImage;
+    this.storage.saveIntimacyData(this.currentFriendCode, data);
+    const bg = document.getElementById('capsulePageBg');
+    if (bg) { if (bgImage) { bg.style.backgroundImage=`url(${bgImage})`;bg.style.backgroundSize='cover';bg.style.backgroundPosition='center'; } else { bg.style.backgroundImage='';bg.style.background='#111'; } }
+    document.getElementById('capsuleCustomizePanel').style.display = 'none';
+}
+
 // 纯清除指令标签，不执行任何操作
 _stripCommandTags(text) {
     return text
@@ -11034,7 +11540,11 @@ _stripCommandTags(text) {
         .replace(/\[EX_SHOP_REDEEM:[^\]]+\]/g, '')
         .replace(/\[EX_SHOP_REMOVE:[^\]]+\]/g, '')
         .replace(/\[EX_STAR_GIVE:[^\]]+\]/g, '')
-        .replace(/\[SHOP_CSS\][\s\S]*?\[\/SHOP_CSS\]/g, '');
+        .replace(/\[SHOP_CSS\][\s\S]*?\[\/SHOP_CSS\]/g, '')
+        .replace(/\[CAP_MEMORY:[^\]]*\]/g, '')
+        .replace(/\[CAP_CAPSULE:[^\]]*\]/g, '')
+        .replace(/\[CAP_COMMENT:[^\]]*\]/g, '')
+        .replace(/\[CAP_MILESTONE:[^\]]*\]/g, '');
 }
 
 // 执行一个分段里包含的所有指令（产生通知）
@@ -11043,6 +11553,7 @@ _executeSegmentCommands(rawSeg) {
     this.processRelationBindCommands(rawSeg);
     this.processBadgeCommands(rawSeg);
     this.processExchangeCommands(rawSeg);
+    this.processCapsuleCommands(rawSeg);
 }
 
 // 预提取关系卡片HTML（不写入状态，只生成卡片用于渲染）
