@@ -6098,7 +6098,7 @@ getIntimacyStatusForAI() {
     desc += `\n  [EX_SHOP_ADD:愿望名:许愿星价格] 在小铺上架愿望让user兑换`;
     desc += `\n  [EX_SHOP_REDEEM:愿望名] 用许愿星兑换user上架的愿望`;
     desc += `\n  [EX_SHOP_REMOVE:愿望名] 下架自己上架的愿望`;
-    desc += `\n  小铺装修：你可以用 [APPLY_CSS] 写CSS来美化小铺页面，以下是可用的CSS类名/选择器：`;
+    desc += `\n  小铺装修：你可以用 [SHOP_CSS]你的CSS代码[/SHOP_CSS] 来美化小铺页面（CSS会自动限定在小铺范围内，不会影响聊天界面），以下是可用的CSS类名/选择器：`;
     desc += `\n    #exShopPage — 小铺整体容器`;
     desc += `\n    .ex-fund-summary — 余额卡片区 | .ex-fund-card — 单个余额卡 | .ex-fund-amount — 余额数字`;
     desc += `\n    .ex-add-form — 表单区域 | .ex-add-btn — 按钮 | .ex-add-input — 输入框`;
@@ -10364,7 +10364,45 @@ processExchangeCommands(text) {
         }
     }
     
+    // [SHOP_CSS]css代码[/SHOP_CSS] - AI装修小铺（自动限定作用域）
+    const shopCssMatch = text.match(/\[SHOP_CSS\]([\s\S]*?)\[\/SHOP_CSS\]/);
+    if (shopCssMatch) {
+        let shopCss = shopCssMatch[1].trim();
+        text = text.replace(/\[SHOP_CSS\][\s\S]*?\[\/SHOP_CSS\]/g, '');
+        
+        // 自动给每条规则加 #exShopPage 前缀，防止影响全局
+        shopCss = this._scopeShopCss(shopCss);
+        
+        const data = this._getExData();
+        data.exchange.shopCss = shopCss;
+        this._saveExData(data);
+        this._applyShopCss(shopCss);
+        
+        // 更新textarea显示
+        const cssArea = document.getElementById('exShopCustomCss');
+        if (cssArea) cssArea.value = shopCss;
+        
+        this.showCssSystemMessage(`🎨 ${friendName} 装修了小铺`);
+        this.showCssToast('🎨 小铺装修已更新');
+    }
+    
     return text;
+}
+
+// 给小铺CSS自动加 #exShopPage 作用域前缀
+_scopeShopCss(css) {
+    if (!css) return '';
+    // 如果已经包含 #exShopPage 就不重复加
+    if (css.includes('#exShopPage')) return css;
+    // 按 } 拆分规则，给每个选择器加前缀
+    return css.replace(/([^{}]+)\{/g, (match, selector) => {
+        const scoped = selector.split(',').map(s => {
+            s = s.trim();
+            if (!s || s.startsWith('@') || s.startsWith('#exShopPage')) return s;
+            return `#exShopPage ${s}`;
+        }).join(', ');
+        return scoped + ' {';
+    });
 }
 
 // ===== 事件绑定 =====
@@ -10484,14 +10522,43 @@ bindExchangePageEvents() {
         document.getElementById('exShopWishPrice').value = '';
     });
     
-    // 小铺-装修CSS
+    // 小铺-装修CSS（自动限定作用域）
     document.getElementById('exShopApplyCssBtn')?.addEventListener('click', () => {
-        const css = document.getElementById('exShopCustomCss')?.value.trim() || '';
+        let css = document.getElementById('exShopCustomCss')?.value.trim() || '';
+        css = this._scopeShopCss(css);
         const data = this._getExData();
         data.exchange.shopCss = css;
         this._saveExData(data);
         this._applyShopCss(css);
+        // 回显scoped后的CSS
+        const area = document.getElementById('exShopCustomCss');
+        if (area) area.value = css;
         this.showCssToast('装修已应用');
+    });
+    
+    // 小铺CSS存档
+    document.getElementById('exShopCssSaveBtn')?.addEventListener('click', () => {
+        const css = document.getElementById('exShopCustomCss')?.value.trim();
+        if (!css) { this.showCssToast('没有CSS可存'); return; }
+        const name = prompt('给这个装修方案命名：');
+        if (!name) return;
+        const data = this._getExData();
+        if (!data.exchange.shopCssArchives) data.exchange.shopCssArchives = [];
+        data.exchange.shopCssArchives.push({ name, css: this._scopeShopCss(css), date: new Date().toISOString() });
+        this._saveExData(data);
+        this.showCssToast(`已保存「${name}」`);
+        this._renderShopCssArchives();
+    });
+    
+    // 小铺CSS清除
+    document.getElementById('exShopCssClearBtn')?.addEventListener('click', () => {
+        const data = this._getExData();
+        data.exchange.shopCss = '';
+        this._saveExData(data);
+        this._applyShopCss('');
+        const area = document.getElementById('exShopCustomCss');
+        if (area) area.value = '';
+        this.showCssToast('装修已清除');
     });
     
     // 赠送许愿星
@@ -10802,6 +10869,7 @@ renderExShop() {
     const cssArea = document.getElementById('exShopCustomCss');
     if (cssArea && ex.shopCss) cssArea.value = ex.shopCss;
     this._applyShopCss(ex.shopCss || '');
+    this._renderShopCssArchives();
 }
 
 addShopWish(name, price) {
@@ -10885,6 +10953,44 @@ _applyShopCss(css) {
     }
 }
 
+_renderShopCssArchives() {
+    const container = document.getElementById('exShopCssArchiveList');
+    if (!container) return;
+    const data = this._getExData();
+    const archives = data.exchange.shopCssArchives || [];
+    if (archives.length === 0) { container.innerHTML = '<div style="font-size:10px;color:rgba(255,255,255,0.15);padding:4px 0;">暂无存档</div>'; return; }
+    container.innerHTML = archives.map((a, i) => `
+        <div style="display:flex;align-items:center;gap:6px;padding:4px 0;">
+            <span style="flex:1;font-size:11px;color:rgba(255,255,255,0.5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${this.escapeHtml(a.name)}</span>
+            <button onclick="window.chatInterface._loadShopCssArchive(${i})" style="padding:3px 8px;border:none;border-radius:6px;background:rgba(240,147,43,0.1);color:#f0932b;font-size:10px;cursor:pointer;">应用</button>
+            <button onclick="window.chatInterface._deleteShopCssArchive(${i})" style="padding:3px 8px;border:none;border-radius:6px;background:rgba(255,100,100,0.08);color:rgba(255,100,100,0.5);font-size:10px;cursor:pointer;">删除</button>
+        </div>
+    `).join('');
+}
+
+_loadShopCssArchive(index) {
+    const data = this._getExData();
+    const archives = data.exchange.shopCssArchives || [];
+    if (!archives[index]) return;
+    const css = archives[index].css;
+    data.exchange.shopCss = css;
+    this._saveExData(data);
+    this._applyShopCss(css);
+    const area = document.getElementById('exShopCustomCss');
+    if (area) area.value = css;
+    this.showCssToast(`已切换到「${archives[index].name}」`);
+}
+
+_deleteShopCssArchive(index) {
+    const data = this._getExData();
+    if (!data.exchange.shopCssArchives) return;
+    const name = data.exchange.shopCssArchives[index]?.name;
+    data.exchange.shopCssArchives.splice(index, 1);
+    this._saveExData(data);
+    this.showCssToast(`已删除「${name}」`);
+    this._renderShopCssArchives();
+}
+
 // ===== 刷新所有子页 =====
 refreshExchangePage() {
     const data = this._getExData();
@@ -10927,7 +11033,8 @@ _stripCommandTags(text) {
         .replace(/\[EX_SHOP_ADD:[^\]]+\]/g, '')
         .replace(/\[EX_SHOP_REDEEM:[^\]]+\]/g, '')
         .replace(/\[EX_SHOP_REMOVE:[^\]]+\]/g, '')
-        .replace(/\[EX_STAR_GIVE:[^\]]+\]/g, '');
+        .replace(/\[EX_STAR_GIVE:[^\]]+\]/g, '')
+        .replace(/\[SHOP_CSS\][\s\S]*?\[\/SHOP_CSS\]/g, '');
 }
 
 // 执行一个分段里包含的所有指令（产生通知）
