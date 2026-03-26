@@ -6138,6 +6138,29 @@ getIntimacyStatusForAI() {
     desc += `\n  [CAP_COMMENT:memories|milestones|reports:文章标题:评语内容] 给回忆录/里程碑/报告写评语`;
     desc += `\n  [TL_NOTE:星迹标题:寄语内容] 在星迹档案的某条记录下写寄语`;
     
+    // 星迹档案内容（让AI能看到全部）
+    const tl = data.timeline || [];
+    if (tl.length > 0) {
+        desc += `\n- 星迹档案（共${tl.length}条）：`;
+        tl.forEach(t => {
+            const d = new Date(t.date);
+            const ds = `${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+            desc += `\n    [${ds}] ${t.icon||'✦'} ${t.title}`;
+            if (t.userNote) {
+                const nd = t.userNoteDate ? new Date(t.userNoteDate) : null;
+                const nds = nd ? ` (${nd.getMonth()+1}/${nd.getDate()} ${String(nd.getHours()).padStart(2,'0')}:${String(nd.getMinutes()).padStart(2,'0')})` : '';
+                desc += `\n      📝 user寄语${nds}：${t.userNote}`;
+            }
+            if (t.aiNote) {
+                const nd = t.aiNoteDate ? new Date(t.aiNoteDate) : null;
+                const nds = nd ? ` (${nd.getMonth()+1}/${nd.getDate()} ${String(nd.getHours()).padStart(2,'0')}:${String(nd.getMinutes()).padStart(2,'0')})` : '';
+                desc += `\n      🤖 你的寄语${nds}：${t.aiNote}`;
+            }
+        });
+    } else {
+        desc += `\n- 星迹档案：暂无记录`;
+    }
+    
     // 待处理通知（user的操作通知AI）
     if (data._pendingNotifications && data._pendingNotifications.length > 0) {
         desc += `\n\n📢 最近发生的事：`;
