@@ -3162,7 +3162,6 @@ if (coreMemoryBtn) {
         const modal = document.getElementById('manualSummaryModal');
         if (!modal) return;
         
-        // 显示弹窗
         modal.style.display = 'flex';
         
         // 计算消息统计
@@ -3175,6 +3174,24 @@ if (coreMemoryBtn) {
         document.getElementById('manualSummarizedMessages').textContent = summarizedCount;
         document.getElementById('manualUnsummarizedMessages').textContent = unsummarizedCount;
         document.getElementById('manualUnsummarizedCount').textContent = unsummarizedCount;
+        
+        // 显示未总结范围提示
+        const hintEl = document.getElementById('manualUnsummarizedHint');
+        if (hintEl) {
+            if (unsummarizedCount > 0) {
+                const fromFloor = summarizedCount + 1;
+                const toFloor = this.messages.length;
+                hintEl.textContent = `💡 第 ${fromFloor} 楼 ~ 第 ${toFloor} 楼 还未总结`;
+            } else {
+                hintEl.textContent = '✅ 所有消息都已总结';
+            }
+        }
+        
+        // 自动填充楼层范围输入框
+        const rangeStartInput = document.getElementById('manualRangeStart');
+        const rangeEndInput = document.getElementById('manualRangeEnd');
+        if (rangeStartInput && unsummarizedCount > 0) rangeStartInput.value = summarizedCount + 1;
+        if (rangeEndInput) rangeEndInput.value = this.messages.length;
         
         // 绑定弹窗事件
         if (!this.manualSummaryEventsBound) {
@@ -3800,7 +3817,8 @@ handleEditSummaryConfirm() {
     
     // 自动总结的 await 包装（供 sendAIMessage 串行调用）
     async _runAutoSummaryIfNeeded() {
-        const interval = this.settings.summaryInterval || 50;
+        if (!this.currentFriendCode || !this.currentFriend) return;
+        const interval = this.settings.summaryInterval || 20;
         const summaries = this.storage.getChatSummaries(this.currentFriendCode);
         const summarizedCount = summaries.reduce((sum, s) => sum + s.messageCount, 0);
         const unsummarizedCount = this.messages.length - summarizedCount;
@@ -3814,6 +3832,11 @@ handleEditSummaryConfirm() {
     // 生成自动总结
     async generateAutoSummary(startIndex, endIndex) {
         console.log(`📝 生成自动总结: 从第${startIndex + 1}条到第${endIndex}条`);
+        
+        if (!this.currentFriendCode || !this.currentFriend) {
+            console.warn('⚠️ 总结时好友信息不可用，跳过');
+            return;
+        }
         
         // 获取需要总结的消息
         const messagesToSummarize = this.messages.slice(startIndex, endIndex);
@@ -3835,7 +3858,7 @@ handleEditSummaryConfirm() {
             
             if (!summaryResult || !summaryResult.content) {
                 console.error('❌ 总结生成失败');
-                alert('❌ 总结生成失败，请稍后重试');
+                this.showCssToast('总结生成失败');
                 return;
             }
             
@@ -3862,18 +3885,20 @@ handleEditSummaryConfirm() {
             }
             
             console.log('✅ 自动总结生成成功');
-            alert('✅ 总结已生成！可在"记忆模块 > 查看历史总结"中查看。');
+            this.showCssToast('📝 聊天总结已生成');
             
         } catch (error) {
             console.error('❌ 生成总结时出错:', error);
             this.hideSummaryGenerating();
-            alert('❌ 总结生成失败：' + error.message);
+            console.log('📝 总结失败（静默）:', error.message);
         }
     }
     
     // 调用AI生成总结
     async callAIForSummary(messages) {
         console.log('🤖 调用AI生成总结...');
+        
+        const friendName = this.currentFriend?.name || this.currentFriend?.nickname || 'TA';
         
         // 构造总结的系统提示
         const summaryPrompt = `你是一个专业的对话总结助手。请按照以下格式总结对话内容：
@@ -3892,25 +3917,40 @@ handleEditSummaryConfirm() {
 4. 保留关键细节（人物、情绪、动作、内容）
 5. 每条总结独立成段
 
-示例格式：
-【2026年1月18日 14:34:42】"我"向沈眠提议去王者荣耀商城购物。
-【2026年1月18日 14:34:55】"我"提示沈眠带上大小号的购物袋，并确认了外出的目的地。
-
 请总结以下对话内容。只输出总结内容，不要有任何其他说明。`;
         
-        // 构造消息历史（格式化为便于总结的格式）
+        // 构造消息历史（检查是否超限）
         let conversationText = '';
-        messages.forEach(msg => {
+        const maxChars = 8000;
+        let totalChars = 0;
+        for (const msg of messages) {
             const time = new Date(msg.timestamp);
             const timeStr = this.formatTimeForSummary(time);
-            const sender = msg.type === 'user' ? '我' : this.currentFriend.name;
-            conversationText += `[${timeStr}] ${sender}: ${msg.text}\n`;
-        });
+            const sender = msg.type === 'user' ? '我' : friendName;
+            const line = `[${timeStr}] ${sender}: ${msg.text}\n`;
+            totalChars += line.length;
+        }
         
-        // 调用API
+        if (totalChars > maxChars) {
+            // 超限：提示用户手动总结
+            this.showCssToast(`消息内容过长（${messages.length}条），请在记忆模块中手动选择范围总结`);
+            console.log(`📝 自动总结跳过：文本${totalChars}字超过上限${maxChars}`);
+            return null;
+        }
+        
+        // 没超限，正常拼接
+        for (const msg of messages) {
+            const time = new Date(msg.timestamp);
+            const timeStr = this.formatTimeForSummary(time);
+            const sender = msg.type === 'user' ? '我' : friendName;
+            conversationText += `[${timeStr}] ${sender}: ${msg.text}\n`;
+        }
+        
+        // 调用API（总结用最简洁的方式，不附带头像等）
         const result = await this.apiManager.callAI(
             [{ type: 'user', text: conversationText }],
-            summaryPrompt
+            summaryPrompt,
+            {}
         );
         
         if (!result.success) {
