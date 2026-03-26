@@ -76,3 +76,7 @@
 .profile-css-ref-toggle { cursor:pointer;color:rgba(255,255,255,0.25);font-size:11px;user-select:none;margin-bottom:6px; }
 .profile-css-ref-content { display:none;margin-bottom:10px; }
 .profile-css-ref-toggle.open + .profile-css-ref-content { display:block; }
+
+/* 滚轮日期选择器 */
+.wheel-col { scrollbar-width:none; }
+.wheel-col::-webkit-scrollbar { display:none; }
