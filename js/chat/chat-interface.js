@@ -47,7 +47,9 @@ class ChatInterface {
             flameCustomDeadIcon: '',   // 空=默认💔
             flameCustomDeadIconType: 'emoji',  // 'emoji' 或 'image'
             // AI消息显示模式
-            aiMsgSplitMode: 'whole'   // 'whole'=整段 | 'split'=逐条
+            aiMsgSplitMode: 'whole',   // 'whole'=整段 | 'split'=逐条
+            showRealName: false,       // 让该角色知道真实姓名
+            showUserPersona: false     // 让该角色知道用户人设
 };
 
         
@@ -1622,6 +1624,25 @@ ${archiveListText}
             // ====== 火花系统状态注入 ======
             systemPrompt += '\n\n' + this.getFlameStatusForAI();
 
+            // ====== 用户真实信息注入（按每个角色的可见性设置）======
+            const userSettings = this.storage.getUserSettings();
+            if (this.settings.showRealName && userSettings.realName) {
+                systemPrompt += `\n\n【user的真实姓名】${userSettings.realName}（这是user信任你才告诉你的真实姓名，请自然地使用）`;
+            }
+            if (this.settings.showUserPersona && userSettings.userPersona) {
+                systemPrompt += `\n\n【user的真实人设】以下是user提供的关于自己的真实信息：\n${userSettings.userPersona}`;
+            }
+            // 用户网络身份（所有角色都能看到）
+            if (userSettings.userNickname) {
+                systemPrompt += `\n\n【user的网络身份】网名：${userSettings.userNickname}`;
+                if (userSettings.birthday) systemPrompt += `，生日：${userSettings.birthday}`;
+                if (userSettings.gender) systemPrompt += `，性别：${userSettings.gender}`;
+                if (userSettings.region) systemPrompt += `，地区：${userSettings.region}`;
+                if (userSettings.signature) systemPrompt += `，签名：${userSettings.signature}`;
+                if (userSettings.poke) systemPrompt += `，拍一拍：${userSettings.poke}`;
+                systemPrompt += `\n注意：以上网络身份信息可能是user自己编的（就像社交平台上人们会填假信息），不一定是真实的。`;
+            }
+
             // ====== 亲密关系状态注入 ======
             systemPrompt += '\n\n' + this.getIntimacyStatusForAI();
 
@@ -2653,6 +2674,24 @@ div.innerHTML = `
             });
         }
         
+        // 用户真实信息可见性
+        const showRealNameSwitch = document.getElementById('settingShowRealName');
+        if (showRealNameSwitch) {
+            showRealNameSwitch.addEventListener('change', (e) => {
+                this.settings.showRealName = e.target.checked;
+                console.log('让TA知道真实姓名:', this.settings.showRealName);
+                this.saveSettings();
+            });
+        }
+        const showPersonaSwitch = document.getElementById('settingShowUserPersona');
+        if (showPersonaSwitch) {
+            showPersonaSwitch.addEventListener('change', (e) => {
+                this.settings.showUserPersona = e.target.checked;
+                console.log('让TA知道用户人设:', this.settings.showUserPersona);
+                this.saveSettings();
+            });
+        }
+        
         const importDataBtn = document.getElementById('settingImportData');
 if (importDataBtn) {
     importDataBtn.addEventListener('click', () => {
@@ -2710,7 +2749,7 @@ if (exportDataBtn) {
             userAvatarFrameType: 'none', userAvatarFrameSrc: '', userAvatarFrameOffsetX: 0, userAvatarFrameOffsetY: 0, userAvatarFrameScale: 100,
             flameEnabled: true, flameStartDate: '', flameExtinguishDays: 3, flameLastChatDate: '',
             flameCustomIcon: '', flameCustomIconType: 'emoji', flameCustomDeadIcon: '', flameCustomDeadIconType: 'emoji',
-            aiMsgSplitMode: 'whole', customBubbleCss: ''
+            aiMsgSplitMode: 'whole', showRealName: false, showUserPersona: false, customBubbleCss: ''
         };
         this.settings = { ...defaults };
         
@@ -2807,6 +2846,12 @@ this.updateBadgePanel();
         if (splitModeSelect) {
             splitModeSelect.value = this.settings.aiMsgSplitMode || 'whole';
         }
+        
+        // 用户真实信息可见性
+        const showRealNameSwitch = document.getElementById('settingShowRealName');
+        if (showRealNameSwitch) showRealNameSwitch.checked = this.settings.showRealName === true;
+        const showPersonaSwitch = document.getElementById('settingShowUserPersona');
+        if (showPersonaSwitch) showPersonaSwitch.checked = this.settings.showUserPersona === true;
         
         this.toggleTokenDisplay();
         
