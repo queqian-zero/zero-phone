@@ -6098,6 +6098,13 @@ getIntimacyStatusForAI() {
     desc += `\n  [EX_SHOP_ADD:愿望名:许愿星价格] 在小铺上架愿望让user兑换`;
     desc += `\n  [EX_SHOP_REDEEM:愿望名] 用许愿星兑换user上架的愿望`;
     desc += `\n  [EX_SHOP_REMOVE:愿望名] 下架自己上架的愿望`;
+    desc += `\n  小铺装修：你可以用 [APPLY_CSS] 写CSS来美化小铺页面，以下是可用的CSS类名/选择器：`;
+    desc += `\n    #exShopPage — 小铺整体容器`;
+    desc += `\n    .ex-fund-summary — 余额卡片区 | .ex-fund-card — 单个余额卡 | .ex-fund-amount — 余额数字`;
+    desc += `\n    .ex-add-form — 表单区域 | .ex-add-btn — 按钮 | .ex-add-input — 输入框`;
+    desc += `\n    .ex-item — 每个愿望/商品卡片 | .ex-item-title — 标题 | .ex-item-header — 卡片头部`;
+    desc += `\n    .ex-btn-withdraw — 兑换按钮 | .ex-btn-revoke — 下架按钮`;
+    desc += `\n    #exShopListAiItems — 你上架的商品列表 | #exShopListUserItems — user上架的商品列表`;
     desc += `\n  注意：你不能给自己存钱，只能存给user；你不能完成自己发起给user的事项（那是user的任务）；你不能替user写信`;
     
     // 背景图
