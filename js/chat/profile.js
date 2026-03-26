@@ -322,18 +322,107 @@ class ProfileManager {
 
     _showPrev(src) { const el = document.getElementById('profileAvatarPreview'); if (el?.tagName === 'IMG') el.src = src; else if (el) el.outerHTML = `<img class="profile-avatar-preview" id="profileAvatarPreview" src="${src}">`; }
 
-    // 生日编辑
+    // 生日编辑（滚轮式选择器）
     _editBirthday(s) {
         this._removeOverlay();
+        const current = s.birthday ? new Date(s.birthday) : new Date(2000, 0, 1);
+        let selYear = current.getFullYear();
+        let selMonth = current.getMonth() + 1;
+        let selDay = current.getDate();
+        const thisYear = new Date().getFullYear();
+
         const ov = this._createOverlay(`
-            <div class="profile-edit-title">修改生日</div>
-            <input type="date" class="profile-edit-input" id="profileEditInput" value="${s.birthday || ''}">
-            <div class="profile-edit-hint">设置后年龄会自动计算</div>
-            <button class="profile-edit-btn profile-edit-btn-primary" id="profileEditSave">保存</button>
+            <div class="profile-edit-title">选择生日</div>
+            <div style="display:flex;gap:4px;height:200px;overflow:hidden;margin-bottom:16px;position:relative;">
+                <!-- 选中行高亮 -->
+                <div style="position:absolute;top:50%;left:0;right:0;height:40px;transform:translateY(-50%);background:rgba(255,255,255,0.06);border-radius:8px;pointer-events:none;z-index:1;border-top:1px solid rgba(255,255,255,0.08);border-bottom:1px solid rgba(255,255,255,0.08);"></div>
+                <div class="wheel-col" id="wheelYear" style="flex:1.2;overflow-y:auto;scroll-snap-type:y mandatory;-webkit-overflow-scrolling:touch;position:relative;z-index:2;"></div>
+                <div class="wheel-col" id="wheelMonth" style="flex:1;overflow-y:auto;scroll-snap-type:y mandatory;-webkit-overflow-scrolling:touch;position:relative;z-index:2;"></div>
+                <div class="wheel-col" id="wheelDay" style="flex:1;overflow-y:auto;scroll-snap-type:y mandatory;-webkit-overflow-scrolling:touch;position:relative;z-index:2;"></div>
+            </div>
+            <button class="profile-edit-btn profile-edit-btn-primary" id="profileEditSave">确定</button>
             <button class="profile-edit-btn profile-edit-btn-secondary" id="profileEditCancel">取消</button>
         `);
-        ov.querySelector('#profileEditSave').addEventListener('click', () => { this.storage.updateUserSettings({ birthday: ov.querySelector('#profileEditInput')?.value || '' }); this._removeOverlay(); this._refreshDetail(); this._toast('生日已更新'); });
+
+        const wheelItemStyle = 'height:40px;display:flex;align-items:center;justify-content:center;scroll-snap-align:center;font-size:16px;color:rgba(255,255,255,0.25);transition:color 0.1s;flex-shrink:0;';
+        const padStyle = 'height:80px;flex-shrink:0;'; // 上下各2个空位的padding
+
+        // 填充年
+        const yearEl = ov.querySelector('#wheelYear');
+        yearEl.innerHTML = `<div style="${padStyle}"></div>` + Array.from({length: thisYear - 1920 + 1}, (_, i) => {
+            const y = 1920 + i;
+            return `<div style="${wheelItemStyle}" data-val="${y}">${y}年</div>`;
+        }).join('') + `<div style="${padStyle}"></div>`;
+
+        // 填充月
+        const monthEl = ov.querySelector('#wheelMonth');
+        monthEl.innerHTML = `<div style="${padStyle}"></div>` + Array.from({length:12}, (_, i) => `<div style="${wheelItemStyle}" data-val="${i+1}">${String(i+1).padStart(2,'0')}月</div>`).join('') + `<div style="${padStyle}"></div>`;
+
+        // 填充日
+        const fillDays = () => {
+            const daysInMonth = new Date(selYear, selMonth, 0).getDate();
+            const dayEl = ov.querySelector('#wheelDay');
+            dayEl.innerHTML = `<div style="${padStyle}"></div>` + Array.from({length: daysInMonth}, (_, i) => `<div style="${wheelItemStyle}" data-val="${i+1}">${String(i+1).padStart(2,'0')}日</div>`).join('') + `<div style="${padStyle}"></div>`;
+            if (selDay > daysInMonth) selDay = daysInMonth;
+            this._wheelScrollTo(dayEl, selDay);
+            this._wheelHighlight(dayEl);
+        };
+
+        // 滚动到指定值
+        this._wheelScrollTo(yearEl, selYear - 1920);
+        this._wheelScrollTo(monthEl, selMonth - 1);
+        fillDays();
+        // 精确滚动到选中值
+        setTimeout(() => {
+            this._wheelScrollTo(yearEl, selYear - 1920);
+            this._wheelScrollTo(monthEl, selMonth - 1);
+            this._wheelScrollTo(ov.querySelector('#wheelDay'), selDay - 1);
+            this._wheelHighlight(yearEl);
+            this._wheelHighlight(monthEl);
+            this._wheelHighlight(ov.querySelector('#wheelDay'));
+        }, 50);
+
+        // 监听滚动
+        const onScroll = (el, cb) => {
+            let timer;
+            el.addEventListener('scroll', () => {
+                clearTimeout(timer);
+                timer = setTimeout(() => {
+                    const idx = Math.round(el.scrollTop / 40);
+                    cb(idx);
+                    this._wheelHighlight(el);
+                }, 80);
+            }, { passive: true });
+        };
+        onScroll(yearEl, idx => { selYear = 1920 + idx; fillDays(); });
+        onScroll(monthEl, idx => { selMonth = idx + 1; fillDays(); });
+        onScroll(ov.querySelector('#wheelDay'), idx => { selDay = idx + 1; });
+
+        ov.querySelector('#profileEditSave').addEventListener('click', () => {
+            const dateStr = `${selYear}-${String(selMonth).padStart(2,'0')}-${String(selDay).padStart(2,'0')}`;
+            this.storage.updateUserSettings({ birthday: dateStr });
+            this._removeOverlay(); this._refreshDetail(); this._toast('生日已更新');
+        });
         ov.querySelector('#profileEditCancel').addEventListener('click', () => this._removeOverlay());
+    }
+
+    _wheelScrollTo(el, idx) {
+        el.scrollTop = idx * 40;
+    }
+
+    _wheelHighlight(el) {
+        const centerY = el.scrollTop + el.clientHeight / 2;
+        el.querySelectorAll('[data-val]').forEach(item => {
+            const itemCenter = item.offsetTop + 20;
+            const dist = Math.abs(centerY - itemCenter);
+            if (dist < 20) {
+                item.style.color = '#fff'; item.style.fontSize = '18px'; item.style.fontWeight = '600';
+            } else if (dist < 60) {
+                item.style.color = 'rgba(255,255,255,0.4)'; item.style.fontSize = '15px'; item.style.fontWeight = '400';
+            } else {
+                item.style.color = 'rgba(255,255,255,0.15)'; item.style.fontSize = '14px'; item.style.fontWeight = '400';
+            }
+        });
     }
 
     // 性别选择
