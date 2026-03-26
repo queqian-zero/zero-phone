@@ -2143,10 +2143,16 @@
                     .ex-add-btn — 按钮<br>
                     .ex-item — 每个愿望卡片<br>
                     .ex-item-title — 愿望标题<br>
-                    .ex-btn-withdraw — 兑换按钮
+                    .ex-btn-withdraw — 兑换按钮<br>
+                    <span style="color:rgba(255,255,255,0.25);">💡 CSS会自动限定在小铺范围内，不会影响聊天界面</span>
                 </div>
-                <textarea id="exShopCustomCss" placeholder=".exchange-sub-page#exShopPage { ... }" rows="3" style="width:100%;padding:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#fff;font-size:11px;font-family:monospace;resize:vertical;margin-bottom:6px;"></textarea>
-                <button id="exShopApplyCssBtn" style="padding:6px 14px;border:none;border-radius:8px;background:rgba(240,147,43,0.12);color:#f0932b;font-size:12px;cursor:pointer;">应用装修</button>
+                <textarea id="exShopCustomCss" placeholder=".ex-item { background: ... }" rows="3" style="width:100%;padding:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#fff;font-size:11px;font-family:monospace;resize:vertical;margin-bottom:6px;"></textarea>
+                <div style="display:flex;gap:6px;margin-bottom:8px;">
+                    <button id="exShopApplyCssBtn" style="flex:1;padding:6px 12px;border:none;border-radius:8px;background:rgba(240,147,43,0.12);color:#f0932b;font-size:12px;cursor:pointer;">应用</button>
+                    <button id="exShopCssSaveBtn" style="flex:1;padding:6px 12px;border:none;border-radius:8px;background:rgba(100,180,255,0.1);color:rgba(100,180,255,0.8);font-size:12px;cursor:pointer;">存档</button>
+                    <button id="exShopCssClearBtn" style="padding:6px 12px;border:none;border-radius:8px;background:rgba(255,100,100,0.08);color:rgba(255,100,100,0.5);font-size:12px;cursor:pointer;">清除</button>
+                </div>
+                <div id="exShopCssArchiveList"></div>
             </div>
         </div>
     </div>
