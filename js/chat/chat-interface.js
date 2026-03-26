@@ -3857,8 +3857,8 @@ handleEditSummaryConfirm() {
             this.hideSummaryGenerating();
             
             if (!summaryResult || !summaryResult.content) {
-                console.error('❌ 总结生成失败');
-                this.showCssToast('总结生成失败');
+                console.error('❌ 总结生成失败：AI返回内容为空');
+                this.showCssSystemMessage('❌ 总结失败：AI返回了空内容，可能是消息太多导致的。建议在记忆模块中手动选择较小范围（如20-30条）重试');
                 return;
             }
             
@@ -3881,16 +3881,35 @@ handleEditSummaryConfirm() {
             
             if (!summaryId) {
                 console.error('❌ 总结保存失败');
+                this.showCssSystemMessage('❌ 总结生成了但保存失败，请重试');
                 return;
             }
             
             console.log('✅ 自动总结生成成功');
-            this.showCssToast('📝 聊天总结已生成');
+            this.showCssSystemMessage(`📝 聊天总结已生成（第${startIndex+1}~${endIndex}条）`);
             
         } catch (error) {
             console.error('❌ 生成总结时出错:', error);
             this.hideSummaryGenerating();
-            console.log('📝 总结失败（静默）:', error.message);
+            
+            // 根据错误类型给出具体建议
+            const errMsg = error.message || '未知错误';
+            let advice = '';
+            if (errMsg.includes('Failed to fetch') || errMsg.includes('fetch')) {
+                advice = '网络请求失败。可能原因：1)网络不稳定 2)消息太多导致请求体过大。建议在记忆模块手动选择较小范围（如20条）重试';
+            } else if (errMsg.includes('too many tokens') || errMsg.includes('too long') || errMsg.includes('maximum context') || errMsg.includes('413')) {
+                advice = '消息内容超过了API的上下文限制。建议在记忆模块手动选择较小范围重试';
+            } else if (errMsg.includes('401') || errMsg.includes('key') || errMsg.includes('auth')) {
+                advice = 'API密钥可能有问题，请检查中枢APP的API配置';
+            } else if (errMsg.includes('429') || errMsg.includes('rate')) {
+                advice = 'API调用太频繁被限流了，等一会儿再试';
+            } else if (errMsg.includes('500') || errMsg.includes('502') || errMsg.includes('503')) {
+                advice = 'API服务端出错了，稍后再试';
+            } else {
+                advice = `错误详情：${errMsg.substring(0, 100)}`;
+            }
+            
+            this.showCssSystemMessage(`❌ 总结失败：${advice}`);
         }
     }
     
@@ -3900,7 +3919,6 @@ handleEditSummaryConfirm() {
         
         const friendName = this.currentFriend?.name || this.currentFriend?.nickname || 'TA';
         
-        // 构造总结的系统提示
         const summaryPrompt = `你是一个专业的对话总结助手。请按照以下格式总结对话内容：
 
 第一部分：一句话总结（用 === 包裹）
@@ -3919,26 +3937,8 @@ handleEditSummaryConfirm() {
 
 请总结以下对话内容。只输出总结内容，不要有任何其他说明。`;
         
-        // 构造消息历史（检查是否超限）
+        // 直接拼接消息，不做预判限制
         let conversationText = '';
-        const maxChars = 8000;
-        let totalChars = 0;
-        for (const msg of messages) {
-            const time = new Date(msg.timestamp);
-            const timeStr = this.formatTimeForSummary(time);
-            const sender = msg.type === 'user' ? '我' : friendName;
-            const line = `[${timeStr}] ${sender}: ${msg.text}\n`;
-            totalChars += line.length;
-        }
-        
-        if (totalChars > maxChars) {
-            // 超限：提示用户手动总结
-            this.showCssToast(`消息内容过长（${messages.length}条），请在记忆模块中手动选择范围总结`);
-            console.log(`📝 自动总结跳过：文本${totalChars}字超过上限${maxChars}`);
-            return null;
-        }
-        
-        // 没超限，正常拼接
         for (const msg of messages) {
             const time = new Date(msg.timestamp);
             const timeStr = this.formatTimeForSummary(time);
@@ -3957,18 +3957,11 @@ handleEditSummaryConfirm() {
             throw new Error(result.error);
         }
         
-        // 解析AI返回的内容，分离一句话总结和详细内容
+        // 解析AI返回的内容
         const fullText = result.text;
-        
-        // 提取一句话总结（在 === 和 === 之间）
         const summaryMatch = fullText.match(/===\s*([\s\S]*?)\s*===/);
         const oneLinerSummary = summaryMatch ? summaryMatch[1].trim() : '对话总结';
-        
-        // 提取详细内容（=== 后面的所有内容）
         const detailedContent = fullText.split(/===\s*[\s\S]*?\s*===\s*/)[1]?.trim() || fullText;
-        
-        console.log('📝 一句话总结:', oneLinerSummary);
-        console.log('📋 详细内容长度:', detailedContent.length);
         
         return {
             summary: oneLinerSummary,
