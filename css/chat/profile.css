@@ -1,1 +1,46 @@
+/* ==================== 个人设置页 ==================== */
+.profile-page-content { padding: 0 16px 24px; }
 
+/* 头像+网名+编码 头部卡片 */
+.profile-header-card { display:flex;align-items:center;gap:14px;padding:20px 16px;margin-bottom:12px;background:rgba(255,255,255,0.04);border-radius:14px;border:1px solid rgba(255,255,255,0.06);cursor:pointer;transition:background 0.15s; }
+.profile-header-card:active { background:rgba(255,255,255,0.07); }
+
+.profile-avatar-wrap { position:relative;width:64px;height:64px;flex-shrink:0; }
+.profile-avatar { width:64px;height:64px;border-radius:12px;object-fit:cover;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08); }
+.profile-avatar-edit { position:absolute;bottom:-2px;right:-2px;width:22px;height:22px;border-radius:50%;background:rgba(240,147,43,0.9);display:flex;align-items:center;justify-content:center;font-size:11px;border:2px solid #111; }
+
+.profile-info { flex:1;min-width:0; }
+.profile-nickname { font-size:18px;font-weight:700;color:#fff;margin-bottom:4px;display:flex;align-items:center;gap:6px; }
+.profile-nickname-text { overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+.profile-friend-code { font-size:12px;color:rgba(255,255,255,0.3);font-family:monospace;display:flex;align-items:center;gap:6px; }
+.profile-code-copy { padding:2px 6px;border:none;border-radius:4px;background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.3);font-size:10px;cursor:pointer; }
+.profile-code-copy:active { background:rgba(255,255,255,0.12); }
+.profile-arrow { font-size:14px;color:rgba(255,255,255,0.15);flex-shrink:0; }
+
+/* 功能列表 */
+.profile-menu-group { margin-bottom:10px;background:rgba(255,255,255,0.04);border-radius:12px;border:1px solid rgba(255,255,255,0.06);overflow:hidden; }
+.profile-menu-item { display:flex;align-items:center;padding:14px 16px;cursor:pointer;transition:background 0.12s;border-bottom:1px solid rgba(255,255,255,0.03); }
+.profile-menu-item:last-child { border-bottom:none; }
+.profile-menu-item:active { background:rgba(255,255,255,0.06); }
+.profile-menu-icon { width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:18px;margin-right:12px;flex-shrink:0; }
+.profile-menu-label { flex:1;font-size:14px;color:rgba(255,255,255,0.8); }
+.profile-menu-arrow { font-size:12px;color:rgba(255,255,255,0.12); }
+
+/* 编辑弹窗 */
+.profile-edit-overlay { position:fixed;top:0;left:0;right:0;bottom:0;z-index:9000;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,0.5); }
+.profile-edit-body { width:100%;background:#1a1a1a;border-radius:16px 16px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom));animation:profileSlideUp 0.25s ease-out; }
+@keyframes profileSlideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+.profile-edit-title { text-align:center;font-size:15px;font-weight:600;color:#fff;margin-bottom:16px; }
+.profile-edit-input { width:100%;padding:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:#fff;font-size:15px;margin-bottom:12px;box-sizing:border-box; }
+.profile-edit-input:focus { border-color:rgba(240,147,43,0.4);outline:none; }
+.profile-edit-hint { font-size:11px;color:rgba(255,255,255,0.25);margin-bottom:12px;line-height:1.5; }
+.profile-edit-btn { width:100%;padding:12px;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:8px;transition:all 0.15s; }
+.profile-edit-btn:active { transform:scale(0.98); }
+.profile-edit-btn-primary { background:rgba(240,147,43,0.15);color:#f0932b; }
+.profile-edit-btn-secondary { background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.4); }
+
+/* 头像上传 */
+.profile-avatar-options { display:flex;gap:10px;margin-bottom:12px; }
+.profile-avatar-option { flex:1;padding:14px;border:1px dashed rgba(255,255,255,0.12);border-radius:10px;background:rgba(255,255,255,0.03);text-align:center;cursor:pointer;color:rgba(255,255,255,0.5);font-size:13px; }
+.profile-avatar-option:active { background:rgba(255,255,255,0.06); }
+.profile-avatar-preview { width:80px;height:80px;border-radius:12px;object-fit:cover;margin:0 auto 12px;display:block;border:1px solid rgba(255,255,255,0.1); }
