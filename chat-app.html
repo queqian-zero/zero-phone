@@ -84,10 +84,45 @@
             
             <!-- 发现页 -->
             <div class="chat-page" id="discoverPage">
-                <div class="page-content">
-                    <div class="empty-placeholder">
-                        <div class="empty-icon">🔍</div>
-                        <div class="empty-text">发现更多</div>
+                <div class="discover-page-content">
+                    <!-- 社交区 -->
+                    <div class="discover-group">
+                        <div class="discover-item" id="discoverMoments" onclick="window.chatInterface?.showCssToast?.('📷 朋友圈开发中...') || alert('📷 朋友圈开发中...')">
+                            <div class="discover-icon">📷</div>
+                            <div class="discover-label">朋友圈</div>
+                            <span class="discover-arrow">›</span>
+                        </div>
+                        <div class="discover-item" id="discoverCoupleSpace" onclick="window.chatInterface?.showCssToast?.('💕 情侣空间开发中...') || alert('💕 情侣空间开发中...')">
+                            <div class="discover-icon">💕</div>
+                            <div class="discover-label">情侣空间</div>
+                            <span class="discover-arrow">›</span>
+                        </div>
+                    </div>
+                    <!-- 资料库区 -->
+                    <div class="discover-group">
+                        <div class="discover-item" id="discoverBase64" onclick="window.chatInterface?.showCssToast?.('🖼️ Base64图库开发中...') || alert('🖼️ Base64图库开发中...')">
+                            <div class="discover-icon">🖼️</div>
+                            <div class="discover-label">Base64 图库</div>
+                            <span class="discover-arrow">›</span>
+                        </div>
+                        <div class="discover-item" id="discoverMemoryLib" onclick="window.chatInterface?.showCssToast?.('🧠 记忆库开发中...') || alert('🧠 记忆库开发中...')">
+                            <div class="discover-icon">🧠</div>
+                            <div class="discover-label">记忆库</div>
+                            <span class="discover-arrow">›</span>
+                        </div>
+                    </div>
+                    <!-- 更多区 -->
+                    <div class="discover-group">
+                        <div class="discover-item" id="discoverCardZone" onclick="window.chatInterface?.showCssToast?.('🃏 字卡区开发中...') || alert('🃏 字卡区开发中...')">
+                            <div class="discover-icon">🃏</div>
+                            <div class="discover-label">字卡区</div>
+                            <span class="discover-arrow">›</span>
+                        </div>
+                        <div class="discover-item" id="discoverEntertainment" onclick="window.chatInterface?.showCssToast?.('🎮 娱乐中心开发中...') || alert('🎮 娱乐中心开发中...')">
+                            <div class="discover-icon">🎮</div>
+                            <div class="discover-label">娱乐中心</div>
+                            <span class="discover-arrow">›</span>
+                        </div>
                     </div>
                 </div>
             </div>
