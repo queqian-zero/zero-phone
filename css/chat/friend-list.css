@@ -113,3 +113,8 @@
     opacity: 0.3;
     flex-shrink: 0;
 }
+
+/* 黑名单入口 */
+.friend-blacklist-entry { display:flex;align-items:center;gap:8px;padding:14px 16px;margin-top:8px;background:rgba(255,60,60,0.03);border-radius:10px;border:1px solid rgba(255,60,60,0.06);cursor:pointer;transition:background 0.12s;justify-content:center; }
+.friend-blacklist-entry:active { background:rgba(255,60,60,0.08); }
+
