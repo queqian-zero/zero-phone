@@ -107,3 +107,36 @@
 .sdp-customize-inner { width:100%;background:#1a1a1a;border-radius:16px 16px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom));max-height:70vh;overflow-y:auto;animation:profileSlideUp 0.25s ease-out; }
 .sdp-css-ref-toggle { cursor:pointer;color:rgba(255,255,255,0.25);font-size:11px;user-select:none;margin-bottom:6px; }
 .sdp-css-ref { font-size:10px;color:rgba(255,255,255,0.15);line-height:1.8;font-family:monospace;margin-bottom:8px;padding:8px;background:rgba(255,255,255,0.02);border-radius:6px; }
+
+/* 明暗切换按钮 */
+.ai-status-theme-btn { background:none;border:none;font-size:18px;cursor:pointer;padding:4px 6px;opacity:0.5;transition:opacity 0.15s;flex-shrink:0; }
+.ai-status-theme-btn:active { opacity:1; }
+
+/* ====== 亮色模式 ====== */
+.ai-status-card.light { background:rgba(255,255,255,0.96);border-color:rgba(0,0,0,0.08); }
+.ai-status-card.light .ai-status-name { color:#222; }
+.ai-status-card.light .ai-status-code { color:rgba(0,0,0,0.35); }
+.ai-status-card.light .ai-status-grid { background:rgba(0,0,0,0.03); }
+.ai-status-card.light .ai-status-item { background:rgba(255,255,255,0.95); }
+.ai-status-card.light .ai-status-label { color:rgba(0,0,0,0.35); }
+.ai-status-card.light .ai-status-value { color:rgba(0,0,0,0.7); }
+.ai-status-card.light .ai-status-value.empty { color:rgba(0,0,0,0.2); }
+.ai-status-card.light .ai-status-action-primary { background:rgba(240,147,43,0.1);color:#d4831e; }
+.ai-status-card.light .ai-status-action-secondary { background:rgba(0,0,0,0.04);color:rgba(0,0,0,0.4); }
+
+/* 详情面板亮色 */
+.status-detail-panel.light .sdp-bg { background:#f5f5f5; }
+.status-detail-panel.light .sdp-header { background:rgba(245,245,245,0.92); }
+.status-detail-panel.light .sdp-back { color:rgba(0,0,0,0.6); }
+.status-detail-panel.light .sdp-title { color:#222; }
+.status-detail-panel.light .sdp-tab { background:rgba(0,0,0,0.04);border-color:rgba(0,0,0,0.06);color:rgba(0,0,0,0.4); }
+.status-detail-panel.light .sdp-tab.active { background:rgba(240,147,43,0.1);border-color:rgba(240,147,43,0.2);color:#d4831e; }
+.status-detail-panel.light .sdp-current { background:rgba(0,0,0,0.03);border-color:rgba(0,0,0,0.06); }
+.status-detail-panel.light .sdp-current-label { color:rgba(0,0,0,0.35); }
+.status-detail-panel.light .sdp-current-value { color:#222; }
+.status-detail-panel.light .sdp-current-date { color:rgba(0,0,0,0.25); }
+.status-detail-panel.light .sdp-empty { color:rgba(0,0,0,0.2); }
+.status-detail-panel.light .sdp-history-title { color:rgba(0,0,0,0.3); }
+.status-detail-panel.light .sdp-history-item { background:rgba(0,0,0,0.02);border-color:rgba(0,0,0,0.05); }
+.status-detail-panel.light .sdp-history-value { color:rgba(0,0,0,0.6); }
+.status-detail-panel.light .sdp-history-meta span { color:rgba(0,0,0,0.25); }
