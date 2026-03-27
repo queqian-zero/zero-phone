@@ -620,10 +620,10 @@ class FriendProfileManager {
         text = text.replace(/\[STATUS:[^\]]+\]/g, '');
         
         // [STATUS_CSS]css[/STATUS_CSS] - AI美化状态面板
-        const cssMatcher = text.match(/\[STATUS_CSS\]([\s\S]*?)\[\/STATUS_CSS\]/);
+        const cssMatcher = text.match(/\[STATUS_?\s*CSS\]([\s\S]*?)\[\/?\s*STATUS_?\s*CSS\]/i);
         if (cssMatcher) {
             const css = cssMatcher[1].trim();
-            text = text.replace(/\[STATUS_CSS\][\s\S]*?\[\/STATUS_CSS\]/g, '');
+            text = text.replace(/\[STATUS_?\s*CSS\][\s\S]*?\[\/?\s*STATUS_?\s*CSS\]/gi, '');
             
             const data = ci.storage.getIntimacyData(ci.currentFriendCode);
             if (!data.statusPanelSettings) data.statusPanelSettings = {};

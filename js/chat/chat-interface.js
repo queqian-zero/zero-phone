@@ -6176,7 +6176,7 @@ getIntimacyStatusForAI() {
     desc += `\n  [EX_SHOP_ADD:愿望名:许愿星价格] 在小铺上架愿望让user兑换`;
     desc += `\n  [EX_SHOP_REDEEM:愿望名] 用许愿星兑换user上架的愿望`;
     desc += `\n  [EX_SHOP_REMOVE:愿望名] 下架自己上架的愿望`;
-    desc += `\n  小铺装修：你可以用 [SHOP_CSS]你的CSS代码[/SHOP_CSS] 来美化小铺页面（CSS会自动限定在小铺范围内，不会影响聊天界面），以下是可用的CSS类名/选择器：`;
+    desc += `\n  小铺装修：你可以用 [SHOP_CSS]你的CSS代码[/SHOP_CSS] 来美化小铺页面（注意标签不要换行拆开写，CSS内容可以多行；CSS会自动限定在小铺范围内不影响聊天），以下是可用的CSS类名/选择器：`;
     desc += `\n    #exShopPage — 小铺整体容器`;
     desc += `\n    .ex-fund-summary — 余额卡片区 | .ex-fund-card — 单个余额卡 | .ex-fund-amount — 余额数字`;
     desc += `\n    .ex-add-form — 表单区域 | .ex-add-btn — 按钮 | .ex-add-input — 输入框`;
@@ -6222,7 +6222,7 @@ getIntimacyStatusForAI() {
     // 状态面板感知（可选）
     if (this.settings.aiKnowStatusPanel) {
         desc += `\n\n【状态面板感知】你知道user可以通过点击你的名字查看你的装扮/动作/心声/位置状态。`;
-        desc += `\n  你的状态面板有自定义功能，你可以用 [STATUS_CSS]CSS代码[/STATUS_CSS] 来美化你的状态面板。`;
+        desc += `\n  你的状态面板有自定义功能，你可以用 [STATUS_CSS]你的CSS代码[/STATUS_CSS] 来美化你的状态面板（注意：标签[STATUS_CSS]和[/STATUS_CSS]不要换行拆开写，CSS内容可以多行）。`;
         desc += `\n  可用类名：.status-detail-panel(整个面板) .sdp-header(顶部) .sdp-tabs(Tab栏) .sdp-tab(单个Tab) .sdp-tab.active(选中Tab) .sdp-current(当前状态块) .sdp-current-value(状态文字) .sdp-history-list(历史列表) .sdp-history-item(单条历史)`;
         desc += `\n  这些状态是你自己填写的/通过技术手段扫描记录的（你可以自行决定设定）。`;
     }
@@ -10557,10 +10557,10 @@ processExchangeCommands(text) {
     }
     
     // [SHOP_CSS]css代码[/SHOP_CSS] - AI装修小铺（自动限定作用域）
-    const shopCssMatch = text.match(/\[SHOP_CSS\]([\s\S]*?)\[\/SHOP_CSS\]/);
+    const shopCssMatch = text.match(/\[SHOP_?\s*CSS\]([\s\S]*?)\[\/?\s*SHOP_?\s*CSS\]/i);
     if (shopCssMatch) {
         let shopCss = shopCssMatch[1].trim();
-        text = text.replace(/\[SHOP_CSS\][\s\S]*?\[\/SHOP_CSS\]/g, '');
+        text = text.replace(/\[SHOP_?\s*CSS\][\s\S]*?\[\/?\s*SHOP_?\s*CSS\]/gi, '');
         
         // 自动给每条规则加 #exShopPage 前缀，防止影响全局
         shopCss = this._scopeShopCss(shopCss);
@@ -11712,14 +11712,15 @@ _stripCommandTags(text) {
         .replace(/\[EX_SHOP_REDEEM:[^\]]+\]/g, '')
         .replace(/\[EX_SHOP_REMOVE:[^\]]+\]/g, '')
         .replace(/\[EX_STAR_GIVE:[^\]]+\]/g, '')
-        .replace(/\[SHOP_CSS\][\s\S]*?\[\/SHOP_CSS\]/g, '')
+        .replace(/\[SHOP_?\s*CSS\][\s\S]*?\[\/?\s*SHOP_?\s*CSS\]/gi, '')
         .replace(/\[CAP_MEMORY:[^\]]*\]/g, '')
         .replace(/\[CAP_CAPSULE:[^\]]*\]/g, '')
         .replace(/\[CAP_COMMENT:[^\]]*\]/g, '')
         .replace(/\[CAP_MILESTONE:[^\]]*\]/g, '')
         .replace(/\[TL_NOTE:[^\]]*\]/g, '')
         .replace(/\[STATUS:[^\]]+\]/g, '')
-        .replace(/\[STATUS_CSS\][\s\S]*?\[\/STATUS_CSS\]/g, '');
+        .replace(/\[STATUS_CSS\][\s\S]*?\[\/STATUS_CSS\]/g, '')
+        .replace(/\[STATUS_?\s*CSS\][\s\S]*?\[\/?\s*STATUS_?\s*CSS\]/gi, '');
 }
 
 // 执行一个分段里包含的所有指令（产生通知）
