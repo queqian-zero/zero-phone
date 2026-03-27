@@ -130,11 +130,13 @@ class FriendProfileManager {
             <div class="sdp-content">
                 <div class="sdp-header">
                     <button class="sdp-back" id="sdpBack">←</button>
-                    <div class="sdp-title">${label}</div>
+                    <div class="sdp-title">${this._sdpMerged ? '全部动态' : label}</div>
+                    <button class="sdp-merge-btn" id="sdpMergeBtn" title="合并/分开">${this._sdpMerged ? '分开' : '合并'}</button>
                     <button class="ai-status-theme-btn" id="sdpThemeBtn" title="切换明暗">🌓</button>
                     <button class="sdp-customize-btn" id="sdpCustomizeBtn">⚙️</button>
                 </div>
 
+                ${this._sdpMerged ? this._renderMergedView(status, history, friendName, fieldLabels) : `
                 <!-- Tab切换 -->
                 <div class="sdp-tabs">
                     ${['outfit','action','thoughts','location'].map(f => 
@@ -169,6 +171,7 @@ class FriendProfileManager {
                             </div>`;
                         }).join('')}
                 </div>
+                `}
             </div>
 
             <!-- 自定义面板 -->
@@ -209,6 +212,13 @@ class FriendProfileManager {
 
         // 事件绑定
         panel.querySelector('#sdpBack').addEventListener('click', () => this.closeStatusDetailPanel());
+        
+        // 合并/分开切换
+        panel.querySelector('#sdpMergeBtn').addEventListener('click', () => {
+            this._sdpMerged = !this._sdpMerged;
+            this.closeStatusDetailPanel();
+            this.openStatusDetailPanel(field);
+        });
         
         // 明暗切换
         panel.querySelector('#sdpThemeBtn').addEventListener('click', () => {
@@ -300,6 +310,51 @@ class FriendProfileManager {
         this._removeStatusPanelCss();
     }
 
+    // 合并视图：所有四种状态放在一起展示
+    _renderMergedView(status, history, friendName, fieldLabels) {
+        const fields = ['outfit', 'action', 'thoughts', 'location'];
+        let html = '';
+        
+        for (const f of fields) {
+            const cur = status[f] || '';
+            const curDate = status[f + 'Date'] || '';
+            const list = history[f] || [];
+            
+            html += `<div class="sdp-merged-section">
+                <div class="sdp-merged-label">${fieldLabels[f]}</div>
+                <div class="sdp-current" style="margin:0 16px 8px;">
+                    ${cur ? `
+                        <div class="sdp-current-value" style="font-size:15px;">${this._esc(cur)}</div>
+                        <div class="sdp-current-date">${curDate ? new Date(curDate).toLocaleString('zh-CN') : ''}</div>
+                    ` : `<div class="sdp-empty" style="padding:10px;">${friendName}还没设置</div>`}
+                </div>`;
+            
+            if (list.length > 0) {
+                html += `<div style="padding:0 16px 12px;">`;
+                html += list.slice().reverse().slice(0, 3).map((h, i) => {
+                    const realIdx = list.length - 1 - i;
+                    return `<div class="sdp-history-item" style="margin-bottom:4px;">
+                        <div class="sdp-history-value" style="font-size:12px;">${this._esc(h.value)}</div>
+                        <div class="sdp-history-meta">
+                            <span>${h.date ? new Date(h.date).toLocaleString('zh-CN') : ''}</span>
+                            <div style="display:flex;gap:6px;">
+                                <button class="sdp-history-edit" data-field="${f}" data-idx="${realIdx}" style="padding:2px 8px;border:none;border-radius:6px;background:rgba(100,180,255,0.08);color:rgba(100,180,255,0.6);font-size:9px;cursor:pointer;">改</button>
+                                <button class="sdp-history-del" data-field="${f}" data-idx="${realIdx}">删</button>
+                            </div>
+                        </div>
+                    </div>`;
+                }).join('');
+                if (list.length > 3) {
+                    html += `<div style="text-align:center;font-size:10px;color:rgba(255,255,255,0.15);padding:4px;">还有${list.length - 3}条更早的记录（切到分开模式查看全部）</div>`;
+                }
+                html += `</div>`;
+            }
+            html += `</div>`;
+        }
+        
+        return html;
+    }
+
     _deleteStatusHistory(field, idx) {
         const ci = window.chatInterface;
         if (!ci?.currentFriendCode) return;
@@ -311,14 +366,14 @@ class FriendProfileManager {
         }
     }
 
-    _editStatusHistory(field, idx) {
+    async _editStatusHistory(field, idx) {
         const ci = window.chatInterface;
         if (!ci?.currentFriendCode) return;
         const data = ci.storage.getIntimacyData(ci.currentFriendCode);
         const item = data.aiStatusHistory?.[field]?.[idx];
         if (!item) return;
         
-        const newVal = prompt('修改内容：', item.value);
+        const newVal = await this._prompt('修改内容', '', '输入新内容', item.value);
         if (newVal === null) return;
         if (!newVal.trim()) { this._toast('内容不能为空'); return; }
         
@@ -354,6 +409,7 @@ class FriendProfileManager {
         document.getElementById('statusPanelCssTag')?.remove();
     }
 
+    // ==================== 自定义弹窗系统（替代原生prompt/confirm）====================
     // ==================== 好友详细资料页 ====================
     openFriendProfilePage() {
         const ci = window.chatInterface;
@@ -498,8 +554,8 @@ class FriendProfileManager {
         });
 
         // 备注编辑
-        page.querySelector('[data-edit="nickname"]')?.addEventListener('click', () => {
-            const val = prompt('修改备注名：', friend.nickname || '');
+        page.querySelector('[data-edit="nickname"]')?.addEventListener('click', async () => {
+            const val = await this._prompt('修改备注名', '', '输入备注名', friend.nickname || '');
             if (val !== null) {
                 storage.updateFriend(code, { nickname: val.trim() });
                 ci.currentFriend.nickname = val.trim();
@@ -530,9 +586,9 @@ class FriendProfileManager {
     }
 
     // ==================== 危险操作 ====================
-    _clearChat(code, storage) {
-        const choice = confirm('清空聊天记录？\n\n点「确定」= 仅清空聊天记录\n\n如果想连总结和记忆一起清空，请在清空后手动到记忆模块删除');
-        if (!choice) return;
+    async _clearChat(code, storage) {
+        const ok = await this._confirm('清空聊天记录', '仅清空聊天消息记录。\n如果想连总结和记忆一起清空，请在清空后到记忆模块手动删除。', '清空', '取消');
+        if (!ok) return;
         
         // 清空消息
         const chat = storage.getChatByFriendCode(code);
@@ -550,29 +606,42 @@ class FriendProfileManager {
         this._toast('聊天记录已清空');
     }
 
-    _blacklistFriend(code, friend, storage) {
-        if (!confirm(`确定拉黑「${friend.nickname || friend.name}」吗？\n\n拉黑后对方有可能会被系统通知，有概率被对方删除或收到挽回消息`)) return;
+    async _blacklistFriend(code, friend, storage) {
+        const name = friend.nickname || friend.name;
+        const ok = await this._confirm('拉黑好友', `确定拉黑「${name}」吗？\n\n拉黑后：\n· TA每天只能对你说一轮话\n· TA大概率会知道自己被拉黑\n· 可以在黑名单中解除`, '拉黑', '取消');
+        if (!ok) return;
         storage.updateFriend(code, { blacklisted: true, blacklistedDate: new Date().toISOString() });
         this._toast(`已拉黑「${friend.nickname || friend.name}」`);
         this.closeFriendProfilePage();
     }
 
-    _deleteFriend(code, friend, storage) {
+    async _deleteFriend(code, friend, storage) {
         const name = friend.nickname || friend.name;
-        const choice = confirm(`删除好友「${name}」？\n\n⚠️ 确定 = 仅删除好友关系（可通过编码重新添加）\n\n如果要彻底删除（连编码一起抹除，永远加不回来），请输入"永久删除"后确认`);
-        if (!choice) return;
         
-        const permanent = prompt('输入"永久删除"来彻底抹除，或直接点确定仅删除好友关系：');
+        const r = await this._showDialog({
+            title: `删除好友「${name}」`,
+            message: '请选择删除方式：',
+            buttons: [
+                { label: '取消', value: 'cancel' },
+                { label: '仅删除好友', value: 'soft', color: 'rgba(255,200,0,0.08)', textColor: 'rgba(255,200,100,0.8)' },
+                { label: '彻底抹除', value: 'permanent', color: 'rgba(255,60,60,0.1)', textColor: 'rgba(255,100,100,0.9)', bold: true }
+            ]
+        });
         
-        if (permanent === '永久删除') {
-            // 彻底删除：从好友列表移除（不是软删除）
+        if (r.action === 'cancel') return;
+        
+        if (r.action === 'permanent') {
+            const confirmText = await this._prompt('彻底删除确认', `输入「永久删除」来确认彻底抹除「${name}」\n\n⚠️ 此操作不可逆，连编码一起消失，永远加不回来`, '输入"永久删除"');
+            if (confirmText !== '永久删除') {
+                this._toast('输入不正确，取消操作');
+                return;
+            }
             const friends = storage.getAllFriendsIncludingDeleted();
             const idx = friends.findIndex(f => f.code === code);
             if (idx >= 0) friends.splice(idx, 1);
             storage.saveData(storage.KEYS.FRIENDS, friends);
             this._toast(`「${name}」已被彻底删除，无法恢复`);
         } else {
-            // 软删除
             storage.deleteFriend(code);
             this._toast(`已删除「${name}」`);
         }
@@ -619,6 +688,37 @@ class FriendProfileManager {
         }
         text = text.replace(/\[STATUS:[^\]]+\]/g, '');
         
+        // [AI_NICKNAME:新网名] - AI修改自己的网名
+        const nickMatch = text.match(/\[AI_NICKNAME:([^\]]+)\]/);
+        if (nickMatch) {
+            const newName = nickMatch[1].trim();
+            text = text.replace(/\[AI_NICKNAME:[^\]]+\]/g, '');
+            if (newName && ci.storage) {
+                const oldName = ci.currentFriend?.name || '';
+                ci.storage.updateFriend(ci.currentFriendCode, { name: newName });
+                if (ci.currentFriend) ci.currentFriend.name = newName;
+                // 更新题头（如果没有备注就显示新网名）
+                if (!ci.currentFriend?.nickname) {
+                    const nameEl = document.querySelector('#chatFriendName span');
+                    if (nameEl) nameEl.textContent = newName;
+                }
+                ci.showCssSystemMessage(`📝 ${oldName || 'TA'} 把网名改成了「${newName}」`);
+            }
+        }
+        
+        // [AI_POKE:拍一拍文字] - AI修改自己的拍一拍
+        const pokeMatch = text.match(/\[AI_POKE:([^\]]+)\]/);
+        if (pokeMatch) {
+            const newPoke = pokeMatch[1].trim();
+            text = text.replace(/\[AI_POKE:[^\]]+\]/g, '');
+            if (newPoke && ci.storage) {
+                ci.storage.updateFriend(ci.currentFriendCode, { poke: newPoke });
+                if (ci.currentFriend) ci.currentFriend.poke = newPoke;
+                const friendName = ci.currentFriend?.nickname || ci.currentFriend?.name || 'TA';
+                ci.showCssSystemMessage(`📝 ${friendName} 修改了拍一拍为「${newPoke}」`);
+            }
+        }
+        
         // [STATUS_CSS]css[/STATUS_CSS] - AI美化状态面板
         const cssMatcher = text.match(/\[STATUS_?\s*CSS\]([\s\S]*?)\[\/?\s*STATUS_?\s*CSS\]/i);
         if (cssMatcher) {
@@ -638,10 +738,131 @@ class FriendProfileManager {
         return text;
     }
 
-    // ==================== 工具 ====================
+    // ==================== 黑名单管理 ====================
+    openBlacklistPage() {
+        document.getElementById('fpBlacklistPage')?.remove();
+        
+        const ci = window.chatInterface;
+        if (!ci?.storage) return;
+        
+        const allFriends = ci.storage.getAllFriends();
+        const blacklisted = allFriends.filter(f => f.blacklisted);
+        
+        const page = document.createElement('div');
+        page.className = 'friend-profile-page open';
+        page.id = 'fpBlacklistPage';
+        
+        page.innerHTML = `
+            <div class="fp-header">
+                <button class="fp-back" id="fpBlacklistBack">←</button>
+                <div class="fp-title">黑名单</div>
+            </div>
+            <div style="padding:0 16px 40px;">
+                ${blacklisted.length === 0 ? '<div style="text-align:center;padding:40px 0;color:rgba(255,255,255,0.15);font-size:13px;">黑名单是空的</div>' :
+                    blacklisted.map(f => `<div class="fp-group" style="margin:8px 0;">
+                        <div class="fp-row" style="gap:12px;">
+                            <img src="${f.avatar || 'assets/icons/chat/default-avatar.png'}" style="width:40px;height:40px;border-radius:8px;object-fit:cover;" onerror="this.src='assets/icons/chat/default-avatar.png'">
+                            <div style="flex:1;">
+                                <div style="font-size:14px;color:#fff;">${this._esc(f.nickname || f.name)}</div>
+                                <div style="font-size:11px;color:rgba(255,255,255,0.25);font-family:monospace;">${f.code}</div>
+                            </div>
+                            <button class="fpd-btn fp-unblock-btn" data-code="${f.code}" style="padding:6px 14px;border:none;border-radius:8px;background:rgba(100,180,255,0.1);color:rgba(100,180,255,0.7);font-size:12px;cursor:pointer;">解除拉黑</button>
+                        </div>
+                    </div>`).join('')}
+            </div>`;
+        
+        document.body.appendChild(page);
+        
+        page.querySelector('#fpBlacklistBack').addEventListener('click', () => page.remove());
+        
+        page.querySelectorAll('.fp-unblock-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const code = btn.getAttribute('data-code');
+                const f = allFriends.find(fr => fr.code === code);
+                const name = f?.nickname || f?.name || code;
+                const ok = await this._confirm('解除拉黑', `确定将「${name}」从黑名单中移除吗？`, '解除', '取消');
+                if (!ok) return;
+                ci.storage.updateFriend(code, { blacklisted: false, blacklistedDate: '' });
+                this._toast(`已将「${name}」移出黑名单`);
+                page.remove();
+                this.openBlacklistPage(); // 刷新
+            });
+        });
+    }
+
+    // ==================== 自定义弹窗系统（替代丑丑的浏览器弹窗） ====================
+    _showDialog({ title, message, buttons, input, inputValue, inputPlaceholder }) {
+        return new Promise((resolve) => {
+            document.getElementById('fpDialog')?.remove();
+            const dlg = document.createElement('div');
+            dlg.id = 'fpDialog';
+            dlg.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9500;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.55);';
+            
+            const inputHtml = input ? `<input type="text" id="fpDialogInput" value="${this._esc(inputValue||'')}" placeholder="${this._esc(inputPlaceholder||'')}" style="width:100%;padding:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:10px;color:#fff;font-size:14px;margin-top:12px;box-sizing:border-box;">` : '';
+            
+            const btnsHtml = (buttons || [{text:'确定',value:true},{text:'取消',value:false}]).map(b => {
+                const style = b.danger ? 'background:rgba(255,60,60,0.12);color:rgba(255,100,100,0.9);' :
+                              b.primary ? 'background:rgba(240,147,43,0.15);color:#f0932b;' :
+                              'background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);';
+                return `<button class="fp-dlg-btn" data-val="${this._esc(String(b.value))}" style="${style}">${this._esc(b.text)}</button>`;
+            }).join('');
+            
+            dlg.innerHTML = `<div style="width:calc(100% - 48px);max-width:320px;background:#1c1c1c;border-radius:16px;border:1px solid rgba(255,255,255,0.08);padding:24px 20px 16px;animation:profileSlideUp 0.2s ease-out;">
+                <div style="font-size:16px;font-weight:600;color:#fff;margin-bottom:8px;text-align:center;">${title || ''}</div>
+                <div style="font-size:13px;color:rgba(255,255,255,0.5);line-height:1.6;text-align:center;white-space:pre-line;">${message || ''}</div>
+                ${inputHtml}
+                <div style="display:flex;gap:8px;margin-top:16px;">${btnsHtml}</div>
+            </div>`;
+            
+            document.body.appendChild(dlg);
+            
+            // 自动聚焦输入框
+            if (input) setTimeout(() => document.getElementById('fpDialogInput')?.focus(), 100);
+            
+            dlg.querySelectorAll('.fp-dlg-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const val = btn.getAttribute('data-val');
+                    const inputEl = document.getElementById('fpDialogInput');
+                    dlg.remove();
+                    if (input) {
+                        resolve(val === 'true' || val === 'confirm' ? (inputEl?.value ?? '') : null);
+                    } else {
+                        resolve(val === 'true' || val === 'confirm' ? true : val === 'false' || val === 'cancel' ? false : val);
+                    }
+                });
+            });
+        });
+    }
+
+    // 便捷方法
+    async _confirm(title, message, confirmText = '确定', cancelText = '取消') {
+        return this._showDialog({ title, message, buttons: [
+            { text: confirmText, value: true, primary: true },
+            { text: cancelText, value: false }
+        ]});
+    }
+
+    async _dangerConfirm(title, message, confirmText = '确定', cancelText = '取消') {
+        return this._showDialog({ title, message, buttons: [
+            { text: confirmText, value: true, danger: true },
+            { text: cancelText, value: false }
+        ]});
+    }
+
+    async _prompt(title, message, defaultValue = '', placeholder = '') {
+        return this._showDialog({ title, message, input: true, inputValue: defaultValue, inputPlaceholder: placeholder, buttons: [
+            { text: '确定', value: 'confirm', primary: true },
+            { text: '取消', value: 'cancel' }
+        ]});
+    }
     _esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
     _toast(msg) { window.chatInterface?.showCssToast?.(msg) || alert(msg); }
 }
 
 // 全局初始化
 window.friendProfile = new FriendProfileManager();
+
+// 暴露全局自定义弹窗（供其他模块使用，替代丑陋的 confirm/prompt）
+window.zpConfirm = (title, msg, okText, cancelText) => window.friendProfile._confirm(title, msg, okText, cancelText);
+window.zpPrompt = (title, msg, defaultVal, placeholder) => window.friendProfile._prompt(title, msg, defaultVal, placeholder);
+window.zpDangerConfirm = (title, msg, okText, cancelText) => window.friendProfile._dangerConfirm(title, msg, okText, cancelText);

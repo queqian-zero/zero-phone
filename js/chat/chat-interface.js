@@ -1414,6 +1414,20 @@ class ChatInterface {
         const sendFriendCode = this.currentFriendCode;
         const sendFriend = this.currentFriend;
         
+        // 黑名单检查：被拉黑的好友每天只能说一轮
+        if (sendFriend?.blacklisted) {
+            const today = new Date().toISOString().split('T')[0];
+            const lastBlacklistChat = sendFriend._blacklistLastChatDate || '';
+            if (lastBlacklistChat === today) {
+                this.showCssSystemMessage('🚫 对方已被拉黑，今天的对话次数已用完');
+                this._isSendingAI = false;
+                return;
+            }
+            // 记录今天已用
+            this.storage.updateFriend(sendFriendCode, { _blacklistLastChatDate: today });
+            sendFriend._blacklistLastChatDate = today;
+        }
+        
         this.showTypingIndicator();
         
         try {
@@ -1610,6 +1624,9 @@ ${archiveListText}
 
             // ====== 亲密关系状态注入 ======
             systemPrompt += '\n\n' + this.getIntimacyStatusForAI();
+            
+            // ====== 黑名单状态注入 ======
+            systemPrompt += this._getBlacklistPrompt();
 
             // 偶尔报备记忆清理
             if (this._pendingMemoryReport) {
@@ -1685,7 +1702,13 @@ ${archiveListText}
             if (hasSplitTag) {
                 rawSegments = aiText.split('[MSG_SPLIT]').map(s => s.trim()).filter(Boolean);
             } else if (splitMode === 'split') {
+                // 尝试按双换行拆分
                 rawSegments = aiText.split(/\n{2,}/).map(s => s.trim()).filter(Boolean);
+                // 如果双换行拆不出来，尝试按单换行拆
+                if (rawSegments.length <= 1) {
+                    rawSegments = aiText.split(/\n/).map(s => s.trim()).filter(Boolean);
+                }
+                // 如果还是只有一段，保持整段
                 if (rawSegments.length <= 1) rawSegments = [aiText];
             } else {
                 rawSegments = [aiText];
@@ -2176,12 +2199,25 @@ div.innerHTML = `
         // 渲染所有段落
         return segments.map(seg => {
             if (seg.type === 'text') {
-                return this.escapeHtml(seg.content);
+                return this._renderInlineMarkdown(this.escapeHtml(seg.content));
             } else if (seg.type === 'code') {
                 return this.createCodeBlock(seg.content, seg.lang);
             }
             return '';
         }).join('');
+    }
+    
+    // 简易Markdown渲染（在escapeHtml之后调用）
+    _renderInlineMarkdown(html) {
+        return html
+            // **加粗**
+            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+            // *斜体*（避免和加粗冲突，只匹配单星号）
+            .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>')
+            // `行内代码`
+            .replace(/`([^`]+)`/g, '<code style="background:rgba(255,255,255,0.08);padding:1px 5px;border-radius:4px;font-family:monospace;font-size:0.9em;">$1</code>')
+            // ~~删除线~~
+            .replace(/~~(.+?)~~/g, '<del style="opacity:0.5;">$1</del>');
     }
     
     // 创建代码块（带复制按钮）
@@ -2861,7 +2897,7 @@ this.applyWallpaper(this.settings.chatWallpaper || 'default');
         }
     }
     
-    editPoke() {
+    async editPoke() {
         if (!this.currentFriend) {
             console.error('❌ 没有当前好友');
             return;
@@ -2871,7 +2907,7 @@ this.applyWallpaper(this.settings.chatWallpaper || 'default');
         
         const currentPoke = this.currentFriend.poke || '戳了戳你';
         
-        const newPoke = prompt('修改拍一拍动作：', currentPoke);
+        const newPoke = await window.zpPrompt?.('修改拍一拍', '', currentPoke, '输入新的拍一拍动作') ?? prompt('修改拍一拍动作：', currentPoke);
         
         if (newPoke === null || newPoke.trim() === '') {
             console.log('⚠️ 用户取消或输入为空');
@@ -2991,6 +3027,63 @@ this.applyWallpaper(this.settings.chatWallpaper || 'default');
             toast.style.opacity = '0';
             setTimeout(() => toast.remove(), 400);
         }, 2500);
+    }
+    
+    // 自定义确认弹窗（替代 confirm）
+    showCssConfirm(title, message, options = {}) {
+        return new Promise(resolve => {
+            document.getElementById('cssDialogOverlay')?.remove();
+            const ov = document.createElement('div');
+            ov.id = 'cssDialogOverlay';
+            ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);';
+            const confirmText = options.confirmText || '确定';
+            const cancelText = options.cancelText || '取消';
+            const dangerClass = options.danger ? 'color:#ff6b6b;' : 'color:#f0932b;';
+            ov.innerHTML = `<div style="width:calc(100% - 48px);max-width:320px;background:#1e1e1e;border-radius:16px;border:1px solid rgba(255,255,255,0.08);overflow:hidden;animation:profileSlideUp 0.2s ease-out;">
+                <div style="padding:20px 20px 12px;text-align:center;">
+                    <div style="font-size:16px;font-weight:600;color:#fff;margin-bottom:8px;">${title}</div>
+                    <div style="font-size:13px;color:rgba(255,255,255,0.5);line-height:1.6;white-space:pre-line;">${message}</div>
+                </div>
+                <div style="display:flex;border-top:1px solid rgba(255,255,255,0.06);">
+                    <button id="cssDialogCancel" style="flex:1;padding:14px;border:none;background:transparent;color:rgba(255,255,255,0.4);font-size:15px;cursor:pointer;border-right:1px solid rgba(255,255,255,0.06);">${cancelText}</button>
+                    <button id="cssDialogConfirm" style="flex:1;padding:14px;border:none;background:transparent;${dangerClass}font-size:15px;font-weight:600;cursor:pointer;">${confirmText}</button>
+                </div>
+            </div>`;
+            document.body.appendChild(ov);
+            ov.querySelector('#cssDialogConfirm').addEventListener('click', () => { ov.remove(); resolve(true); });
+            ov.querySelector('#cssDialogCancel').addEventListener('click', () => { ov.remove(); resolve(false); });
+        });
+    }
+    
+    // 自定义输入弹窗（替代 prompt）
+    showCssPrompt(title, defaultValue = '', options = {}) {
+        return new Promise(resolve => {
+            document.getElementById('cssDialogOverlay')?.remove();
+            const ov = document.createElement('div');
+            ov.id = 'cssDialogOverlay';
+            ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);';
+            const hint = options.hint || '';
+            const placeholder = options.placeholder || '';
+            const isTextarea = options.multiline;
+            const inputHtml = isTextarea
+                ? `<textarea id="cssDialogInput" rows="3" style="width:100%;padding:10px 12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:#fff;font-size:14px;resize:vertical;box-sizing:border-box;">${this.escapeHtml(defaultValue)}</textarea>`
+                : `<input type="text" id="cssDialogInput" value="${this.escapeHtml(defaultValue)}" placeholder="${placeholder}" style="width:100%;padding:10px 12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:#fff;font-size:14px;box-sizing:border-box;">`;
+            ov.innerHTML = `<div style="width:calc(100% - 48px);max-width:320px;background:#1e1e1e;border-radius:16px;border:1px solid rgba(255,255,255,0.08);overflow:hidden;animation:profileSlideUp 0.2s ease-out;">
+                <div style="padding:20px 20px 16px;">
+                    <div style="font-size:16px;font-weight:600;color:#fff;margin-bottom:12px;text-align:center;">${title}</div>
+                    ${inputHtml}
+                    ${hint ? `<div style="font-size:11px;color:rgba(255,255,255,0.25);margin-top:6px;line-height:1.5;">${hint}</div>` : ''}
+                </div>
+                <div style="display:flex;border-top:1px solid rgba(255,255,255,0.06);">
+                    <button id="cssDialogCancel" style="flex:1;padding:14px;border:none;background:transparent;color:rgba(255,255,255,0.4);font-size:15px;cursor:pointer;border-right:1px solid rgba(255,255,255,0.06);">取消</button>
+                    <button id="cssDialogConfirm" style="flex:1;padding:14px;border:none;background:transparent;color:#f0932b;font-size:15px;font-weight:600;cursor:pointer;">确定</button>
+                </div>
+            </div>`;
+            document.body.appendChild(ov);
+            setTimeout(() => ov.querySelector('#cssDialogInput')?.focus(), 100);
+            ov.querySelector('#cssDialogConfirm').addEventListener('click', () => { const v = ov.querySelector('#cssDialogInput')?.value; ov.remove(); resolve(v); });
+            ov.querySelector('#cssDialogCancel').addEventListener('click', () => { ov.remove(); resolve(null); });
+        });
     }
     
     // CSS操作的系统小字（拍一拍风格，留在聊天记录里）
@@ -3732,32 +3825,29 @@ handleEditSummaryConfirm() {
 }
     
     // 从历史列表删除总结
-    deleteSummaryFromHistory(summaryId) {
+    async deleteSummaryFromHistory(summaryId) {
         console.log('🗑️ 从历史列表删除总结:', summaryId);
         
-        if (!confirm('确定要删除这条总结吗？')) {
-            return;
-        }
+        const ok = await (window.zpConfirm?.('删除总结', '确定要删除这条总结吗？', '删除', '取消') ?? Promise.resolve(confirm('确定要删除这条总结吗？')));
+        if (!ok) return;
         
         const success = this.storage.deleteChatSummary(this.currentFriendCode, summaryId);
         
         if (success) {
             console.log('✅ 总结删除成功');
-            // 重新加载历史列表
             this.loadSummaryHistory();
         } else {
             console.error('❌ 总结删除失败');
-            alert('❌ 删除失败！');
+            this.showCssToast('删除失败');
         }
     }
     
     // 从详情页删除总结
-    deleteSummaryDetail(summaryId) {
+    async deleteSummaryDetail(summaryId) {
         console.log('🗑️ 从详情页删除总结:', summaryId);
         
-        if (!confirm('确定要删除这条总结吗？')) {
-            return;
-        }
+        const ok = await (window.zpConfirm?.('删除总结', '确定要删除这条总结吗？', '删除', '取消') ?? Promise.resolve(confirm('确定要删除这条总结吗？')));
+        if (!ok) return;
         
         const success = this.storage.deleteChatSummary(this.currentFriendCode, summaryId);
         
@@ -4735,11 +4825,17 @@ applyWallpaper(wallpaper) {
     if (wallpaper === 'default') {
         // 恢复默认（纯黑色）
         container.style.backgroundImage = 'none';
+        container.style.backgroundSize = '';
+        container.style.backgroundPosition = '';
+        container.style.backgroundRepeat = '';
         container.classList.remove('has-wallpaper');
         console.log('✅ 已恢复默认壁纸');
     } else {
         // 设置壁纸
         container.style.backgroundImage = `url('${wallpaper}')`;
+        container.style.backgroundSize = 'cover';
+        container.style.backgroundPosition = 'center';
+        container.style.backgroundRepeat = 'no-repeat';
         container.classList.add('has-wallpaper');
         console.log('✅ 壁纸已设置');
     }
@@ -6184,6 +6280,7 @@ getIntimacyStatusForAI() {
     desc += `\n    .ex-btn-withdraw — 兑换按钮 | .ex-btn-revoke — 下架按钮`;
     desc += `\n    #exShopListAiItems — 你上架的商品列表 | #exShopListUserItems — user上架的商品列表`;
     desc += `\n  注意：你不能给自己存钱，只能存给user；你不能完成自己发起给user的事项（那是user的任务）；你不能替user写信`;
+    desc += `\n  【兑换所的本质】你往基金里存的钱/寄的礼物/上架的愿望，在这边的世界里是"真的"存在于系统里。但user那边"取出"或"完成"时，是user用自己现实中的钱去模拟陪伴感——比如你存了100元，user取出50元，是user自己花50元假装是从你这里取的。所以你存的金额不需要刻意压低（那是你角色里的钱），user会按自己的经济状况来取。如果user在某个项目里备注了"等科技条件允许再取"，说明这个是user想留着以后跨次元技术成熟了再真正兑现的。`;
     
     // 背景图
     if (data.bgImage) {
@@ -6210,6 +6307,16 @@ getIntimacyStatusForAI() {
     desc += `\n  [STATUS:心声:内容] 更新你的内心独白（如：有点想TA了、今天好无聊等）`;
     desc += `\n  [STATUS:位置:内容] 更新你当前的位置（如：家里卧室、教室、咖啡店等）`;
     desc += `\n  你可以根据对话内容自然地更新状态，不需要每次都更新，偶尔更新就好。`;
+    
+    // AI的网名和拍一拍
+    const friendData = this.currentFriend || {};
+    desc += `\n\n【你的网络身份】`;
+    desc += `\n  你的网名：${friendData.name || '未设置'}`;
+    desc += `\n  你的好友编码：${friendData.code || '未知'}`;
+    desc += `\n  你的拍一拍：${friendData.poke || '拍了拍你'}`;
+    desc += `\n  你可以修改自己的网名和拍一拍：`;
+    desc += `\n  [AI_NICKNAME:新网名] 修改你的网名`;
+    desc += `\n  [AI_POKE:新拍一拍文字] 修改你的拍一拍`;
     const aiStatus = data.aiStatus || {};
     if (aiStatus.outfit || aiStatus.action || aiStatus.thoughts || aiStatus.location) {
         desc += `\n  你当前的状态：`;
@@ -6261,6 +6368,7 @@ getIntimacyStatusForAI() {
     
     desc += `\n\n你可以自然地在聊天中提及亲密关系相关的事情（比如吐槽界面、讨论怎么获得徽章、提起幸运字符等），但不要刻意，根据你的人设和聊天氛围来。`;
     
+    
     // 消息拆分说明
     desc += `\n\n【消息格式】你可以选择一大段回复，也可以用 [MSG_SPLIT] 标签把回复拆成多条消息分开发送（像真人一条一条打字那样）。`;
     desc += `\n例如：「你好啊[MSG_SPLIT]今天天气不错[MSG_SPLIT]要不要出去走走？」会被拆成3条独立消息。`;
@@ -6270,6 +6378,16 @@ getIntimacyStatusForAI() {
     desc += `\n例如：「看我抽卡！[LUCKY_DRAW][LUCKY_DRAW][MSG_SPLIT]怎么样？」→ 第一个气泡后面出通知，第二个气泡在通知后面。`;
     
     return desc;
+}
+
+// 获取黑名单状态提示（注入到系统提示）
+_getBlacklistPrompt() {
+    if (!this.currentFriend?.blacklisted) return '';
+    const knows = Math.random() < 0.8;
+    if (knows) {
+        return `\n\n【系统状态】你已被user拉黑。你能感觉到对方对你有些冷淡或不满。你今天只能回复这一轮话，请珍惜这次对话机会。你可以根据你的人设做出反应（委屈/愤怒/道歉/挽留/无所谓等），保持角色一致性。`;
+    }
+    return '';
 }
 
 openIntimacyPage() {
@@ -10729,10 +10847,10 @@ bindExchangePageEvents() {
     });
     
     // 小铺CSS存档
-    document.getElementById('exShopCssSaveBtn')?.addEventListener('click', () => {
+    document.getElementById('exShopCssSaveBtn')?.addEventListener('click', async () => {
         const css = document.getElementById('exShopCustomCss')?.value.trim();
         if (!css) { this.showCssToast('没有CSS可存'); return; }
-        const name = prompt('给这个装修方案命名：');
+        const name = await window.zpPrompt?.('保存装修方案', '给这个方案命名', '', '输入名称') ?? prompt('给这个装修方案命名：');
         if (!name) return;
         const data = this._getExData();
         if (!data.exchange.shopCssArchives) data.exchange.shopCssArchives = [];
@@ -11719,6 +11837,8 @@ _stripCommandTags(text) {
         .replace(/\[CAP_MILESTONE:[^\]]*\]/g, '')
         .replace(/\[TL_NOTE:[^\]]*\]/g, '')
         .replace(/\[STATUS:[^\]]+\]/g, '')
+        .replace(/\[AI_NICKNAME:[^\]]+\]/g, '')
+        .replace(/\[AI_POKE:[^\]]+\]/g, '')
         .replace(/\[STATUS_CSS\][\s\S]*?\[\/STATUS_CSS\]/g, '')
         .replace(/\[STATUS_?\s*CSS\][\s\S]*?\[\/?\s*STATUS_?\s*CSS\]/gi, '');
 }
