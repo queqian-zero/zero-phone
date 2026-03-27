@@ -373,7 +373,9 @@ class ChatInterface {
             .thinking-toggle.expanded + .thinking-content { display:block; }
             /* 逐条模式的消息间距 */
             .message.msg-sequential { margin-top:2px; }
-            .message.msg-sequential .message-avatar { visibility:hidden;height:0;margin:0;padding:0; }
+            .message.msg-sequential .message-avatar { /* avatar always visible */ }
+            @keyframes bubbleAppear { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+            .message.bubble-appear { animation:bubbleAppear 0.3s ease-out; }
             /* ====== 亲密徽章页 ====== */
             .badge-page { position:fixed;top:0;left:0;right:0;bottom:0;z-index:3550;overflow-y:auto;-webkit-overflow-scrolling:touch; }
             .badge-section { padding:0 20px;margin-bottom:20px; }
@@ -1711,11 +1713,19 @@ ${archiveListText}
                 
                 if (!cleanText) { this._executeSegmentCommands(rawSeg); continue; } // 空段：只执行指令
                 
+                // 逐条延迟显示（第一条立即，后续每条延迟0.8~1.5秒）
+                if (i > 0) {
+                    await new Promise(r => setTimeout(r, 800 + Math.floor(Math.random() * 700)));
+                }
+                
                 // 2. 渲染气泡
                 const offset = i * (2000 + Math.floor(Math.random() * 4000));
                 const partTs = new Date(nowMs + offset).toISOString();
-                const msg = { type: 'ai', text: cleanText, timestamp: partTs, _sequential: i > 0 };
+                const msg = { type: 'ai', text: cleanText, timestamp: partTs, _sequential: i > 0, _animate: true };
                 this.addMessage(msg);
+                
+                // 滚动到底部让用户看到新气泡
+                this.scrollToBottom();
                 
                 // 3. 存储（thinking只存第一条）
                 const storeMsg = { type: 'ai', text: cleanText, timestamp: partTs };
@@ -1867,9 +1877,13 @@ setTimeout(async () => {
         // 如果消息包含[RENDER_HTML]，拆分成多个DOM元素
         const elements = this.createMessageElements(message);
         elements.forEach(el => {
-            // 逐条模式：后续消息隐藏头像+时间
+            // 逐条模式：后续消息减少间距
             if (message._sequential) {
                 el.classList.add('msg-sequential');
+            }
+            // 新消息滑入动画
+            if (message._animate) {
+                el.classList.add('bubble-appear');
             }
             messagesList.appendChild(el);
             this.setupIframeAutoResize(el);
