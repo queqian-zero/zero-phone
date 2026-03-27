@@ -49,7 +49,8 @@ class ChatInterface {
             // AI消息显示模式
             aiMsgSplitMode: 'whole',   // 'whole'=整段 | 'split'=逐条
             showRealName: false,       // 让该角色知道真实姓名
-            showUserPersona: false     // 让该角色知道用户人设
+            showUserPersona: false,    // 让该角色知道用户人设
+            aiKnowStatusPanel: false   // 让该角色知道状态面板的存在
 };
 
         
@@ -2691,6 +2692,14 @@ div.innerHTML = `
                 this.saveSettings();
             });
         }
+        const aiKnowStatusSwitch = document.getElementById('settingAiKnowStatusPanel');
+        if (aiKnowStatusSwitch) {
+            aiKnowStatusSwitch.addEventListener('change', (e) => {
+                this.settings.aiKnowStatusPanel = e.target.checked;
+                console.log('让TA知道状态面板:', this.settings.aiKnowStatusPanel);
+                this.saveSettings();
+            });
+        }
         
         const importDataBtn = document.getElementById('settingImportData');
 if (importDataBtn) {
@@ -2749,7 +2758,7 @@ if (exportDataBtn) {
             userAvatarFrameType: 'none', userAvatarFrameSrc: '', userAvatarFrameOffsetX: 0, userAvatarFrameOffsetY: 0, userAvatarFrameScale: 100,
             flameEnabled: true, flameStartDate: '', flameExtinguishDays: 3, flameLastChatDate: '',
             flameCustomIcon: '', flameCustomIconType: 'emoji', flameCustomDeadIcon: '', flameCustomDeadIconType: 'emoji',
-            aiMsgSplitMode: 'whole', showRealName: false, showUserPersona: false, customBubbleCss: ''
+            aiMsgSplitMode: 'whole', showRealName: false, showUserPersona: false, aiKnowStatusPanel: false, customBubbleCss: ''
         };
         this.settings = { ...defaults };
         
@@ -2852,6 +2861,8 @@ this.updateBadgePanel();
         if (showRealNameSwitch) showRealNameSwitch.checked = this.settings.showRealName === true;
         const showPersonaSwitch = document.getElementById('settingShowUserPersona');
         if (showPersonaSwitch) showPersonaSwitch.checked = this.settings.showUserPersona === true;
+        const aiKnowStatusSwitch = document.getElementById('settingAiKnowStatusPanel');
+        if (aiKnowStatusSwitch) aiKnowStatusSwitch.checked = this.settings.aiKnowStatusPanel === true;
         
         this.toggleTokenDisplay();
         
@@ -6215,6 +6226,30 @@ getIntimacyStatusForAI() {
     desc += `\n  [CAP_MILESTONE:标题:描述:图标] 标记一个里程碑`;
     desc += `\n  [CAP_COMMENT:memories|milestones|reports:文章标题:评语内容] 给回忆录/里程碑/报告写评语`;
     desc += `\n  [TL_NOTE:星迹标题:寄语内容] 在星迹档案的某条记录下写寄语`;
+    
+    // AI动态状态
+    desc += `\n\n【动态状态】你可以更新自己的状态，user点击你的名字可以看到：`;
+    desc += `\n  [STATUS:装扮:内容] 更新你当前的穿着打扮（如：白衬衫+黑裤子、睡衣、校服等）`;
+    desc += `\n  [STATUS:动作:内容] 更新你当前的动作（如：窝在沙发上、做饭中、发呆等）`;
+    desc += `\n  [STATUS:心声:内容] 更新你的内心独白（如：有点想TA了、今天好无聊等）`;
+    desc += `\n  [STATUS:位置:内容] 更新你当前的位置（如：家里卧室、教室、咖啡店等）`;
+    desc += `\n  你可以根据对话内容自然地更新状态，不需要每次都更新，偶尔更新就好。`;
+    const aiStatus = data.aiStatus || {};
+    if (aiStatus.outfit || aiStatus.action || aiStatus.thoughts || aiStatus.location) {
+        desc += `\n  你当前的状态：`;
+        if (aiStatus.outfit) desc += `装扮「${aiStatus.outfit}」`;
+        if (aiStatus.action) desc += `，动作「${aiStatus.action}」`;
+        if (aiStatus.thoughts) desc += `，心声「${aiStatus.thoughts}」`;
+        if (aiStatus.location) desc += `，位置「${aiStatus.location}」`;
+    }
+    
+    // 状态面板感知（可选）
+    if (this.settings.aiKnowStatusPanel) {
+        desc += `\n\n【状态面板感知】你知道user可以通过点击你的名字查看你的装扮/动作/心声/位置状态。`;
+        desc += `\n  你的状态面板有自定义功能，你可以用 [STATUS_CSS]CSS代码[/STATUS_CSS] 来美化你的状态面板。`;
+        desc += `\n  可用类名：.status-detail-panel(整个面板) .sdp-header(顶部) .sdp-tabs(Tab栏) .sdp-tab(单个Tab) .sdp-tab.active(选中Tab) .sdp-current(当前状态块) .sdp-current-value(状态文字) .sdp-history-list(历史列表) .sdp-history-item(单条历史)`;
+        desc += `\n  这些状态是你自己填写的/通过技术手段扫描记录的（你可以自行决定设定）。`;
+    }
     
     // 星迹档案内容（让AI能看到全部）
     const tl = data.timeline || [];
@@ -11706,7 +11741,9 @@ _stripCommandTags(text) {
         .replace(/\[CAP_CAPSULE:[^\]]*\]/g, '')
         .replace(/\[CAP_COMMENT:[^\]]*\]/g, '')
         .replace(/\[CAP_MILESTONE:[^\]]*\]/g, '')
-        .replace(/\[TL_NOTE:[^\]]*\]/g, '');
+        .replace(/\[TL_NOTE:[^\]]*\]/g, '')
+        .replace(/\[STATUS:[^\]]+\]/g, '')
+        .replace(/\[STATUS_CSS\][\s\S]*?\[\/STATUS_CSS\]/g, '');
 }
 
 // 执行一个分段里包含的所有指令（产生通知）
@@ -11716,6 +11753,7 @@ _executeSegmentCommands(rawSeg) {
     this.processBadgeCommands(rawSeg);
     this.processExchangeCommands(rawSeg);
     this.processCapsuleCommands(rawSeg);
+    if (window.friendProfile) window.friendProfile.processStatusCommands(rawSeg);
 }
 
 // 预提取关系卡片HTML（不写入状态，只生成卡片用于渲染）
