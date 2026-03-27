@@ -590,12 +590,13 @@ class ChatInterface {
             });
         }
         
-        // 好友名点击 - 显示状态
+        // 好友名点击 - 显示动态状态栏（由friend-profile.js处理）
         const chatFriendName = document.getElementById('chatFriendName');
         if (chatFriendName) {
+            chatFriendName.style.cursor = 'pointer';
             chatFriendName.addEventListener('click', () => {
                 console.log('👤 点击好友名');
-                this.toggleStatusModal();
+                if (window.friendProfile) window.friendProfile.showStatusDropdown();
             });
         }
         
@@ -1267,45 +1268,6 @@ class ChatInterface {
     }
     
     // ==================== 状态弹窗 ====================
-    
-    toggleStatusModal() {
-        const modal = document.getElementById('statusModal');
-        if (!modal) return;
-        
-        if (modal.style.display === 'none') {
-            this.showStatusModal();
-        } else {
-            this.hideStatusModal();
-        }
-    }
-    
-    showStatusModal() {
-        const modal = document.getElementById('statusModal');
-        if (!modal) return;
-        
-        modal.style.display = 'block';
-        
-        const data = {
-            'statusOutfit': this.currentFriend?.currentOutfit || '休闲装',
-            'statusAction': this.currentFriend?.currentAction || '正在看书',
-            'statusMood': this.currentFriend?.currentMood || '心情不错',
-            'statusLocation': this.currentFriend?.currentLocation || '家里的书房'
-        };
-        
-        Object.keys(data).forEach(id => {
-            const el = document.getElementById(id);
-            if (el) {
-                el.textContent = data[id];
-            }
-        });
-    }
-    
-    hideStatusModal() {
-        const modal = document.getElementById('statusModal');
-        if (modal) {
-            modal.style.display = 'none';
-        }
-    }
     
     // ==================== 菜单 ====================
     

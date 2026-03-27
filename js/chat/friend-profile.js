@@ -30,13 +30,14 @@ class FriendProfileManager {
 
         dd.innerHTML = `
             <div class="ai-status-backdrop" id="aiStatusBackdrop"></div>
-            <div class="ai-status-card">
+            <div class="ai-status-card" id="aiStatusCard">
                 <div class="ai-status-header">
                     <img class="ai-status-avatar" src="${avatarSrc}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 50 50%22><rect width=%2250%22 height=%2250%22 fill=%22%23333%22/></svg>'">
-                    <div>
+                    <div style="flex:1;">
                         <div class="ai-status-name">${this._esc(displayName)}</div>
                         <div class="ai-status-code">${friendCode}</div>
                     </div>
+                    <button class="ai-status-theme-btn" id="aiStatusThemeBtn" title="切换明暗">🌓</button>
                 </div>
                 <div class="ai-status-grid">
                     <div class="ai-status-item" data-status="outfit">
@@ -80,6 +81,18 @@ class FriendProfileManager {
                 this.openStatusDetailPanel(field);
             });
         });
+        
+        // 明暗切换
+        dd.querySelector('#aiStatusThemeBtn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            const card = dd.querySelector('#aiStatusCard');
+            card.classList.toggle('light');
+            this._statusThemeLight = card.classList.contains('light');
+        });
+        // 恢复上次主题
+        if (this._statusThemeLight) {
+            dd.querySelector('#aiStatusCard')?.classList.add('light');
+        }
     }
 
     hideStatusDropdown() {
@@ -118,6 +131,7 @@ class FriendProfileManager {
                 <div class="sdp-header">
                     <button class="sdp-back" id="sdpBack">←</button>
                     <div class="sdp-title">${label}</div>
+                    <button class="ai-status-theme-btn" id="sdpThemeBtn" title="切换明暗">🌓</button>
                     <button class="sdp-customize-btn" id="sdpCustomizeBtn">⚙️</button>
                 </div>
 
@@ -195,6 +209,13 @@ class FriendProfileManager {
 
         // 事件绑定
         panel.querySelector('#sdpBack').addEventListener('click', () => this.closeStatusDetailPanel());
+        
+        // 明暗切换
+        panel.querySelector('#sdpThemeBtn').addEventListener('click', () => {
+            panel.classList.toggle('light');
+            this._statusThemeLight = panel.classList.contains('light');
+        });
+        if (this._statusThemeLight) panel.classList.add('light');
         
         // Tab切换
         panel.querySelectorAll('.sdp-tab').forEach(tab => {
@@ -624,14 +645,3 @@ class FriendProfileManager {
 
 // 全局初始化
 window.friendProfile = new FriendProfileManager();
-
-// 绑定聊天题头名字点击
-document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(() => {
-        const nameEl = document.getElementById('chatFriendName');
-        if (nameEl) {
-            nameEl.style.cursor = 'pointer';
-            nameEl.addEventListener('click', () => window.friendProfile.showStatusDropdown());
-        }
-    }, 800);
-});
