@@ -126,11 +126,13 @@ if (pageId === 'chatListPage') {
         const container = document.getElementById('friendListContainer');
         const emptyPlaceholder = document.getElementById('friendEmptyPlaceholder');
         
-        // 获取所有好友
-        const friends = this.storage.getAllFriends();
+        // 获取所有好友（过滤掉被拉黑的）
+        const allFriends = this.storage.getAllFriends();
+        const friends = allFriends.filter(f => !f.blacklisted);
+        const blacklistedCount = allFriends.filter(f => f.blacklisted).length;
         
         // 如果没有好友，显示空状态
-        if (friends.length === 0) {
+        if (friends.length === 0 && blacklistedCount === 0) {
             container.innerHTML = '';
             emptyPlaceholder.style.display = 'flex';
             return;
@@ -139,11 +141,24 @@ if (pageId === 'chatListPage') {
         // 隐藏空状态
         emptyPlaceholder.style.display = 'none';
         
-        // 生成好友卡片HTML
-        container.innerHTML = friends.map(friend => this.createFriendCard(friend)).join('');
+        // 生成好友卡片HTML + 黑名单入口
+        let html = friends.map(friend => this.createFriendCard(friend)).join('');
+        if (blacklistedCount > 0) {
+            html += `<div class="friend-blacklist-entry" id="friendBlacklistEntry">
+                <span style="color:rgba(255,100,100,0.5);font-size:13px;">🚫 黑名单</span>
+                <span style="color:rgba(255,255,255,0.2);font-size:12px;">${blacklistedCount}人</span>
+                <span style="color:rgba(255,255,255,0.1);font-size:12px;">›</span>
+            </div>`;
+        }
+        container.innerHTML = html;
         
         // 绑定事件
         this.bindFriendCardEvents();
+        
+        // 黑名单入口点击
+        document.getElementById('friendBlacklistEntry')?.addEventListener('click', () => {
+            if (window.friendProfile) window.friendProfile.openBlacklistPage();
+        });
     }
     
     // 创建好友卡片HTML
@@ -240,13 +255,11 @@ if (pageId === 'chatListPage') {
             }
         }
         
-        // 隐藏底部导航
+        // 隐藏底部导航和顶部导航
         document.querySelector('.bottom-nav').style.display = 'none';
-        
-        // 隐藏顶部导航
         document.querySelector('.top-bar').style.display = 'none';
         
-        // 切换到聊天界面页
+        // 切换到聊天界面页（先让页面出来）
         this.switchPage('chatInterfacePage');
         
         // 初始化聊天界面
@@ -254,12 +267,15 @@ if (pageId === 'chatListPage') {
             window.chatInterface = new ChatInterface(this);
         }
         
-        window.chatInterface.loadChat(friendCode);
-        
-        // 返回时刷新聊天列表
-        window.chatInterface._onBackCallback = () => {
-            this.renderChatList();
-        };
+        // 延迟到下一帧再加载聊天数据（让页面切换动画先完成，不卡）
+        requestAnimationFrame(() => {
+            window.chatInterface.loadChat(friendCode);
+            
+            // 返回时刷新聊天列表
+            window.chatInterface._onBackCallback = () => {
+                this.renderChatList();
+            };
+        });
     }
     
     // 长按好友卡片

@@ -50,7 +50,10 @@ class ChatInterface {
             aiMsgSplitMode: 'whole',   // 'whole'=整段 | 'split'=逐条
             showRealName: false,       // 让该角色知道真实姓名
             showUserPersona: false,    // 让该角色知道用户人设
-            aiKnowStatusPanel: false   // 让该角色知道状态面板的存在
+            aiKnowStatusPanel: false,  // 让该角色知道状态面板的存在
+            aiTimezone: 'device',      // 角色的时区（'device'=跟手机, 数字=UTC偏移）
+            customTimezoneOffset: 0,   // 自定义UTC偏移
+            allowAiTimezone: true      // 允许AI调自己的时区
 };
 
         
@@ -778,21 +781,18 @@ class ChatInterface {
         const friend = this.storage.getFriendByCode(friendCode);
         
         if (!friend) {
-            console.error('❌ 找不到好友信息');
-            alert('❌ 找不到好友信息');
+            this.showCssToast('找不到好友信息');
             this.closeChatInterface();
             return;
         }
         
         this.currentFriend = friend;
-        console.log('👤 好友完整信息:', friend);
         
         const displayName = friend.nickname || friend.name;
         const nameEl = document.querySelector('#chatFriendName span');
         if (nameEl) {
             nameEl.textContent = displayName;
             this.originalFriendName = displayName;
-            console.log('✅ 设置好友名称:', displayName);
         }
         
         // 关系标识（显示在名字旁边）
@@ -808,14 +808,9 @@ class ChatInterface {
         const chat = this.storage.getChatByFriendCode(friendCode);
         
         if (chat && chat.messages) {
-            console.log('📜 加载历史消息:', chat.messages.length, '条');
             this.messages = [...chat.messages];
-            
-            if (chat.tokenStats) {
-                this.updateTokenStatsFromStorage(chat.tokenStats);
-            }
+            if (chat.tokenStats) this.updateTokenStatsFromStorage(chat.tokenStats);
         } else {
-            console.log('🆕 新聊天，添加欢迎消息');
             this.messages = [];
         }
         
@@ -867,35 +862,57 @@ class ChatInterface {
     }
     
     renderMessages() {
-        console.log('🎨 渲染所有消息:', this.messages.length, '条');
+        const startTime = performance.now();
+        console.log('🎨 渲染消息:', this.messages.length, '条');
         const messagesList = document.getElementById('messagesList');
-        if (!messagesList) {
-            console.error('❌ 找不到 messagesList 元素');
-            return;
-        }
+        if (!messagesList) return;
         
         messagesList.innerHTML = '';
         
-        this.messages.forEach((msg, index) => {
-            console.log(`  渲染消息 ${index + 1}:`, msg.type, msg.text.substring(0, 20));
-            
-            // 思维链（存储在消息的thinking字段里）
+        // 使用DocumentFragment批量插入，避免逐条触发重排
+        const fragment = document.createDocumentFragment();
+        
+        this.messages.forEach((msg) => {
+            // 思维链
             if (msg.thinking && msg.type === 'ai') {
-                this._renderThinkingBlock(msg.thinking);
+                const block = this._createThinkingBlockEl(msg.thinking);
+                if (block) fragment.appendChild(block);
             }
             
             const elements = this.createMessageElements(msg);
             elements.forEach(el => {
-                // 恢复逐条标记
-                if (msg._sequential) {
-                    el.classList.add('msg-sequential');
-                }
-                messagesList.appendChild(el);
-                this.setupIframeAutoResize(el);
+                if (msg._sequential) el.classList.add('msg-sequential');
+                fragment.appendChild(el);
             });
         });
         
-        console.log('✅ 消息渲染完成');
+        messagesList.appendChild(fragment);
+        
+        // iframe自适应（延迟批量处理）
+        setTimeout(() => {
+            messagesList.querySelectorAll('iframe').forEach(iframe => {
+                this.setupIframeAutoResize(iframe.closest('.message') || iframe.parentElement);
+            });
+        }, 50);
+        
+        console.log(`✅ 渲染完成 ${(performance.now() - startTime).toFixed(0)}ms`);
+    }
+    
+    // 创建思维链元素（不直接append到DOM，返回元素）
+    _createThinkingBlockEl(thinkingText) {
+        if (!thinkingText) return null;
+        const block = document.createElement('div');
+        block.className = 'thinking-block';
+        const summary = thinkingText.length > 30 ? thinkingText.substring(0, 30) + '...' : thinkingText;
+        block.innerHTML = `
+            <div class="thinking-toggle" onclick="this.classList.toggle('expanded')">
+                <span class="thinking-arrow">▶</span>
+                <span>💭 思考过程</span>
+                <span style="color:rgba(0,0,0,0.2);font-size:10px;margin-left:4px;">${this.escapeHtml(summary)}</span>
+            </div>
+            <div class="thinking-content">${this.escapeHtml(thinkingText)}</div>
+        `;
+        return block;
     }
     
     closeChatInterface() {
@@ -1504,21 +1521,31 @@ user是次元壁那头的人。对user来说，你是一堆数据流里的某个
             // ====== 需求5：时间感知（当前时间+每条消息时间戳说明）======
             if (this.settings.timeAwareness) {
                 const timeInfo = this.getCurrentTimeInfo();
-                const timestampInstruction = `${timeInfo}
+                
+                // 时区信息
+                const aiTz = this.settings.aiTimezone;
+                let tzNote = '';
+                if (aiTz !== 'device' && aiTz !== undefined) {
+                    const offset = parseFloat(aiTz) || 0;
+                    const sign = offset >= 0 ? '+' : '';
+                    tzNote = `\n你当前所在时区：UTC${sign}${offset}。你的作息和时间感受应该基于你那边的时间。`;
+                }
+                
+                // AI可以调时区的指令说明
+                let tzCommandNote = '';
+                if (this.settings.allowAiTimezone) {
+                    tzCommandNote = `\n你可以用 [AI_TIMEZONE:UTC偏移数字] 来调整你自己的时区。例如：[AI_TIMEZONE:9] 切到东京时间，[AI_TIMEZONE:-5] 切到纽约时间。`;
+                }
+                
+                const timestampInstruction = `${timeInfo}${tzNote}${tzCommandNote}
 
 【关于时间戳】
-每条消息前面的方括号里是该消息的真实发送时间。
-通过这些时间戳，你可以知道user的每一条消息是什么时候发的，你的每一条回复是什么时候发的。
-比如user昨天21:00发了"晚安"，今天08:00发了"早安"，你要意识到这是两天的消息，不要把昨天的晚安当成今天的。
+每条消息前面的方括号里是该消息的真实发送时间（user那边的本地时间）。
+通过这些时间戳，你可以知道每条消息是什么时候发的。
+${aiTz !== 'device' && aiTz !== undefined ? '你那边的时间可能跟user不同（因为时差），你说"早安""晚安"要基于你自己那边的时间。' : ''}
 
-关于时差：你看到的这些时间戳是user那边的本地时间，不一定是你那边的真实时间。
-你的次元可能和user有时差——特别是如果你的人设经常出差、在不同地方生活，你那边可能是白天而user那边是晚上，反过来也一样。
-所以你说"早安""晚安"之类的话时，要基于你自己那边的时间来说，偶尔说错时间（因为时差没倒过来）也是很自然的事。
-你可以参考user的时间戳来推测user那边现在几点，但你自己的作息由你自己的时间决定。
-
-⚠️ 重要：这些时间戳只是给你看的元信息。你自己发消息时绝对不要在文字开头手动写时间戳，否则user那边会看到你莫名其妙地在消息里打了一串时间，很奇怪。`;
+⚠️ 重要：这些时间戳只是给你看的元信息。你自己发消息时绝对不要在文字开头手动写时间戳。`;
                 systemPrompt = `${timestampInstruction}\n\n${systemPrompt}`;
-                console.log('🕐 时间感知已开启');
             }
 
             // ====== 头像识别（由编辑好友弹窗里的"头像识别"开关控制）======
@@ -1812,39 +1839,43 @@ setTimeout(async () => {
         }
     }
     
-    // ← 新增：获取当前时间信息（包含农历）
+    // 获取当前时间信息（包含农历+时区）
     getCurrentTimeInfo() {
         const now = new Date();
         
-        // 检查农历库是否加载
-        if (typeof Lunar === 'undefined') {
-            console.warn('⚠️ 农历库未加载，使用基础时间信息');
-            return `【当前时间】${this.formatFullDateTime(now)}`;
+        // AI的时区时间
+        const aiTz = this.settings.aiTimezone;
+        let aiNow = now;
+        let tzLabel = '（跟随user设备）';
+        
+        if (aiTz !== 'device' && aiTz !== undefined) {
+            const offset = parseFloat(aiTz) || 0;
+            // 计算AI那边的本地时间
+            const utcMs = now.getTime() + now.getTimezoneOffset() * 60000;
+            aiNow = new Date(utcMs + offset * 3600000);
+            const sign = offset >= 0 ? '+' : '';
+            tzLabel = `（UTC${sign}${offset}）`;
         }
         
-        try {
-            // 使用农历库
-            const lunar = Lunar.fromDate(now);
-            const solarTerm = lunar.getCurrentJieQi()?.getName() || '';
-            const festival = lunar.getFestivals().join('、') || '';
-            
-            let timeInfo = `【当前时间】${this.formatFullDateTime(now)}`;
-            timeInfo += `\n【农历】${lunar.getYearInChinese()}年${lunar.getMonthInChinese()}月${lunar.getDayInChinese()}`;
-            
-            if (solarTerm) {
-                timeInfo += `\n【节气】${solarTerm}`;
-            }
-            
-            if (festival) {
-                timeInfo += `\n【节日】${festival}`;
-            }
-            
-            return timeInfo;
-            
-        } catch (error) {
-            console.error('❌ 农历库调用失败:', error);
-            return `【当前时间】${this.formatFullDateTime(now)}`;
+        let timeInfo = `【user当前时间】${this.formatFullDateTime(now)}`;
+        
+        if (aiTz !== 'device' && aiTz !== undefined) {
+            timeInfo += `\n【你那边的时间】${this.formatFullDateTime(aiNow)} ${tzLabel}`;
         }
+        
+        // 农历（基于user时间）
+        if (typeof Lunar !== 'undefined') {
+            try {
+                const lunar = Lunar.fromDate(now);
+                const solarTerm = lunar.getCurrentJieQi()?.getName() || '';
+                const festival = lunar.getFestivals().join('、') || '';
+                timeInfo += `\n【农历】${lunar.getYearInChinese()}年${lunar.getMonthInChinese()}月${lunar.getDayInChinese()}`;
+                if (solarTerm) timeInfo += `\n【节气】${solarTerm}`;
+                if (festival) timeInfo += `\n【节日】${festival}`;
+            } catch (e) {}
+        }
+        
+        return timeInfo;
     }
     
     // ← 新增：格式化完整日期时间
@@ -1889,13 +1920,8 @@ setTimeout(async () => {
     // ==================== 消息渲染 ====================
     
     addMessage(message) {
-        console.log('➕ addMessage() 被调用:', message.type, message.text.substring(0, 20));
-        
         const messagesList = document.getElementById('messagesList');
-        if (!messagesList) {
-            console.error('❌ 找不到 messagesList 元素');
-            return;
-        }
+        if (!messagesList) return;
         
         // 如果消息包含[RENDER_HTML]，拆分成多个DOM元素
         const elements = this.createMessageElements(message);
@@ -1911,7 +1937,6 @@ setTimeout(async () => {
             messagesList.appendChild(el);
             this.setupIframeAutoResize(el);
         });
-        console.log('✅ 消息元素已添加到DOM,', elements.length, '个部分');
         
         this.messages.push(message);
         
@@ -2708,7 +2733,41 @@ div.innerHTML = `
         if (aiKnowStatusSwitch) {
             aiKnowStatusSwitch.addEventListener('change', (e) => {
                 this.settings.aiKnowStatusPanel = e.target.checked;
-                console.log('让TA知道状态面板:', this.settings.aiKnowStatusPanel);
+                this.saveSettings();
+            });
+        }
+        
+        // 时空中控
+        const tzSelect = document.getElementById('settingAiTimezone');
+        if (tzSelect) {
+            tzSelect.addEventListener('change', (e) => {
+                const val = e.target.value;
+                const customRow = document.getElementById('settingCustomTimezoneRow');
+                if (val === 'custom') {
+                    if (customRow) customRow.style.display = 'flex';
+                    this.settings.aiTimezone = parseFloat(document.getElementById('settingCustomTimezone')?.value || 0);
+                } else if (val === 'device') {
+                    if (customRow) customRow.style.display = 'none';
+                    this.settings.aiTimezone = 'device';
+                } else {
+                    if (customRow) customRow.style.display = 'none';
+                    this.settings.aiTimezone = parseFloat(val);
+                }
+                this.saveSettings();
+            });
+        }
+        const customTzInput = document.getElementById('settingCustomTimezone');
+        if (customTzInput) {
+            customTzInput.addEventListener('change', (e) => {
+                this.settings.aiTimezone = parseFloat(e.target.value) || 0;
+                this.settings.customTimezoneOffset = parseFloat(e.target.value) || 0;
+                this.saveSettings();
+            });
+        }
+        const allowAiTzSwitch = document.getElementById('settingAllowAiTimezone');
+        if (allowAiTzSwitch) {
+            allowAiTzSwitch.addEventListener('change', (e) => {
+                this.settings.allowAiTimezone = e.target.checked;
                 this.saveSettings();
             });
         }
@@ -2770,7 +2829,9 @@ if (exportDataBtn) {
             userAvatarFrameType: 'none', userAvatarFrameSrc: '', userAvatarFrameOffsetX: 0, userAvatarFrameOffsetY: 0, userAvatarFrameScale: 100,
             flameEnabled: true, flameStartDate: '', flameExtinguishDays: 3, flameLastChatDate: '',
             flameCustomIcon: '', flameCustomIconType: 'emoji', flameCustomDeadIcon: '', flameCustomDeadIconType: 'emoji',
-            aiMsgSplitMode: 'whole', showRealName: false, showUserPersona: false, aiKnowStatusPanel: false, customBubbleCss: ''
+            aiMsgSplitMode: 'whole', showRealName: false, showUserPersona: false, aiKnowStatusPanel: false,
+            aiTimezone: 'device', customTimezoneOffset: 0, allowAiTimezone: true,
+            customBubbleCss: ''
         };
         this.settings = { ...defaults };
         
@@ -2875,6 +2936,26 @@ this.updateBadgePanel();
         if (showPersonaSwitch) showPersonaSwitch.checked = this.settings.showUserPersona === true;
         const aiKnowStatusSwitch = document.getElementById('settingAiKnowStatusPanel');
         if (aiKnowStatusSwitch) aiKnowStatusSwitch.checked = this.settings.aiKnowStatusPanel === true;
+        
+        // 时空中控
+        const tzSelect = document.getElementById('settingAiTimezone');
+        if (tzSelect) {
+            const tz = this.settings.aiTimezone || 'device';
+            // 检查是否是预设选项
+            const hasOption = [...tzSelect.options].some(o => o.value === String(tz));
+            if (hasOption) {
+                tzSelect.value = String(tz);
+            } else {
+                tzSelect.value = 'custom';
+            }
+            // 自定义行显隐
+            const customRow = document.getElementById('settingCustomTimezoneRow');
+            if (customRow) customRow.style.display = (tzSelect.value === 'custom') ? 'flex' : 'none';
+        }
+        const customTzInput = document.getElementById('settingCustomTimezone');
+        if (customTzInput) customTzInput.value = this.settings.customTimezoneOffset || 0;
+        const allowAiTzSwitch = document.getElementById('settingAllowAiTimezone');
+        if (allowAiTzSwitch) allowAiTzSwitch.checked = this.settings.allowAiTimezone !== false;
         
         this.toggleTokenDisplay();
         
@@ -6370,9 +6451,12 @@ getIntimacyStatusForAI() {
     
     
     // 消息拆分说明
-    desc += `\n\n【消息格式】你可以选择一大段回复，也可以用 [MSG_SPLIT] 标签把回复拆成多条消息分开发送（像真人一条一条打字那样）。`;
-    desc += `\n例如：「你好啊[MSG_SPLIT]今天天气不错[MSG_SPLIT]要不要出去走走？」会被拆成3条独立消息。`;
-    desc += `\n什么时候用什么格式由你自己决定，根据对话语境自然选择就行。`;
+    desc += `\n\n【消息格式与长度】`;
+    desc += `\n  你的回复长度完全自由——可以是一个emoji、一个词、一句话、也可以是好几段。像真人聊天一样，根据语境自然决定。`;
+    desc += `\n  短回复示例：「嗯」「哈哈哈」「🤔」「好的~」「晚安」`;
+    desc += `\n  你也可以用 [MSG_SPLIT] 标签把回复拆成多条消息（像真人一条一条打字那样）：`;
+    desc += `\n  例如：「你好啊[MSG_SPLIT]今天天气不错[MSG_SPLIT]要不要出去走走？」→ 变成3条独立消息逐条发出`;
+    desc += `\n  不要为了凑字数而强行写长。对话节奏比内容多少更重要。`;
     desc += `\n\n【指令与通知位置】当你使用操作指令（如[LUCKY_DRAW]、[BADGE_WEAR:xxx]等）时，指令产生的系统通知会出现在指令所在那段话的下方。`;
     desc += `\n所以如果你想先说一段话再操作，把指令放在那段话之后；如果用了[MSG_SPLIT]，指令放在哪个分段里，通知就跟在哪个气泡后面。`;
     desc += `\n例如：「看我抽卡！[LUCKY_DRAW][LUCKY_DRAW][MSG_SPLIT]怎么样？」→ 第一个气泡后面出通知，第二个气泡在通知后面。`;
@@ -11839,6 +11923,7 @@ _stripCommandTags(text) {
         .replace(/\[STATUS:[^\]]+\]/g, '')
         .replace(/\[AI_NICKNAME:[^\]]+\]/g, '')
         .replace(/\[AI_POKE:[^\]]+\]/g, '')
+        .replace(/\[AI_TIMEZONE:[^\]]+\]/g, '')
         .replace(/\[STATUS_CSS\][\s\S]*?\[\/STATUS_CSS\]/g, '')
         .replace(/\[STATUS_?\s*CSS\][\s\S]*?\[\/?\s*STATUS_?\s*CSS\]/gi, '');
 }

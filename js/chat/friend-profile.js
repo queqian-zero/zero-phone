@@ -719,6 +719,22 @@ class FriendProfileManager {
             }
         }
         
+        // [AI_TIMEZONE:UTC偏移] - AI调整自己的时区
+        const tzMatch = text.match(/\[AI_TIMEZONE:([^\]]+)\]/);
+        if (tzMatch) {
+            text = text.replace(/\[AI_TIMEZONE:[^\]]+\]/g, '');
+            if (ci.settings?.allowAiTimezone) {
+                const offset = parseFloat(tzMatch[1].trim());
+                if (!isNaN(offset) && offset >= -12 && offset <= 14) {
+                    ci.settings.aiTimezone = offset;
+                    ci.saveSettings();
+                    const sign = offset >= 0 ? '+' : '';
+                    const friendName = ci.currentFriend?.nickname || ci.currentFriend?.name || 'TA';
+                    ci.showCssSystemMessage(`🕐 ${friendName} 把时区调整到了 UTC${sign}${offset}`);
+                }
+            }
+        }
+        
         // [STATUS_CSS]css[/STATUS_CSS] - AI美化状态面板
         const cssMatcher = text.match(/\[STATUS_?\s*CSS\]([\s\S]*?)\[\/?\s*STATUS_?\s*CSS\]/i);
         if (cssMatcher) {
