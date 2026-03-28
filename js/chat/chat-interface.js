@@ -839,36 +839,29 @@ class ChatInterface {
     }
     
     // 语音转文字（点击语音条触发打字机效果）
-    // 语音条点击：切换显示/隐藏文字（打字机效果）
+    // 语音条点击：切换显示/隐藏文字
     _toggleVoiceText(el, text) {
         const textArea = el.querySelector('.voice-text-area');
         if (!textArea) return;
         
-        if (textArea.style.display !== 'none' && textArea.dataset.done) {
-            // 已展开 → 收回
+        if (textArea.style.display !== 'none') {
             textArea.style.display = 'none';
             el.querySelector('.voice-play-icon').innerHTML = '&#9654;';
             return;
         }
         
-        // 展开
+        // 展开 + 打字机
         textArea.style.display = 'block';
+        textArea.textContent = '';
         el.querySelector('.voice-play-icon').innerHTML = '&#9660;';
-        
-        if (textArea.dataset.done) return; // 已打过字直接显示
-        
-        // 首次：打字机效果
-        textArea.dataset.done = '1';
         let i = 0;
-        const typeWriter = () => {
-            if (i < text.length) {
-                textArea.textContent = text.substring(0, i + 1);
-                textArea.innerHTML = this._renderInlineMarkdown(this.escapeHtml(textArea.textContent));
-                i++;
-                setTimeout(typeWriter, 30 + Math.random() * 40);
+        const tw = () => {
+            if (i < text.length && textArea.style.display !== 'none') {
+                textArea.innerHTML = this._renderInlineMarkdown(this.escapeHtml(text.substring(0, ++i)));
+                setTimeout(tw, 30 + Math.random() * 40);
             }
         };
-        typeWriter();
+        tw();
     }
     
     // ==================== 真发图片 ====================
@@ -2595,7 +2588,7 @@ div.innerHTML = `
                     ${message._voice ? this._renderVoiceBubble(message) : ''}
                     ${message._fakeImage ? `<div class="fake-image-card" style="position:relative;background:rgba(128,128,128,0.06);border:1px dashed rgba(128,128,128,0.15);border-radius:10px;min-width:140px;min-height:80px;max-width:200px;overflow:hidden;cursor:pointer;">
                         <div class="fake-image-desc" style="padding:14px;font-size:12px;opacity:0.5;text-align:center;line-height:1.5;">${this.escapeHtml(message._fakeImage)}</div>
-                        <div class="fake-image-cover" style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(60,60,60,0.85);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;font-size:12px;color:rgba(255,255,255,0.35);letter-spacing:1px;">[图片]</div>
+                        <div class="fake-image-cover" style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(60,60,60,0.85);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;font-size:12px;color:rgba(255,255,255,0.35);letter-spacing:1px;transition:opacity 0.25s ease,visibility 0.25s ease;">[图片]</div>
                     </div>` : ''}
                     ${message.text && !message._imageOnly && !message._voice && !message._fakeImage ? `<div class="message-text">${this.renderMessageContent(message.text)}</div>` : ''}
                 </div>
@@ -2622,12 +2615,15 @@ div.innerHTML = `
             voiceBar.addEventListener('click', () => this._toggleVoiceText(voiceBar, message._voiceText));
         }
         
-        // 假图片点击（切换覆盖层）
+        // 假图片点击（切换覆盖层，带动画）
         const fakeImg = div.querySelector('.fake-image-card');
         if (fakeImg) {
             fakeImg.addEventListener('click', () => {
                 const cover = fakeImg.querySelector('.fake-image-cover');
-                if (cover) cover.style.display = cover.style.display === 'none' ? 'flex' : 'none';
+                if (!cover) return;
+                const hidden = cover.style.opacity === '0';
+                cover.style.opacity = hidden ? '1' : '0';
+                cover.style.visibility = hidden ? 'visible' : 'hidden';
             });
         }
         
