@@ -310,47 +310,64 @@ class FriendProfileManager {
         this._removeStatusPanelCss();
     }
 
-    // 合并视图：所有四种状态放在一起展示
+    // 合并视图：按时间线显示所有状态变更
     _renderMergedView(status, history, friendName, fieldLabels) {
-        const fields = ['outfit', 'action', 'thoughts', 'location'];
-        let html = '';
+        // 当前状态汇总卡
+        let html = `<div class="sdp-current" style="margin:0 16px 12px;">
+            <div class="sdp-current-label" style="margin-bottom:10px;">当前状态</div>`;
+        ['outfit','action','thoughts','location'].forEach(f => {
+            const val = status[f] || '';
+            html += `<div style="margin-bottom:8px;">
+                <span style="font-size:11px;color:rgba(240,147,43,0.6);">${fieldLabels[f]}</span>
+                <div style="font-size:14px;color:${val ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.15)'};margin-top:2px;">${val ? this._esc(val) : '未设置'}</div>
+            </div>`;
+        });
+        html += `</div>`;
         
-        for (const f of fields) {
-            const cur = status[f] || '';
-            const curDate = status[f + 'Date'] || '';
-            const list = history[f] || [];
-            
-            html += `<div class="sdp-merged-section">
-                <div class="sdp-merged-label">${fieldLabels[f]}</div>
-                <div class="sdp-current" style="margin:0 16px 8px;">
-                    ${cur ? `
-                        <div class="sdp-current-value" style="font-size:15px;">${this._esc(cur)}</div>
-                        <div class="sdp-current-date">${curDate ? new Date(curDate).toLocaleString('zh-CN') : ''}</div>
-                    ` : `<div class="sdp-empty" style="padding:10px;">${friendName}还没设置</div>`}
-                </div>`;
-            
-            if (list.length > 0) {
-                html += `<div style="padding:0 16px 12px;">`;
-                html += list.slice().reverse().slice(0, 3).map((h, i) => {
-                    const realIdx = list.length - 1 - i;
-                    return `<div class="sdp-history-item" style="margin-bottom:4px;">
-                        <div class="sdp-history-value" style="font-size:12px;">${this._esc(h.value)}</div>
-                        <div class="sdp-history-meta">
-                            <span>${h.date ? new Date(h.date).toLocaleString('zh-CN') : ''}</span>
-                            <div style="display:flex;gap:6px;">
-                                <button class="sdp-history-edit" data-field="${f}" data-idx="${realIdx}" style="padding:2px 8px;border:none;border-radius:6px;background:rgba(100,180,255,0.08);color:rgba(100,180,255,0.6);font-size:9px;cursor:pointer;">改</button>
-                                <button class="sdp-history-del" data-field="${f}" data-idx="${realIdx}">删</button>
-                            </div>
-                        </div>
-                    </div>`;
-                }).join('');
-                if (list.length > 3) {
-                    html += `<div style="text-align:center;font-size:10px;color:rgba(255,255,255,0.15);padding:4px;">还有${list.length - 3}条更早的记录（切到分开模式查看全部）</div>`;
-                }
-                html += `</div>`;
+        // 合并所有历史记录并按时间排序
+        const allHistory = [];
+        ['outfit','action','thoughts','location'].forEach(f => {
+            (history[f] || []).forEach((h, idx) => {
+                allHistory.push({ field: f, label: fieldLabels[f], value: h.value, date: h.date, fieldKey: f, idx });
+            });
+            // 加入当前值（作为最新的一条）
+            if (status[f]) {
+                allHistory.push({ field: f, label: fieldLabels[f], value: status[f], date: status[f + 'Date'] || '', isCurrent: true });
             }
-            html += `</div>`;
+        });
+        allHistory.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+        
+        // 按日期分组显示
+        html += `<div class="sdp-history-title" style="margin-top:4px;">全部动态 (${allHistory.length})</div>`;
+        html += `<div style="padding:0 16px 40px;">`;
+        
+        if (allHistory.length === 0) {
+            html += '<div class="sdp-empty">暂无记录</div>';
+        } else {
+            // 尝试按相近时间(5分钟内)聚合成卡片
+            const cards = [];
+            let currentCard = null;
+            allHistory.forEach(item => {
+                const ts = new Date(item.date || 0).getTime();
+                if (!currentCard || Math.abs(ts - currentCard.ts) > 5 * 60000) {
+                    currentCard = { ts, date: item.date, items: [] };
+                    cards.push(currentCard);
+                }
+                currentCard.items.push(item);
+            });
+            
+            html += cards.map(card => {
+                const dateStr = card.date ? new Date(card.date).toLocaleString('zh-CN') : '';
+                const itemsHtml = card.items.map(item => 
+                    `<div style="margin-bottom:6px;"><span style="font-weight:600;color:rgba(240,147,43,0.7);font-size:12px;">${item.label.substring(2)}：</span><span style="color:rgba(255,255,255,0.7);font-size:13px;">${this._esc(item.value)}</span>${item.isCurrent ? '<span style="font-size:9px;color:rgba(100,255,100,0.4);margin-left:6px;">当前</span>' : ''}</div>`
+                ).join('');
+                return `<div class="sdp-history-item" style="margin-bottom:8px;">
+                    <div style="font-size:10px;color:rgba(255,255,255,0.2);margin-bottom:6px;">${dateStr}</div>
+                    ${itemsHtml}
+                </div>`;
+            }).join('');
         }
+        html += `</div>`;
         
         return html;
     }
@@ -489,6 +506,10 @@ class FriendProfileManager {
                 <div class="fp-row">
                     <div class="fp-row-label">拍一拍</div>
                     <div class="fp-row-value">${this._esc(friend.poke) || '拍了拍你'}</div>
+                </div>
+                <div class="fp-row">
+                    <div class="fp-row-label">个性签名</div>
+                    <div class="fp-row-value">${this._esc(friend.signature) || '这个人很懒...'}</div>
                 </div>
             </div>
 
@@ -732,6 +753,19 @@ class FriendProfileManager {
                     const friendName = ci.currentFriend?.nickname || ci.currentFriend?.name || 'TA';
                     ci.showCssSystemMessage(`🕐 ${friendName} 把时区调整到了 UTC${sign}${offset}`);
                 }
+            }
+        }
+        
+        // [AI_SIGNATURE:签名内容] - AI修改自己的个性签名
+        const sigMatch = text.match(/\[AI_SIGNATURE:([^\]]+)\]/);
+        if (sigMatch) {
+            const newSig = sigMatch[1].trim();
+            text = text.replace(/\[AI_SIGNATURE:[^\]]+\]/g, '');
+            if (newSig && ci.storage) {
+                ci.storage.updateFriend(ci.currentFriendCode, { signature: newSig });
+                if (ci.currentFriend) ci.currentFriend.signature = newSig;
+                const friendName = ci.currentFriend?.nickname || ci.currentFriend?.name || 'TA';
+                ci.showCssSystemMessage(`✏️ ${friendName} 更新了个性签名`);
             }
         }
         

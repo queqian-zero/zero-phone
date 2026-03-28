@@ -863,39 +863,100 @@ class ChatInterface {
     
     renderMessages() {
         const startTime = performance.now();
-        console.log('🎨 渲染消息:', this.messages.length, '条');
         const messagesList = document.getElementById('messagesList');
         if (!messagesList) return;
         
         messagesList.innerHTML = '';
         
-        // 使用DocumentFragment批量插入，避免逐条触发重排
-        const fragment = document.createDocumentFragment();
+        // 只渲染最近N条，大幅减少初始加载时间
+        const INITIAL_RENDER = 50;
+        const total = this.messages.length;
+        this._renderStartIndex = Math.max(0, total - INITIAL_RENDER);
         
-        this.messages.forEach((msg) => {
-            // 思维链
+        // "加载更多"按钮
+        if (this._renderStartIndex > 0) {
+            const loadMoreBtn = document.createElement('div');
+            loadMoreBtn.id = 'loadMoreMsgsBtn';
+            loadMoreBtn.style.cssText = 'text-align:center;padding:12px;color:rgba(255,255,255,0.3);font-size:12px;cursor:pointer;';
+            loadMoreBtn.textContent = `▲ 加载更早的消息（还有${this._renderStartIndex}条）`;
+            loadMoreBtn.addEventListener('click', () => this._loadMoreMessages());
+            messagesList.appendChild(loadMoreBtn);
+        }
+        
+        // 渲染可见消息
+        const fragment = document.createDocumentFragment();
+        for (let i = this._renderStartIndex; i < total; i++) {
+            const msg = this.messages[i];
             if (msg.thinking && msg.type === 'ai') {
                 const block = this._createThinkingBlockEl(msg.thinking);
                 if (block) fragment.appendChild(block);
             }
-            
             const elements = this.createMessageElements(msg);
             elements.forEach(el => {
                 if (msg._sequential) el.classList.add('msg-sequential');
                 fragment.appendChild(el);
             });
-        });
-        
+        }
         messagesList.appendChild(fragment);
         
-        // iframe自适应（延迟批量处理）
+        // iframe自适应
         setTimeout(() => {
             messagesList.querySelectorAll('iframe').forEach(iframe => {
                 this.setupIframeAutoResize(iframe.closest('.message') || iframe.parentElement);
             });
         }, 50);
         
-        console.log(`✅ 渲染完成 ${(performance.now() - startTime).toFixed(0)}ms`);
+        console.log(`✅ 渲染${total - this._renderStartIndex}/${total}条 ${(performance.now() - startTime).toFixed(0)}ms`);
+    }
+    
+    // 加载更早的消息
+    _loadMoreMessages() {
+        const BATCH = 50;
+        const newStart = Math.max(0, this._renderStartIndex - BATCH);
+        const messagesList = document.getElementById('messagesList');
+        if (!messagesList) return;
+        
+        // 记录当前滚动位置
+        const container = document.getElementById('messagesContainer');
+        const oldHeight = messagesList.scrollHeight;
+        
+        // 移除旧的"加载更多"按钮
+        document.getElementById('loadMoreMsgsBtn')?.remove();
+        
+        // 在顶部插入更早的消息
+        const fragment = document.createDocumentFragment();
+        
+        // 新的"加载更多"按钮
+        if (newStart > 0) {
+            const btn = document.createElement('div');
+            btn.id = 'loadMoreMsgsBtn';
+            btn.style.cssText = 'text-align:center;padding:12px;color:rgba(255,255,255,0.3);font-size:12px;cursor:pointer;';
+            btn.textContent = `▲ 加载更早的消息（还有${newStart}条）`;
+            btn.addEventListener('click', () => this._loadMoreMessages());
+            fragment.appendChild(btn);
+        }
+        
+        for (let i = newStart; i < this._renderStartIndex; i++) {
+            const msg = this.messages[i];
+            if (msg.thinking && msg.type === 'ai') {
+                const block = this._createThinkingBlockEl(msg.thinking);
+                if (block) fragment.appendChild(block);
+            }
+            const elements = this.createMessageElements(msg);
+            elements.forEach(el => {
+                if (msg._sequential) el.classList.add('msg-sequential');
+                fragment.appendChild(el);
+            });
+        }
+        
+        messagesList.insertBefore(fragment, messagesList.firstChild);
+        this._renderStartIndex = newStart;
+        
+        // 保持滚动位置（不跳到顶部）
+        if (container) {
+            const newHeight = messagesList.scrollHeight;
+            container.scrollTop += (newHeight - oldHeight);
+        }
     }
     
     // 创建思维链元素（不直接append到DOM，返回元素）
@@ -2737,33 +2798,12 @@ div.innerHTML = `
             });
         }
         
-        // 时空中控
-        const tzSelect = document.getElementById('settingAiTimezone');
-        if (tzSelect) {
-            tzSelect.addEventListener('change', (e) => {
-                const val = e.target.value;
-                const customRow = document.getElementById('settingCustomTimezoneRow');
-                if (val === 'custom') {
-                    if (customRow) customRow.style.display = 'flex';
-                    this.settings.aiTimezone = parseFloat(document.getElementById('settingCustomTimezone')?.value || 0);
-                } else if (val === 'device') {
-                    if (customRow) customRow.style.display = 'none';
-                    this.settings.aiTimezone = 'device';
-                } else {
-                    if (customRow) customRow.style.display = 'none';
-                    this.settings.aiTimezone = parseFloat(val);
-                }
-                this.saveSettings();
-            });
+        // 时空中控 - 点击打开时区选择面板
+        const tzBtn = document.getElementById('settingTimezoneBtn');
+        if (tzBtn) {
+            tzBtn.addEventListener('click', () => this._openTimezonePanel());
         }
-        const customTzInput = document.getElementById('settingCustomTimezone');
-        if (customTzInput) {
-            customTzInput.addEventListener('change', (e) => {
-                this.settings.aiTimezone = parseFloat(e.target.value) || 0;
-                this.settings.customTimezoneOffset = parseFloat(e.target.value) || 0;
-                this.saveSettings();
-            });
-        }
+        this._updateTimezoneDesc();
         const allowAiTzSwitch = document.getElementById('settingAllowAiTimezone');
         if (allowAiTzSwitch) {
             allowAiTzSwitch.addEventListener('change', (e) => {
@@ -2938,22 +2978,7 @@ this.updateBadgePanel();
         if (aiKnowStatusSwitch) aiKnowStatusSwitch.checked = this.settings.aiKnowStatusPanel === true;
         
         // 时空中控
-        const tzSelect = document.getElementById('settingAiTimezone');
-        if (tzSelect) {
-            const tz = this.settings.aiTimezone || 'device';
-            // 检查是否是预设选项
-            const hasOption = [...tzSelect.options].some(o => o.value === String(tz));
-            if (hasOption) {
-                tzSelect.value = String(tz);
-            } else {
-                tzSelect.value = 'custom';
-            }
-            // 自定义行显隐
-            const customRow = document.getElementById('settingCustomTimezoneRow');
-            if (customRow) customRow.style.display = (tzSelect.value === 'custom') ? 'flex' : 'none';
-        }
-        const customTzInput = document.getElementById('settingCustomTimezone');
-        if (customTzInput) customTzInput.value = this.settings.customTimezoneOffset || 0;
+        this._updateTimezoneDesc();
         const allowAiTzSwitch = document.getElementById('settingAllowAiTimezone');
         if (allowAiTzSwitch) allowAiTzSwitch.checked = this.settings.allowAiTimezone !== false;
         
@@ -6395,9 +6420,11 @@ getIntimacyStatusForAI() {
     desc += `\n  你的网名：${friendData.name || '未设置'}`;
     desc += `\n  你的好友编码：${friendData.code || '未知'}`;
     desc += `\n  你的拍一拍：${friendData.poke || '拍了拍你'}`;
-    desc += `\n  你可以修改自己的网名和拍一拍：`;
+    desc += `\n  你的个性签名：${friendData.signature || '未设置'}`;
+    desc += `\n  你可以修改自己的网名、拍一拍和签名：`;
     desc += `\n  [AI_NICKNAME:新网名] 修改你的网名`;
     desc += `\n  [AI_POKE:新拍一拍文字] 修改你的拍一拍`;
+    desc += `\n  [AI_SIGNATURE:新签名] 修改你的个性签名`;
     const aiStatus = data.aiStatus || {};
     if (aiStatus.outfit || aiStatus.action || aiStatus.thoughts || aiStatus.location) {
         desc += `\n  你当前的状态：`;
@@ -6465,6 +6492,91 @@ getIntimacyStatusForAI() {
 }
 
 // 获取黑名单状态提示（注入到系统提示）
+// ==================== 时空中控面板 ====================
+_openTimezonePanel() {
+    document.getElementById('tzPanelOverlay')?.remove();
+    
+    const timezones = [
+        { val:'device', label:'📱 跟随手机' },
+        { val:'8', label:'UTC+8 北京 / 上海' },
+        { val:'9', label:'UTC+9 东京 / 首尔' },
+        { val:'5.5', label:'UTC+5:30 孟买' },
+        { val:'3', label:'UTC+3 莫斯科' },
+        { val:'1', label:'UTC+1 巴黎 / 柏林' },
+        { val:'0', label:'UTC±0 伦敦' },
+        { val:'-5', label:'UTC-5 纽约' },
+        { val:'-6', label:'UTC-6 芝加哥' },
+        { val:'-8', label:'UTC-8 洛杉矶' },
+        { val:'-10', label:'UTC-10 夏威夷' },
+        { val:'12', label:'UTC+12 奥克兰' },
+    ];
+    
+    const current = String(this.settings.aiTimezone || 'device');
+    
+    const overlay = document.createElement('div');
+    overlay.id = 'tzPanelOverlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9500;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,0.5);';
+    
+    overlay.innerHTML = `<div style="width:100%;background:#1a1a1a;border-radius:16px 16px 0 0;padding:20px 16px calc(16px + env(safe-area-inset-bottom));max-height:70vh;overflow-y:auto;animation:profileSlideUp 0.25s ease-out;">
+        <div style="font-size:16px;font-weight:600;color:#fff;text-align:center;margin-bottom:14px;">⏰ 选择时区</div>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;">
+            ${timezones.map(tz => `<button class="tz-option" data-val="${tz.val}" style="padding:12px 16px;border:1px solid ${current === tz.val ? 'rgba(240,147,43,0.4)' : 'rgba(255,255,255,0.06)'};border-radius:10px;background:${current === tz.val ? 'rgba(240,147,43,0.1)' : 'rgba(255,255,255,0.03)'};color:${current === tz.val ? '#f0932b' : 'rgba(255,255,255,0.6)'};font-size:14px;text-align:left;cursor:pointer;">${tz.label}</button>`).join('')}
+        </div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.25);margin-bottom:6px;">✏️ 自定义偏移量（小数如5.5表示UTC+5:30）</div>
+        <div style="display:flex;gap:8px;margin-bottom:14px;align-items:center;">
+            <span style="color:rgba(255,255,255,0.4);font-size:14px;">UTC</span>
+            <input type="number" id="tzCustomInput" step="0.5" min="-12" max="14" value="${current !== 'device' ? current : '0'}" style="flex:1;padding:10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#fff;font-size:16px;text-align:center;">
+            <button id="tzCustomApply" style="padding:10px 18px;border:none;border-radius:8px;background:rgba(240,147,43,0.15);color:#f0932b;font-size:13px;font-weight:600;cursor:pointer;">确认</button>
+        </div>
+        <button id="tzPanelCancel" style="width:100%;padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.4);font-size:14px;cursor:pointer;">取消</button>
+    </div>`;
+    
+    document.body.appendChild(overlay);
+    
+    // 预设选项点击
+    overlay.querySelectorAll('.tz-option').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const val = btn.getAttribute('data-val');
+            this.settings.aiTimezone = val === 'device' ? 'device' : parseFloat(val);
+            this.saveSettings();
+            this._updateTimezoneDesc();
+            overlay.remove();
+            this.showCssToast('时区已设置');
+        });
+    });
+    
+    // 自定义确认
+    overlay.querySelector('#tzCustomApply').addEventListener('click', () => {
+        const val = parseFloat(overlay.querySelector('#tzCustomInput')?.value);
+        if (isNaN(val) || val < -12 || val > 14) { this.showCssToast('请输入-12到14之间的数字'); return; }
+        this.settings.aiTimezone = val;
+        this.settings.customTimezoneOffset = val;
+        this.saveSettings();
+        this._updateTimezoneDesc();
+        overlay.remove();
+        const sign = val >= 0 ? '+' : '';
+        this.showCssToast(`时区已设为 UTC${sign}${val}`);
+    });
+    
+    // 取消
+    overlay.querySelector('#tzPanelCancel').addEventListener('click', () => overlay.remove());
+}
+
+_updateTimezoneDesc() {
+    const el = document.getElementById('settingTimezoneDesc');
+    if (!el) return;
+    const tz = this.settings.aiTimezone;
+    if (tz === 'device' || tz === undefined) {
+        el.textContent = '📱 跟随手机';
+    } else {
+        const offset = parseFloat(tz);
+        const sign = offset >= 0 ? '+' : '';
+        const labels = { '8':'北京', '9':'东京', '0':'伦敦', '-5':'纽约', '-8':'洛杉矶', '1':'巴黎', '3':'莫斯科' };
+        const city = labels[String(offset)] || '';
+        el.textContent = `UTC${sign}${offset}${city ? ' ' + city : ''}`;
+    }
+}
+
 _getBlacklistPrompt() {
     if (!this.currentFriend?.blacklisted) return '';
     const knows = Math.random() < 0.8;
@@ -11924,6 +12036,7 @@ _stripCommandTags(text) {
         .replace(/\[AI_NICKNAME:[^\]]+\]/g, '')
         .replace(/\[AI_POKE:[^\]]+\]/g, '')
         .replace(/\[AI_TIMEZONE:[^\]]+\]/g, '')
+        .replace(/\[AI_SIGNATURE:[^\]]+\]/g, '')
         .replace(/\[STATUS_CSS\][\s\S]*?\[\/STATUS_CSS\]/g, '')
         .replace(/\[STATUS_?\s*CSS\][\s\S]*?\[\/?\s*STATUS_?\s*CSS\]/gi, '');
 }
