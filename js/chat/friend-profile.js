@@ -125,18 +125,24 @@ class FriendProfileManager {
         // 背景图
         const bgStyle = panelSettings.bgImage ? `background-image:url(${panelSettings.bgImage});background-size:cover;background-position:center;` : '';
 
+        const modeLabels = ['分开', '按类合并', '时间线'];
+        const mode = this._sdpMode || 0; // 0=分开, 1=按类合并, 2=时间线
+        const nextModeLabel = modeLabels[(mode + 1) % 3];
+        const titleMap = [label, '全部动态', '动态时间线'];
+
         panel.innerHTML = `
             <div class="sdp-bg" style="${bgStyle}"></div>
             <div class="sdp-content">
                 <div class="sdp-header">
                     <button class="sdp-back" id="sdpBack">←</button>
-                    <div class="sdp-title">${this._sdpMerged ? '全部动态' : label}</div>
-                    <button class="sdp-merge-btn" id="sdpMergeBtn" title="合并/分开">${this._sdpMerged ? '分开' : '合并'}</button>
+                    <div class="sdp-title">${titleMap[mode]}</div>
+                    <button class="sdp-merge-btn" id="sdpMergeBtn" title="切换视图">${nextModeLabel}</button>
                     <button class="ai-status-theme-btn" id="sdpThemeBtn" title="切换明暗">🌓</button>
                     <button class="sdp-customize-btn" id="sdpCustomizeBtn">⚙️</button>
                 </div>
 
-                ${this._sdpMerged ? this._renderMergedView(status, history, friendName, fieldLabels) : `
+                ${mode === 1 ? this._renderCategoryMergedView(status, history, friendName, fieldLabels) : 
+                  mode === 2 ? this._renderTimelineMergedView(status, history, friendName, fieldLabels) : `
                 <!-- Tab切换 -->
                 <div class="sdp-tabs">
                     ${['outfit','action','thoughts','location'].map(f => 
@@ -213,9 +219,9 @@ class FriendProfileManager {
         // 事件绑定
         panel.querySelector('#sdpBack').addEventListener('click', () => this.closeStatusDetailPanel());
         
-        // 合并/分开切换
+        // 合并/分开切换（3种模式循环）
         panel.querySelector('#sdpMergeBtn').addEventListener('click', () => {
-            this._sdpMerged = !this._sdpMerged;
+            this._sdpMode = ((this._sdpMode || 0) + 1) % 3;
             this.closeStatusDetailPanel();
             this.openStatusDetailPanel(field);
         });
@@ -310,8 +316,53 @@ class FriendProfileManager {
         this._removeStatusPanelCss();
     }
 
-    // 合并视图：按时间线显示所有状态变更
-    _renderMergedView(status, history, friendName, fieldLabels) {
+    // 按类合并视图：四种状态各自展示（原版合并）
+    _renderCategoryMergedView(status, history, friendName, fieldLabels) {
+        const fields = ['outfit', 'action', 'thoughts', 'location'];
+        let html = '';
+        
+        for (const f of fields) {
+            const cur = status[f] || '';
+            const curDate = status[f + 'Date'] || '';
+            const list = history[f] || [];
+            
+            html += `<div class="sdp-merged-section">
+                <div class="sdp-merged-label">${fieldLabels[f]}</div>
+                <div class="sdp-current" style="margin:0 16px 8px;">
+                    ${cur ? `
+                        <div class="sdp-current-value" style="font-size:15px;">${this._esc(cur)}</div>
+                        <div class="sdp-current-date">${curDate ? new Date(curDate).toLocaleString('zh-CN') : ''}</div>
+                    ` : `<div class="sdp-empty" style="padding:10px;">${friendName}还没设置</div>`}
+                </div>`;
+            
+            if (list.length > 0) {
+                html += `<div style="padding:0 16px 12px;">`;
+                html += list.slice().reverse().slice(0, 5).map((h, i) => {
+                    const realIdx = list.length - 1 - i;
+                    return `<div class="sdp-history-item" style="margin-bottom:4px;">
+                        <div class="sdp-history-value" style="font-size:12px;">${this._esc(h.value)}</div>
+                        <div class="sdp-history-meta">
+                            <span>${h.date ? new Date(h.date).toLocaleString('zh-CN') : ''}</span>
+                            <div style="display:flex;gap:6px;">
+                                <button class="sdp-history-edit" data-field="${f}" data-idx="${realIdx}" style="padding:2px 8px;border:none;border-radius:6px;background:rgba(100,180,255,0.08);color:rgba(100,180,255,0.6);font-size:9px;cursor:pointer;">改</button>
+                                <button class="sdp-history-del" data-field="${f}" data-idx="${realIdx}">删</button>
+                            </div>
+                        </div>
+                    </div>`;
+                }).join('');
+                if (list.length > 5) {
+                    html += `<div style="text-align:center;font-size:10px;color:rgba(255,255,255,0.15);padding:4px;">还有${list.length - 5}条（切到分开模式查看全部）</div>`;
+                }
+                html += `</div>`;
+            }
+            html += `</div>`;
+        }
+        
+        return html;
+    }
+
+    // 时间线合并视图：按时间排序的卡片
+    _renderTimelineMergedView(status, history, friendName, fieldLabels) {
         // 当前状态汇总卡
         let html = `<div class="sdp-current" style="margin:0 16px 12px;">
             <div class="sdp-current-label" style="margin-bottom:10px;">当前状态</div>`;
