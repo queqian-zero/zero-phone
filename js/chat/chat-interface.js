@@ -839,20 +839,31 @@ class ChatInterface {
     }
     
     // 语音转文字（点击语音条触发打字机效果）
-    _voiceToText(el, text) {
-        if (el.dataset.converted) return;
-        el.dataset.converted = 'true';
+    // 语音条点击：切换显示/隐藏文字（打字机效果）
+    _toggleVoiceText(el, text) {
+        const textArea = el.querySelector('.voice-text-area');
+        if (!textArea) return;
         
-        const textEl = el.querySelector('.voice-text-area');
-        if (!textEl) return;
-        textEl.style.display = 'block';
-        el.querySelector('.voice-play-icon').textContent = '🔊';
+        if (textArea.style.display !== 'none' && textArea.dataset.done) {
+            // 已展开 → 收回
+            textArea.style.display = 'none';
+            el.querySelector('.voice-play-icon').innerHTML = '&#9654;';
+            return;
+        }
         
+        // 展开
+        textArea.style.display = 'block';
+        el.querySelector('.voice-play-icon').innerHTML = '&#9660;';
+        
+        if (textArea.dataset.done) return; // 已打过字直接显示
+        
+        // 首次：打字机效果
+        textArea.dataset.done = '1';
         let i = 0;
         const typeWriter = () => {
             if (i < text.length) {
-                textEl.textContent = text.substring(0, i + 1);
-                textEl.innerHTML = this._renderInlineMarkdown(this.escapeHtml(textEl.textContent));
+                textArea.textContent = text.substring(0, i + 1);
+                textArea.innerHTML = this._renderInlineMarkdown(this.escapeHtml(textArea.textContent));
                 i++;
                 setTimeout(typeWriter, 30 + Math.random() * 40);
             }
@@ -900,22 +911,22 @@ class ChatInterface {
         document.body.appendChild(overlay);
     }
     
-    // 渲染语音条气泡HTML（微信风格）
+    // 渲染语音条气泡（无emoji，特殊符号代替）
     _renderVoiceBubble(message) {
         const duration = message._voiceDuration || Math.ceil((message._voiceText || '').length / 3);
         const barWidth = message._voiceBarWidth || Math.min(75, 25 + duration * 1.5);
         const waveCount = Math.min(16, Math.max(4, Math.ceil(duration / 2)));
         const waves = Array.from({length: waveCount}, () => 
-            `<div style="width:2px;height:${3+Math.floor(Math.random()*12)}px;background:currentColor;border-radius:1px;opacity:0.5;"></div>`
+            `<div style="width:2px;height:${3+Math.floor(Math.random()*12)}px;background:currentColor;border-radius:1px;opacity:0.4;"></div>`
         ).join('');
         
         return `<div class="voice-bar-wrap" style="display:flex;flex-direction:column;cursor:pointer;min-width:${barWidth}%;padding:2px 0;">
-            <div style="display:flex;align-items:center;gap:6px;">
-                <span class="voice-play-icon" style="font-size:14px;flex-shrink:0;">▶</span>
-                <div style="flex:1;display:flex;align-items:center;gap:1px;height:18px;">${waves}</div>
-                <span style="font-size:11px;opacity:0.4;flex-shrink:0;">${duration}"</span>
+            <div class="voice-bar-row" style="display:flex;align-items:center;gap:6px;">
+                <span class="voice-play-icon" style="font-size:12px;flex-shrink:0;opacity:0.5;">&#9654;</span>
+                <div class="voice-waves" style="flex:1;display:flex;align-items:center;gap:1px;height:18px;">${waves}</div>
+                <span class="voice-duration" style="font-size:11px;opacity:0.35;flex-shrink:0;">${duration}''</span>
             </div>
-            <div class="voice-text-area" style="display:none;font-size:13px;line-height:1.5;margin-top:6px;padding-top:6px;border-top:1px solid rgba(128,128,128,0.15);"></div>
+            <div class="voice-text-area" style="display:none;font-size:13px;line-height:1.5;margin-top:6px;padding-top:6px;border-top:1px solid rgba(128,128,128,0.12);"></div>
         </div>`;
     }
     
@@ -927,15 +938,9 @@ class ChatInterface {
         
         if (!desc) return;
         
-        // 显示一个带描述的假图片卡片
-        const fakeImgHtml = `<div style="background:rgba(255,255,255,0.04);border:1px dashed rgba(255,255,255,0.1);border-radius:12px;padding:16px;text-align:center;">
-            <div style="font-size:28px;margin-bottom:6px;">🖼️</div>
-            <div style="font-size:12px;color:rgba(255,255,255,0.4);">${this.escapeHtml(desc)}</div>
-        </div>`;
-        
-        const msg = { type: 'user', text: `[RENDER_HTML]${fakeImgHtml}[/RENDER_HTML]`, timestamp: new Date().toISOString() };
+        const msg = { type: 'user', text: '', timestamp: new Date().toISOString(), _fakeImage: desc };
         this.addMessage(msg);
-        this.storage.addMessage(this.currentFriendCode, { type: 'user', text: `[用户发送了假图片：${desc}]`, timestamp: msg.timestamp });
+        this.storage.addMessage(this.currentFriendCode, { type: 'user', text: `[用户发送了假图片：${desc}]`, timestamp: msg.timestamp, _fakeImage: desc });
         this.scrollToBottom();
     }
     
@@ -2124,7 +2129,7 @@ ${archiveListText}
 - 给已有存档改名：[RENAME_ARCHIVE:存档ID:新名字]
 
 可用的CSS类名：
-.messages-container（消息区域背景）、.message（单条消息）、.message-ai（AI消息）、.message-user（用户消息）、.message-bubble（气泡）、.message-text（消息文字）、.message-time（时间）、.message-avatar（头像区域）、.avatar-placeholder（头像占位符）、.message-content（消息内容区）、.input-bar（底部输入栏）、.chat-interface-header（顶部栏）
+.messages-container（消息区域背景）、.message（单条消息）、.message-ai（AI消息）、.message-user（用户消息）、.message-bubble（气泡）、.message-text（消息文字）、.message-time（时间）、.message-avatar（头像区域）、.avatar-placeholder（头像占位符）、.message-content（消息内容区）、.input-bar（底部输入栏）、.chat-interface-header（顶部栏）、.voice-bar-wrap（语音条容器）、.voice-bar-row（语音条主行）、.voice-play-icon（播放图标）、.voice-waves（波形区）、.voice-duration（时长文字）、.voice-text-area（转文字区）、.fake-image-card（假图片卡片）、.fake-image-desc（假图片描述）、.fake-image-cover（假图片覆盖层）、.msg-image-thumb（真图片缩略图）
 
 ⚠️ 注意：绝大多数时候你不需要主动使用这些标记。只在user明确要求或者你觉得合适的时候才用。`;
 
@@ -2588,7 +2593,10 @@ div.innerHTML = `
                 <div class="message-bubble">
                     ${message._imageUrl ? `<div style="max-width:180px;cursor:pointer;" class="msg-image-thumb"><img src="${message._imageUrl}" style="width:100%;border-radius:8px;display:block;" onerror="this.parentElement.innerHTML='[图片加载失败]'"></div>` : ''}
                     ${message._voice ? this._renderVoiceBubble(message) : ''}
-                    ${message._fakeImage ? `<div style="background:rgba(128,128,128,0.08);border:1px dashed rgba(128,128,128,0.15);border-radius:10px;padding:14px;text-align:center;max-width:200px;"><div style="font-size:24px;margin-bottom:4px;">🖼️</div><div style="font-size:12px;opacity:0.5;">${this.escapeHtml(message._fakeImage)}</div></div>` : ''}
+                    ${message._fakeImage ? `<div class="fake-image-card" style="position:relative;background:rgba(128,128,128,0.06);border:1px dashed rgba(128,128,128,0.15);border-radius:10px;min-width:140px;min-height:80px;max-width:200px;overflow:hidden;cursor:pointer;">
+                        <div class="fake-image-desc" style="padding:14px;font-size:12px;opacity:0.5;text-align:center;line-height:1.5;">${this.escapeHtml(message._fakeImage)}</div>
+                        <div class="fake-image-cover" style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(60,60,60,0.85);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;font-size:12px;color:rgba(255,255,255,0.35);letter-spacing:1px;">[图片]</div>
+                    </div>` : ''}
                     ${message.text && !message._imageOnly && !message._voice && !message._fakeImage ? `<div class="message-text">${this.renderMessageContent(message.text)}</div>` : ''}
                 </div>
                 <div class="message-time">${time}</div>
@@ -2608,10 +2616,19 @@ div.innerHTML = `
             imgThumb.addEventListener('click', () => this._enlargeImage(message._imageUrl));
         }
         
-        // 语音条点击
+        // 语音条点击（切换显示/隐藏文字）
         const voiceBar = div.querySelector('.voice-bar-wrap');
         if (voiceBar && message._voiceText) {
-            voiceBar.addEventListener('click', () => this._voiceToText(voiceBar, message._voiceText));
+            voiceBar.addEventListener('click', () => this._toggleVoiceText(voiceBar, message._voiceText));
+        }
+        
+        // 假图片点击（切换覆盖层）
+        const fakeImg = div.querySelector('.fake-image-card');
+        if (fakeImg) {
+            fakeImg.addEventListener('click', () => {
+                const cover = fakeImg.querySelector('.fake-image-cover');
+                if (cover) cover.style.display = cover.style.display === 'none' ? 'flex' : 'none';
+            });
         }
         
         return div;
