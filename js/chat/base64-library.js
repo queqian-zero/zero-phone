@@ -8,16 +8,25 @@ class Base64Library {
         this._selected = new Set();
     }
 
-    _storage() { return window.chatInterface?.storage; }
+    _storage() {
+        // 优先用chatInterface的storage，没有就直接找全局Storage实例
+        if (window.chatInterface?.storage) return window.chatInterface.storage;
+        if (window.chatApp?.storage) return window.chatApp.storage;
+        return null;
+    }
 
     _getData() {
-        const s = this._storage()?.getUserSettings() || {};
-        if (!s.base64Library) s.base64Library = {
-            avatars: { categories: [{ id: 'default', name: '默认' }], items: [] },
-            webImages: { categories: [{ id: 'default', name: '默认' }], items: [] },
-            stickers: { categories: [{ id: 'default', name: '默认' }], items: [] }
-        };
-        // 兼容旧数据
+        const store = this._storage();
+        if (!store) { console.warn('⚠️ Base64Library: storage不可用'); return { avatars: { categories: [{ id: 'default', name: '默认' }], items: [] }, webImages: { categories: [{ id: 'default', name: '默认' }], items: [] }, stickers: { categories: [{ id: 'default', name: '默认' }], items: [] } }; }
+        const s = store.getUserSettings() || {};
+        if (!s.base64Library) {
+            s.base64Library = {
+                avatars: { categories: [{ id: 'default', name: '默认' }], items: [] },
+                webImages: { categories: [{ id: 'default', name: '默认' }], items: [] },
+                stickers: { categories: [{ id: 'default', name: '默认' }], items: [] }
+            };
+            store.updateUserSettings({ base64Library: s.base64Library });
+        }
         ['avatars', 'webImages', 'stickers'].forEach(k => {
             if (!s.base64Library[k]) s.base64Library[k] = { categories: [{ id: 'default', name: '默认' }], items: [] };
         });
@@ -25,7 +34,9 @@ class Base64Library {
     }
 
     _saveData(data) {
-        this._storage()?.updateUserSettings({ base64Library: data });
+        const store = this._storage();
+        if (!store) { console.warn('⚠️ Base64Library: storage不可用，无法保存'); return; }
+        store.updateUserSettings({ base64Library: data });
     }
 
     _esc(s) { return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }

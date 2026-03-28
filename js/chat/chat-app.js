@@ -1163,3 +1163,4 @@ addFriendByCode() {
 }
 // 初始化
 const chatApp = new ChatApp();
+window.chatApp = chatApp;
