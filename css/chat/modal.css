@@ -155,14 +155,14 @@
 .avatar-preview {
     width: 80px;
     height: 80px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.06);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 32px;
-    color: #fff;
-    border: 3px solid rgba(255, 255, 255, 0.2);
+    color: rgba(255,255,255,0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     overflow: hidden;
 }
 
@@ -223,7 +223,7 @@
 }
 
 input:checked + .slider {
-    background-color: #667eea;
+    background-color: rgba(240, 147, 43, 0.7);
 }
 
 input:checked + .slider:before {
@@ -235,10 +235,10 @@ input:checked + .slider:before {
 .save-btn {
     width: 100%;
     padding: 14px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: rgba(240, 147, 43, 0.15);
     border: none;
     border-radius: 12px;
-    color: #fff;
+    color: #f0932b;
     font-size: 16px;
     font-weight: 600;
     cursor: pointer;

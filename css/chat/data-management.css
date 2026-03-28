@@ -143,7 +143,7 @@
 }
 
 .export-data-confirm {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: rgba(240, 147, 43, 0.15);
     border: none;
     color: white;
 }
@@ -333,7 +333,7 @@
 }
 
 .import-data-confirm {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: rgba(240, 147, 43, 0.15);
     border: none;
     color: white;
 }
