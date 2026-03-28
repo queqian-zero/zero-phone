@@ -537,6 +537,7 @@ class FriendProfileManager {
                     <div class="fp-hero-name">${this._esc(displayName)}</div>
                     <div class="fp-hero-code">编码：${friendCode}</div>
                 </div>
+                <button id="fpEditPersonaBtn" style="padding:8px 14px;border:none;border-radius:10px;background:rgba(240,147,43,0.12);color:#f0932b;font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;">编辑人设</button>
             </div>
 
             <!-- 基本信息 -->
@@ -619,6 +620,18 @@ class FriendProfileManager {
 
         // 事件绑定
         page.querySelector('#fpBack').addEventListener('click', () => this.closeFriendProfilePage());
+        
+        // 编辑人设按钮
+        page.querySelector('#fpEditPersonaBtn')?.addEventListener('click', () => {
+            this.closeFriendProfilePage();
+            // 打开编辑弹窗（通过 chatApp）
+            const app = (typeof chatApp !== 'undefined') ? chatApp : window.chatApp;
+            if (app?.openEditModal) {
+                app.openEditModal(code);
+            } else {
+                this._toast('编辑功能不可用');
+            }
+        });
         
         // 来源展开
         page.querySelector('#fpSourceRow')?.addEventListener('click', () => {
