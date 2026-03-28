@@ -967,10 +967,11 @@ class ChatInterface {
         
         const panel = document.createElement('div');
         panel.id = 'stickerPanel';
-        panel.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:7500;background:#1a1a1a;border-radius:16px 16px 0 0;border:1px solid rgba(255,255,255,0.06);max-height:55vh;display:flex;flex-direction:column;animation:profileSlideUp 0.25s ease-out;';
+        panel.className = 'sticker-panel';
+        panel.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:7500;background:#1a1a1a;border-radius:16px 16px 0 0;border:1px solid rgba(255,255,255,0.06);height:50vh;min-height:320px;display:flex;flex-direction:column;animation:profileSlideUp 0.25s ease-out;';
         
         panel.innerHTML = `
-            <div style="display:flex;align-items:center;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);">
+            <div style="display:flex;align-items:center;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);flex-shrink:0;">
                 <div style="flex:1;font-size:14px;font-weight:600;color:#fff;">表情包</div>
                 <button id="stickerAddBtn" style="padding:4px 10px;border:none;border-radius:6px;background:rgba(240,147,43,0.12);color:#f0932b;font-size:12px;cursor:pointer;">+ 添加</button>
                 <button id="stickerCloseBtn" style="margin-left:8px;padding:4px 10px;border:none;border-radius:6px;background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.4);font-size:12px;cursor:pointer;">关闭</button>
@@ -983,9 +984,11 @@ class ChatInterface {
             <!-- 表情包网格 -->
             <div id="stickerGrid" style="flex:1;overflow-y:auto;padding:8px 10px;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;align-content:start;">
                 ${items.length === 0 ? '<div style="grid-column:1/-1;text-align:center;padding:30px 0;color:rgba(255,255,255,0.15);font-size:13px;">还没有表情包，点击"+ 添加"</div>' :
-                    items.map(s => `<div class="sticker-item" data-sid="${s.id}" style="position:relative;width:100%;padding-bottom:100%;border-radius:10px;overflow:hidden;cursor:pointer;background:rgba(255,255,255,0.03);">
-                        <img src="${s.data || s.url}" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
-                        <span style="display:none;position:absolute;top:0;left:0;width:100%;height:100%;font-size:10px;color:rgba(255,255,255,0.3);align-items:center;justify-content:center;text-align:center;word-break:break-all;padding:4px;box-sizing:border-box;">${this.escapeHtml(s.name || '?')}</span>
+                    items.map(s => `<div class="sticker-item" data-sid="${s.id}" style="position:relative;width:100%;border-radius:10px;overflow:hidden;cursor:pointer;background:rgba(255,255,255,0.03);">
+                        <div style="width:100%;padding-bottom:100%;position:relative;">
+                            <img src="${s.data || s.url}" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">
+                        </div>
+                        <div style="padding:2px 4px;font-size:9px;color:rgba(255,255,255,0.3);text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${this.escapeHtml(s.name || '')}</div>
                     </div>`).join('')}
             </div>`;
         
@@ -1036,15 +1039,14 @@ class ChatInterface {
         const src = sticker.data || sticker.url || '';
         const name = sticker.name || '表情包';
         
-        // 作为正常用户消息（带头像+时间+右对齐）
-        const msg = { type: 'user', text: '', timestamp: new Date().toISOString(), _imageUrl: src, _imageOnly: true };
+        // 用 _stickerUrl + _stickerName 渲染（比普通图片小+带名字）
+        const msg = { type: 'user', text: '', timestamp: new Date().toISOString(), _stickerUrl: src, _stickerName: name };
         this.addMessage(msg);
         
-        // 存储（含图片数据以便重载）
-        const storeMsg = { type: 'user', text: `[用户发送了表情包「${name}」]`, timestamp: msg.timestamp, _imageUrl: src, _imageOnly: true };
-        this.storage.addMessage(this.currentFriendCode, storeMsg);
+        // 存储
+        this.storage.addMessage(this.currentFriendCode, { type: 'user', text: `[用户发送了表情包「${name}」]`, timestamp: msg.timestamp, _stickerUrl: src, _stickerName: name });
         
-        // AI识图开关决定是否附带图片
+        // AI识图：data:开头的可以附带图片，URL的只告诉名字
         const aiRecog = this.currentFriend?.enableAvatarRecognition !== false;
         if (aiRecog && src.startsWith('data:')) {
             this._pendingUserImage = { data: src.split(',')[1], mediaType: 'image/jpeg' };
@@ -2585,12 +2587,16 @@ div.innerHTML = `
             <div class="message-content">
                 <div class="message-bubble">
                     ${message._imageUrl ? `<div style="max-width:180px;cursor:pointer;" class="msg-image-thumb"><img src="${message._imageUrl}" style="width:100%;border-radius:8px;display:block;" onerror="this.parentElement.innerHTML='[图片加载失败]'"></div>` : ''}
+                    ${message._stickerUrl ? `<div class="msg-sticker" style="max-width:120px;">
+                        <img src="${message._stickerUrl}" style="width:100%;border-radius:8px;display:block;" onerror="this.style.display='none'">
+                        <div style="font-size:10px;opacity:0.35;text-align:center;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${this.escapeHtml(message._stickerName || '')}</div>
+                    </div>` : ''}
                     ${message._voice ? this._renderVoiceBubble(message) : ''}
                     ${message._fakeImage ? `<div class="fake-image-card" style="position:relative;background:rgba(128,128,128,0.06);border:1px dashed rgba(128,128,128,0.15);border-radius:10px;min-width:140px;min-height:80px;max-width:200px;overflow:hidden;cursor:pointer;">
                         <div class="fake-image-desc" style="padding:14px;font-size:12px;opacity:0.5;text-align:center;line-height:1.5;">${this.escapeHtml(message._fakeImage)}</div>
                         <div class="fake-image-cover" style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(60,60,60,0.85);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;font-size:12px;color:rgba(255,255,255,0.35);letter-spacing:1px;transition:opacity 0.25s ease,visibility 0.25s ease;">[图片]</div>
                     </div>` : ''}
-                    ${message.text && !message._imageOnly && !message._voice && !message._fakeImage ? `<div class="message-text">${this.renderMessageContent(message.text)}</div>` : ''}
+                    ${message.text && !message._imageOnly && !message._voice && !message._fakeImage && !message._stickerUrl ? `<div class="message-text">${this.renderMessageContent(message.text)}</div>` : ''}
                 </div>
                 <div class="message-time">${time}</div>
             </div>
@@ -2607,6 +2613,13 @@ div.innerHTML = `
         const imgThumb = div.querySelector('.msg-image-thumb');
         if (imgThumb && message._imageUrl) {
             imgThumb.addEventListener('click', () => this._enlargeImage(message._imageUrl));
+        }
+        
+        // 表情包点击放大
+        const stickerEl = div.querySelector('.msg-sticker img');
+        if (stickerEl && message._stickerUrl) {
+            stickerEl.style.cursor = 'pointer';
+            stickerEl.addEventListener('click', () => this._enlargeImage(message._stickerUrl));
         }
         
         // 语音条点击（切换显示/隐藏文字）
