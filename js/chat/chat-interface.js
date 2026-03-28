@@ -12458,9 +12458,9 @@ getRelationBadgeHtml() {
     const icon = rel.bound.icon || typeDef.icon;
     
     if (iconType === 'image' && icon) {
-        return `<span style="display:inline-flex;align-items:center;margin-left:4px;"><img src="${icon}" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;"></span>`;
+        return `<span style="display:inline-flex;align-items:center;margin-left:6px;"><img src="${icon}" style="width:22px;height:22px;object-fit:contain;vertical-align:middle;"></span>`;
     }
-    return `<span style="margin-left:3px;font-size:12px;">${icon || '💍'}</span>`;
+    return `<span style="margin-left:4px;font-size:20px;vertical-align:middle;">${icon || '💍'}</span>`;
 }
 
 // 更新聊天顶部名字旁的关系标识
