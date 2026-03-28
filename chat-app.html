@@ -498,6 +498,48 @@
 </div>
 <!-- ========== AI状态面板感知结束 ========== -->
 
+<!-- ========== 时空中控 ========== -->
+<div class="setting-section-title" style="padding:12px 16px 4px;font-size:12px;color:rgba(255,255,255,0.25);">⏰ 时空中控</div>
+<div class="setting-item">
+    <div class="setting-info">
+        <span class="setting-label">TA的时区</span>
+        <span class="setting-desc">设置这个角色所在的时区</span>
+    </div>
+    <select id="settingAiTimezone" style="padding:6px 8px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);border-radius:6px;color:rgba(255,255,255,0.9);font-size:11px;max-width:140px;">
+        <option value="device">📱 跟随手机</option>
+        <option value="8">UTC+8 北京/上海</option>
+        <option value="9">UTC+9 东京/首尔</option>
+        <option value="5.5">UTC+5:30 孟买</option>
+        <option value="3">UTC+3 莫斯科</option>
+        <option value="1">UTC+1 巴黎/柏林</option>
+        <option value="0">UTC+0 伦敦</option>
+        <option value="-5">UTC-5 纽约</option>
+        <option value="-6">UTC-6 芝加哥</option>
+        <option value="-8">UTC-8 洛杉矶</option>
+        <option value="-10">UTC-10 夏威夷</option>
+        <option value="12">UTC+12 奥克兰</option>
+        <option value="custom">✏️ 自定义偏移</option>
+    </select>
+</div>
+<div class="setting-item" id="settingCustomTimezoneRow" style="display:none;">
+    <div class="setting-info">
+        <span class="setting-label">自定义UTC偏移</span>
+        <span class="setting-desc">例如：5.5 表示 UTC+5:30</span>
+    </div>
+    <input type="number" id="settingCustomTimezone" step="0.5" min="-12" max="14" value="0" style="width:60px;padding:6px 8px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);border-radius:6px;color:rgba(255,255,255,0.9);font-size:13px;text-align:center;">
+</div>
+<div class="setting-item">
+    <div class="setting-info">
+        <span class="setting-label">允许TA调时区</span>
+        <span class="setting-desc">TA可以用指令切换自己的时区</span>
+    </div>
+    <label class="setting-switch">
+        <input type="checkbox" id="settingAllowAiTimezone" checked>
+        <span class="switch-slider"></span>
+    </label>
+</div>
+<!-- ========== 时空中控结束 ========== -->
+
     <!-- 群聊消息同步 -->
     <div class="setting-item disabled">
         <div class="setting-info">
