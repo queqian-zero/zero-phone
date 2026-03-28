@@ -892,7 +892,7 @@ class ChatInterface {
                 // 作为正常用户消息显示（右对齐+头像+时间）
                 const msg = { type: 'user', text: '', timestamp: new Date().toISOString(), _imageUrl: dataUrl, _imageOnly: true };
                 this.addMessage(msg);
-                this.storage.addMessage(this.currentFriendCode, { type: 'user', text: '[用户发送了图片]', timestamp: msg.timestamp });
+                this.storage.addMessage(this.currentFriendCode, { type: 'user', text: '[用户发送了图片]', timestamp: msg.timestamp, _imageUrl: dataUrl, _imageOnly: true });
                 this.scrollToBottom();
                 
                 // 存储图片数据，下次用户主动触发AI时附带
@@ -940,12 +940,29 @@ class ChatInterface {
     
     _getStickerData() {
         const s = this.storage.getUserSettings();
-        if (!s.stickers) s.stickers = { categories: [{ id: 'default', name: '默认' }], items: [] };
-        return s.stickers;
+        // 统一使用 base64Library.stickers（与图库互通）
+        if (!s.base64Library) s.base64Library = { avatars: { categories: [{ id: 'default', name: '默认' }], items: [] }, webImages: { categories: [{ id: 'default', name: '默认' }], items: [] }, stickers: { categories: [{ id: 'default', name: '默认' }], items: [] } };
+        if (!s.base64Library.stickers) s.base64Library.stickers = { categories: [{ id: 'default', name: '默认' }], items: [] };
+        // 迁移旧数据
+        if (s.stickers && s.stickers.items && s.stickers.items.length > 0) {
+            s.base64Library.stickers.items.push(...s.stickers.items);
+            s.stickers.items.forEach(item => {
+                if (!s.base64Library.stickers.categories.find(c => c.id === item.categoryId)) {
+                    const oldCat = s.stickers.categories?.find(c => c.id === item.categoryId);
+                    if (oldCat) s.base64Library.stickers.categories.push(oldCat);
+                }
+            });
+            s.stickers = { categories: [], items: [] }; // 清空旧数据
+            this.storage.updateUserSettings({ base64Library: s.base64Library, stickers: s.stickers });
+        }
+        return s.base64Library.stickers;
     }
     
     _saveStickerData(data) {
-        this.storage.updateUserSettings({ stickers: data });
+        const s = this.storage.getUserSettings();
+        if (!s.base64Library) s.base64Library = {};
+        s.base64Library.stickers = data;
+        this.storage.updateUserSettings({ base64Library: s.base64Library });
     }
     
     openStickerPanel() {
@@ -1025,21 +1042,18 @@ class ChatInterface {
         const src = sticker.data || sticker.url || '';
         const name = sticker.name || '表情包';
         
-        // 显示表情包图片
-        const stickerHtml = `<div style="max-width:160px;"><img src="${src}" style="width:100%;border-radius:8px;" onerror="this.outerHTML='<div style=\\'padding:8px;color:rgba(255,255,255,0.3);font-size:12px;\\'>[${this.escapeHtml(name)}]</div>'"></div>`;
-        
-        const msg = { type: 'user', text: `[RENDER_HTML]${stickerHtml}[/RENDER_HTML]`, timestamp: new Date().toISOString() };
+        // 作为正常用户消息（带头像+时间+右对齐）
+        const msg = { type: 'user', text: '', timestamp: new Date().toISOString(), _imageUrl: src, _imageOnly: true };
         this.addMessage(msg);
         
-        // AI收到的消息（根据识图开关决定是否附带图片）
+        // 存储（含图片数据以便重载）
+        const storeMsg = { type: 'user', text: `[用户发送了表情包「${name}」]`, timestamp: msg.timestamp, _imageUrl: src, _imageOnly: true };
+        this.storage.addMessage(this.currentFriendCode, storeMsg);
+        
+        // AI识图开关决定是否附带图片
         const aiRecog = this.currentFriend?.enableAvatarRecognition !== false;
         if (aiRecog && src.startsWith('data:')) {
-            // 附带图片给AI
             this._pendingUserImage = { data: src.split(',')[1], mediaType: 'image/jpeg' };
-            this.storage.addMessage(this.currentFriendCode, { type: 'user', text: `[用户发送了表情包「${name}」]`, timestamp: msg.timestamp });
-        } else {
-            // 只发名字
-            this.storage.addMessage(this.currentFriendCode, { type: 'user', text: `[用户发送了表情包「${name}」]`, timestamp: msg.timestamp });
         }
         
         this.scrollToBottom();
