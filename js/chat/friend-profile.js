@@ -955,22 +955,22 @@ class FriendProfileManager {
     // 便捷方法
     async _confirm(title, message, confirmText = '确定', cancelText = '取消') {
         return this._showDialog({ title, message, buttons: [
-            { text: confirmText, value: true, primary: true },
-            { text: cancelText, value: false }
+            { text: cancelText, value: false },
+            { text: confirmText, value: true, primary: true }
         ]});
     }
 
     async _dangerConfirm(title, message, confirmText = '确定', cancelText = '取消') {
         return this._showDialog({ title, message, buttons: [
-            { text: confirmText, value: true, danger: true },
-            { text: cancelText, value: false }
+            { text: cancelText, value: false },
+            { text: confirmText, value: true, danger: true }
         ]});
     }
 
     async _prompt(title, message, defaultValue = '', placeholder = '') {
         return this._showDialog({ title, message, input: true, inputValue: defaultValue, inputPlaceholder: placeholder, buttons: [
-            { text: '确定', value: 'confirm', primary: true },
-            { text: '取消', value: 'cancel' }
+            { text: '取消', value: 'cancel' },
+            { text: '确定', value: 'confirm', primary: true }
         ]});
     }
     _esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }

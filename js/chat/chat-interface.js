@@ -844,9 +844,6 @@ class ChatInterface {
         this.addMessage(msg);
         this.storage.addMessage(this.currentFriendCode, { type: 'user', text: `[语音消息] ${text}`, timestamp: msg.timestamp });
         this.scrollToBottom();
-        
-        // 通知AI
-        setTimeout(() => this.sendAIMessage(), 300);
     }
     
     // 语音转文字（点击语音条触发打字机效果）
@@ -892,27 +889,17 @@ class ChatInterface {
                 canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
                 const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
                 
-                // 存储图片用于放大查看
-                const imgId = 'userImg_' + Date.now();
-                if (!window._chatImages) window._chatImages = {};
-                window._chatImages[imgId] = dataUrl;
-                
-                // 显示图片消息
-                const imgHtml = `<div style="max-width:240px;"><img src="${dataUrl}" style="width:100%;border-radius:10px;cursor:pointer;" onclick="window.chatInterface._enlargeImage(window._chatImages['${imgId}'])"></div>`;
-                
-                const msg = { type: 'user', text: `[RENDER_HTML]${imgHtml}[/RENDER_HTML]`, timestamp: new Date().toISOString() };
+                // 作为正常用户消息显示（右对齐+头像+时间）
+                const msg = { type: 'user', text: '', timestamp: new Date().toISOString(), _imageUrl: dataUrl, _imageOnly: true };
                 this.addMessage(msg);
                 this.storage.addMessage(this.currentFriendCode, { type: 'user', text: '[用户发送了图片]', timestamp: msg.timestamp });
                 this.scrollToBottom();
                 
-                // 存储图片数据，下次API调用时附带
+                // 存储图片数据，下次用户主动触发AI时附带
                 this._pendingUserImage = {
                     data: dataUrl.split(',')[1],
                     mediaType: 'image/jpeg'
                 };
-                
-                // 触发AI回复
-                setTimeout(() => this.sendAIMessage(), 300);
             };
             img.src = ev.target.result;
         };
@@ -947,8 +934,6 @@ class ChatInterface {
         this.addMessage(msg);
         this.storage.addMessage(this.currentFriendCode, { type: 'user', text: `[用户发送了假图片：${desc}]`, timestamp: msg.timestamp });
         this.scrollToBottom();
-        
-        setTimeout(() => this.sendAIMessage(), 300);
     }
     
     // ==================== 表情包系统 ====================
@@ -1058,7 +1043,6 @@ class ChatInterface {
         }
         
         this.scrollToBottom();
-        setTimeout(() => this.sendAIMessage(), 300);
     }
     
     // 删除表情包
@@ -2592,7 +2576,8 @@ div.innerHTML = `
             
             <div class="message-content">
                 <div class="message-bubble">
-                    <div class="message-text">${this.renderMessageContent(message.text)}</div>
+                    ${message._imageUrl ? `<div style="max-width:180px;cursor:pointer;" class="msg-image-thumb"><img src="${message._imageUrl}" style="width:100%;border-radius:8px;display:block;" onerror="this.parentElement.innerHTML='[图片加载失败]'"></div>` : ''}
+                    ${message.text && !message._imageOnly ? `<div class="message-text">${this.renderMessageContent(message.text)}</div>` : ''}
                 </div>
                 <div class="message-time">${time}</div>
             </div>
@@ -2601,12 +2586,16 @@ div.innerHTML = `
         const avatarEl = div.querySelector('.message-avatar');
         if (avatarEl) {
             avatarEl.addEventListener('dblclick', () => {
-                console.log('👆 双击头像');
                 this.handlePoke(message.type);
             });
         }
         
-        console.log('🎨 创建消息元素:', message.type);
+        // 图片点击放大
+        const imgThumb = div.querySelector('.msg-image-thumb');
+        if (imgThumb && message._imageUrl) {
+            imgThumb.addEventListener('click', () => this._enlargeImage(message._imageUrl));
+        }
+        
         return div;
     }
     
