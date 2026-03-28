@@ -284,19 +284,20 @@ class Base64Library {
         ov.querySelector('#b64UpSingle').addEventListener('click', () => ov.querySelector('#b64UpFileS').click());
         ov.querySelector('#b64UpFileS').addEventListener('change', async (e) => {
             const file = e.target.files[0]; if (!file) return;
-            const name = window.zpPrompt ? await window.zpPrompt('图片名字', '给图片命名（AI搜图用）', '', '名字/描述') : prompt('图片名字（可留空）：');
-            const desc = window.zpPrompt ? await window.zpPrompt('图片描述', '描述一下这张图（AI搜图用，可留空）', '', '描述关键词') : '';
-            this._addImageFromFile(file, name || file.name.split('.')[0], desc || '', ov.querySelector('#b64UpCat')?.value);
+            const name = window.zpPrompt ? await window.zpPrompt('图片名字/描述', '给图片命名（AI搜图用，可留空）', '', '名字或描述关键词') : prompt('图片名字（可留空）：');
+            await this._addImageFromFile(file, name || file.name.split('.')[0], name || '', ov.querySelector('#b64UpCat')?.value);
             this._toast('已添加');
             ov.remove(); this.open();
         });
 
         // 多选上传
         ov.querySelector('#b64UpBatch').addEventListener('click', () => ov.querySelector('#b64UpFileB').click());
-        ov.querySelector('#b64UpFileB').addEventListener('change', (e) => {
+        ov.querySelector('#b64UpFileB').addEventListener('change', async (e) => {
             const files = Array.from(e.target.files); if (!files.length) return;
             const cat = ov.querySelector('#b64UpCat')?.value;
-            files.forEach(f => this._addImageFromFile(f, f.name.split('.')[0], '', cat));
+            for (const f of files) {
+                await this._addImageFromFile(f, f.name.split('.')[0], '', cat);
+            }
             this._toast(`已添加 ${files.length} 张`);
             ov.remove(); this.open();
         });
@@ -326,33 +327,38 @@ class Base64Library {
         ov.querySelector('#b64UpClose').addEventListener('click', () => { ov.remove(); });
     }
 
-    // 从文件添加图片
+    // 从文件添加图片（返回Promise）
     _addImageFromFile(file, name, desc, categoryId) {
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            const img = new Image();
-            img.onload = () => {
-                const maxSize = this._activeTab === 'stickers' ? 200 : 400;
-                const c = document.createElement('canvas');
-                const s = Math.min(1, maxSize / Math.max(img.width, img.height));
-                c.width = img.width * s; c.height = img.height * s;
-                c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-                const dataUrl = c.toDataURL('image/jpeg', 0.8);
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const img = new Image();
+                img.onload = () => {
+                    const maxSize = this._activeTab === 'stickers' ? 200 : 400;
+                    const c = document.createElement('canvas');
+                    const s = Math.min(1, maxSize / Math.max(img.width, img.height));
+                    c.width = img.width * s; c.height = img.height * s;
+                    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+                    const dataUrl = c.toDataURL('image/jpeg', 0.8);
 
-                const d = this._getData();
-                d[this._activeTab].items.push({
-                    id: 'img_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-                    name: name || '未命名',
-                    desc: desc || '',
-                    data: dataUrl,
-                    categoryId: categoryId || 'default',
-                    createdAt: new Date().toISOString()
-                });
-                this._saveData(d);
+                    const d = this._getData();
+                    d[this._activeTab].items.push({
+                        id: 'img_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+                        name: name || '未命名',
+                        desc: desc || '',
+                        data: dataUrl,
+                        categoryId: categoryId || 'default',
+                        createdAt: new Date().toISOString()
+                    });
+                    this._saveData(d);
+                    resolve();
+                };
+                img.onerror = () => resolve();
+                img.src = ev.target.result;
             };
-            img.src = ev.target.result;
-        };
-        reader.readAsDataURL(file);
+            reader.onerror = () => resolve();
+            reader.readAsDataURL(file);
+        });
     }
 
     // ==================== 移动分类面板 ====================
