@@ -827,22 +827,14 @@ class ChatInterface {
     }
     
     _renderVoiceMessage(text) {
-        // 计算假语音时长（按字数）
         const duration = Math.max(1, Math.min(60, Math.ceil(text.length / 3)));
-        const barWidth = Math.min(70, 20 + duration * 2);
+        const barWidth = Math.min(75, 25 + duration * 1.5);
+        const ts = new Date().toISOString();
         
-        // 发送一条特殊消息，气泡内是语音条
-        const voiceHtml = `<div class="fake-voice-bar" style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(255,255,255,0.06);border-radius:20px;cursor:pointer;min-width:${barWidth}%;max-width:80%;" onclick="window.chatInterface._voiceToText(this,'${this.escapeHtml(text).replace(/'/g, "\\'")}')">
-            <span style="font-size:16px;">🔊</span>
-            <div style="flex:1;height:20px;display:flex;align-items:center;gap:2px;">
-                ${Array.from({length: Math.min(20, Math.ceil(duration/2))}, () => `<div style="width:3px;height:${4+Math.random()*14}px;background:rgba(255,255,255,0.3);border-radius:2px;"></div>`).join('')}
-            </div>
-            <span style="font-size:11px;color:rgba(255,255,255,0.3);">${duration}"</span>
-        </div>`;
-        
-        const msg = { type: 'user', text: `[RENDER_HTML]${voiceHtml}[/RENDER_HTML]`, timestamp: new Date().toISOString(), _voiceText: text };
+        // 作为正常user消息（右对齐+头像+时间），用_voice标记
+        const msg = { type: 'user', text: `[语音消息] ${text}`, timestamp: ts, _voice: true, _voiceText: text, _voiceDuration: duration, _voiceBarWidth: barWidth };
         this.addMessage(msg);
-        this.storage.addMessage(this.currentFriendCode, { type: 'user', text: `[语音消息] ${text}`, timestamp: msg.timestamp });
+        this.storage.addMessage(this.currentFriendCode, msg);
         this.scrollToBottom();
     }
     
@@ -851,23 +843,16 @@ class ChatInterface {
         if (el.dataset.converted) return;
         el.dataset.converted = 'true';
         
-        // 替换内容为打字机效果
-        el.innerHTML = '';
-        el.style.background = 'transparent';
-        el.style.padding = '4px 0';
-        el.style.cursor = 'default';
+        const textEl = el.querySelector('.voice-text-area');
+        if (!textEl) return;
+        textEl.style.display = 'block';
+        el.querySelector('.voice-play-icon').textContent = '🔊';
         
-        const container = document.createElement('div');
-        container.style.cssText = 'font-size:14px;color:rgba(255,255,255,0.7);line-height:1.6;';
-        el.appendChild(container);
-        
-        // 打字机效果（逐字显示 + Markdown渲染）
         let i = 0;
         const typeWriter = () => {
             if (i < text.length) {
-                container.textContent = text.substring(0, i + 1);
-                // 渲染Markdown
-                container.innerHTML = this._renderInlineMarkdown(this.escapeHtml(container.textContent));
+                textEl.textContent = text.substring(0, i + 1);
+                textEl.innerHTML = this._renderInlineMarkdown(this.escapeHtml(textEl.textContent));
                 i++;
                 setTimeout(typeWriter, 30 + Math.random() * 40);
             }
@@ -881,13 +866,12 @@ class ChatInterface {
         reader.onload = async (ev) => {
             const img = new Image();
             img.onload = () => {
-                // 压缩
+                // 不压缩，保留原始质量
                 const canvas = document.createElement('canvas');
-                const scale = Math.min(1, 800 / Math.max(img.width, img.height));
-                canvas.width = img.width * scale;
-                canvas.height = img.height * scale;
-                canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-                const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                canvas.width = img.width;
+                canvas.height = img.height;
+                canvas.getContext('2d').drawImage(img, 0, 0);
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
                 
                 // 作为正常用户消息显示（右对齐+头像+时间）
                 const msg = { type: 'user', text: '', timestamp: new Date().toISOString(), _imageUrl: dataUrl, _imageOnly: true };
@@ -916,6 +900,25 @@ class ChatInterface {
         document.body.appendChild(overlay);
     }
     
+    // 渲染语音条气泡HTML（微信风格）
+    _renderVoiceBubble(message) {
+        const duration = message._voiceDuration || Math.ceil((message._voiceText || '').length / 3);
+        const barWidth = message._voiceBarWidth || Math.min(75, 25 + duration * 1.5);
+        const waveCount = Math.min(16, Math.max(4, Math.ceil(duration / 2)));
+        const waves = Array.from({length: waveCount}, () => 
+            `<div style="width:2px;height:${3+Math.floor(Math.random()*12)}px;background:currentColor;border-radius:1px;opacity:0.5;"></div>`
+        ).join('');
+        
+        return `<div class="voice-bar-wrap" style="display:flex;flex-direction:column;cursor:pointer;min-width:${barWidth}%;padding:2px 0;">
+            <div style="display:flex;align-items:center;gap:6px;">
+                <span class="voice-play-icon" style="font-size:14px;flex-shrink:0;">▶</span>
+                <div style="flex:1;display:flex;align-items:center;gap:1px;height:18px;">${waves}</div>
+                <span style="font-size:11px;opacity:0.4;flex-shrink:0;">${duration}"</span>
+            </div>
+            <div class="voice-text-area" style="display:none;font-size:13px;line-height:1.5;margin-top:6px;padding-top:6px;border-top:1px solid rgba(128,128,128,0.15);"></div>
+        </div>`;
+    }
+    
     // ==================== 假发图片 ====================
     async _sendFakeImage() {
         const desc = window.zpPrompt ? 
@@ -940,29 +943,22 @@ class ChatInterface {
     
     _getStickerData() {
         const s = this.storage.getUserSettings();
-        // 统一使用 base64Library.stickers（与图库互通）
-        if (!s.base64Library) s.base64Library = { avatars: { categories: [{ id: 'default', name: '默认' }], items: [] }, webImages: { categories: [{ id: 'default', name: '默认' }], items: [] }, stickers: { categories: [{ id: 'default', name: '默认' }], items: [] } };
-        if (!s.base64Library.stickers) s.base64Library.stickers = { categories: [{ id: 'default', name: '默认' }], items: [] };
-        // 迁移旧数据
-        if (s.stickers && s.stickers.items && s.stickers.items.length > 0) {
-            s.base64Library.stickers.items.push(...s.stickers.items);
-            s.stickers.items.forEach(item => {
-                if (!s.base64Library.stickers.categories.find(c => c.id === item.categoryId)) {
-                    const oldCat = s.stickers.categories?.find(c => c.id === item.categoryId);
-                    if (oldCat) s.base64Library.stickers.categories.push(oldCat);
-                }
-            });
-            s.stickers = { categories: [], items: [] }; // 清空旧数据
-            this.storage.updateUserSettings({ base64Library: s.base64Library, stickers: s.stickers });
+        // 确保base64Library.stickers存在
+        if (!s.base64Library) {
+            s.base64Library = { avatars: { categories: [{ id: 'default', name: '默认' }], items: [] }, webImages: { categories: [{ id: 'default', name: '默认' }], items: [] }, stickers: { categories: [{ id: 'default', name: '默认' }], items: [] } };
+        }
+        if (!s.base64Library.stickers) {
+            s.base64Library.stickers = { categories: [{ id: 'default', name: '默认' }], items: [] };
         }
         return s.base64Library.stickers;
     }
     
     _saveStickerData(data) {
+        // 只更新stickers部分，不覆盖avatars/webImages
         const s = this.storage.getUserSettings();
         if (!s.base64Library) s.base64Library = {};
         s.base64Library.stickers = data;
-        this.storage.updateUserSettings({ base64Library: s.base64Library });
+        this.storage.saveData('zero_phone_user_settings', s);
     }
     
     openStickerPanel() {
@@ -989,9 +985,9 @@ class ChatInterface {
             <!-- 表情包网格 -->
             <div id="stickerGrid" style="flex:1;overflow-y:auto;padding:8px 10px;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;align-content:start;">
                 ${items.length === 0 ? '<div style="grid-column:1/-1;text-align:center;padding:30px 0;color:rgba(255,255,255,0.15);font-size:13px;">还没有表情包，点击"+ 添加"</div>' :
-                    items.map(s => `<div class="sticker-item" data-sid="${s.id}" style="aspect-ratio:1;border-radius:10px;overflow:hidden;cursor:pointer;background:rgba(255,255,255,0.03);display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;">
-                        <img src="${s.data || s.url}" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
-                        <span style="display:none;font-size:10px;color:rgba(255,255,255,0.3);padding:4px;text-align:center;word-break:break-all;">${this.escapeHtml(s.name || '?')}</span>
+                    items.map(s => `<div class="sticker-item" data-sid="${s.id}" style="position:relative;width:100%;padding-bottom:100%;border-radius:10px;overflow:hidden;cursor:pointer;background:rgba(255,255,255,0.03);">
+                        <img src="${s.data || s.url}" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                        <span style="display:none;position:absolute;top:0;left:0;width:100%;height:100%;font-size:10px;color:rgba(255,255,255,0.3);align-items:center;justify-content:center;text-align:center;word-break:break-all;padding:4px;box-sizing:border-box;">${this.escapeHtml(s.name || '?')}</span>
                     </div>`).join('')}
             </div>`;
         
@@ -2591,7 +2587,9 @@ div.innerHTML = `
             <div class="message-content">
                 <div class="message-bubble">
                     ${message._imageUrl ? `<div style="max-width:180px;cursor:pointer;" class="msg-image-thumb"><img src="${message._imageUrl}" style="width:100%;border-radius:8px;display:block;" onerror="this.parentElement.innerHTML='[图片加载失败]'"></div>` : ''}
-                    ${message.text && !message._imageOnly ? `<div class="message-text">${this.renderMessageContent(message.text)}</div>` : ''}
+                    ${message._voice ? this._renderVoiceBubble(message) : ''}
+                    ${message._fakeImage ? `<div style="background:rgba(128,128,128,0.08);border:1px dashed rgba(128,128,128,0.15);border-radius:10px;padding:14px;text-align:center;max-width:200px;"><div style="font-size:24px;margin-bottom:4px;">🖼️</div><div style="font-size:12px;opacity:0.5;">${this.escapeHtml(message._fakeImage)}</div></div>` : ''}
+                    ${message.text && !message._imageOnly && !message._voice && !message._fakeImage ? `<div class="message-text">${this.renderMessageContent(message.text)}</div>` : ''}
                 </div>
                 <div class="message-time">${time}</div>
             </div>
@@ -2608,6 +2606,12 @@ div.innerHTML = `
         const imgThumb = div.querySelector('.msg-image-thumb');
         if (imgThumb && message._imageUrl) {
             imgThumb.addEventListener('click', () => this._enlargeImage(message._imageUrl));
+        }
+        
+        // 语音条点击
+        const voiceBar = div.querySelector('.voice-bar-wrap');
+        if (voiceBar && message._voiceText) {
+            voiceBar.addEventListener('click', () => this._voiceToText(voiceBar, message._voiceText));
         }
         
         return div;
@@ -6875,6 +6879,28 @@ getIntimacyStatusForAI() {
     desc += `\n  [AI_NICKNAME:新网名] 修改你的网名`;
     desc += `\n  [AI_POKE:新拍一拍文字] 修改你的拍一拍`;
     desc += `\n  [AI_SIGNATURE:新签名] 修改你的个性签名`;
+    
+    // AI可发送假图片和语音条
+    desc += `\n\n【发送多媒体】`;
+    desc += `\n  [AI_FAKE_IMAGE:图片描述] 给user发一张假图片（user知道是文字描述）`;
+    desc += `\n  [AI_VOICE:语音内容] 给user发一条语音消息（显示为语音条，user点击可"转文字"）`;
+    
+    // Base64图库访问
+    const libData = window.base64Library?._getData();
+    if (libData) {
+        const avatarItems = libData.avatars?.items || [];
+        const webItems = libData.webImages?.items || [];
+        if (avatarItems.length > 0 || webItems.length > 0) {
+            desc += `\n\n【Base64图库】user的图库里有图片，你可以通过名字/描述搜索使用。`;
+            if (avatarItems.length > 0) {
+                desc += `\n  头像库(${avatarItems.length}张)：${avatarItems.slice(0, 15).map(i => `「${i.name}${i.desc ? ':' + i.desc : ''}」`).join('、')}${avatarItems.length > 15 ? '...' : ''}`;
+            }
+            if (webItems.length > 0) {
+                desc += `\n  网图库(${webItems.length}张)：${webItems.slice(0, 15).map(i => `「${i.name}${i.desc ? ':' + i.desc : ''}」`).join('、')}${webItems.length > 15 ? '...' : ''}`;
+            }
+            desc += `\n  你可以在聊天中自然地提到这些图，也可以根据人设和语境概率性地使用（比如换头像、发图给user）。`;
+        }
+    }
     const aiStatus = data.aiStatus || {};
     if (aiStatus.outfit || aiStatus.action || aiStatus.thoughts || aiStatus.location) {
         desc += `\n  你当前的状态：`;
@@ -12633,6 +12659,8 @@ _stripCommandTags(text) {
         .replace(/\[AI_POKE:[^\]]+\]/g, '')
         .replace(/\[AI_TIMEZONE:[^\]]+\]/g, '')
         .replace(/\[AI_SIGNATURE:[^\]]+\]/g, '')
+        .replace(/\[AI_FAKE_IMAGE:[^\]]+\]/g, '')
+        .replace(/\[AI_VOICE:[^\]]+\]/g, '')
         .replace(/\[STATUS_CSS\][\s\S]*?\[\/STATUS_CSS\]/g, '')
         .replace(/\[STATUS_?\s*CSS\][\s\S]*?\[\/?\s*STATUS_?\s*CSS\]/gi, '');
 }

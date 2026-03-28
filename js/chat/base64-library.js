@@ -25,7 +25,7 @@ class Base64Library {
                 webImages: { categories: [{ id: 'default', name: '默认' }], items: [] },
                 stickers: { categories: [{ id: 'default', name: '默认' }], items: [] }
             };
-            store.updateUserSettings({ base64Library: s.base64Library });
+            store.saveData('zero_phone_user_settings', s);
         }
         ['avatars', 'webImages', 'stickers'].forEach(k => {
             if (!s.base64Library[k]) s.base64Library[k] = { categories: [{ id: 'default', name: '默认' }], items: [] };
@@ -36,7 +36,9 @@ class Base64Library {
     _saveData(data) {
         const store = this._storage();
         if (!store) { console.warn('⚠️ Base64Library: storage不可用，无法保存'); return; }
-        store.updateUserSettings({ base64Library: data });
+        const s = store.getUserSettings();
+        s.base64Library = data;
+        store.saveData('zero_phone_user_settings', s);
     }
 
     _esc(s) { return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
@@ -94,8 +96,8 @@ class Base64Library {
             <!-- 图片网格 -->
             <div id="b64Grid" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 10px 80px;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;align-content:start;">
                 ${items.length === 0 ? '<div style="grid-column:1/-1;text-align:center;padding:40px 0;color:rgba(255,255,255,0.12);font-size:13px;">空空如也</div>' :
-                    items.map(item => `<div class="b64-item" data-id="${item.id}" style="position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;background:rgba(255,255,255,0.03);cursor:pointer;">
-                        <img src="${item.data || item.url || ''}" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">
+                    items.map(item => `<div class="b64-item" data-id="${item.id}" style="position:relative;width:100%;padding-bottom:100%;border-radius:10px;overflow:hidden;background:rgba(255,255,255,0.03);cursor:pointer;">
+                        <img src="${item.data || item.url || ''}" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">
                         ${this._selectMode ? `<div class="b64-check" style="position:absolute;top:6px;right:6px;width:20px;height:20px;border-radius:50%;border:2px solid rgba(255,255,255,0.3);background:${this._selected.has(item.id) ? '#f0932b' : 'rgba(0,0,0,0.4)'};display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;">${this._selected.has(item.id) ? '✓' : ''}</div>` : ''}
                         <div style="position:absolute;bottom:0;left:0;right:0;padding:3px 6px;background:linear-gradient(transparent,rgba(0,0,0,0.7));font-size:9px;color:rgba(255,255,255,0.6);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${this._esc(item.name || '')}</div>
                     </div>`).join('')}

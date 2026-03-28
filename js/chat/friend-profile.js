@@ -833,6 +833,32 @@ class FriendProfileManager {
             }
         }
         
+        // [AI_FAKE_IMAGE:描述] - AI发送假图片
+        const fakeImgMatch = text.match(/\[AI_FAKE_IMAGE:([^\]]+)\]/);
+        if (fakeImgMatch) {
+            const desc = fakeImgMatch[1].trim();
+            text = text.replace(/\[AI_FAKE_IMAGE:[^\]]+\]/g, '');
+            if (desc && ci) {
+                const fakeMsg = { type: 'ai', text: '', timestamp: new Date().toISOString(), _fakeImage: desc };
+                ci.addMessage(fakeMsg);
+                ci.storage.addMessage(ci.currentFriendCode, fakeMsg);
+            }
+        }
+        
+        // [AI_VOICE:内容] - AI发送语音条
+        const voiceMatch = text.match(/\[AI_VOICE:([^\]]+)\]/);
+        if (voiceMatch) {
+            const voiceText = voiceMatch[1].trim();
+            text = text.replace(/\[AI_VOICE:[^\]]+\]/g, '');
+            if (voiceText && ci) {
+                const duration = Math.max(1, Math.min(60, Math.ceil(voiceText.length / 3)));
+                const barWidth = Math.min(75, 25 + duration * 1.5);
+                const voiceMsg = { type: 'ai', text: `[语音消息] ${voiceText}`, timestamp: new Date().toISOString(), _voice: true, _voiceText: voiceText, _voiceDuration: duration, _voiceBarWidth: barWidth };
+                ci.addMessage(voiceMsg);
+                ci.storage.addMessage(ci.currentFriendCode, voiceMsg);
+            }
+        }
+        
         // [STATUS_CSS]css[/STATUS_CSS] - AI美化状态面板
         const cssMatcher = text.match(/\[STATUS_?\s*CSS\]([\s\S]*?)\[\/?\s*STATUS_?\s*CSS\]/i);
         if (cssMatcher) {
