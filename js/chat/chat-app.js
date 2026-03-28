@@ -17,7 +17,16 @@ class ChatApp {
         
         // ===== 聊天列表按钮 =====
         document.getElementById('searchChatBtn').addEventListener('click', () => {
-            alert('搜索聊天记录功能开发中...');
+            if (window.chatInterface?.currentFriendCode) {
+                window.chatInterface.openSearchPanel();
+            } else {
+                // 没有打开任何聊天，提示先进入
+                if (window.chatInterface?.showCssToast) {
+                    window.chatInterface.showCssToast('请先进入一个聊天再搜索');
+                } else {
+                    alert('请先进入一个聊天界面，然后在聊天设置中搜索');
+                }
+            }
         });
         
         document.getElementById('addChatBtn').addEventListener('click', () => {

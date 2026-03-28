@@ -886,7 +886,11 @@ class FriendProfileManager {
                 ci.storage.updateFriend(code, { blacklisted: false, blacklistedDate: '' });
                 this._toast(`已将「${name}」移出黑名单`);
                 page.remove();
-                this.openBlacklistPage(); // 刷新
+                // 刷新好友列表（黑名单空了就自动消失）
+                if (typeof chatApp !== 'undefined') chatApp.renderFriendList();
+                // 如果还有黑名单成员就重新打开
+                const remaining = ci.storage.getAllFriends().filter(fr => fr.blacklisted);
+                if (remaining.length > 0) this.openBlacklistPage();
             });
         });
     }

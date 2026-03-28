@@ -2707,7 +2707,8 @@ div.innerHTML = `
         const searchChatBtn = document.getElementById('settingSearchChat');
         if (searchChatBtn) {
             searchChatBtn.addEventListener('click', () => {
-                alert('搜索聊天记录功能开发中...');
+                this.closeChatSettings();
+                this.openSearchPanel();
             });
         }
         
@@ -6492,6 +6493,152 @@ getIntimacyStatusForAI() {
 }
 
 // 获取黑名单状态提示（注入到系统提示）
+// ==================== 搜索聊天记录 ====================
+openSearchPanel() {
+    document.getElementById('chatSearchPanel')?.remove();
+    
+    const panel = document.createElement('div');
+    panel.id = 'chatSearchPanel';
+    panel.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:8000;background:#111;display:flex;flex-direction:column;animation:profileSlideUp 0.2s ease-out;';
+    
+    panel.innerHTML = `
+        <div style="display:flex;align-items:center;padding:10px 12px;gap:8px;background:rgba(17,17,17,0.95);border-bottom:1px solid rgba(255,255,255,0.04);">
+            <button id="searchPanelBack" style="background:none;border:none;color:rgba(255,255,255,0.6);font-size:20px;cursor:pointer;padding:4px 8px;">←</button>
+            <input type="text" id="searchKeyword" placeholder="搜索聊天内容..." style="flex:1;padding:10px 14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:14px;">
+            <button id="searchExecBtn" style="padding:8px 14px;border:none;border-radius:10px;background:rgba(240,147,43,0.15);color:#f0932b;font-size:13px;font-weight:600;cursor:pointer;">搜索</button>
+        </div>
+        <!-- 筛选条件 -->
+        <div style="display:flex;gap:6px;padding:8px 12px;flex-wrap:wrap;align-items:center;">
+            <select id="searchSender" style="padding:6px 10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:rgba(255,255,255,0.7);font-size:12px;">
+                <option value="all">全部消息</option>
+                <option value="user">我发的</option>
+                <option value="ai">TA发的</option>
+            </select>
+            <input type="date" id="searchDateFrom" style="padding:6px 8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:rgba(255,255,255,0.7);font-size:11px;" title="开始日期">
+            <span style="color:rgba(255,255,255,0.2);font-size:12px;">~</span>
+            <input type="date" id="searchDateTo" style="padding:6px 8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:rgba(255,255,255,0.7);font-size:11px;" title="结束日期">
+        </div>
+        <!-- 搜索结果 -->
+        <div id="searchResults" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:8px 12px;"></div>
+    `;
+    
+    document.body.appendChild(panel);
+    
+    // 事件
+    panel.querySelector('#searchPanelBack').addEventListener('click', () => panel.remove());
+    panel.querySelector('#searchExecBtn').addEventListener('click', () => this._execSearch());
+    panel.querySelector('#searchKeyword').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') this._execSearch();
+    });
+    
+    setTimeout(() => panel.querySelector('#searchKeyword')?.focus(), 100);
+}
+
+_execSearch() {
+    const keyword = document.getElementById('searchKeyword')?.value.trim() || '';
+    const sender = document.getElementById('searchSender')?.value || 'all';
+    const dateFrom = document.getElementById('searchDateFrom')?.value || '';
+    const dateTo = document.getElementById('searchDateTo')?.value || '';
+    const resultsEl = document.getElementById('searchResults');
+    if (!resultsEl) return;
+    
+    if (!keyword && !dateFrom && !dateTo) {
+        resultsEl.innerHTML = '<div style="text-align:center;padding:40px 0;color:rgba(255,255,255,0.15);font-size:13px;">请输入关键词或选择日期范围</div>';
+        return;
+    }
+    
+    const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
+    
+    // 搜索
+    const results = [];
+    this.messages.forEach((msg, idx) => {
+        if (msg.type === 'system') return;
+        
+        // 发送者筛选
+        if (sender === 'user' && msg.type !== 'user') return;
+        if (sender === 'ai' && msg.type !== 'ai') return;
+        
+        // 日期筛选
+        if (dateFrom || dateTo) {
+            const msgDate = new Date(msg.timestamp).toISOString().split('T')[0];
+            if (dateFrom && msgDate < dateFrom) return;
+            if (dateTo && msgDate > dateTo) return;
+        }
+        
+        // 关键词筛选
+        if (keyword && !msg.text.toLowerCase().includes(keyword.toLowerCase())) return;
+        
+        results.push({ msg, idx });
+    });
+    
+    if (results.length === 0) {
+        resultsEl.innerHTML = '<div style="text-align:center;padding:40px 0;color:rgba(255,255,255,0.15);font-size:13px;">没有找到匹配的消息</div>';
+        return;
+    }
+    
+    resultsEl.innerHTML = `<div style="font-size:11px;color:rgba(255,255,255,0.25);margin-bottom:8px;">找到 ${results.length} 条结果</div>` +
+        results.slice(0, 100).map(r => {
+            const m = r.msg;
+            const time = new Date(m.timestamp);
+            const timeStr = `${time.getMonth()+1}/${time.getDate()} ${String(time.getHours()).padStart(2,'0')}:${String(time.getMinutes()).padStart(2,'0')}`;
+            const senderName = m.type === 'user' ? '你' : friendName;
+            const senderColor = m.type === 'user' ? 'rgba(100,180,255,0.6)' : 'rgba(240,147,43,0.6)';
+            
+            // 高亮关键词
+            let textPreview = m.text.substring(0, 200);
+            if (keyword) {
+                const regex = new RegExp(`(${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+                textPreview = this.escapeHtml(textPreview).replace(regex, '<span style="background:rgba(240,147,43,0.3);color:#fff;padding:0 2px;border-radius:2px;">$1</span>');
+            } else {
+                textPreview = this.escapeHtml(textPreview);
+            }
+            
+            return `<div class="search-result-item" data-idx="${r.idx}" style="padding:10px 12px;margin-bottom:6px;background:rgba(255,255,255,0.03);border-radius:10px;border:1px solid rgba(255,255,255,0.04);cursor:pointer;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                    <span style="font-size:12px;color:${senderColor};font-weight:600;">${senderName}</span>
+                    <span style="font-size:10px;color:rgba(255,255,255,0.2);">#${r.idx + 1} · ${timeStr}</span>
+                </div>
+                <div style="font-size:13px;color:rgba(255,255,255,0.6);line-height:1.5;word-break:break-word;">${textPreview}${m.text.length > 200 ? '...' : ''}</div>
+            </div>`;
+        }).join('') +
+        (results.length > 100 ? `<div style="text-align:center;padding:8px;color:rgba(255,255,255,0.15);font-size:11px;">仅显示前100条结果</div>` : '');
+    
+    // 点击结果跳转到对应消息
+    resultsEl.querySelectorAll('.search-result-item').forEach(item => {
+        item.addEventListener('click', () => {
+            const idx = parseInt(item.getAttribute('data-idx'));
+            document.getElementById('chatSearchPanel')?.remove();
+            this._scrollToMessage(idx);
+        });
+    });
+}
+
+// 跳转到指定楼层的消息
+_scrollToMessage(msgIndex) {
+    // 确保该消息已被渲染
+    if (msgIndex < this._renderStartIndex) {
+        // 需要加载更早的消息
+        while (this._renderStartIndex > msgIndex) {
+            this._loadMoreMessages();
+        }
+    }
+    
+    // 找到DOM中的消息元素（按渲染顺序）
+    const messagesList = document.getElementById('messagesList');
+    if (!messagesList) return;
+    const allMsgEls = messagesList.querySelectorAll('.message');
+    const targetOffset = msgIndex - this._renderStartIndex;
+    
+    if (targetOffset >= 0 && targetOffset < allMsgEls.length) {
+        const targetEl = allMsgEls[targetOffset];
+        targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // 闪烁高亮
+        targetEl.style.transition = 'background 0.3s';
+        targetEl.style.background = 'rgba(240,147,43,0.12)';
+        setTimeout(() => { targetEl.style.background = ''; }, 2000);
+    }
+}
+
 // ==================== 时空中控面板 ====================
 _openTimezonePanel() {
     document.getElementById('tzPanelOverlay')?.remove();
