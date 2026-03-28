@@ -285,7 +285,8 @@ class Base64Library {
         ov.querySelector('#b64UpFileS').addEventListener('change', async (e) => {
             const file = e.target.files[0]; if (!file) return;
             const name = window.zpPrompt ? await window.zpPrompt('图片名字/描述', '给图片命名（AI搜图用，可留空）', '', '名字或描述关键词') : prompt('图片名字（可留空）：');
-            await this._addImageFromFile(file, name || file.name.split('.')[0], name || '', ov.querySelector('#b64UpCat')?.value);
+            const item = await this._addImageFromFile(file, name || file.name.split('.')[0], name || '', ov.querySelector('#b64UpCat')?.value);
+            this._saveItem(item);
             this._toast('已添加');
             ov.remove(); this.open();
         });
@@ -295,9 +296,12 @@ class Base64Library {
         ov.querySelector('#b64UpFileB').addEventListener('change', async (e) => {
             const files = Array.from(e.target.files); if (!files.length) return;
             const cat = ov.querySelector('#b64UpCat')?.value;
+            const d = this._getData();
             for (const f of files) {
-                await this._addImageFromFile(f, f.name.split('.')[0], '', cat);
+                const item = await this._addImageFromFile(f, f.name.split('.')[0], '', cat);
+                if (item) d[this._activeTab].items.push(item);
             }
+            this._saveData(d);
             this._toast(`已添加 ${files.length} 张`);
             ov.remove(); this.open();
         });
@@ -327,7 +331,7 @@ class Base64Library {
         ov.querySelector('#b64UpClose').addEventListener('click', () => { ov.remove(); });
     }
 
-    // 从文件添加图片（返回Promise）
+    // 从文件处理图片（返回Promise<{name,desc,data,categoryId}>）
     _addImageFromFile(file, name, desc, categoryId) {
         return new Promise((resolve) => {
             const reader = new FileReader();
@@ -340,9 +344,7 @@ class Base64Library {
                     c.width = img.width * s; c.height = img.height * s;
                     c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
                     const dataUrl = c.toDataURL('image/jpeg', 0.8);
-
-                    const d = this._getData();
-                    d[this._activeTab].items.push({
+                    resolve({
                         id: 'img_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
                         name: name || '未命名',
                         desc: desc || '',
@@ -350,15 +352,21 @@ class Base64Library {
                         categoryId: categoryId || 'default',
                         createdAt: new Date().toISOString()
                     });
-                    this._saveData(d);
-                    resolve();
                 };
-                img.onerror = () => resolve();
+                img.onerror = () => resolve(null);
                 img.src = ev.target.result;
             };
-            reader.onerror = () => resolve();
+            reader.onerror = () => resolve(null);
             reader.readAsDataURL(file);
         });
+    }
+    
+    // 把处理好的图片项存入storage
+    _saveItem(item) {
+        if (!item) return;
+        const d = this._getData();
+        d[this._activeTab].items.push(item);
+        this._saveData(d);
     }
 
     // ==================== 移动分类面板 ====================

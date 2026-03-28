@@ -1129,21 +1129,32 @@ class ChatInterface {
         panel.querySelector('#stickerFileInput')?.addEventListener('change', async (e) => {
             const file = e.target.files[0]; if (!file) return;
             const name = window.zpPrompt ? await window.zpPrompt('表情包名字', '给这个表情包命名（可留空）', '', '名字/描述') : prompt('表情包名字（可留空）：');
-            this._addStickerFromFile(file, name || file.name.split('.')[0], panel.querySelector('#stickerUploadCategory')?.value);
+            const item = await this._addStickerFromFile(file, name || file.name.split('.')[0], panel.querySelector('#stickerUploadCategory')?.value);
+            if (item) {
+                const d = this._getStickerData();
+                d.items.push(item);
+                this._saveStickerData(d);
+                this.showCssToast('已添加');
+                panel.remove();
+                this.openStickerPanel();
+            }
         });
         
         // 批量上传
         panel.querySelector('#stickerUploadBatch')?.addEventListener('click', () => panel.querySelector('#stickerFileBatchInput').click());
-        panel.querySelector('#stickerFileBatchInput')?.addEventListener('change', (e) => {
+        panel.querySelector('#stickerFileBatchInput')?.addEventListener('change', async (e) => {
             const files = Array.from(e.target.files);
             if (files.length === 0) return;
             const catId = panel.querySelector('#stickerUploadCategory')?.value;
-            let count = 0;
-            files.forEach(file => {
-                this._addStickerFromFile(file, file.name.split('.')[0], catId);
-                count++;
-            });
-            this.showCssToast(`已添加 ${count} 个表情包`);
+            const d = this._getStickerData();
+            for (const file of files) {
+                const item = await this._addStickerFromFile(file, file.name.split('.')[0], catId);
+                if (item) d.items.push(item);
+            }
+            this._saveStickerData(d);
+            this.showCssToast(`已添加 ${files.length} 个表情包`);
+            panel.remove();
+            this.openStickerPanel();
         });
         
         // URL批量导入
@@ -1173,30 +1184,31 @@ class ChatInterface {
         panel.querySelector('#stickerUploadClose')?.addEventListener('click', () => { panel.remove(); this.openStickerPanel(); });
     }
     
-    // 从文件添加表情包
+    // 从文件处理表情包（返回Promise<item>）
     _addStickerFromFile(file, name, categoryId) {
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            const img = new Image();
-            img.onload = () => {
-                const c = document.createElement('canvas');
-                const s = Math.min(1, 200 / Math.max(img.width, img.height));
-                c.width = img.width * s; c.height = img.height * s;
-                c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-                const dataUrl = c.toDataURL('image/png', 0.8);
-                
-                const d = this._getStickerData();
-                d.items.push({
-                    id: 'stk_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-                    name: name || '表情包',
-                    data: dataUrl,
-                    categoryId: categoryId || 'default'
-                });
-                this._saveStickerData(d);
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const img = new Image();
+                img.onload = () => {
+                    const c = document.createElement('canvas');
+                    const s = Math.min(1, 200 / Math.max(img.width, img.height));
+                    c.width = img.width * s; c.height = img.height * s;
+                    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+                    const dataUrl = c.toDataURL('image/png', 0.8);
+                    resolve({
+                        id: 'stk_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+                        name: name || '表情包',
+                        data: dataUrl,
+                        categoryId: categoryId || 'default'
+                    });
+                };
+                img.onerror = () => resolve(null);
+                img.src = ev.target.result;
             };
-            img.src = ev.target.result;
-        };
-        reader.readAsDataURL(file);
+            reader.onerror = () => resolve(null);
+            reader.readAsDataURL(file);
+        });
     }
     
     loadChat(friendCode) {
