@@ -964,33 +964,45 @@ class ChatInterface {
         const data = this._getStickerData();
         const activeCategory = this._stickerActiveCategory || data.categories[0]?.id || 'default';
         const items = data.items.filter(s => s.categoryId === activeCategory);
+        const isDark = this._stickerDarkMode || false;
+        const bg = isDark ? '#1a1a1a' : 'rgba(245,245,245,0.98)';
+        const textColor = isDark ? '#fff' : '#222';
+        const subColor = isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)';
+        const itemBg = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)';
+        const borderColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+        const nameColor = isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.35)';
         
         const panel = document.createElement('div');
         panel.id = 'stickerPanel';
-        panel.className = 'sticker-panel';
-        panel.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:7500;background:#1a1a1a;border-radius:16px 16px 0 0;border:1px solid rgba(255,255,255,0.06);height:50vh;min-height:320px;display:flex;flex-direction:column;animation:profileSlideUp 0.25s ease-out;';
+        panel.style.cssText = `position:fixed;bottom:0;left:0;right:0;z-index:7500;background:${bg};border-radius:16px 16px 0 0;border-top:1px solid ${borderColor};height:50vh;min-height:320px;display:flex;flex-direction:column;animation:profileSlideUp 0.25s ease-out;`;
         
         panel.innerHTML = `
-            <div style="display:flex;align-items:center;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);flex-shrink:0;">
-                <div style="flex:1;font-size:14px;font-weight:600;color:#fff;">表情包</div>
+            <div style="display:flex;align-items:center;padding:10px 14px;border-bottom:1px solid ${borderColor};flex-shrink:0;">
+                <div style="flex:1;font-size:14px;font-weight:600;color:${textColor};">表情包</div>
+                <button id="stickerThemeBtn" style="padding:4px 8px;border:none;border-radius:6px;background:${itemBg};color:${subColor};font-size:11px;cursor:pointer;margin-right:6px;">${isDark ? '☀' : '☾'}</button>
                 <button id="stickerAddBtn" style="padding:4px 10px;border:none;border-radius:6px;background:rgba(240,147,43,0.12);color:#f0932b;font-size:12px;cursor:pointer;">+ 添加</button>
-                <button id="stickerCloseBtn" style="margin-left:8px;padding:4px 10px;border:none;border-radius:6px;background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.4);font-size:12px;cursor:pointer;">关闭</button>
+                <button id="stickerCloseBtn" style="margin-left:6px;padding:4px 10px;border:none;border-radius:6px;background:${itemBg};color:${subColor};font-size:12px;cursor:pointer;">关闭</button>
             </div>
-            <!-- 分类Tab -->
-            <div id="stickerCategoryTabs" style="display:flex;gap:4px;padding:8px 14px;overflow-x:auto;flex-shrink:0;">
-                ${data.categories.map(c => `<div class="sticker-cat-tab ${c.id === activeCategory ? 'active' : ''}" data-cid="${c.id}" style="padding:5px 12px;border-radius:14px;font-size:12px;white-space:nowrap;cursor:pointer;${c.id === activeCategory ? 'background:rgba(240,147,43,0.12);color:#f0932b;' : 'background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.4);'}">${this.escapeHtml(c.name)}</div>`).join('')}
-                <div id="stickerAddCategory" style="padding:5px 10px;border-radius:14px;font-size:12px;white-space:nowrap;cursor:pointer;background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.2);">+</div>
+            <div style="display:flex;gap:4px;padding:8px 14px;overflow-x:auto;flex-shrink:0;">
+                ${data.categories.map(c => `<div class="sticker-cat-tab" data-cid="${c.id}" style="padding:5px 12px;border-radius:14px;font-size:12px;white-space:nowrap;cursor:pointer;${c.id === activeCategory ? 'background:rgba(240,147,43,0.12);color:#f0932b;' : `background:${itemBg};color:${subColor};`}">${this.escapeHtml(c.name)}</div>`).join('')}
+                <div id="stickerAddCategory" style="padding:5px 10px;border-radius:14px;font-size:12px;white-space:nowrap;cursor:pointer;background:${itemBg};color:${subColor};">+</div>
             </div>
-            <!-- 表情包网格 -->
-            <div id="stickerGrid" style="flex:1;overflow-y:auto;padding:8px 10px;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;align-content:start;">
-                ${items.length === 0 ? '<div style="grid-column:1/-1;text-align:center;padding:30px 0;color:rgba(255,255,255,0.15);font-size:13px;">还没有表情包，点击"+ 添加"</div>' :
-                    items.map(s => `<div class="sticker-item" data-sid="${s.id}" style="position:relative;width:100%;border-radius:10px;overflow:hidden;cursor:pointer;background:rgba(255,255,255,0.03);">
-                        <div style="width:100%;padding-bottom:100%;position:relative;">
-                            <img src="${s.data || s.url}" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">
-                        </div>
-                        <div style="padding:2px 4px;font-size:9px;color:rgba(255,255,255,0.3);text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${this.escapeHtml(s.name || '')}</div>
-                    </div>`).join('')}
+            <div id="stickerGrid" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:8px 10px 20px;min-height:0;">
+                ${items.length === 0 ? `<div style="text-align:center;padding:40px 0;color:${subColor};font-size:13px;">还没有表情包，点击"+ 添加"</div>` :
+                    `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">${items.map(s => `<div class="sticker-item" data-sid="${s.id}" style="border-radius:10px;overflow:hidden;cursor:pointer;background:${itemBg};">
+                        <img src="${s.data || s.url}" style="width:100%;aspect-ratio:1;object-fit:cover;display:block;" onerror="this.style.display='none'">
+                        <div style="padding:2px 4px;font-size:9px;color:${nameColor};text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${this.escapeHtml(s.name || '')}</div>
+                    </div>`).join('')}</div>`}
             </div>`;
+        
+        document.body.appendChild(panel);
+        
+        // 黑白切换
+        panel.querySelector('#stickerThemeBtn')?.addEventListener('click', () => {
+            this._stickerDarkMode = !this._stickerDarkMode;
+            panel.remove();
+            this.openStickerPanel();
+        });
         
         document.body.appendChild(panel);
         
