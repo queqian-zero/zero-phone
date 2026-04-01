@@ -47,8 +47,6 @@ class Base64Library {
     // ==================== 打开图库主页 ====================
     open() {
         document.getElementById('base64LibPage')?.remove();
-        this._selectMode = false;
-        this._selected.clear();
 
         const page = document.createElement('div');
         page.id = 'base64LibPage';
