@@ -605,13 +605,11 @@ class ChatInterface {
             });
         }
         
-        // 线下模式切换
+        // 次元剧场入口（原线下模式红点）
         const offlineToggle = document.getElementById('offlineToggle');
         if (offlineToggle) {
             offlineToggle.addEventListener('click', (e) => {
-                console.log('🔴 点击线下模式');
-                e.target.classList.toggle('active');
-                alert('线下模式功能开发中...');
+                if (window.theaterMode) window.theaterMode.openEntryDialog();
             });
         }
         
