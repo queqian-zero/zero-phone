@@ -1014,11 +1014,6 @@ class ChatInterface {
                 this._sendSticker(sid);
                 panel.remove();
             });
-            // 长按删除
-            let lt;
-            item.addEventListener('touchstart', () => { lt = setTimeout(() => { this._deleteStickerConfirm(item.getAttribute('data-sid')); }, 600); });
-            item.addEventListener('touchend', () => clearTimeout(lt));
-            item.addEventListener('touchmove', () => clearTimeout(lt));
         });
         
         // 分类切换
@@ -7917,10 +7912,13 @@ wearLuckyChar(charId, who = 'user') {
         return;
     }
     
+    // 佩戴新的 = 自动取消之前的（不管是谁戴的）
     if (who === 'user') {
         lc.userWearing = charId;
+        lc.aiWearing = ''; // 替换AI的
     } else {
         lc.aiWearing = charId;
+        lc.userWearing = ''; // 替换user的
     }
     
     data.luckyChars = lc;
@@ -8062,6 +8060,8 @@ processLuckyCharCommands(text) {
         if (!target) target = owned.find(o => o.name.includes(charKey) || charKey.includes(o.name));
         
         if (target) {
+            // 自动取消之前的佩戴（不管是user还是AI戴的）
+            lc.userWearing = null;
             lc.aiWearing = target.id;
             data.luckyChars = lc;
             this.storage.saveIntimacyData(this.currentFriendCode, data);
