@@ -88,18 +88,21 @@ class Base64Library {
             </div>
 
             <!-- 分类Tab -->
-            <div style="display:flex;gap:4px;padding:0 14px 8px;overflow-x:auto;flex-shrink:0;">
-                ${section.categories.map(c => `<div class="b64-cat" data-cid="${c.id}" style="padding:4px 10px;border-radius:12px;font-size:11px;white-space:nowrap;cursor:pointer;${c.id === catId && !this._searchKeyword ? 'background:rgba(240,147,43,0.12);color:#f0932b;' : 'background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.3);'}">${this._esc(c.name)}</div>`).join('')}
+            <div style="display:flex;gap:4px;padding:0 14px 8px;overflow-x:auto;flex-shrink:0;align-items:center;">
+                ${section.categories.map(c => {
+                    const isActive = c.id === catId && !this._searchKeyword;
+                    return `<div class="b64-cat" data-cid="${c.id}" style="display:flex;align-items:center;gap:3px;padding:4px 10px;border-radius:12px;font-size:11px;white-space:nowrap;cursor:pointer;${isActive ? 'background:rgba(240,147,43,0.12);color:#f0932b;' : 'background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.3);'}">${this._esc(c.name)}${isActive && c.id !== 'default' ? `<span class="b64-cat-edit" data-cid="${c.id}" style="opacity:0.5;font-size:10px;cursor:pointer;">&#9998;</span>` : ''}</div>`;
+                }).join('')}
                 <div id="b64AddCat" style="padding:4px 8px;border-radius:12px;font-size:11px;cursor:pointer;background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.15);">+</div>
             </div>
 
             <!-- 图片网格 -->
-            <div id="b64Grid" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 10px 80px;min-height:0;">
+            <div id="b64Grid" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 10px 80px;min-height:0;" oncontextmenu="return false">
                 ${items.length === 0 ? '<div style="text-align:center;padding:40px 0;color:rgba(255,255,255,0.12);font-size:13px;">空空如也</div>' :
-                    `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">${items.map(item => `<div class="b64-item" data-id="${item.id}" style="border-radius:10px;overflow:hidden;background:rgba(255,255,255,0.03);cursor:pointer;position:relative;">
-                        <img src="${item.data || item.url || ''}" style="width:100%;aspect-ratio:1;object-fit:cover;display:block;" onerror="this.style.display='none'">
+                    `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">${items.map(item => `<div class="b64-item" data-id="${item.id}" style="border-radius:10px;overflow:hidden;background:rgba(255,255,255,0.03);cursor:pointer;position:relative;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;">
+                        <img src="${item.data || item.url || ''}" style="width:100%;aspect-ratio:1;object-fit:cover;display:block;pointer-events:none;" onerror="this.style.display='none'" draggable="false">
                         ${this._selectMode ? `<div style="position:absolute;top:6px;right:6px;width:20px;height:20px;border-radius:50%;border:2px solid rgba(255,255,255,0.3);background:${this._selected.has(item.id) ? '#f0932b' : 'rgba(0,0,0,0.4)'};display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;">${this._selected.has(item.id) ? '✓' : ''}</div>` : ''}
-                        <div style="position:absolute;bottom:0;left:0;right:0;padding:3px 6px;background:linear-gradient(transparent,rgba(0,0,0,0.7));font-size:9px;color:rgba(255,255,255,0.6);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${this._esc(item.name || '')}</div>
+                        <div style="position:absolute;bottom:0;left:0;right:0;padding:3px 6px;background:linear-gradient(transparent,rgba(0,0,0,0.7));font-size:9px;color:rgba(255,255,255,0.6);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;pointer-events:none;">${this._esc(item.name || '')}</div>
                     </div>`).join('')}</div>`}
             </div>
 
@@ -133,14 +136,19 @@ class Base64Library {
             searchTimer = setTimeout(() => { this._searchKeyword = e.target.value.trim(); this.open(); }, 300);
         });
 
-        // 分类切换 + 长按编辑/删除
+        // 分类切换 + 编辑图标
         page.querySelectorAll('.b64-cat').forEach(c => {
-            c.addEventListener('click', () => { this._activeCategory[this._activeTab] = c.dataset.cid; this._searchKeyword = ''; this.open(); });
-            // 长按编辑/删除分类
-            let lt;
-            c.addEventListener('touchstart', () => { lt = setTimeout(() => this._editCategory(c.dataset.cid), 500); });
-            c.addEventListener('touchend', () => clearTimeout(lt));
-            c.addEventListener('touchmove', () => clearTimeout(lt));
+            c.addEventListener('click', (e) => {
+                // 如果点的是编辑图标，打开编辑面板
+                if (e.target.classList.contains('b64-cat-edit')) {
+                    e.stopPropagation();
+                    this._editCategory(e.target.dataset.cid);
+                    return;
+                }
+                this._activeCategory[this._activeTab] = c.dataset.cid;
+                this._searchKeyword = '';
+                this.open();
+            });
         });
 
         // 新建分类
