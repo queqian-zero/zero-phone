@@ -859,6 +859,59 @@ class FriendProfileManager {
             }
         }
         
+        // [AI_SEND_LIB_IMAGE:名字] - AI从图库发图给user
+        const libImgMatch = text.match(/\[AI_SEND_LIB_IMAGE:([^\]]+)\]/);
+        if (libImgMatch) {
+            const imgName = libImgMatch[1].trim();
+            text = text.replace(/\[AI_SEND_LIB_IMAGE:[^\]]+\]/g, '');
+            if (ci && window.base64Library) {
+                const ld = window.base64Library._getData();
+                // 搜索所有库
+                const allItems = [...(ld.avatars?.items||[]), ...(ld.webImages?.items||[]), ...(ld.stickers?.items||[])];
+                const found = allItems.find(i => i.name === imgName) || allItems.find(i => (i.name||'').includes(imgName) || (i.desc||'').includes(imgName));
+                if (found) {
+                    const src = found.data || found.url || '';
+                    const msg = { type: 'ai', text: '', timestamp: new Date().toISOString(), _stickerUrl: src, _stickerName: found.name };
+                    ci.addMessage(msg);
+                    ci.storage.addMessage(ci.currentFriendCode, msg);
+                }
+            }
+        }
+        
+        // [AI_CHANGE_AVATAR:名字] - AI用图库的图换头像
+        const avatarMatch = text.match(/\[AI_CHANGE_AVATAR:([^\]]+)\]/);
+        if (avatarMatch) {
+            const imgName = avatarMatch[1].trim();
+            text = text.replace(/\[AI_CHANGE_AVATAR:[^\]]+\]/g, '');
+            if (ci && window.base64Library) {
+                const ld = window.base64Library._getData();
+                const allItems = [...(ld.avatars?.items||[]), ...(ld.webImages?.items||[])];
+                const found = allItems.find(i => i.name === imgName) || allItems.find(i => (i.name||'').includes(imgName));
+                if (found && (found.data || found.url)) {
+                    const src = found.data || found.url;
+                    ci.storage.updateFriend(ci.currentFriendCode, { avatar: src });
+                    if (ci.currentFriend) ci.currentFriend.avatar = src;
+                    const friendName = ci.currentFriend?.nickname || ci.currentFriend?.name || 'TA';
+                    ci.showCssSystemMessage(`${friendName} 换了头像「${found.name}」`);
+                }
+            }
+        }
+        
+        // [AI_CHANGE_AVATAR_FROM_CHAT] - AI用user发的图换头像
+        if (text.includes('[AI_CHANGE_AVATAR_FROM_CHAT]')) {
+            text = text.replace(/\[AI_CHANGE_AVATAR_FROM_CHAT\]/g, '');
+            if (ci) {
+                // 找最近的user发的图片
+                const recentImg = [...ci.messages].reverse().find(m => m.type === 'user' && m._imageUrl);
+                if (recentImg) {
+                    ci.storage.updateFriend(ci.currentFriendCode, { avatar: recentImg._imageUrl });
+                    if (ci.currentFriend) ci.currentFriend.avatar = recentImg._imageUrl;
+                    const friendName = ci.currentFriend?.nickname || ci.currentFriend?.name || 'TA';
+                    ci.showCssSystemMessage(`${friendName} 把你发的图片设为了头像`);
+                }
+            }
+        }
+        
         // [STATUS_CSS]css[/STATUS_CSS] - AI美化状态面板
         const cssMatcher = text.match(/\[STATUS_?\s*CSS\]([\s\S]*?)\[\/?\s*STATUS_?\s*CSS\]/i);
         if (cssMatcher) {

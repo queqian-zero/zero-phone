@@ -94,13 +94,13 @@ class Base64Library {
             </div>
 
             <!-- 图片网格 -->
-            <div id="b64Grid" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 10px 80px;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;align-content:start;">
-                ${items.length === 0 ? '<div style="grid-column:1/-1;text-align:center;padding:40px 0;color:rgba(255,255,255,0.12);font-size:13px;">空空如也</div>' :
-                    items.map(item => `<div class="b64-item" data-id="${item.id}" style="position:relative;width:100%;padding-bottom:100%;border-radius:10px;overflow:hidden;background:rgba(255,255,255,0.03);cursor:pointer;">
-                        <img src="${item.data || item.url || ''}" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">
-                        ${this._selectMode ? `<div class="b64-check" style="position:absolute;top:6px;right:6px;width:20px;height:20px;border-radius:50%;border:2px solid rgba(255,255,255,0.3);background:${this._selected.has(item.id) ? '#f0932b' : 'rgba(0,0,0,0.4)'};display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;">${this._selected.has(item.id) ? '✓' : ''}</div>` : ''}
+            <div id="b64Grid" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 10px 80px;min-height:0;">
+                ${items.length === 0 ? '<div style="text-align:center;padding:40px 0;color:rgba(255,255,255,0.12);font-size:13px;">空空如也</div>' :
+                    `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">${items.map(item => `<div class="b64-item" data-id="${item.id}" style="border-radius:10px;overflow:hidden;background:rgba(255,255,255,0.03);cursor:pointer;position:relative;">
+                        <img src="${item.data || item.url || ''}" style="width:100%;aspect-ratio:1;object-fit:cover;display:block;" onerror="this.style.display='none'">
+                        ${this._selectMode ? `<div style="position:absolute;top:6px;right:6px;width:20px;height:20px;border-radius:50%;border:2px solid rgba(255,255,255,0.3);background:${this._selected.has(item.id) ? '#f0932b' : 'rgba(0,0,0,0.4)'};display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;">${this._selected.has(item.id) ? '✓' : ''}</div>` : ''}
                         <div style="position:absolute;bottom:0;left:0;right:0;padding:3px 6px;background:linear-gradient(transparent,rgba(0,0,0,0.7));font-size:9px;color:rgba(255,255,255,0.6);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${this._esc(item.name || '')}</div>
-                    </div>`).join('')}
+                    </div>`).join('')}</div>`}
             </div>
 
             <!-- 底部操作栏 -->
@@ -133,9 +133,14 @@ class Base64Library {
             searchTimer = setTimeout(() => { this._searchKeyword = e.target.value.trim(); this.open(); }, 300);
         });
 
-        // 分类切换
+        // 分类切换 + 长按编辑/删除
         page.querySelectorAll('.b64-cat').forEach(c => {
             c.addEventListener('click', () => { this._activeCategory[this._activeTab] = c.dataset.cid; this._searchKeyword = ''; this.open(); });
+            // 长按编辑/删除分类
+            let lt;
+            c.addEventListener('touchstart', () => { lt = setTimeout(() => this._editCategory(c.dataset.cid), 500); });
+            c.addEventListener('touchend', () => clearTimeout(lt));
+            c.addEventListener('touchmove', () => clearTimeout(lt));
         });
 
         // 新建分类
@@ -380,6 +385,49 @@ class Base64Library {
         const d = this._getData();
         d[this._activeTab].items.push(item);
         this._saveData(d);
+    }
+
+    // ==================== 编辑/删除分类 ====================
+    async _editCategory(catId) {
+        if (catId === 'default') { this._toast('默认分类不可操作'); return; }
+        const d = this._getData();
+        const section = d[this._activeTab];
+        const cat = section.categories.find(c => c.id === catId);
+        if (!cat) return;
+        
+        document.getElementById('b64CatEditOverlay')?.remove();
+        const ov = document.createElement('div');
+        ov.id = 'b64CatEditOverlay';
+        ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9500;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.55);';
+        ov.innerHTML = `<div style="width:calc(100% - 48px);max-width:300px;background:#1c1c1c;border-radius:16px;border:1px solid rgba(255,255,255,0.08);padding:20px;animation:profileSlideUp 0.2s ease-out;">
+            <div style="font-size:15px;font-weight:600;color:#fff;text-align:center;margin-bottom:12px;">编辑分类</div>
+            <input type="text" id="b64CatNameInput" value="${this._esc(cat.name)}" style="width:100%;padding:10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:14px;box-sizing:border-box;margin-bottom:12px;">
+            <div style="display:flex;gap:8px;">
+                <button id="b64CatSave" style="flex:1;padding:10px;border:none;border-radius:10px;background:rgba(240,147,43,0.15);color:#f0932b;font-size:13px;cursor:pointer;">保存</button>
+                <button id="b64CatDelete" style="padding:10px 16px;border:none;border-radius:10px;background:rgba(255,60,60,0.08);color:rgba(255,100,100,0.6);font-size:13px;cursor:pointer;">删除</button>
+            </div>
+            <button id="b64CatCancel" style="width:100%;margin-top:8px;padding:10px;border:none;border-radius:10px;background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.3);font-size:13px;cursor:pointer;">取消</button>
+        </div>`;
+        document.body.appendChild(ov);
+        
+        ov.querySelector('#b64CatSave').addEventListener('click', () => {
+            const newName = ov.querySelector('#b64CatNameInput')?.value.trim();
+            if (!newName) { this._toast('名字不能为空'); return; }
+            cat.name = newName;
+            this._saveData(d);
+            ov.remove(); this.open();
+        });
+        ov.querySelector('#b64CatDelete').addEventListener('click', async () => {
+            const itemCount = section.items.filter(i => i.categoryId === catId).length;
+            const ok = window.zpConfirm ? await window.zpConfirm('删除分类', `删除分类「${cat.name}」？\n其中的${itemCount}张图片将移到默认分类`, '删除', '取消') : confirm('删除？');
+            if (!ok) return;
+            section.items.forEach(i => { if (i.categoryId === catId) i.categoryId = 'default'; });
+            section.categories = section.categories.filter(c => c.id !== catId);
+            this._saveData(d);
+            this._activeCategory[this._activeTab] = 'default';
+            ov.remove(); this.open();
+        });
+        ov.querySelector('#b64CatCancel').addEventListener('click', () => ov.remove());
     }
 
     // ==================== 移动分类面板 ====================
