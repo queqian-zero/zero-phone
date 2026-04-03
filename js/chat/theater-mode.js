@@ -140,13 +140,13 @@ class TheaterMode {
         const align=isChar?'flex-start':'flex-end';
         const flexDir=isChar?'row':'row-reverse';
 
-        // 题头（仅char）
+        // 题头（日期+季节+天气 / 大号时间 / 地点）
         let headerHtml='';
         if(isChar && msg.header && (msg.header.date||msg.header.time||msg.header.location)){
             const h=msg.header;
             headerHtml=`<div class="theater-header-block" style="margin-bottom:10px;padding:12px 16px;background:${t.headerBg};border:1px solid ${t.headerBorder};border-radius:6px;font-family:monospace;">
-                <div class="theater-header-date" style="font-size:12px;color:${t.headerText};letter-spacing:1px;">${this._esc(h.date||'')}</div>
-                <div class="theater-header-time" style="font-size:26px;font-weight:700;color:${t.accent};margin:4px 0;letter-spacing:3px;font-family:monospace;">${this._esc(h.time||'--:--')}</div>
+                <div class="theater-header-date" style="font-size:12px;color:${t.headerText};letter-spacing:1px;">${this._esc(h.date||'')}${h.season?' &nbsp;|&nbsp; '+this._esc(h.season):''}${h.weather?' &nbsp;|&nbsp; '+this._esc(h.weather):''}</div>
+                <div class="theater-header-time" style="font-size:26px;font-weight:700;color:${t.accent};margin:4px 0;letter-spacing:3px;font-family:monospace;">${this._esc(h.time||'--:--:--')}</div>
                 <div class="theater-header-location" style="font-size:11px;color:${t.headerText};opacity:0.7;">LOC: ${this._esc(h.location||'???')}</div>
             </div>`;
         }
@@ -157,7 +157,7 @@ class TheaterMode {
             thinkHtml=`<details class="theater-thinking" style="margin-top:6px;"><summary style="font-size:10px;color:${t.sub};cursor:pointer;">&#10024; 思考了一会 &#9660;</summary><div style="margin-top:4px;padding:8px;background:${t.itemBg};border-radius:6px;font-size:11px;color:${t.sub};line-height:1.6;white-space:pre-wrap;">${this._esc(msg.thinking)}</div></details>`;
         }
 
-        // 状态栏（仅char）
+        // 状态栏（7个折叠模块）
         let statusHtml='';
         if(isChar && msg.status){
             const st=msg.status;
@@ -169,30 +169,77 @@ class TheaterMode {
                 </details>`;
             };
 
-            // 壹号状态栏
+            // [SYS_CORE_01] 壹号状态栏
             let core1='';
-            if(st.mood||st.outfit||st.action||st.thought||st.note||st.relationship){
-                const items=[];
-                if(st.mood) items.push(`<div class="theater-status-item"><span class="theater-status-label" style="color:${t.sub};">[MOOD]:</span> ${this._esc(st.mood)}</div>`);
-                if(st.outfit) items.push(`<div class="theater-status-item"><span class="theater-status-label" style="color:${t.sub};">[OUTFIT]:</span> ${this._esc(st.outfit)}</div>`);
-                if(st.action) items.push(`<div class="theater-status-item"><span class="theater-status-label" style="color:${t.sub};">[ACTION]:</span> ${this._esc(st.action)}</div>`);
-                if(st.thought) items.push(`<div class="theater-status-item"><span class="theater-status-label" style="color:${t.sub};">[THOUGHT]:</span> <i>${this._esc(st.thought)}</i></div>`);
-                if(st.note) items.push(`<div class="theater-status-item"><span class="theater-status-label" style="color:${t.sub};">[NOTE]:</span> ${this._esc(st.note)}</div>`);
-                if(st.relationship) items.push(`<div class="theater-status-item"><span class="theater-status-label" style="color:${t.sub};">[RELATION]:</span> ${this._esc(st.relationship)}</div>`);
-                core1=items.join('');
+            const c1items=[];
+            if(st.mood) c1items.push(`<div class="theater-status-item"><span class="theater-status-label" style="color:${t.sub};">[MOOD]:</span> ${this._esc(st.mood)}</div>`);
+            if(st.outfit) c1items.push(`<div class="theater-status-item"><span class="theater-status-label" style="color:${t.sub};">[OUTFIT]:</span> ${this._esc(st.outfit)}</div>`);
+            if(st.action) c1items.push(`<div class="theater-status-item"><span class="theater-status-label" style="color:${t.sub};">[ACTION]:</span> ${this._esc(st.action)}</div>`);
+            if(st.thought) c1items.push(`<div class="theater-status-item"><span class="theater-status-label" style="color:${t.sub};">[THOUGHT]:</span> <i>${this._esc(st.thought)}</i></div>`);
+            if(st.note) c1items.push(`<div class="theater-status-item"><span class="theater-status-label" style="color:${t.sub};">[NOTE]:</span> ${this._esc(st.note)}</div>`);
+            if(st.relationship) c1items.push(`<div class="theater-status-item"><span class="theater-status-label" style="color:${t.sub};">[RELATION]:</span> ${this._esc(st.relationship)}</div>`);
+            core1=c1items.join('');
+
+            // [SYS_CORE_RND] 随机NPC
+            let rndContent='';
+            if(st.rndId||st.rndDesc){
+                const ri=[];
+                if(st.rndId) ri.push(`<div class="theater-status-item"><span class="theater-status-label" style="color:${t.sub};">[ID]:</span> ${this._esc(st.rndId)}</div>`);
+                if(st.rndMood) ri.push(`<div class="theater-status-item"><span class="theater-status-label" style="color:${t.sub};">[MOOD]:</span> ${this._esc(st.rndMood)}</div>`);
+                if(st.rndDesc) ri.push(`<div class="theater-status-item"><span class="theater-status-label" style="color:${t.sub};">[DESC]:</span> ${this._esc(st.rndDesc)}</div>`);
+                if(st.rndRelationship) ri.push(`<div class="theater-status-item"><span class="theater-status-label" style="color:${t.sub};">[RELATION]:</span> ${this._esc(st.rndRelationship)}</div>`);
+                rndContent=ri.join('');
             }
-            // 随机NPC
-            let rndContent=st.random?`<div class="theater-status-item">${this._esc(st.random)}</div>`:'';
-            // user感受
-            let userContent=st.userFeeling?`<div class="theater-status-item">${this._esc(st.userFeeling)}</div>`:'';
-            // 系统君
+
+            // [SYS_PROGRESS] 动态进度
+            let progressContent='';
+            if(st.progressName||st.progressValue){
+                const pv=parseInt(st.progressValue)||0;
+                progressContent=`<div style="margin-bottom:6px;font-size:12px;color:${t.text};">${this._esc(st.progressName||'进度')}: ${pv}%</div>
+                    <div style="height:8px;background:${t.itemBg};border-radius:4px;overflow:hidden;margin-bottom:6px;"><div style="height:100%;width:${pv}%;background:${t.accent};border-radius:4px;transition:width 0.3s;"></div></div>
+                    ${st.progressNote?`<div style="font-size:10px;color:${t.sub};">${this._esc(st.progressNote)}</div>`:''}`;
+            }
+
+            // [SYS_MAP] 环境拓扑图
+            let mapContent='';
+            if(st.map) mapContent=`<pre style="font-family:monospace;font-size:11px;color:${t.text};white-space:pre;overflow-x:auto;margin:0;line-height:1.6;">${this._esc(st.map)}</pre>`;
+
+            // [SYSTEM_PROMPT] 系统终端
             let sysContent=st.systemNote?`<div class="theater-status-item">${this._esc(st.systemNote)}</div>`:'';
 
+            // [DATA_INTERCEPT] 通讯记录
+            let chatContent='';
+            if(st.chatLog){
+                const parts=st.chatLog.split('|');
+                if(parts.length>=2){
+                    const contact=parts[0].trim();
+                    const otherMsg=parts[1]?.trim()||'';
+                    const charMsg=parts[2]?.trim()||'';
+                    chatContent=`<div style="background:${t.itemBg};border-radius:8px;padding:10px;font-size:11px;">
+                        <div style="text-align:center;font-size:10px;color:${t.sub};margin-bottom:8px;">-- ${this._esc(contact)} --</div>
+                        ${otherMsg?`<div style="margin-bottom:6px;"><div style="display:inline-block;padding:6px 10px;background:rgba(255,255,255,0.06);border-radius:8px;max-width:80%;color:${t.text};">${this._esc(otherMsg)}</div></div>`:''}
+                        ${charMsg?`<div style="text-align:right;"><div style="display:inline-block;padding:6px 10px;background:${t.accentBg};border-radius:8px;max-width:80%;color:${t.accent};">${this._esc(charMsg)}</div></div>`:''}
+                    </div>`;
+                }
+            }
+
+            // [SYS_MEMO] 备忘录
+            let memoContent='';
+            if(st.memoTitle||st.memoContent){
+                memoContent=`<div style="background:${t.itemBg};border-radius:8px;padding:10px;font-size:11px;">
+                    ${st.memoTitle?`<div style="font-weight:600;color:${t.text};margin-bottom:4px;">${this._esc(st.memoTitle)}</div>`:''}
+                    ${st.memoContent?`<div style="color:${t.sub};line-height:1.6;white-space:pre-wrap;">${this._esc(st.memoContent)}</div>`:''}
+                </div>`;
+            }
+
             const folds = [
-                section('SYS_CORE_01', `实体状态监控面板 壹号`, core1),
-                section('SYS_CORE_RND', `实体状态监控面板 随机`, rndContent),
-                section('SYS_PROGRESS', `${this._esc(this._session.script.userName)} 的感受`, userContent),
-                section('SYSTEM_PROMPT', `系统终端提示`, sysContent)
+                section('SYS_CORE_01', '实体状态监控面板 壹号', core1),
+                section('SYS_CORE_RND', '实体状态监控面板 随机', rndContent),
+                section('SYS_PROGRESS', '动态进度追踪', progressContent),
+                section('SYS_MAP', '环境拓扑图', mapContent),
+                section('SYSTEM_PROMPT', '系统终端提示', sysContent),
+                section('DATA_INTERCEPT', '目标设备通讯记录', chatContent),
+                section('SYS_MEMO', '目标设备备忘录', memoContent)
             ].filter(Boolean).join('');
 
             if(folds) statusHtml=`<div class="theater-status-area" style="margin-top:10px;background:${t.statusBg};border:1px solid ${t.border};border-radius:8px;overflow:hidden;">${folds}</div>`;
@@ -228,32 +275,58 @@ class TheaterMode {
 
         const ci=window.chatInterface; if(!ci?.apiManager){this._typing=false;this._openTheaterUI();return;}
         const s=this._session.script;
-        const now=new Date();
-        const dateStr=`${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 ${'日一二三四五六'[now.getDay()]}`;
-        const timeStr=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
         const fn=ci.currentFriend?.nickname||ci.currentFriend?.name||'TA';
 
         const sysPrompt=`【次元剧场】你的皮下是「${fn}」，你在扮演「${s.charName}」。这是角色扮演，不是真实见面。${s.charName}不知道${fn}的存在。
 世界观：${s.world||'自由发挥'}
 你的角色「${s.charName}」：${s.charPersona||'自由发挥'}
 对方角色「${s.userName}」：${s.userPersona||'自由发挥'}
-真实时间：${dateStr} ${timeStr}
 
-回复格式（每行一个字段）：
-DATE: 剧本中年月日+星期
-TIME: 剧本中时间（HH:MM格式）
-LOCATION: 场景地点
-TEXT: ${s.charName}的对话和*动作描写*
-MOOD: 心情（颜文字+文字）
-OUTFIT: 衣着
-ACTION: 动作
-THOUGHT: 内心活动
-NOTE: 碎碎念（可选）
-RELATIONSHIP: 对${s.userName}的关系感受
-RANDOM_NPC: 随机NPC状态（可选）
-USER_FEELING: ${s.userName}此刻的感受
-SYSTEM_NOTE: 系统君给user的一句话
+回复格式（每行一个字段，严格遵守）：
 
+=== 题头 ===
+DATE: 剧本中的年月日+星期（如：2026年4月3日 星期四）
+SEASON: 剧本中的季节（如：初春）
+WEATHER: 剧本中的天气（如：微雨）
+TIME: 剧本中的时间（HH:MM:SS格式）
+LOCATION: 当前场景地点
+
+=== 正文 ===
+TEXT: ${s.charName}的对话和*动作描写*（这是主要内容，尽情发挥）
+
+=== [SYS_CORE_01] 实体状态监控面板 壹号（${s.charName}）===
+MOOD: ${s.charName}的心情（颜文字+文字）
+OUTFIT: ${s.charName}当前衣着
+ACTION: ${s.charName}当前动作
+THOUGHT: ${s.charName}的内心活动
+NOTE: ${s.charName}的碎碎念（可选）
+RELATIONSHIP: ${s.charName}与${s.userName}当前的关系（如：暧昧中/朋友/陌生人/恋人等+一句话感受）
+
+=== [SYS_CORE_RND] 实体状态监控面板 随机（非主角NPC）===
+RND_ID: 随机NPC的名字或称呼
+RND_MOOD: 该NPC的心情
+RND_DESC: 该NPC此刻在做什么
+RND_RELATIONSHIP: 该NPC与主角们的关系（可选）
+
+=== [SYS_PROGRESS] 动态进度追踪 ===
+PROGRESS_NAME: 当前追踪的进度名称（如：好感度/信任值/任务进度/主线剧情等）
+PROGRESS_VALUE: 百分比数字（0-100，如：65）
+PROGRESS_NOTE: 一句话描述当前进度状态
+
+=== [SYS_MAP] 环境拓扑图 ===
+MAP: 用文字画一个简易的当前环境布局图（用符号和文字，如：|卧室|--[客厅]--[阳台]，用[]标记当前所在位置）
+
+=== [SYSTEM_PROMPT] 系统终端提示 ===
+SYSTEM_NOTE: 以旁白/系统君口吻给user的话
+
+=== [DATA_INTERCEPT] 目标设备通讯记录 ===
+CHAT_LOG: 模拟${s.charName}手机上最近的一条聊天记录（格式：联系人名|对方说的话|${s.charName}回的话）
+
+=== [SYS_MEMO] 目标设备备忘录 ===
+MEMO_TITLE: 备忘录标题
+MEMO_CONTENT: 备忘录内容（${s.charName}最近记的一条备忘，可以是待办/日记/想法/购物清单等）
+
+所有===区块的内容都是可选的，不必每轮都填满，根据剧情需要自然地选择填写。但SYS_CORE_01是必填的。
 中断：[THEATER_END]理由 | 改设定：[SCRIPT_CHANGE_REQUEST]内容+理由`;
 
         const history=this._session.messages.slice(-20).map(m=>({type:m.type==='user'?'user':'ai',text:m.text}));
@@ -280,8 +353,12 @@ SYSTEM_NOTE: 系统君给user的一句话
     _parseResponse(text) {
         const g=key=>{const m=text.match(new RegExp(`^${key}:\\s*(.+)`,'m'));return m?m[1].trim():'';};
         return {type:'char',text:g('TEXT')||text,timestamp:new Date().toISOString(),
-            header:{date:g('DATE'),time:g('TIME'),location:g('LOCATION')},
-            status:{mood:g('MOOD'),outfit:g('OUTFIT'),action:g('ACTION'),thought:g('THOUGHT'),note:g('NOTE'),relationship:g('RELATIONSHIP'),random:g('RANDOM_NPC'),userFeeling:g('USER_FEELING'),systemNote:g('SYSTEM_NOTE')}
+            header:{date:g('DATE'),season:g('SEASON'),weather:g('WEATHER'),time:g('TIME'),location:g('LOCATION')},
+            status:{mood:g('MOOD'),outfit:g('OUTFIT'),action:g('ACTION'),thought:g('THOUGHT'),note:g('NOTE'),relationship:g('RELATIONSHIP'),
+                rndId:g('RND_ID'),rndMood:g('RND_MOOD'),rndDesc:g('RND_DESC'),rndRelationship:g('RND_RELATIONSHIP'),
+                progressName:g('PROGRESS_NAME'),progressValue:g('PROGRESS_VALUE'),progressNote:g('PROGRESS_NOTE'),
+                map:g('MAP'),systemNote:g('SYSTEM_NOTE'),
+                chatLog:g('CHAT_LOG'),memoTitle:g('MEMO_TITLE'),memoContent:g('MEMO_CONTENT')}
         };
     }
 
