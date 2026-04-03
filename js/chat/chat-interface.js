@@ -7918,6 +7918,8 @@ wearLuckyChar(charId, who = 'user') {
         lc.aiWearing = charId;
         lc.userWearing = ''; // 替换user的
     }
+    // 重置点亮累积器（换新字符从0开始积累）
+    lc._litAccumulator = 0;
     
     data.luckyChars = lc;
     const charName = owned.find(o => o.id === charId).name;
@@ -7994,6 +7996,7 @@ updateLuckyCharOnMessage() {
     if (!wearing.engName && charDef?.engName) wearing.engName = charDef.engName;
     wearing.totalChars = realTotal;
     
+    if (!wearing.litChars) wearing.litChars = 0;
     if (wearing.litChars >= realTotal) return; // 已完全点亮
     
     if (!lc._litAccumulator) lc._litAccumulator = 0;

@@ -51,12 +51,13 @@ class Base64Library {
         page.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:8000;background:#111;display:flex;flex-direction:column;';
 
         const data = this._getData();
-        const section = data[this._activeTab];
+        const isFontTab = this._activeTab === 'fonts';
+        const section = isFontTab ? { categories: [], items: [] } : data[this._activeTab];
         const catId = this._activeCategory[this._activeTab] || section.categories[0]?.id || 'default';
-        let items = section.items.filter(i => i.categoryId === catId);
+        let items = isFontTab ? [] : section.items.filter(i => i.categoryId === catId);
 
         // 搜索
-        if (this._searchKeyword) {
+        if (this._searchKeyword && !isFontTab) {
             const kw = this._searchKeyword.toLowerCase();
             items = section.items.filter(i =>
                 (i.name || '').toLowerCase().includes(kw) ||
@@ -66,9 +67,6 @@ class Base64Library {
 
         const tabLabels = { avatars: '🖼 头像库', webImages: '🌐 网图库', stickers: '😊 表情包', transparent: '◇ 透明底图', fonts: '&#9734; 字体库' };
 
-        // 字体库特殊处理
-        const isFontTab = this._activeTab === 'fonts';
-        
         // 构建中间内容区
         let midContent = '';
         if (isFontTab) {

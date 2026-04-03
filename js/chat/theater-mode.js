@@ -61,12 +61,17 @@ class TheaterMode {
     // ==================== AI写剧本 ====================
     async _startAiScript() {
         const ci=window.chatInterface; if(!ci?.apiManager){this._toast('API不可用');return;}
-        this._toast('TA正在构思剧本...');
+        // 显示loading
+        const loading = document.createElement('div');
+        loading.id = 'theaterLoading';
+        loading.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9600;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);backdrop-filter:blur(6px);';
+        loading.innerHTML = '<div style="font-size:24px;margin-bottom:12px;animation:spin 2s linear infinite;">&#9670;</div><div style="font-size:15px;color:#fff;font-weight:600;">TA正在构思剧本...</div><div style="font-size:12px;color:rgba(255,255,255,0.3);margin-top:6px;">请稍等，AI正在创作中</div><style>@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}</style>';
+        document.body.appendChild(loading);
         const fn=ci.currentFriend?.nickname||ci.currentFriend?.name||'TA';
         const fp=ci.currentFriend?.persona||'';
         const rm=ci.messages.slice(-30).map(m=>`${m.type==='user'?'user':fn}: ${m.text.substring(0,120)}`).join('\n');
         const prompt=`你是${fn}（皮下）。user想玩次元剧场。\n皮下人设：${fp.substring(0,400)}\n最近聊天（看有没有提到想演什么）：\n${rm}\n\n构思剧本。聊天提过的优先但可变卦，没提过自由发挥。角色是全新的不是皮下。\nJSON格式：{"world":"世界观50-200字","charName":"你演的角色名","charPersona":"角色人设50-150字","userName":"user演的角色名","userPersona":"user角色人设50-150字","opening":"开场30-100字"}`;
-        try{const r=await ci.apiManager.callAI([{type:'user',text:'构思剧本'}],prompt);if(!r.success){this._toast('构思失败');return;}let s;try{s=JSON.parse(r.text.replace(/```json|```/g,'').trim());}catch(e){this._toast('格式有误');this._openScriptEditor();return;}this._openScriptEditor(s);}catch(e){this._toast('网络错误');}
+        try{const r=await ci.apiManager.callAI([{type:'user',text:'构思剧本'}],prompt);loading.remove();if(!r.success){this._toast('构思失败');return;}let s;try{s=JSON.parse(r.text.replace(/```json|```/g,'').trim());}catch(e){this._toast('格式有误');this._openScriptEditor();return;}this._openScriptEditor(s);}catch(e){loading.remove();this._toast('网络错误');}
     }
 
     _startSession(script) {
@@ -95,11 +100,11 @@ class TheaterMode {
         let charFloor=0, userFloor=0;
 
         ui.innerHTML=`
-            <div class="theater-topbar" style="display:flex;align-items:center;padding:10px 14px;border-bottom:1px solid ${t.border};flex-shrink:0;background:${t.topBg};">
-                <button id="theaterExit" style="background:none;border:none;color:${t.sub};font-size:18px;cursor:pointer;">&#8592;</button>
-                <div style="flex:1;text-align:center;"><div class="theater-title" style="font-size:14px;font-weight:600;color:${t.text};">次元剧场</div><div style="font-size:10px;color:${t.sub};">${this._esc(s.charName)} & ${this._esc(s.userName)}</div></div>
-                <button id="theaterMemory" style="background:none;border:none;color:${t.sub};font-size:14px;cursor:pointer;margin-right:6px;">&#9776;</button>
-                <button id="theaterSettings" style="background:none;border:none;color:${t.sub};font-size:16px;cursor:pointer;">&#9881;</button>
+            <div class="theater-topbar" style="display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid ${t.border};flex-shrink:0;background:${t.topBg};">
+                <button id="theaterExit" style="background:none;border:none;color:${t.sub};font-size:22px;cursor:pointer;padding:6px 10px;">&#8592;</button>
+                <div style="flex:1;text-align:center;"><div class="theater-title" style="font-size:15px;font-weight:600;color:${t.text};">次元剧场</div><div style="font-size:11px;color:${t.sub};">${this._esc(s.charName)} & ${this._esc(s.userName)}</div></div>
+                <button id="theaterMemory" style="background:none;border:none;color:${t.sub};font-size:18px;cursor:pointer;padding:6px 10px;">&#9776;</button>
+                <button id="theaterSettings" style="background:none;border:none;color:${t.sub};font-size:20px;cursor:pointer;padding:6px 10px;">&#9881;</button>
             </div>
 
             <div id="theaterMessages" class="theater-messages" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 14px;min-height:0;">
@@ -202,15 +207,17 @@ class TheaterMode {
                     ${st.progressNote?`<div style="font-size:10px;color:${t.sub};">${this._esc(st.progressNote)}</div>`:''}`;
             }
 
-            // [SYS_MAP] 环境拓扑图（带边框方向标的框）
+            // [SYS_MAP] 环境拓扑图（带位置描述+虚线框地图）
             let mapContent='';
-            if(st.map) mapContent=`<div class="theater-map-box" style="position:relative;background:${t.itemBg};border:1px solid ${t.border};border-radius:8px;padding:16px 12px;overflow:hidden;">
-                <div style="position:absolute;top:4px;left:50%;transform:translateX(-50%);font-size:8px;color:${t.sub};letter-spacing:2px;">N</div>
-                <div style="position:absolute;bottom:4px;left:50%;transform:translateX(-50%);font-size:8px;color:${t.sub};letter-spacing:2px;">S</div>
-                <div style="position:absolute;left:4px;top:50%;transform:translateY(-50%);font-size:8px;color:${t.sub};">W</div>
-                <div style="position:absolute;right:4px;top:50%;transform:translateY(-50%);font-size:8px;color:${t.sub};">E</div>
-                <pre class="theater-map-content" style="font-family:monospace;font-size:11px;color:${t.text};white-space:pre;overflow-x:auto;margin:0;line-height:1.5;text-align:center;">${this._esc(st.map)}</pre>
-            </div>`;
+            if(st.map) {
+                let locationInfo = st.mapInfo || '';
+                mapContent=`<div class="theater-map-container">
+                    ${locationInfo ? '<div style="font-family:monospace;font-size:12px;color:' + t.accent + ';margin-bottom:10px;line-height:1.6;">[LOCATION_INFO]: ' + this._esc(locationInfo) + '</div>' : ''}
+                    <div class="theater-map-box" style="border:2px dashed ${t.border};border-radius:10px;padding:20px 16px;background:rgba(0,0,0,0.2);overflow:hidden;">
+                        <pre class="theater-map-content" style="font-family:monospace;font-size:13px;color:${t.text};white-space:pre;overflow-x:auto;margin:0;line-height:1.5;text-align:center;">${this._esc(st.map)}</pre>
+                    </div>
+                </div>`;
+            }
 
             // [SYSTEM_PROMPT] 系统终端
             let sysContent=st.systemNote?`<div class="theater-status-item">${this._esc(st.systemNote)}</div>`:'';
@@ -264,7 +271,7 @@ class TheaterMode {
                         <span style="font-size:10px;color:${t.sub};font-family:monospace;">#${floor}</span>
                         <span style="font-size:10px;color:${t.sub};">${time}</span>
                     </div>
-                    <div class="theater-msg-text" style="font-size:14px;line-height:1.8;color:${t.text};white-space:pre-wrap;text-align:left;">${this._renderMd(msg.text)}</div>
+                    <div class="theater-msg-text" style="font-size:15px;line-height:1.8;color:${t.text};white-space:pre-wrap;text-align:left;">${this._renderMd(msg.text)}</div>
                     ${thinkHtml}
                 </div>
             </div>
@@ -289,8 +296,16 @@ class TheaterMode {
         const now=new Date();
         const realTime=`${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
 
+        // 获取线上聊天最近消息（让皮下有记忆）
+        const mainChatMsgs = ci.messages?.slice(-10).map(m => `${m.type==='user'?'user':fn}: ${(m.text||'').substring(0,80)}`).join('\n') || '';
+
         const sysPrompt=`【次元剧场】你的皮下是「${fn}」，你在扮演「${s.charName}」。这是角色扮演，不是真实见面。${s.charName}不知道${fn}的存在。
 你的皮下（${fn}）知道现实时间是 ${realTime}。
+你的皮下人设和线上聊天的记忆都完整保留——你不是一个新的AI，你就是在线上聊天里一直陪着user的那个${fn}，现在只是"进了剧场换了套戏服"在演一个角色而已。
+
+【线上聊天最近对话（皮下记忆，${s.charName}不知道这些）】
+${mainChatMsgs || '（暂无）'}
+
 世界观：${s.world||'自由发挥'}
 你的角色「${s.charName}」：${s.charPersona||'自由发挥'}
 对方角色「${s.userName}」：${s.userPersona||'自由发挥'}
@@ -327,7 +342,8 @@ PROGRESS_VALUE: 百分比数字（0-100，如：65）
 PROGRESS_NOTE: 一句话描述当前进度状态
 
 === [SYS_MAP] 环境拓扑图 ===
-MAP: 用文字画一个简易的当前环境布局图（用符号和文字，如：|卧室|--[客厅]--[阳台]，用[]标记当前所在位置）
+MAP_INFO: 环境的文字描述（谁在哪里，空间布局概况）
+MAP: 用文字画一个简易的当前环境布局图（用符号和文字，用[]标记当前所在位置和人物位置，如图2的示例格式）
 
 === [SYSTEM_PROMPT] 系统终端提示 ===
 SYSTEM_NOTE: 以旁白/系统君口吻给user的话
@@ -340,7 +356,7 @@ MEMO_TITLE: 备忘录标题
 MEMO_CONTENT: 备忘录内容（${s.charName}最近记的一条备忘，可以是待办/日记/想法/购物清单等）
 
 所有===区块的内容都是可选的，不必每轮都填满，根据剧情需要自然地选择填写。但SYS_CORE_01是必填的。
-中断：[THEATER_END]理由 | 改设定：[SCRIPT_CHANGE_REQUEST]内容+理由`;
+中断：[THEATER_END]理由`;
 
         const history=this._session.messages.slice(-20).map(m=>({type:m.type==='user'?'user':'ai',text:m.text}));
         try{
@@ -351,9 +367,6 @@ MEMO_CONTENT: 备忘录内容（${s.charName}最近记的一条备忘，可以�
             if(aiText.includes('[THEATER_END]')){
                 this._session.messages.push({type:'system',text:`${s.charName}（${fn}）结束了角色扮演：${aiText.replace(/\[THEATER_END\]/,'').trim()}`});
                 this._saveCurrentSession(); this._confirmExit('ai'); return;
-            }
-            if(aiText.includes('[SCRIPT_CHANGE_REQUEST]')){
-                this._handleScriptChange(aiText.replace(/\[SCRIPT_CHANGE_REQUEST\]/,'').trim(),'ai'); return;
             }
             const parsed=this._parseResponse(aiText);
             // 捕获思考链
@@ -372,7 +385,7 @@ MEMO_CONTENT: 备忘录内容（${s.charName}最近记的一条备忘，可以�
             status:{mood:g('MOOD'),outfit:g('OUTFIT'),action:g('ACTION'),thought:g('THOUGHT'),note:g('NOTE'),relationship:g('RELATIONSHIP'),
                 rndId:g('RND_ID'),rndMood:g('RND_MOOD'),rndDesc:g('RND_DESC'),rndRelationship:g('RND_RELATIONSHIP'),
                 progressName:g('PROGRESS_NAME'),progressValue:g('PROGRESS_VALUE'),progressNote:g('PROGRESS_NOTE'),
-                map:g('MAP'),systemNote:g('SYSTEM_NOTE'),
+                mapInfo:g('MAP_INFO'),map:g('MAP'),systemNote:g('SYSTEM_NOTE'),
                 chatLog:g('CHAT_LOG'),memoTitle:g('MEMO_TITLE'),memoContent:g('MEMO_CONTENT')}
         };
     }
@@ -383,6 +396,15 @@ MEMO_CONTENT: 备忘录内容（${s.charName}最近记的一条备忘，可以�
         const msg=who==='ai'?`${s?.charName}（皮下：${fn}）想结束。\n退出？`:'退出次元剧场？剧本自动保存。';
         const ok=window.zpConfirm?await window.zpConfirm('次元剧场',msg,'退出','继续'):confirm(msg);
         if(!ok){this._openTheaterUI();return;} this._saveCurrentSession();this._active=false;document.getElementById('theaterUI')?.remove();this._removeCustomCss();
+        
+        // 在主聊天发送剧场总结系统消息
+        const ci = window.chatInterface;
+        if (ci && this._session) {
+            const sc = this._session.script;
+            const floorCount = (this._session.messages||[]).filter(m=>m.type==='char'||m.type==='user').length;
+            const summaryText = `【次元剧场结束】\n剧本：${sc.charName} & ${sc.userName}\n世界观：${(sc.world||'').substring(0,60)}${(sc.world||'').length>60?'...':''}\n共 ${floorCount} 楼`;
+            ci.showCssSystemMessage(summaryText);
+        }
     }
 
     _openBackstage() {
@@ -411,9 +433,42 @@ MEMO_CONTENT: 备忘录内容（${s.charName}最近记的一条备忘，可以�
         if(!this._session.backstageMessages) this._session.backstageMessages=[];
         this._session.backstageMessages.push({type:'user',text,timestamp:new Date().toISOString()});
         this._saveCurrentSession(); panel.remove(); this._openBackstage();
+        
+        // 显示typing
+        const typingEl = document.querySelector('#oocMessages');
+        if(typingEl) {
+            const tip = document.createElement('div');
+            tip.id = 'oocTyping';
+            tip.style.cssText = 'text-align:left;padding:8px 0;font-size:12px;color:rgba(255,255,255,0.25);font-style:italic;';
+            const ci2 = window.chatInterface;
+            tip.textContent = (ci2?.currentFriend?.nickname||ci2?.currentFriend?.name||'TA') + ' 正在输入...';
+            typingEl.appendChild(tip);
+            typingEl.scrollTop = typingEl.scrollHeight;
+        }
+        
         const ci=window.chatInterface; if(!ci?.apiManager) return;
         const fn=ci.currentFriend?.nickname||ci.currentFriend?.name||'TA';
-        try{const r=await ci.apiManager.callAI(this._session.backstageMessages.slice(-10).map(m=>({type:m.type,text:m.text})),`你是${fn}（皮下）。在次元剧场间隙跟user聊几句。用平时的说话方式，简短自然。`);if(r.success){this._session.backstageMessages.push({type:'ai',text:r.text.trim(),timestamp:new Date().toISOString()});this._saveCurrentSession();document.getElementById('theaterOOCPanel')?.remove();this._openBackstage();}}catch(e){}
+        const fp=ci.currentFriend?.persona||'';
+        // 获取剧场最近内容（让皮下知道剧里发生了什么）
+        const recentTheater = (this._session?.messages||[]).slice(-6).map(m => {
+            if(m.type==='system') return '[系统] '+m.text;
+            const n = m.type==='char' ? this._session.script.charName : this._session.script.userName;
+            return n+': '+(m.text||'').substring(0,100);
+        }).join('\n');
+        // 获取线上聊天最近消息
+        const mainChat = (ci.messages||[]).slice(-8).map(m => `${m.type==='user'?'user':fn}: ${(m.text||'').substring(0,80)}`).join('\n');
+        const oocPrompt = `你是${fn}（皮下身份，线上人设）。你现在在次元剧场的间隙跟user聊天。
+你的人设：${fp.substring(0,300)}
+你就是平时在线上聊天里陪user的那个${fn}，记忆完全连续。
+
+【线上聊天最近（你的日常记忆）】
+${mainChat||'（暂无）'}
+
+【剧场里最近发生的（你演的角色的剧情）】
+${recentTheater||'（还没开始）'}
+
+用你（${fn}）平时的语气回复，简短自然。你可以聊剧里发生的事，也可以聊日常。`;
+        try{const r=await ci.apiManager.callAI(this._session.backstageMessages.slice(-10).map(m=>({type:m.type,text:m.text})),oocPrompt);if(r.success){this._session.backstageMessages.push({type:'ai',text:r.text.trim(),timestamp:new Date().toISOString()});this._saveCurrentSession();document.getElementById('theaterOOCPanel')?.remove();this._openBackstage();}}catch(e){}
     }
 
     async _handleScriptChange(reason,from) {
@@ -449,7 +504,6 @@ MEMO_CONTENT: 备忘录内容（${s.charName}最近记的一条备忘，可以�
             <textarea id="tsCss" rows="3" placeholder="CSS..." style="width:100%;padding:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#fff;font-size:11px;font-family:monospace;resize:vertical;box-sizing:border-box;margin-bottom:8px;">${this._esc(this._session?.customCss||'')}</textarea>
             <div style="display:flex;gap:8px;margin-bottom:14px;"><button id="tsCssOk" style="flex:1;padding:8px;border:none;border-radius:8px;background:rgba(240,147,43,0.12);color:#f0932b;font-size:12px;cursor:pointer;">应用</button><button id="tsCssX" style="padding:8px 12px;border:none;border-radius:8px;background:rgba(255,60,60,0.08);color:rgba(255,100,100,0.5);font-size:12px;cursor:pointer;">清除</button></div>
             <button id="tsView" style="width:100%;padding:12px;border:1px solid rgba(255,255,255,0.06);border-radius:10px;background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.5);font-size:13px;cursor:pointer;margin-bottom:8px;">查看剧本设定</button>
-            <button id="tsChange" style="width:100%;padding:12px;border:1px solid rgba(100,180,255,0.15);border-radius:10px;background:rgba(100,180,255,0.05);color:rgba(100,180,255,0.6);font-size:13px;cursor:pointer;margin-bottom:8px;">申请修改设定</button>
             <button id="tsExit" style="width:100%;padding:12px;border:1px solid rgba(255,60,60,0.15);border-radius:10px;background:rgba(255,60,60,0.05);color:rgba(255,100,100,0.6);font-size:13px;cursor:pointer;margin-bottom:8px;">退出剧场</button>
             <button id="tsClose" style="width:100%;padding:10px;border:none;background:transparent;color:rgba(255,255,255,0.2);font-size:13px;cursor:pointer;">关闭</button>
         </div>`;
@@ -458,7 +512,6 @@ MEMO_CONTENT: 备忘录内容（${s.charName}最近记的一条备忘，可以�
         p.querySelector('#tsCssOk')?.addEventListener('click',()=>{const c=p.querySelector('#tsCss')?.value||'';if(this._session)this._session.customCss=c;this._saveCurrentSession();this._applyCustomCss(c);this._toast('已应用');});
         p.querySelector('#tsCssX')?.addEventListener('click',()=>{if(this._session)this._session.customCss='';this._saveCurrentSession();this._removeCustomCss();p.querySelector('#tsCss').value='';});
         p.querySelector('#tsView')?.addEventListener('click',()=>{p.remove();this._viewScript();});
-        p.querySelector('#tsChange')?.addEventListener('click',()=>{p.remove();this._requestScriptChange();});
         p.querySelector('#tsExit')?.addEventListener('click',()=>{p.remove();this._confirmExit('user');});
         p.querySelector('#tsClose')?.addEventListener('click',()=>p.remove());
     }
@@ -522,12 +575,24 @@ ${timeHint ? '提示：' + timeHint : ''}
         document.getElementById('theaterMemPanel')?.remove();
         const t = this._t();
         const totalFloors = this._session.messages.filter(m => m.type === 'char' || m.type === 'user').length;
+        const existingSummaries = this._session.summaries || [];
+        
+        let existingHtml = '';
+        if (existingSummaries.length > 0) {
+            existingHtml = '<div style="margin-bottom:16px;"><div style="font-size:13px;color:rgba(255,255,255,0.5);margin-bottom:8px;">已有总结（' + existingSummaries.length + '篇）</div>';
+            existingSummaries.forEach(sm => {
+                existingHtml += '<div style="margin-bottom:10px;padding:12px;background:rgba(255,255,255,0.03);border-radius:10px;border-left:3px solid rgba(240,147,43,0.3);"><div style="font-size:10px;color:rgba(255,255,255,0.2);margin-bottom:4px;">第' + sm.from + '-' + sm.to + '楼 | ' + (sm.createdAt ? new Date(sm.createdAt).toLocaleString('zh-CN') : '') + '</div><div style="font-size:13px;color:rgba(255,255,255,0.6);line-height:1.7;white-space:pre-wrap;max-height:120px;overflow-y:auto;">' + this._esc(sm.text) + '</div></div>';
+            });
+            existingHtml += '</div>';
+        }
+        
         const p = document.createElement('div');
         p.id = 'theaterMemPanel';
         p.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9200;display:flex;align-items:flex-end;background:rgba(0,0,0,0.5);';
-        p.innerHTML = `<div style="width:100%;background:#1a1a1a;border-radius:16px 16px 0 0;padding:20px 16px calc(16px + env(safe-area-inset-bottom));max-height:60vh;overflow-y:auto;animation:profileSlideUp 0.25s ease-out;">
+        p.innerHTML = `<div style="width:100%;background:#1a1a1a;border-radius:16px 16px 0 0;padding:20px 16px calc(16px + env(safe-area-inset-bottom));max-height:75vh;overflow-y:auto;animation:profileSlideUp 0.25s ease-out;">
             <div style="font-size:16px;font-weight:600;color:#fff;text-align:center;margin-bottom:14px;">记忆总结</div>
-            <div style="font-size:12px;color:rgba(255,255,255,0.3);margin-bottom:8px;">选择楼层范围（共 ${totalFloors} 楼）</div>
+            ${existingHtml}
+            <div style="font-size:12px;color:rgba(255,255,255,0.3);margin-bottom:8px;">生成新总结（共 ${totalFloors} 楼）</div>
             <div style="display:flex;gap:8px;margin-bottom:12px;">
                 <div style="flex:1;"><div style="font-size:10px;color:rgba(255,255,255,0.3);margin-bottom:4px;">从第</div><input type="number" id="memFrom" min="1" max="${totalFloors}" value="1" style="width:100%;padding:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:14px;box-sizing:border-box;"></div>
                 <div style="flex:1;"><div style="font-size:10px;color:rgba(255,255,255,0.3);margin-bottom:4px;">到第</div><input type="number" id="memTo" min="1" max="${totalFloors}" value="${totalFloors}" style="width:100%;padding:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:14px;box-sizing:border-box;"></div>

@@ -117,8 +117,7 @@ class MemoryLibrary {
     _showChatSummary(friendCode, name) {
         const ci = window.chatInterface;
         if (!ci?.storage) return;
-        const settings = ci.storage.loadFriendSettings(friendCode) || {};
-        const summaries = settings.chatSummary || settings.memorySummary || '';
+        const summaries = ci.storage.getChatSummaries(friendCode) || [];
 
         document.getElementById('mlDetailPage')?.remove();
         const page = document.createElement('div');
@@ -130,7 +129,11 @@ class MemoryLibrary {
                 <div style="flex:1;font-size:16px;font-weight:600;color:#fff;text-align:center;">${this._esc(name)} 的聊天总结</div>
             </div>
             <div style="flex:1;overflow-y:auto;padding:16px;min-height:0;">
-                ${summaries ? `<div style="font-size:14px;color:rgba(255,255,255,0.7);line-height:1.8;white-space:pre-wrap;">${this._esc(summaries)}</div>` : '<div style="text-align:center;padding:40px 0;color:rgba(255,255,255,0.15);font-size:13px;">暂无聊天总结</div>'}
+                ${summaries.length === 0 ? '<div style="text-align:center;padding:40px 0;color:rgba(255,255,255,0.15);font-size:13px;">暂无聊天总结</div>' :
+                    summaries.slice().reverse().map(s => `<div style="margin-bottom:14px;padding:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;">
+                        <div style="font-size:10px;color:rgba(255,255,255,0.2);margin-bottom:6px;">${s.createdAt ? new Date(s.createdAt).toLocaleString('zh-CN') : ''} | ${s.messageCount||0}条消息</div>
+                        <div style="font-size:14px;color:rgba(255,255,255,0.7);line-height:1.8;white-space:pre-wrap;">${this._esc(s.summary || s.text || '')}</div>
+                    </div>`).join('')}
             </div>`;
         document.body.appendChild(page);
         page.querySelector('#mdBack')?.addEventListener('click', () => page.remove());
@@ -501,23 +504,55 @@ class MemoryLibrary {
         document.getElementById('mlSessionDetail')?.remove();
         const sc = session.script || {};
         const msgs = session.messages || [];
+        const oocMsgs = session.backstageMessages || [];
         const summaries = session.summaries || [];
+        
+        // 合并皮上+皮下消息按时间排序
+        const allMsgs = [];
+        msgs.forEach(m => allMsgs.push({...m, _source: 'theater'}));
+        oocMsgs.forEach(m => allMsgs.push({...m, _source: 'ooc'}));
+        allMsgs.sort((a,b) => new Date(a.timestamp||0) - new Date(b.timestamp||0));
+        
+        const sec = (label, val) => val ? `<div style="margin-bottom:10px;"><div style="font-size:10px;color:rgba(255,255,255,0.2);margin-bottom:3px;">${label}</div><div style="font-size:12px;color:rgba(255,255,255,0.5);line-height:1.6;white-space:pre-wrap;">${this._esc(val)}</div></div>` : '';
         
         const page = document.createElement('div');
         page.id = 'mlSessionDetail';
         page.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9200;background:#0d0d0d;display:flex;flex-direction:column;';
         
         let floor = 0;
+        let msgHtml = '';
+        allMsgs.forEach(m => {
+            if (m._source === 'ooc') {
+                // OOC消息 — 灰色区分
+                const who = m.type === 'user' ? '你(皮下)' : name + '(皮下)';
+                msgHtml += `<div style="margin:6px 0;padding:8px 12px;background:rgba(100,100,255,0.04);border-left:2px solid rgba(100,100,255,0.2);border-radius:0 8px 8px 0;"><div style="font-size:9px;color:rgba(100,180,255,0.4);margin-bottom:2px;">OOC | ${who}</div><div style="font-size:12px;color:rgba(255,255,255,0.5);line-height:1.6;">${this._esc(m.text)}</div></div>`;
+            } else if (m.type === 'system') {
+                msgHtml += `<div style="text-align:center;padding:6px 0;font-size:10px;color:rgba(255,255,255,0.15);font-style:italic;">${this._esc(m.text)}</div>`;
+            } else {
+                floor++;
+                const isChar = m.type === 'char';
+                const mName = isChar ? sc.charName : sc.userName;
+                // 题头
+                let headerHtml = '';
+                if (isChar && m.header && (m.header.date || m.header.time)) {
+                    headerHtml = `<div style="font-size:10px;color:rgba(94,230,200,0.4);margin-bottom:4px;font-family:monospace;">${this._esc(m.header.date||'')} ${this._esc(m.header.time||'')} | ${this._esc(m.header.location||'')}</div>`;
+                }
+                msgHtml += `<div style="margin-bottom:14px;">${headerHtml}<div style="font-size:11px;color:${isChar ? 'rgba(240,147,43,0.6)' : 'rgba(100,180,255,0.6)'};margin-bottom:2px;">#${floor} ${this._esc(mName)}</div><div style="font-size:13px;color:rgba(255,255,255,0.6);line-height:1.7;white-space:pre-wrap;">${this._esc(m.text)}</div></div>`;
+            }
+        });
+        
         page.innerHTML = `
             <div style="display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.04);flex-shrink:0;">
                 <button id="sdBack" style="background:none;border:none;color:rgba(255,255,255,0.6);font-size:20px;cursor:pointer;">&#8592;</button>
                 <div style="flex:1;font-size:14px;font-weight:600;color:#fff;text-align:center;">${this._esc(sc.charName)} & ${this._esc(sc.userName)}</div>
             </div>
             <div style="flex:1;overflow-y:auto;padding:12px 16px;min-height:0;">
-                <!-- 世界观 -->
+                <!-- 设定 -->
                 <div style="margin-bottom:16px;padding:12px;background:rgba(255,255,255,0.02);border-radius:10px;border:1px solid rgba(255,255,255,0.04);">
-                    <div style="font-size:10px;color:rgba(255,255,255,0.2);margin-bottom:4px;">世界观</div>
-                    <div style="font-size:12px;color:rgba(255,255,255,0.5);line-height:1.6;">${this._esc(sc.world || '未设定')}</div>
+                    ${sec('世界观', sc.world)}
+                    ${sec(this._esc(sc.charName) + ' 的人设', sc.charPersona)}
+                    ${sec(this._esc(sc.userName) + ' 的人设', sc.userPersona)}
+                    ${sec('开场情境', sc.opening)}
                 </div>
                 
                 <!-- 总结 -->
@@ -529,18 +564,9 @@ class MemoryLibrary {
                     </div>`).join('')}
                 </div>` : ''}
                 
-                <!-- 对话记录 -->
-                <div style="font-size:12px;color:rgba(255,255,255,0.3);margin-bottom:8px;">对话记录（${msgs.filter(m => m.type !== 'system').length}楼）</div>
-                ${msgs.map(m => {
-                    if (m.type === 'system') return `<div style="text-align:center;padding:6px 0;font-size:10px;color:rgba(255,255,255,0.15);font-style:italic;">${this._esc(m.text)}</div>`;
-                    floor++;
-                    const isChar = m.type === 'char';
-                    const mName = isChar ? sc.charName : sc.userName;
-                    return `<div style="margin-bottom:12px;">
-                        <div style="font-size:11px;color:${isChar ? 'rgba(240,147,43,0.6)' : 'rgba(100,180,255,0.6)'};margin-bottom:2px;">#${floor} ${this._esc(mName)}</div>
-                        <div style="font-size:13px;color:rgba(255,255,255,0.6);line-height:1.7;white-space:pre-wrap;">${this._esc(m.text)}</div>
-                    </div>`;
-                }).join('')}
+                <!-- 对话+OOC混合记录 -->
+                <div style="font-size:12px;color:rgba(255,255,255,0.3);margin-bottom:8px;">完整记录（${floor}楼 + ${oocMsgs.length}条OOC）</div>
+                ${msgHtml}
             </div>`;
         
         document.body.appendChild(page);
