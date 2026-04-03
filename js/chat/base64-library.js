@@ -17,19 +17,17 @@ class Base64Library {
 
     _getData() {
         const store = this._storage();
-        if (!store) { console.warn('⚠️ Base64Library: storage不可用'); return { avatars: { categories: [{ id: 'default', name: '默认' }], items: [] }, webImages: { categories: [{ id: 'default', name: '默认' }], items: [] }, stickers: { categories: [{ id: 'default', name: '默认' }], items: [] } }; }
+        const defaultData = { avatars: { categories: [{ id: 'default', name: '默认' }], items: [] }, webImages: { categories: [{ id: 'default', name: '默认' }], items: [] }, stickers: { categories: [{ id: 'default', name: '默认' }], items: [] }, transparent: { categories: [{ id: 'default', name: '默认' }], items: [] }, fonts: { items: [] } };
+        if (!store) { return defaultData; }
         const s = store.getUserSettings() || {};
         if (!s.base64Library) {
-            s.base64Library = {
-                avatars: { categories: [{ id: 'default', name: '默认' }], items: [] },
-                webImages: { categories: [{ id: 'default', name: '默认' }], items: [] },
-                stickers: { categories: [{ id: 'default', name: '默认' }], items: [] }
-            };
+            s.base64Library = defaultData;
             store.saveData('zero_phone_user_settings', s);
         }
-        ['avatars', 'webImages', 'stickers'].forEach(k => {
+        ['avatars', 'webImages', 'stickers', 'transparent'].forEach(k => {
             if (!s.base64Library[k]) s.base64Library[k] = { categories: [{ id: 'default', name: '默认' }], items: [] };
         });
+        if (!s.base64Library.fonts) s.base64Library.fonts = { items: [] };
         return s.base64Library;
     }
 
@@ -66,53 +64,71 @@ class Base64Library {
             );
         }
 
-        const tabLabels = { avatars: '🖼 头像库', webImages: '🌐 网图库', stickers: '😊 表情包库' };
+        const tabLabels = { avatars: '🖼 头像库', webImages: '🌐 网图库', stickers: '😊 表情包', transparent: '◇ 透明底图', fonts: '&#9734; 字体库' };
+
+        // 字体库特殊处理
+        const isFontTab = this._activeTab === 'fonts';
+        
+        // 构建中间内容区
+        let midContent = '';
+        if (isFontTab) {
+            midContent = this._renderFontTab(data);
+        } else {
+            // 分类栏
+            let catHtml = '<div style="display:flex;gap:4px;padding:0 14px 8px;overflow-x:auto;flex-shrink:0;align-items:center;">';
+            section.categories.forEach(c => {
+                const isActive = c.id === catId && !this._searchKeyword;
+                catHtml += '<div class="b64-cat" data-cid="' + c.id + '" style="display:flex;align-items:center;gap:3px;padding:4px 10px;border-radius:12px;font-size:11px;white-space:nowrap;cursor:pointer;' + (isActive ? 'background:rgba(240,147,43,0.12);color:#f0932b;' : 'background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.3);') + '">' + this._esc(c.name) + (isActive && c.id !== 'default' ? '<span class="b64-cat-edit" data-cid="' + c.id + '" style="opacity:0.5;font-size:10px;cursor:pointer;">&#9998;</span>' : '') + '</div>';
+            });
+            catHtml += '<div id="b64AddCat" style="padding:4px 8px;border-radius:12px;font-size:11px;cursor:pointer;background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.15);">+</div></div>';
+            
+            // 图片网格
+            let gridHtml = '';
+            if (items.length === 0) {
+                gridHtml = '<div style="text-align:center;padding:40px 0;color:rgba(255,255,255,0.12);font-size:13px;">空空如也</div>';
+            } else {
+                gridHtml = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">';
+                items.forEach(item => {
+                    gridHtml += '<div class="b64-item" data-id="' + item.id + '" style="border-radius:10px;overflow:hidden;background:rgba(255,255,255,0.03);cursor:pointer;position:relative;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;">';
+                    gridHtml += '<img src="' + (item.data || item.url || '') + '" style="width:100%;aspect-ratio:1;object-fit:cover;display:block;pointer-events:none;" onerror="this.style.display=\'none\'" draggable="false">';
+                    if (this._selectMode) {
+                        gridHtml += '<div style="position:absolute;top:6px;right:6px;width:20px;height:20px;border-radius:50%;border:2px solid rgba(255,255,255,0.3);background:' + (this._selected.has(item.id) ? '#f0932b' : 'rgba(0,0,0,0.4)') + ';display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;">' + (this._selected.has(item.id) ? '✓' : '') + '</div>';
+                    }
+                    gridHtml += '<div style="position:absolute;bottom:0;left:0;right:0;padding:3px 6px;background:linear-gradient(transparent,rgba(0,0,0,0.7));font-size:9px;color:rgba(255,255,255,0.6);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;pointer-events:none;">' + this._esc(item.name || '') + '</div>';
+                    gridHtml += '</div>';
+                });
+                gridHtml += '</div>';
+            }
+            
+            // 底栏
+            let bottomHtml = '';
+            if (this._selectMode) {
+                bottomHtml = '<button id="b64BatchDelete" style="flex:1;padding:10px;border:none;border-radius:10px;background:rgba(255,60,60,0.1);color:rgba(255,100,100,0.7);font-size:13px;cursor:pointer;">删除选中 (' + this._selected.size + ')</button><button id="b64BatchMove" style="flex:1;padding:10px;border:none;border-radius:10px;background:rgba(100,180,255,0.1);color:rgba(100,180,255,0.7);font-size:13px;cursor:pointer;">移动分类</button>';
+            } else {
+                bottomHtml = '<button id="b64UploadBtn" style="flex:1;padding:10px;border:none;border-radius:10px;background:rgba(240,147,43,0.12);color:#f0932b;font-size:13px;font-weight:600;cursor:pointer;">+ 上传</button>';
+            }
+            
+            midContent = catHtml + '<div id="b64Grid" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 10px 80px;min-height:0;" oncontextmenu="return false">' + gridHtml + '</div><div style="position:absolute;bottom:0;left:0;right:0;padding:10px 14px calc(10px + env(safe-area-inset-bottom));background:rgba(17,17,17,0.95);border-top:1px solid rgba(255,255,255,0.04);display:flex;gap:8px;">' + bottomHtml + '</div>';
+        }
 
         page.innerHTML = `
             <div style="display:flex;align-items:center;padding:12px 14px;gap:8px;background:rgba(17,17,17,0.95);border-bottom:1px solid rgba(255,255,255,0.04);">
                 <button id="b64Back" style="background:none;border:none;color:rgba(255,255,255,0.6);font-size:20px;cursor:pointer;">←</button>
                 <div style="flex:1;font-size:16px;font-weight:600;color:#fff;">Base64 图库</div>
-                <button id="b64SelectBtn" style="padding:4px 10px;border:none;border-radius:6px;background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.4);font-size:11px;cursor:pointer;">${this._selectMode ? '取消' : '选择'}</button>
+                ${!isFontTab ? `<button id="b64SelectBtn" style="padding:4px 10px;border:none;border-radius:6px;background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.4);font-size:11px;cursor:pointer;">${this._selectMode ? '取消' : '选择'}</button>` : ''}
             </div>
 
-            <!-- 三个Tab -->
-            <div style="display:flex;border-bottom:1px solid rgba(255,255,255,0.04);">
-                ${Object.keys(tabLabels).map(k => `<div class="b64-tab" data-tab="${k}" style="flex:1;text-align:center;padding:10px;font-size:13px;cursor:pointer;${this._activeTab === k ? 'color:#f0932b;border-bottom:2px solid #f0932b;font-weight:600;' : 'color:rgba(255,255,255,0.4);'}">${tabLabels[k]}</div>`).join('')}
+            <!-- 五个Tab（可横向滚动） -->
+            <div style="display:flex;border-bottom:1px solid rgba(255,255,255,0.04);overflow-x:auto;flex-shrink:0;">
+                ${Object.keys(tabLabels).map(k => `<div class="b64-tab" data-tab="${k}" style="flex-shrink:0;padding:10px 14px;font-size:12px;cursor:pointer;white-space:nowrap;${this._activeTab === k ? 'color:#f0932b;border-bottom:2px solid #f0932b;font-weight:600;' : 'color:rgba(255,255,255,0.4);'}">${tabLabels[k]}</div>`).join('')}
             </div>
 
             <!-- 搜索栏 -->
             <div style="padding:8px 14px;">
                 <input type="text" id="b64Search" value="${this._esc(this._searchKeyword)}" placeholder="搜索名字/描述..." style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#fff;font-size:13px;box-sizing:border-box;">
             </div>
+            ${midContent}`;
 
-            <!-- 分类Tab -->
-            <div style="display:flex;gap:4px;padding:0 14px 8px;overflow-x:auto;flex-shrink:0;align-items:center;">
-                ${section.categories.map(c => {
-                    const isActive = c.id === catId && !this._searchKeyword;
-                    return `<div class="b64-cat" data-cid="${c.id}" style="display:flex;align-items:center;gap:3px;padding:4px 10px;border-radius:12px;font-size:11px;white-space:nowrap;cursor:pointer;${isActive ? 'background:rgba(240,147,43,0.12);color:#f0932b;' : 'background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.3);'}">${this._esc(c.name)}${isActive && c.id !== 'default' ? `<span class="b64-cat-edit" data-cid="${c.id}" style="opacity:0.5;font-size:10px;cursor:pointer;">&#9998;</span>` : ''}</div>`;
-                }).join('')}
-                <div id="b64AddCat" style="padding:4px 8px;border-radius:12px;font-size:11px;cursor:pointer;background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.15);">+</div>
-            </div>
-
-            <!-- 图片网格 -->
-            <div id="b64Grid" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 10px 80px;min-height:0;" oncontextmenu="return false">
-                ${items.length === 0 ? '<div style="text-align:center;padding:40px 0;color:rgba(255,255,255,0.12);font-size:13px;">空空如也</div>' :
-                    `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">${items.map(item => `<div class="b64-item" data-id="${item.id}" style="border-radius:10px;overflow:hidden;background:rgba(255,255,255,0.03);cursor:pointer;position:relative;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;">
-                        <img src="${item.data || item.url || ''}" style="width:100%;aspect-ratio:1;object-fit:cover;display:block;pointer-events:none;" onerror="this.style.display='none'" draggable="false">
-                        ${this._selectMode ? `<div style="position:absolute;top:6px;right:6px;width:20px;height:20px;border-radius:50%;border:2px solid rgba(255,255,255,0.3);background:${this._selected.has(item.id) ? '#f0932b' : 'rgba(0,0,0,0.4)'};display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;">${this._selected.has(item.id) ? '✓' : ''}</div>` : ''}
-                        <div style="position:absolute;bottom:0;left:0;right:0;padding:3px 6px;background:linear-gradient(transparent,rgba(0,0,0,0.7));font-size:9px;color:rgba(255,255,255,0.6);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;pointer-events:none;">${this._esc(item.name || '')}</div>
-                    </div>`).join('')}</div>`}
-            </div>
-
-            <!-- 底部操作栏 -->
-            <div style="position:absolute;bottom:0;left:0;right:0;padding:10px 14px calc(10px + env(safe-area-inset-bottom));background:rgba(17,17,17,0.95);border-top:1px solid rgba(255,255,255,0.04);display:flex;gap:8px;">
-                ${this._selectMode ? `
-                    <button id="b64BatchDelete" style="flex:1;padding:10px;border:none;border-radius:10px;background:rgba(255,60,60,0.1);color:rgba(255,100,100,0.7);font-size:13px;cursor:pointer;">删除选中 (${this._selected.size})</button>
-                    <button id="b64BatchMove" style="flex:1;padding:10px;border:none;border-radius:10px;background:rgba(100,180,255,0.1);color:rgba(100,180,255,0.7);font-size:13px;cursor:pointer;">移动分类</button>
-                ` : `
-                    <button id="b64UploadBtn" style="flex:1;padding:10px;border:none;border-radius:10px;background:rgba(240,147,43,0.12);color:#f0932b;font-size:13px;font-weight:600;cursor:pointer;">+ 上传</button>
-                `}
-            </div>`;
 
         document.body.appendChild(page);
         this._bindEvents(page, data, catId);
@@ -202,6 +218,11 @@ class Base64Library {
             if (this._selected.size === 0) { this._toast('请先选择'); return; }
             this._openMoveCategoryPanel();
         });
+        
+        // 字体库事件
+        if (this._activeTab === 'fonts') {
+            this._bindFontEvents(page, data);
+        }
     }
 
     // ==================== 图片详情（编辑/删除） ====================
@@ -391,6 +412,124 @@ class Base64Library {
         const d = this._getData();
         d[this._activeTab].items.push(item);
         this._saveData(d);
+    }
+
+    // ==================== 字体库Tab渲染 ====================
+    _renderFontTab(data) {
+        const fonts = data.fonts?.items || [];
+        let kw = this._searchKeyword?.toLowerCase() || '';
+        const filtered = kw ? fonts.filter(f => (f.name || '').toLowerCase().includes(kw)) : fonts;
+        
+        let listHtml = '';
+        if (filtered.length === 0) {
+            listHtml = '<div style="text-align:center;padding:40px 0;color:rgba(255,255,255,0.12);font-size:13px;">还没有字体</div>';
+        } else {
+            listHtml = filtered.map((f, i) => {
+                const fontId = 'previewFont_' + i;
+                return '<div class="b64-font-item" data-fid="' + f.id + '" style="margin-bottom:10px;padding:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;cursor:pointer;">' +
+                    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><div style="flex:1;font-size:14px;font-weight:600;color:#fff;">' + this._esc(f.name) + '</div><div style="font-size:10px;color:rgba(255,255,255,0.2);">' + (f.url ? 'URL' : 'File') + '</div></div>' +
+                    '<div id="' + fontId + '" style="font-size:18px;color:rgba(255,255,255,0.6);line-height:1.5;padding:8px;background:rgba(255,255,255,0.02);border-radius:6px;">ABCDEFG abcdefg 你好世界 1234567890</div>' +
+                '</div>';
+            }).join('');
+        }
+        
+        return '<div id="b64Grid" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 14px 80px;min-height:0;">' + listHtml + '</div>' +
+            '<div style="position:absolute;bottom:0;left:0;right:0;padding:10px 14px calc(10px + env(safe-area-inset-bottom));background:rgba(17,17,17,0.95);border-top:1px solid rgba(255,255,255,0.04);display:flex;gap:8px;">' +
+            '<button id="b64FontAddUrl" style="flex:1;padding:10px;border:none;border-radius:10px;background:rgba(240,147,43,0.12);color:#f0932b;font-size:13px;cursor:pointer;">+ URL添加</button>' +
+            '<button id="b64FontAddFile" style="flex:1;padding:10px;border:none;border-radius:10px;background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.4);font-size:13px;cursor:pointer;">+ 文件上传</button>' +
+            '<input type="file" id="b64FontFileInput" accept=".ttf,.otf,.woff,.woff2" style="display:none;">' +
+            '</div>';
+    }
+
+    _bindFontEvents(page, data) {
+        // 加载字体预览
+        const fonts = data.fonts?.items || [];
+        fonts.forEach((f, i) => {
+            const el = page.querySelector('#previewFont_' + i);
+            if (el && f.url) {
+                const fontFace = new FontFace(f.id, 'url(' + f.url + ')');
+                fontFace.load().then(loaded => {
+                    document.fonts.add(loaded);
+                    el.style.fontFamily = '"' + f.id + '", serif';
+                }).catch(() => {
+                    el.style.color = 'rgba(255,60,60,0.4)';
+                    el.textContent = '字体加载失败';
+                });
+            } else if (el && f.data) {
+                const fontFace = new FontFace(f.id, f.data);
+                fontFace.load().then(loaded => {
+                    document.fonts.add(loaded);
+                    el.style.fontFamily = '"' + f.id + '", serif';
+                }).catch(() => {});
+            }
+        });
+        
+        // 点击字体 → 编辑/删除
+        page.querySelectorAll('.b64-font-item').forEach(item => {
+            item.addEventListener('click', () => this._editFont(item.dataset.fid));
+        });
+        
+        // URL添加
+        page.querySelector('#b64FontAddUrl')?.addEventListener('click', async () => {
+            const name = window.zpPrompt ? await window.zpPrompt('字体名称', '给这个字体命名', '', '字体名') : prompt('字体名：');
+            if (!name) return;
+            const url = window.zpPrompt ? await window.zpPrompt('字体URL', '输入字体文件的URL（.ttf/.otf/.woff/.woff2）', '', 'https://...') : prompt('URL：');
+            if (!url) return;
+            const d = this._getData();
+            d.fonts.items.push({ id: 'font_' + Date.now(), name, url, createdAt: new Date().toISOString() });
+            this._saveData(d);
+            this.open();
+        });
+        
+        // 文件上传
+        page.querySelector('#b64FontAddFile')?.addEventListener('click', () => page.querySelector('#b64FontFileInput')?.click());
+        page.querySelector('#b64FontFileInput')?.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const name = window.zpPrompt ? await window.zpPrompt('字体名称', '给这个字体命名', file.name.split('.')[0], '字体名') : (prompt('字体名：') || file.name.split('.')[0]);
+            if (!name) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const d = this._getData();
+                d.fonts.items.push({ id: 'font_' + Date.now(), name, data: ev.target.result, createdAt: new Date().toISOString() });
+                this._saveData(d);
+                this._toast('字体已添加');
+                this.open();
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    _editFont(fontId) {
+        const d = this._getData();
+        const font = d.fonts.items.find(f => f.id === fontId);
+        if (!font) return;
+        
+        document.getElementById('b64FontEditOverlay')?.remove();
+        const ov = document.createElement('div');
+        ov.id = 'b64FontEditOverlay';
+        ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9500;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.55);';
+        ov.innerHTML = '<div style="width:calc(100% - 48px);max-width:300px;background:#1c1c1c;border-radius:16px;border:1px solid rgba(255,255,255,0.08);padding:20px;">' +
+            '<div style="font-size:15px;font-weight:600;color:#fff;text-align:center;margin-bottom:12px;">编辑字体</div>' +
+            '<input type="text" id="b64FontName" value="' + this._esc(font.name) + '" style="width:100%;padding:10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:14px;box-sizing:border-box;margin-bottom:10px;">' +
+            '<div style="display:flex;gap:8px;margin-bottom:8px;">' +
+            '<button id="b64FontSave" style="flex:1;padding:10px;border:none;border-radius:10px;background:rgba(240,147,43,0.15);color:#f0932b;font-size:13px;cursor:pointer;">保存</button>' +
+            '<button id="b64FontDelete" style="padding:10px 16px;border:none;border-radius:10px;background:rgba(255,60,60,0.08);color:rgba(255,100,100,0.6);font-size:13px;cursor:pointer;">删除</button></div>' +
+            '<button id="b64FontCancel" style="width:100%;padding:10px;border:none;border-radius:10px;background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.3);font-size:13px;cursor:pointer;">取消</button>' +
+        '</div>';
+        
+        document.body.appendChild(ov);
+        ov.querySelector('#b64FontSave')?.addEventListener('click', () => {
+            font.name = ov.querySelector('#b64FontName')?.value.trim() || font.name;
+            this._saveData(d); ov.remove(); this.open();
+        });
+        ov.querySelector('#b64FontDelete')?.addEventListener('click', async () => {
+            const ok = window.zpConfirm ? await window.zpConfirm('删除', '删除字体「' + font.name + '」？', '删除', '取消') : confirm('删除？');
+            if (!ok) return;
+            d.fonts.items = d.fonts.items.filter(f => f.id !== fontId);
+            this._saveData(d); ov.remove(); this.open();
+        });
+        ov.querySelector('#b64FontCancel')?.addEventListener('click', () => ov.remove());
     }
 
     // ==================== 编辑/删除分类 ====================

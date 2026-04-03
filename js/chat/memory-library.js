@@ -225,7 +225,7 @@ class MemoryLibrary {
             content.innerHTML = items.slice().reverse().map(d => `<div class="nb-diary-card" data-id="${d.id}" style="margin-bottom:16px;padding:16px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;cursor:pointer;">
                 <div style="font-size:12px;color:rgba(255,100,100,0.5);margin-bottom:4px;">${this._esc(d.date || '')}</div>
                 <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-bottom:8px;">心情：${this._esc(d.mood || '未记录')}</div>
-                <div style="font-size:14px;color:rgba(255,255,255,0.7);line-height:1.8;white-space:pre-wrap;">${this._renderDiaryContent(d.content || '')}</div>
+                <div style="font-size:14px;color:rgba(255,255,255,0.7);line-height:1.8;white-space:pre-wrap;${d.fontId ? '' : ''}" ${d.fontId ? 'data-font="' + this._esc(d.fontId) + '"' : ''}>${this._renderDiaryContent(d.content || '', d.fontId)}</div>
                 ${d.signature ? `<div style="margin-top:10px;text-align:right;font-size:12px;color:rgba(255,255,255,0.25);font-style:italic;">—— ${this._esc(d.signature)}</div>` : ''}
             </div>`).join('');
         }
@@ -244,6 +244,9 @@ class MemoryLibrary {
                 const item = (data.notebook.diary || []).find(d => d.id === id);
                 if (item) this._editDiary(friendCode, name, item, page);
             });
+            // 加载自定义字体
+            const textEl = card.querySelector('[data-font]');
+            if (textEl) this._loadFont(textEl.dataset.font, textEl);
         });
     }
 
@@ -334,7 +337,17 @@ class MemoryLibrary {
                 </div>
                 <div style="margin-bottom:12px;">
                     <div style="font-size:10px;color:rgba(255,255,255,0.3);margin-bottom:4px;">日记正文</div>
-                    <textarea id="diaryContent" rows="10" placeholder="今天发生了什么..." style="width:100%;padding:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;color:rgba(255,255,255,0.7);font-size:14px;line-height:1.8;resize:vertical;box-sizing:border-box;font-family:inherit;">${this._esc(existing?.content || '')}</textarea>
+                    <!-- 工具栏 -->
+                    <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
+                        <button id="diaryInsertImg" style="padding:4px 10px;border:1px solid rgba(255,255,255,0.08);border-radius:6px;background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.35);font-size:11px;cursor:pointer;">&#9634; 插入图片</button>
+                        <select id="diaryFontPicker" style="padding:4px 8px;border:1px solid rgba(255,255,255,0.08);border-radius:6px;background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.35);font-size:11px;cursor:pointer;">
+                            <option value="">默认字体</option>
+                            ${this._getAvailableFonts().map(f => '<option value="' + this._esc(f.id) + '"' + (existing?.fontId === f.id ? ' selected' : '') + '>' + this._esc(f.name) + '</option>').join('')}
+                        </select>
+                        <button id="diaryBold" style="padding:4px 8px;border:1px solid rgba(255,255,255,0.08);border-radius:6px;background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.35);font-size:11px;cursor:pointer;font-weight:700;">B</button>
+                        <button id="diaryItalic" style="padding:4px 8px;border:1px solid rgba(255,255,255,0.08);border-radius:6px;background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.35);font-size:11px;cursor:pointer;font-style:italic;">I</button>
+                    </div>
+                    <textarea id="diaryContent" rows="10" placeholder="今天发生了什么...&#10;&#10;支持：**加粗** *斜体* __下划线__&#10;插入图片：![图片名]" style="width:100%;padding:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;color:rgba(255,255,255,0.7);font-size:14px;line-height:1.8;resize:vertical;box-sizing:border-box;font-family:inherit;">${this._esc(existing?.content || '')}</textarea>
                 </div>
                 <div style="margin-bottom:12px;">
                     <div style="font-size:10px;color:rgba(255,255,255,0.3);margin-bottom:4px;">署名（签在日记末尾右下角）</div>
@@ -355,6 +368,7 @@ class MemoryLibrary {
                 time: ov.querySelector('#diaryTime')?.value.trim() || defaultTime,
                 mood: ov.querySelector('#diaryMood')?.value.trim() || '',
                 content,
+                fontId: ov.querySelector('#diaryFontPicker')?.value || '',
                 signature: ov.querySelector('#diarySignature')?.value.trim() || '',
                 createdAt: existing?.createdAt || new Date().toISOString(),
                 updatedAt: new Date().toISOString()
@@ -384,15 +398,51 @@ class MemoryLibrary {
             ov.remove();
             this._refreshNotebook(parentPage, friendCode, name);
         });
+        
+        // 工具栏：字体选择
+        const fontPicker = ov.querySelector('#diaryFontPicker');
+        const contentArea = ov.querySelector('#diaryContent');
+        if (fontPicker) {
+            // 加载已选字体
+            if (existing?.fontId) this._loadFont(existing.fontId, contentArea);
+            fontPicker.addEventListener('change', () => {
+                const fid = fontPicker.value;
+                if (fid) this._loadFont(fid, contentArea);
+                else contentArea.style.fontFamily = 'inherit';
+            });
+        }
+        
+        // 工具栏：加粗
+        ov.querySelector('#diaryBold')?.addEventListener('click', () => {
+            this._insertAtCursor(contentArea, '**', '**', '加粗文字');
+        });
+        
+        // 工具栏：斜体
+        ov.querySelector('#diaryItalic')?.addEventListener('click', () => {
+            this._insertAtCursor(contentArea, '*', '*', '斜体文字');
+        });
+        
+        // 工具栏：插入图片
+        ov.querySelector('#diaryInsertImg')?.addEventListener('click', () => {
+            this._openImagePicker((imgName) => {
+                this._insertAtCursor(contentArea, '![', ']', imgName);
+            });
+        });
     }
 
     // 日记内容渲染（支持简单markdown）
-    _renderDiaryContent(text) {
+    _renderDiaryContent(text, fontId) {
         let s = this._esc(text);
         s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
         s = s.replace(/\*(.+?)\*/g, '<em>$1</em>');
         s = s.replace(/__(.+?)__/g, '<u>$1</u>');
         s = s.replace(/~~(.+?)~~/g, '<del>$1</del>');
+        // 图片 ![name]
+        s = s.replace(/!\[([^\]]+)\]/g, (match, name) => {
+            const img = this._findLibImage(name);
+            if (img) return '<img src="' + (img.data || img.url) + '" style="max-width:100%;border-radius:6px;margin:4px 0;display:block;">';
+            return '<span style="color:rgba(255,255,255,0.2);">[图片:' + this._esc(name) + ']</span>';
+        });
         return s;
     }
 
@@ -495,6 +545,60 @@ class MemoryLibrary {
         
         document.body.appendChild(page);
         page.querySelector('#sdBack')?.addEventListener('click', () => page.remove());
+    }
+
+    // ==================== 工具方法 ====================
+
+    _findLibImage(name) {
+        const ld = window.base64Library?._getData();
+        if (!ld) return null;
+        const all = [...(ld.avatars?.items||[]), ...(ld.webImages?.items||[]), ...(ld.stickers?.items||[]), ...(ld.transparent?.items||[])];
+        return all.find(i => i.name === name) || all.find(i => (i.name||'').includes(name));
+    }
+
+    _getAvailableFonts() {
+        return window.base64Library?._getData()?.fonts?.items || [];
+    }
+
+    _loadFont(fontId, el) {
+        const font = this._getAvailableFonts().find(f => f.id === fontId);
+        if (!font) return;
+        try {
+            const face = new FontFace(fontId, font.url ? 'url(' + font.url + ')' : font.data);
+            face.load().then(loaded => { document.fonts.add(loaded); if (el) el.style.fontFamily = '"' + fontId + '", serif'; }).catch(() => {});
+        } catch(e) {}
+    }
+
+    _insertAtCursor(textarea, before, after, placeholder) {
+        if (!textarea) return;
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const selected = textarea.value.substring(start, end);
+        const insert = before + (selected || placeholder) + after;
+        textarea.value = textarea.value.substring(0, start) + insert + textarea.value.substring(end);
+        textarea.focus();
+        textarea.setSelectionRange(start + before.length, start + before.length + (selected || placeholder).length);
+    }
+
+    _openImagePicker(callback) {
+        document.getElementById('mlImgPicker')?.remove();
+        const ld = window.base64Library?._getData();
+        if (!ld) { this._toast('图库不可用'); return; }
+        const allImgs = [...(ld.avatars?.items||[]), ...(ld.webImages?.items||[]), ...(ld.transparent?.items||[]), ...(ld.stickers?.items||[])];
+        if (allImgs.length === 0) { this._toast('图库里没有图片'); return; }
+        const p = document.createElement('div');
+        p.id = 'mlImgPicker';
+        p.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9800;display:flex;align-items:flex-end;background:rgba(0,0,0,0.5);';
+        let gridHtml = '';
+        allImgs.forEach(img => {
+            gridHtml += '<div class="ip-item" data-name="' + this._esc(img.name||'') + '" style="border-radius:8px;overflow:hidden;cursor:pointer;background:rgba(255,255,255,0.03);"><img src="' + (img.data||img.url||'') + '" style="width:100%;aspect-ratio:1;object-fit:cover;display:block;"><div style="padding:2px 4px;font-size:8px;color:rgba(255,255,255,0.25);text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + this._esc(img.name||'') + '</div></div>';
+        });
+        p.innerHTML = '<div style="width:100%;background:#1a1a1a;border-radius:16px 16px 0 0;padding:16px;max-height:60vh;display:flex;flex-direction:column;animation:profileSlideUp 0.25s ease-out;"><div style="display:flex;align-items:center;margin-bottom:10px;"><div style="flex:1;font-size:15px;font-weight:600;color:#fff;">选择图片</div><button id="imgPickerClose" style="background:none;border:none;color:rgba(255,255,255,0.3);font-size:18px;cursor:pointer;">&#10005;</button></div><div style="flex:1;overflow-y:auto;min-height:0;"><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">' + gridHtml + '</div></div></div>';
+        document.body.appendChild(p);
+        p.querySelector('#imgPickerClose')?.addEventListener('click', () => p.remove());
+        p.querySelectorAll('.ip-item').forEach(item => {
+            item.addEventListener('click', () => { callback(item.dataset.name); p.remove(); });
+        });
     }
 
     _esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
