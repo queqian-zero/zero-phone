@@ -2182,10 +2182,72 @@ ${archiveListText}
             console.log('👤 最终系统提示长度:', systemPrompt.length);
             console.log('🌐 开始调用API...');
             
-            // 记录本轮token分布（按字符估算）
-            const personaChars = (this.currentFriend?.persona || '').length;
+            // ====== 核心记忆+聊天总结 关键词检索注入 ======
             const coreMemories = this.storage.getCoreMemories(this.currentFriendCode);
             const summaries = this.storage.getChatSummaries(this.currentFriendCode);
+            
+            // 取用户最近的输入作为检索关键词
+            const lastUserMsg = messagesWithTimestamps.filter(m => m.type === 'user').slice(-1)[0]?.text || '';
+            const recentContext = messagesWithTimestamps.slice(-4).map(m => m.text || '').join(' ');
+            const searchText = (lastUserMsg + ' ' + recentContext).toLowerCase();
+            
+            // 关键词匹配核心记忆（取最相关的5条）
+            let relevantMemories = [];
+            if (coreMemories.length > 0) {
+                const scored = coreMemories.map(m => {
+                    const content = (m.content || '').toLowerCase();
+                    const date = (m.date || '').toLowerCase();
+                    // 简单关键词匹配打分：按重叠词数
+                    const words = searchText.replace(/[，。！？、\s]/g, ' ').split(' ').filter(w => w.length >= 2);
+                    let score = 0;
+                    words.forEach(w => { if (content.includes(w) || date.includes(w)) score++; });
+                    return { ...m, _score: score };
+                });
+                // 取匹配度>0的，按分数排序，最多5条
+                relevantMemories = scored.filter(m => m._score > 0).sort((a, b) => b._score - a._score).slice(0, 5);
+                // 如果关键词没匹配到任何记忆，取最近3条（保底）
+                if (relevantMemories.length === 0 && coreMemories.length > 0) {
+                    relevantMemories = coreMemories.slice(-3);
+                }
+            }
+            
+            // 关键词匹配聊天总结（取最相关的2条）
+            let relevantSummaries = [];
+            if (summaries.length > 0) {
+                const scored = summaries.map(s => {
+                    const text = (s.summary || s.text || '').toLowerCase();
+                    const words = searchText.replace(/[，。！？、\s]/g, ' ').split(' ').filter(w => w.length >= 2);
+                    let score = 0;
+                    words.forEach(w => { if (text.includes(w)) score++; });
+                    return { ...s, _score: score };
+                });
+                relevantSummaries = scored.filter(s => s._score > 0).sort((a, b) => b._score - a._score).slice(0, 2);
+                if (relevantSummaries.length === 0 && summaries.length > 0) {
+                    relevantSummaries = summaries.slice(-1); // 保底最近1条
+                }
+            }
+            
+            // 注入到systemPrompt
+            if (relevantMemories.length > 0 || relevantSummaries.length > 0) {
+                let memoryBlock = '\n\n【你的记忆档案（根据当前对话检索到的相关记忆）】';
+                if (relevantMemories.length > 0) {
+                    memoryBlock += '\n核心记忆：';
+                    relevantMemories.forEach(m => {
+                        memoryBlock += `\n  [${m.date || ''}] ${m.content || ''}`;
+                    });
+                }
+                if (relevantSummaries.length > 0) {
+                    memoryBlock += '\n聊天印象：';
+                    relevantSummaries.forEach(s => {
+                        memoryBlock += `\n  ${(s.summary || s.text || '').substring(0, 200)}`;
+                    });
+                }
+                memoryBlock += '\n（以上是你记住的事情，可以自然地在对话中体现，但不要刻意复述。）';
+                systemPrompt += memoryBlock;
+            }
+            
+            // 记录本轮token分布（按字符估算）
+            const personaChars = (this.currentFriend?.persona || '').length;
             const memoryChars = coreMemories.reduce((s, m) => s + (m.content?.length || 0), 0)
                               + summaries.reduce((s, m) => s + (m.content?.length || 0), 0);
             const systemChars = systemPrompt.length;
