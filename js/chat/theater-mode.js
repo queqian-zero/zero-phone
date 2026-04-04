@@ -131,7 +131,7 @@ class TheaterMode {
         ui.querySelector('#theaterMemory')?.addEventListener('click',()=>this._openMemorySummary());
         ui.querySelector('#theaterSend')?.addEventListener('click',()=>this._send());
         ui.querySelector('#theaterInput')?.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();this._send();}});
-        ui.querySelector('#theaterOOC')?.addEventListener('click',()=>this._openBackstage());
+        ui.querySelector('#theaterOOC')?.addEventListener('click',()=>this._openBackstage(true));
         this._scrollBottom();
     }
 
@@ -407,16 +407,28 @@ MEMO_CONTENT: 备忘录内容（${s.charName}最近记的一条备忘，可以�
         }
     }
 
-    _openBackstage() {
+    _openBackstage(mini) {
         document.getElementById('theaterOOCPanel')?.remove();
+        document.getElementById('theaterOOCMini')?.remove();
         const fn=window.chatInterface?.currentFriend?.nickname||window.chatInterface?.currentFriend?.name||'TA';
         const msgs=this._session?.backstageMessages||[];
+        
+        if (mini) {
+            this._openBackstageMini(fn, msgs);
+            return;
+        }
+        
+        // 全屏模式
         const p=document.createElement('div');p.id='theaterOOCPanel';
         p.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;z-index:9200;display:flex;flex-direction:column;background:rgba(0,0,0,0.92);backdrop-filter:blur(10px);';
-        p.innerHTML=`<div style="display:flex;align-items:center;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0;"><button id="oocClose" style="background:none;border:none;color:rgba(255,255,255,0.5);font-size:18px;cursor:pointer;">&#8592;</button><div style="flex:1;text-align:center;font-size:14px;color:rgba(255,255,255,0.6);">皮下沟通（OOC）</div></div>
+        p.innerHTML=`<div style="display:flex;align-items:center;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0;">
+                <button id="oocClose" style="background:none;border:none;color:rgba(255,255,255,0.5);font-size:20px;cursor:pointer;padding:4px 8px;">&#8592;</button>
+                <div style="flex:1;text-align:center;font-size:14px;color:rgba(255,255,255,0.6);">皮下沟通（OOC）</div>
+                <button id="oocMiniBtn" style="background:none;border:none;color:rgba(255,255,255,0.3);font-size:12px;cursor:pointer;padding:4px 8px;">小窗 &#8595;</button>
+            </div>
             <div id="oocMessages" style="flex:1;overflow-y:auto;padding:12px 16px;min-height:0;">
                 <div style="text-align:center;padding:16px 0;font-size:11px;color:rgba(255,255,255,0.2);line-height:1.8;">以线上人设（${this._esc(fn)} & 你本人）交流<br>不影响剧本</div>
-                ${msgs.map(m=>`<div style="margin-bottom:10px;${m.type==='user'?'text-align:right;':''}"><div style="font-size:10px;color:rgba(255,255,255,0.25);margin-bottom:2px;">${m.type==='user'?'你':this._esc(fn)}</div><div style="display:inline-block;padding:8px 12px;border-radius:10px;background:${m.type==='user'?'rgba(100,180,255,0.12)':'rgba(255,255,255,0.06)'};color:rgba(255,255,255,0.7);font-size:13px;max-width:80%;text-align:left;">${this._esc(m.text)}</div></div>`).join('')}
+                ${this._renderOOCMsgs(msgs, fn)}
             </div>
             <div style="padding:10px 14px calc(10px + env(safe-area-inset-bottom));border-top:1px solid rgba(255,255,255,0.06);display:flex;gap:8px;flex-shrink:0;">
                 <textarea id="oocInput" rows="1" placeholder="以皮下身份说话..." style="flex:1;padding:10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:14px;resize:none;font-family:inherit;"></textarea>
@@ -424,38 +436,108 @@ MEMO_CONTENT: 备忘录内容（${s.charName}最近记的一条备忘，可以�
             </div>`;
         document.body.appendChild(p);
         p.querySelector('#oocClose')?.addEventListener('click',()=>p.remove());
-        p.querySelector('#oocSend')?.addEventListener('click',()=>this._sendOOC(p));
-        p.querySelector('#oocInput')?.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();this._sendOOC(p);}});
+        p.querySelector('#oocMiniBtn')?.addEventListener('click',()=>{p.remove();this._openBackstage(true);});
+        p.querySelector('#oocSend')?.addEventListener('click',()=>this._sendOOC('full'));
+        p.querySelector('#oocInput')?.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();this._sendOOC('full');}});
+        setTimeout(()=>{const el=p.querySelector('#oocMessages');if(el)el.scrollTop=el.scrollHeight;},50);
     }
 
-    async _sendOOC(panel) {
-        const text=panel.querySelector('#oocInput')?.value.trim(); if(!text) return;
+    // 小窗模式
+    _openBackstageMini(fn, msgs) {
+        const m = document.createElement('div');
+        m.id = 'theaterOOCMini';
+        m.style.cssText = 'position:fixed;bottom:70px;right:10px;width:280px;max-height:320px;z-index:9100;background:rgba(20,20,20,0.95);border:1px solid rgba(255,255,255,0.1);border-radius:14px;display:flex;flex-direction:column;box-shadow:0 4px 20px rgba(0,0,0,0.4);backdrop-filter:blur(8px);overflow:hidden;';
+        
+        // 可拖拽头部
+        m.innerHTML = `<div id="oocMiniHeader" style="display:flex;align-items:center;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,0.06);cursor:move;flex-shrink:0;-webkit-user-select:none;user-select:none;">
+                <div style="flex:1;font-size:12px;color:rgba(255,255,255,0.5);">OOC 皮下</div>
+                <button id="oocMiniExpand" style="background:none;border:none;color:rgba(255,255,255,0.3);font-size:11px;cursor:pointer;padding:2px 6px;">全屏</button>
+                <button id="oocMiniClose" style="background:none;border:none;color:rgba(255,255,255,0.3);font-size:14px;cursor:pointer;padding:2px 6px;">&#10005;</button>
+            </div>
+            <div id="oocMiniMsgs" style="flex:1;overflow-y:auto;padding:8px 10px;min-height:0;max-height:180px;">
+                ${this._renderOOCMsgs(msgs, fn)}
+            </div>
+            <div style="display:flex;gap:6px;padding:8px;border-top:1px solid rgba(255,255,255,0.06);flex-shrink:0;">
+                <input type="text" id="oocMiniInput" placeholder="皮下..." style="flex:1;padding:7px 10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:12px;font-family:inherit;">
+                <button id="oocMiniSend" style="padding:6px 10px;border:none;border-radius:8px;background:rgba(240,147,43,0.15);color:#f0932b;font-size:11px;cursor:pointer;flex-shrink:0;">&#9654;</button>
+            </div>`;
+        
+        document.body.appendChild(m);
+        
+        // 拖拽（触摸+鼠标）
+        const header = m.querySelector('#oocMiniHeader');
+        let isDragging = false, startX, startY, startLeft, startTop;
+        const startDrag = (cx, cy) => {
+            isDragging = true;
+            const rect = m.getBoundingClientRect();
+            startX = cx; startY = cy;
+            startLeft = rect.left; startTop = rect.top;
+        };
+        const moveDrag = (cx, cy) => {
+            if (!isDragging) return;
+            m.style.left = (startLeft + cx - startX) + 'px';
+            m.style.top = (startTop + cy - startY) + 'px';
+            m.style.right = 'auto'; m.style.bottom = 'auto';
+        };
+        const endDrag = () => { isDragging = false; };
+        header.addEventListener('touchstart', e => { startDrag(e.touches[0].clientX, e.touches[0].clientY); e.preventDefault(); });
+        document.addEventListener('touchmove', e => { if(isDragging) moveDrag(e.touches[0].clientX, e.touches[0].clientY); });
+        document.addEventListener('touchend', endDrag);
+        header.addEventListener('mousedown', e => { startDrag(e.clientX, e.clientY); e.preventDefault(); });
+        document.addEventListener('mousemove', e => { moveDrag(e.clientX, e.clientY); });
+        document.addEventListener('mouseup', endDrag);
+        // 双击切换全屏
+        header.addEventListener('dblclick', () => { m.remove(); this._openBackstage(false); });
+        
+        m.querySelector('#oocMiniClose')?.addEventListener('click', () => m.remove());
+        m.querySelector('#oocMiniExpand')?.addEventListener('click', () => { m.remove(); this._openBackstage(false); });
+        m.querySelector('#oocMiniSend')?.addEventListener('click', () => this._sendOOC('mini'));
+        m.querySelector('#oocMiniInput')?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); this._sendOOC('mini'); } });
+        
+        setTimeout(() => { const el = m.querySelector('#oocMiniMsgs'); if (el) el.scrollTop = el.scrollHeight; }, 50);
+    }
+
+    _renderOOCMsgs(msgs, fn) {
+        return msgs.map(m => `<div style="margin-bottom:8px;${m.type==='user'?'text-align:right;':''}"><div style="font-size:9px;color:rgba(255,255,255,0.2);margin-bottom:1px;">${m.type==='user'?'你':this._esc(fn)}</div><div style="display:inline-block;padding:7px 11px;border-radius:10px;background:${m.type==='user'?'rgba(100,180,255,0.12)':'rgba(255,255,255,0.06)'};color:rgba(255,255,255,0.7);font-size:13px;max-width:85%;text-align:left;line-height:1.5;">${this._esc(m.text)}</div></div>`).join('');
+    }
+
+    async _sendOOC(mode) {
+        const inputEl = mode === 'mini' ? document.querySelector('#oocMiniInput') : document.querySelector('#oocInput');
+        const text = inputEl?.value.trim(); if(!text) return;
+        inputEl.value = '';
         if(!this._session.backstageMessages) this._session.backstageMessages=[];
         this._session.backstageMessages.push({type:'user',text,timestamp:new Date().toISOString()});
-        this._saveCurrentSession(); panel.remove(); this._openBackstage();
+        this._saveCurrentSession();
         
-        // 显示typing
-        const typingEl = document.querySelector('#oocMessages');
-        if(typingEl) {
+        // 刷新当前面板
+        const isMini = mode === 'mini';
+        if (isMini) {
+            document.getElementById('theaterOOCMini')?.remove();
+            this._openBackstage(true);
+        } else {
+            document.getElementById('theaterOOCPanel')?.remove();
+            this._openBackstage(false);
+        }
+        
+        // typing提示
+        const msgContainer = isMini ? document.querySelector('#oocMiniMsgs') : document.querySelector('#oocMessages');
+        if(msgContainer) {
             const tip = document.createElement('div');
-            tip.id = 'oocTyping';
-            tip.style.cssText = 'text-align:left;padding:8px 0;font-size:12px;color:rgba(255,255,255,0.25);font-style:italic;';
+            tip.style.cssText = 'text-align:left;padding:6px 0;font-size:11px;color:rgba(255,255,255,0.2);font-style:italic;';
             const ci2 = window.chatInterface;
             tip.textContent = (ci2?.currentFriend?.nickname||ci2?.currentFriend?.name||'TA') + ' 正在输入...';
-            typingEl.appendChild(tip);
-            typingEl.scrollTop = typingEl.scrollHeight;
+            msgContainer.appendChild(tip);
+            msgContainer.scrollTop = msgContainer.scrollHeight;
         }
         
         const ci=window.chatInterface; if(!ci?.apiManager) return;
         const fn=ci.currentFriend?.nickname||ci.currentFriend?.name||'TA';
         const fp=ci.currentFriend?.persona||'';
-        // 获取剧场最近内容（让皮下知道剧里发生了什么）
         const recentTheater = (this._session?.messages||[]).slice(-6).map(m => {
             if(m.type==='system') return '[系统] '+m.text;
             const n = m.type==='char' ? this._session.script.charName : this._session.script.userName;
             return n+': '+(m.text||'').substring(0,100);
         }).join('\n');
-        // 获取线上聊天最近消息
         const mainChat = (ci.messages||[]).slice(-8).map(m => `${m.type==='user'?'user':fn}: ${(m.text||'').substring(0,80)}`).join('\n');
         const oocPrompt = `你是${fn}（皮下身份，线上人设）。你现在在次元剧场的间隙跟user聊天。
 你的人设：${fp.substring(0,300)}
@@ -468,24 +550,15 @@ ${mainChat||'（暂无）'}
 ${recentTheater||'（还没开始）'}
 
 用你（${fn}）平时的语气回复，简短自然。你可以聊剧里发生的事，也可以聊日常。`;
-        try{const r=await ci.apiManager.callAI(this._session.backstageMessages.slice(-10).map(m=>({type:m.type,text:m.text})),oocPrompt);if(r.success){this._session.backstageMessages.push({type:'ai',text:r.text.trim(),timestamp:new Date().toISOString()});this._saveCurrentSession();document.getElementById('theaterOOCPanel')?.remove();this._openBackstage();}}catch(e){}
-    }
-
-    async _handleScriptChange(reason,from) {
-        const s=this._session.script;const fn=window.chatInterface?.currentFriend?.name||'TA';
-        const who=from==='ai'?`${s.charName}（${fn}的皮下）`:'你';
-        const ok=window.zpConfirm?await window.zpConfirm('修改设定',`${who} 申请修改：\n\n${reason}\n\n同意？`,'同意','拒绝'):confirm('同意？');
-        if(ok){this._session.messages.push({type:'system',text:`设定修改已通过：${reason}`});this._saveCurrentSession();this._openScriptEditor(this._session.script);}
-        else{this._session.messages.push({type:'system',text:'设定修改被拒绝'});this._typing=false;this._saveCurrentSession();this._openTheaterUI();}
-    }
-
-    async _requestScriptChange() {
-        const reason=window.zpPrompt?await window.zpPrompt('申请修改设定','写明想改什么+理由','','修改内容'):prompt('理由：');
-        if(!reason) return;
-        this._session.messages.push({type:'system',text:`你申请修改：${reason}`});this._saveCurrentSession();
-        const ci=window.chatInterface; if(!ci?.apiManager) return;
-        this._toast('等待TA决定...');
-        try{const r=await ci.apiManager.callAI([{type:'user',text:reason}],`user想改次元剧场设定。理由：${reason}\n回复APPROVE或REJECT:理由`);if(r.success&&r.text.includes('APPROVE')){this._toast('同意了');this._openScriptEditor(this._session.script);}else{const rr=(r.text||'').replace(/^REJECT:?/,'').trim();this._session.messages.push({type:'system',text:`TA拒绝了${rr?'：'+rr:''}`});this._saveCurrentSession();this._openTheaterUI();}}catch(e){this._openTheaterUI();}
+        try{
+            const r=await ci.apiManager.callAI(this._session.backstageMessages.slice(-10).map(m=>({type:m.type,text:m.text})),oocPrompt);
+            if(r.success){
+                this._session.backstageMessages.push({type:'ai',text:r.text.trim(),timestamp:new Date().toISOString()});
+                this._saveCurrentSession();
+                if(isMini){document.getElementById('theaterOOCMini')?.remove();this._openBackstage(true);}
+                else{document.getElementById('theaterOOCPanel')?.remove();this._openBackstage(false);}
+            }
+        }catch(e){}
     }
 
     // ==================== 设置 ====================
