@@ -559,6 +559,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const app = (typeof chatApp !== 'undefined') ? chatApp : window.chatApp;
         if (app?.storage) {
             window.profileManager = new ProfileManager(app.storage);
+            // 启动时立即应用自定义CSS
+            const s = app.storage.getUserSettings() || {};
+            if (s.profileCss) window.profileManager._applyProfileCss(s.profileCss);
             const observer = new MutationObserver(() => {
                 const page = document.getElementById('profilePage');
                 if (page && page.classList.contains('active')) window.profileManager.init();

@@ -6992,6 +6992,12 @@ getIntimacyStatusForAI() {
     desc += `\n  [AI_CHANGE_AVATAR:图片名字] 把Base64图库中的某张图设为你自己的头像`;
     desc += `\n  [AI_CHANGE_AVATAR_FROM_CHAT] 把user最近发给你的图片设为你自己的头像`;
     
+    // AI记事本
+    desc += `\n\n【记事本（写日记/碎碎念）】`;
+    desc += `\n  [AI_NOTE:内容] 在你的记事本碎碎念里写一条（随意写，没有格式要求）`;
+    desc += `\n  [AI_DIARY:内容] 在你的记事本写一篇日记（开头写日期和心情，然后是正文，末尾用[SIGNATURE:署名]签名）`;
+    desc += `\n  注意：写日记碎碎念不需要user同意，你想写就写。写完后系统会自动通知user。`;
+    
     // Base64图库访问
     const libData = window.base64Library?._getData();
     if (libData) {
@@ -12783,6 +12789,8 @@ _stripCommandTags(text) {
         .replace(/\[AI_SEND_LIB_IMAGE:[^\]]+\]/g, '')
         .replace(/\[AI_CHANGE_AVATAR:[^\]]+\]/g, '')
         .replace(/\[AI_CHANGE_AVATAR_FROM_CHAT\]/g, '')
+        .replace(/\[AI_NOTE:[^\]]+\]/g, '')
+        .replace(/\[AI_DIARY:[\s\S]*?\]/g, '')
         .replace(/\[STATUS_CSS\][\s\S]*?\[\/STATUS_CSS\]/g, '')
         .replace(/\[STATUS_?\s*CSS\][\s\S]*?\[\/?\s*STATUS_?\s*CSS\]/gi, '');
 }
@@ -12794,7 +12802,58 @@ _executeSegmentCommands(rawSeg) {
     this.processBadgeCommands(rawSeg);
     this.processExchangeCommands(rawSeg);
     this.processCapsuleCommands(rawSeg);
+    this.processNotebookCommands(rawSeg);
     if (window.friendProfile) window.friendProfile.processStatusCommands(rawSeg);
+}
+
+// AI写日记/碎碎念
+processNotebookCommands(text) {
+    if (!this.currentFriendCode) return;
+    const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    if (!data.notebook) data.notebook = { notes: [], diary: [] };
+    
+    // [AI_NOTE:内容]
+    const noteMatches = text.matchAll(/\[AI_NOTE:([^\]]+)\]/g);
+    for (const match of noteMatches) {
+        const content = match[1].trim();
+        if (!content) continue;
+        data.notebook.notes.push({ id: 'note_' + Date.now() + Math.random().toString(36).substr(2,4), content, createdAt: new Date().toISOString() });
+        this.showCssSystemMessage(`📓 ${friendName} 在碎碎念里写了点什么`);
+    }
+    
+    // [AI_DIARY:内容]
+    const diaryMatch = text.match(/\[AI_DIARY:([\s\S]*?)\]/);
+    if (diaryMatch) {
+        const raw = diaryMatch[1].trim();
+        const now = new Date();
+        const dateStr = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日`;
+        const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+        
+        // 提取署名
+        let signature = '';
+        let content = raw;
+        const sigMatch = raw.match(/\[SIGNATURE:([^\]]+)\]/);
+        if (sigMatch) { signature = sigMatch[1].trim(); content = content.replace(sigMatch[0], '').trim(); }
+        
+        // 提取心情（如果第一行有"心情"关键字）
+        let mood = '';
+        const lines = content.split('\n');
+        if (lines[0] && (lines[0].includes('心情') || lines[0].includes('mood'))) {
+            mood = lines[0].replace(/.*心情[:：]?\s*/, '').trim();
+            content = lines.slice(1).join('\n').trim();
+        }
+        
+        data.notebook.diary.push({
+            id: 'diary_' + Date.now(),
+            date: dateStr, time: timeStr, mood,
+            content, signature,
+            createdAt: now.toISOString()
+        });
+        this.showCssSystemMessage(`📖 ${friendName} 写了一篇回忆录「${content.substring(0, 15)}...」`);
+    }
+    
+    this.storage.saveIntimacyData(this.currentFriendCode, data);
 }
 
 // 预提取关系卡片HTML（不写入状态，只生成卡片用于渲染）

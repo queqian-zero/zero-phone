@@ -582,7 +582,10 @@ ${recentTheater||'（还没开始）'}
 
 用你（${fn}）平时的语气回复，简短自然。你可以聊剧里发生的事，也可以聊日常。`;
         try{
-            const r=await ci.apiManager.callAI(this._session.backstageMessages.slice(-10).map(m=>({type:m.type,text:m.text})),oocPrompt);
+            const r=await ci.apiManager.callAI(this._session.backstageMessages.slice(-10).map(m=>{
+                const ts = m.timestamp ? new Date(m.timestamp).toLocaleString('zh-CN',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+                return {type:m.type, text: ts ? `[${ts}] ${m.text}` : m.text};
+            }),oocPrompt);
             if(r.success){
                 this._session.backstageMessages.push({type:'ai',text:r.text.trim(),timestamp:new Date().toISOString()});
                 this._saveCurrentSession();
