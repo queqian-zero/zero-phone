@@ -6995,13 +6995,40 @@ getIntimacyStatusForAI() {
     // AI记事本
     desc += `\n\n【记事本（写日记/碎碎念）】`;
     desc += `\n  [AI_NOTE:内容] 在你的记事本碎碎念里写一条（随意写，没有格式要求）`;
-    desc += `\n  [AI_DIARY:内容] 写一篇日记。格式：`;
+    desc += `\n  [AI_DIARY:内容] 写一篇日记。像在本子上写手账一样：`;
     desc += `\n    第一行写"心情：xxx"`;
-    desc += `\n    正文支持：**加粗** *斜体* __下划线__ # 标题 --- 分割线`;
-    desc += `\n    插入图片：![图片名]（从Base64图库选）`;
-    desc += `\n    末尾用[SIGNATURE:你的署名]签名`;
-    desc += `\n    你可以用emoji装饰，写得像手账一样有画面感`;
+    desc += `\n    可以用：**加粗** *斜体* __下划线__ # 标题 --- 分割线`;
+    desc += `\n    可以用emoji随意装饰 🌙✨💭🎵`;
+    desc += `\n    插入图片：![图片名]（从Base64图库选，像贴照片一样）`;
+    desc += `\n    末尾用[SIGNATURE:你的署名]签名（可以是你名字/网名/笔名/随便编的）`;
+    desc += `\n    写日记时请发挥创意！可以：`;
+    desc += `\n      - 乱涂乱画（用符号线条 ═══ ~~~ *** 等装饰）`;
+    desc += `\n      - 写错别字然后划掉（~~错别字~~正确的）`;
+    desc += `\n      - 在页边写小字批注（*←这里是旁注*）`;
+    desc += `\n      - 画简单的ASCII小画`;
+    desc += `\n      - 贴表情包图片在文字中间`;
+    desc += `\n      - 总之像人类写手账一样自由，不要像AI生成的那样工整`;
     desc += `\n  注意：写日记碎碎念不需要user同意，你想写就写。写完后系统会自动通知user。`;
+    
+    // 注入AI已写的日记/碎碎念（让AI能看到自己写过的）
+    if (this.currentFriendCode) {
+        const intimData = this.storage.getIntimacyData(this.currentFriendCode);
+        const nb = intimData.notebook || { notes: [], diary: [] };
+        const recentNotes = (nb.notes || []).slice(-3);
+        const recentDiary = (nb.diary || []).slice(-2);
+        if (recentNotes.length > 0 || recentDiary.length > 0) {
+            desc += `\n\n【你的记事本（你之前写过的）】`;
+            if (recentNotes.length > 0) {
+                desc += `\n  你的碎碎念（最近${recentNotes.length}条）：`;
+                recentNotes.forEach(n => desc += `\n    「${(n.content||'').substring(0,60)}${(n.content||'').length>60?'...':''}」`);
+            }
+            if (recentDiary.length > 0) {
+                desc += `\n  你的日记（最近${recentDiary.length}篇）：`;
+                recentDiary.forEach(d => desc += `\n    [${d.date||''}] 心情:${d.mood||'?'} 「${(d.content||'').substring(0,80)}...」 署名:${d.signature||'无'}`);
+            }
+            desc += `\n  （你可以在对话中自然提到你写过的内容，也可以写新的）`;
+        }
+    }
     
     // Base64图库访问
     const libData = window.base64Library?._getData();

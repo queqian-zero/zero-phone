@@ -11,25 +11,78 @@ class TheaterMode {
     // ==================== 入口 ====================
     openEntryDialog() {
         document.getElementById('theaterEntryDialog')?.remove();
+        const ci = window.chatInterface;
+        const store = ci?.storage || window.chatApp?.storage;
+        const sessions = store ? (store.getIntimacyData(ci?.currentFriendCode || '').theaterSessions || []) : [];
+        const activeSessions = sessions.filter(s => s.status !== 'end');
+        const endedSessions = sessions.filter(s => s.status === 'end');
+        
         const ov = document.createElement('div');
         ov.id = 'theaterEntryDialog';
-        ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9500;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);';
-        ov.innerHTML = `<div style="width:calc(100% - 48px);max-width:340px;background:#1c1c1c;border-radius:20px;border:1px solid rgba(255,255,255,0.08);padding:28px 24px;animation:profileSlideUp 0.25s ease-out;">
-            <div style="text-align:center;margin-bottom:6px;font-size:20px;letter-spacing:2px;">&#9670;</div>
-            <div style="font-size:18px;font-weight:700;color:#fff;text-align:center;margin-bottom:6px;">次元剧场</div>
-            <div style="font-size:12px;color:rgba(255,255,255,0.3);text-align:center;margin-bottom:20px;line-height:1.6;">以皮下身份操控全新角色，展开一段故事</div>
-            <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
-                <button id="theaterAiScript" style="padding:14px;border:1px solid rgba(240,147,43,0.2);border-radius:12px;background:rgba(240,147,43,0.08);color:#f0932b;font-size:14px;font-weight:600;cursor:pointer;text-align:left;"><div>&#9998; 让TA来写剧本</div><div style="font-size:11px;font-weight:400;opacity:0.6;margin-top:4px;">AI参考聊天记录构思，你可以修改后再开演</div></button>
-                <button id="theaterUserScript" style="padding:14px;border:1px solid rgba(255,255,255,0.08);border-radius:12px;background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.7);font-size:14px;cursor:pointer;text-align:left;"><div>&#9997; 我来写剧本</div><div style="font-size:11px;opacity:0.4;margin-top:4px;">自己设定世界观、角色和背景</div></button>
-            </div>
-            ${this._hasSavedSessions() ? '<button id="theaterLoadSave" style="width:100%;padding:12px;border:1px solid rgba(255,255,255,0.06);border-radius:10px;background:rgba(255,255,255,0.02);color:rgba(255,255,255,0.35);font-size:13px;cursor:pointer;margin-bottom:10px;">&#9654; 继续上次的剧本</button>' : ''}
-            <button id="theaterCancel" style="width:100%;padding:10px;border:none;background:transparent;color:rgba(255,255,255,0.2);font-size:13px;cursor:pointer;">取消</button>
-        </div>`;
+        ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9500;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,0.6);';
+        
+        let sessionListHtml = '';
+        if (activeSessions.length > 0) {
+            sessionListHtml += '<div style="font-size:12px;color:rgba(255,255,255,0.3);margin-bottom:8px;">进行中的剧场</div>';
+            activeSessions.forEach(s => {
+                const sc = s.script || {};
+                const name = s.theaterName || (sc.charName + ' & ' + sc.userName);
+                const floors = (s.messages||[]).filter(m=>m.type==='char'||m.type==='user').length;
+                sessionListHtml += '<div class="te-session" data-sid="' + s.id + '" data-status="active" style="padding:12px;background:rgba(240,147,43,0.06);border:1px solid rgba(240,147,43,0.12);border-radius:10px;margin-bottom:8px;cursor:pointer;"><div style="font-size:14px;color:#f0932b;font-weight:600;">' + this._esc(name) + '</div><div style="font-size:11px;color:rgba(255,255,255,0.25);margin-top:3px;">' + floors + '楼 | ' + (s.createdAt ? new Date(s.createdAt).toLocaleDateString('zh-CN') : '') + '</div></div>';
+            });
+        }
+        if (endedSessions.length > 0) {
+            sessionListHtml += '<div style="font-size:12px;color:rgba(255,255,255,0.2);margin:10px 0 8px;">已完结（只读）</div>';
+            endedSessions.slice(-3).forEach(s => {
+                const sc = s.script || {};
+                const name = s.theaterName || (sc.charName + ' & ' + sc.userName);
+                sessionListHtml += '<div class="te-session" data-sid="' + s.id + '" data-status="ended" style="padding:10px 12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:10px;margin-bottom:6px;cursor:pointer;opacity:0.5;"><div style="font-size:13px;color:rgba(255,255,255,0.4);">' + this._esc(name) + ' <span style="font-size:10px;">（已完结）</span></div></div>';
+            });
+        }
+        
+        ov.innerHTML = '<div style="width:100%;max-width:400px;background:#1c1c1c;border-radius:20px 20px 0 0;border:1px solid rgba(255,255,255,0.06);padding:24px 20px calc(20px + env(safe-area-inset-bottom));max-height:80vh;overflow-y:auto;animation:profileSlideUp 0.25s ease-out;">' +
+            '<div style="text-align:center;margin-bottom:4px;font-size:18px;letter-spacing:2px;">&#9670;</div>' +
+            '<div style="font-size:17px;font-weight:700;color:#fff;text-align:center;margin-bottom:4px;">次元剧场</div>' +
+            '<div style="font-size:12px;color:rgba(255,255,255,0.2);text-align:center;margin-bottom:18px;">以皮下身份操控角色，展开故事</div>' +
+            sessionListHtml +
+            '<div style="margin-top:12px;display:flex;flex-direction:column;gap:10px;">' +
+                '<button id="theaterAiScript" style="padding:14px;border:1px solid rgba(240,147,43,0.15);border-radius:12px;background:rgba(240,147,43,0.06);color:#f0932b;font-size:14px;font-weight:600;cursor:pointer;text-align:left;"><div>&#9998; 让TA写新剧本</div><div style="font-size:11px;font-weight:400;opacity:0.5;margin-top:3px;">AI构思，你可以修改</div></button>' +
+                '<button id="theaterUserScript" style="padding:14px;border:1px solid rgba(255,255,255,0.06);border-radius:12px;background:rgba(255,255,255,0.02);color:rgba(255,255,255,0.6);font-size:14px;cursor:pointer;text-align:left;"><div>&#9997; 我写新剧本</div><div style="font-size:11px;opacity:0.3;margin-top:3px;">自己设定一切</div></button>' +
+            '</div>' +
+            '<button id="theaterCancel" style="width:100%;padding:10px;border:none;background:transparent;color:rgba(255,255,255,0.15);font-size:13px;cursor:pointer;margin-top:10px;">取消</button>' +
+        '</div>';
+        
         document.body.appendChild(ov);
         ov.querySelector('#theaterAiScript')?.addEventListener('click', () => { ov.remove(); this._startAiScript(); });
         ov.querySelector('#theaterUserScript')?.addEventListener('click', () => { ov.remove(); this._openScriptEditor(); });
-        ov.querySelector('#theaterLoadSave')?.addEventListener('click', () => { ov.remove(); this._loadSavedSession(); });
         ov.querySelector('#theaterCancel')?.addEventListener('click', () => ov.remove());
+        
+        // 点击已有session
+        ov.querySelectorAll('.te-session').forEach(el => {
+            el.addEventListener('click', () => {
+                const sid = el.dataset.sid;
+                const isEnded = el.dataset.status === 'ended';
+                const session = sessions.find(s => s.id === sid);
+                if (!session) return;
+                ov.remove();
+                if (isEnded) {
+                    // 已完结：只读进入（只能OOC）
+                    this._session = session;
+                    this._active = true;
+                    this._openTheaterUI();
+                } else {
+                    // 进行中：询问AI是否配合
+                    this._resumeSession(session);
+                }
+            });
+        });
+    }
+    
+    // 恢复已有session
+    async _resumeSession(session) {
+        this._session = session;
+        this._active = true;
+        this._openTheaterUI();
     }
 
     // ==================== 剧本编辑器 ====================
@@ -41,6 +94,7 @@ class TheaterMode {
         const fi = (id,label,ph,val,rows) => `<div style="margin-bottom:18px;"><div style="font-size:13px;color:rgba(255,255,255,0.5);margin-bottom:6px;">&#9670; ${label}</div>${rows>1?`<textarea id="${id}" rows="${rows}" placeholder="${this._esc(ph)}" style="width:100%;padding:12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;color:#fff;font-size:14px;line-height:1.6;resize:vertical;box-sizing:border-box;font-family:inherit;">${this._esc(val||'')}</textarea>`:`<input type="text" id="${id}" placeholder="${this._esc(ph)}" value="${this._esc(val||'')}" style="width:100%;padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;color:#fff;font-size:14px;box-sizing:border-box;">`}</div>`;
         p.innerHTML = `<div style="display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.04);flex-shrink:0;"><button id="tseBack" style="background:none;border:none;color:rgba(255,255,255,0.6);font-size:20px;cursor:pointer;margin-right:8px;">&#8592;</button><div style="flex:1;font-size:16px;font-weight:600;color:#fff;">编写剧本</div><button id="tseStart" style="padding:6px 16px;border:none;border-radius:8px;background:rgba(240,147,43,0.15);color:#f0932b;font-size:13px;font-weight:600;cursor:pointer;">开演</button></div>
             <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;min-height:0;">
+                ${fi('tseName','剧本名称','给这个剧本起个名字',prefill.theaterName,1)}
                 ${fi('tseWorld','世界观 / 故事背景','故事发生在什么世界？',prefill.world,4)}
                 ${fi('tseCharName','TA扮演的角色 - 姓名','角色姓名',prefill.charName,1)}
                 ${fi('tseCharPersona','TA扮演的角色 - 人设','性格、背景、外貌、说话方式...',prefill.charPersona,4)}
@@ -53,8 +107,9 @@ class TheaterMode {
         p.querySelector('#tseStart')?.addEventListener('click', () => {
             const g=id=>p.querySelector('#'+id)?.value.trim()||'';
             const script={world:g('tseWorld'),charName:g('tseCharName'),charPersona:g('tseCharPersona'),userName:g('tseUserName'),userPersona:g('tseUserPersona'),opening:g('tseOpening')};
+            const theaterName = g('tseName') || (script.charName + ' & ' + script.userName);
             if(!script.charName||!script.userName){this._toast('请至少填写双方角色姓名');return;}
-            p.remove(); this._startSession(script);
+            p.remove(); this._startSession(script, theaterName);
         });
     }
 
@@ -74,8 +129,8 @@ class TheaterMode {
         try{const r=await ci.apiManager.callAI([{type:'user',text:'构思剧本'}],prompt);loading.remove();if(!r.success){this._toast('构思失败');return;}let s;try{s=JSON.parse(r.text.replace(/```json|```/g,'').trim());}catch(e){this._toast('格式有误');this._openScriptEditor();return;}this._openScriptEditor(s);}catch(e){loading.remove();this._toast('网络错误');}
     }
 
-    _startSession(script) {
-        this._session={id:'theater_'+Date.now(),script,messages:[],backstageMessages:[],createdAt:new Date().toISOString(),friendCode:window.chatInterface?.currentFriendCode||'',customCss:''};
+    _startSession(script, theaterName) {
+        this._session={id:'theater_'+Date.now(),script,theaterName:theaterName||script.charName+' & '+script.userName,messages:[],backstageMessages:[],createdAt:new Date().toISOString(),friendCode:window.chatInterface?.currentFriendCode||'',customCss:'',status:'active'};
         this._active=true; this._floor=0;
         this._saveCurrentSession(); this._openTheaterUI();
     }
@@ -102,7 +157,7 @@ class TheaterMode {
         ui.innerHTML=`
             <div class="theater-topbar" style="display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid ${t.border};flex-shrink:0;background:${t.topBg};">
                 <button id="theaterExit" style="background:none;border:none;color:${t.sub};font-size:22px;cursor:pointer;padding:6px 10px;">&#8592;</button>
-                <div style="flex:1;text-align:center;"><div class="theater-title" style="font-size:15px;font-weight:600;color:${t.text};">次元剧场</div><div style="font-size:11px;color:${t.sub};">${this._esc(s.charName)} & ${this._esc(s.userName)}</div></div>
+                <div style="flex:1;text-align:center;"><div class="theater-title" style="font-size:15px;font-weight:600;color:${t.text};">${this._esc(this._session.theaterName || '次元剧场')}</div><div style="font-size:11px;color:${t.sub};">${this._esc(s.charName)} & ${this._esc(s.userName)}</div></div>
                 <button id="theaterMemory" style="background:none;border:none;color:${t.sub};font-size:18px;cursor:pointer;padding:6px 10px;">&#9776;</button>
                 <button id="theaterSettings" style="background:none;border:none;color:${t.sub};font-size:20px;cursor:pointer;padding:6px 10px;">&#9881;</button>
             </div>
@@ -427,8 +482,12 @@ MEMO_CONTENT: 备忘录内容（${s.charName}最近记的一条备忘，可以�
         const ci = window.chatInterface;
         if (ci && this._session && floorCount > 0) {
             const sc = this._session.script;
-            const statusText = mode === 'end' ? '结束' : '暂停';
-            ci.showCssSystemMessage(`【次元剧场${statusText}】${sc.charName} & ${sc.userName} | ${(sc.world||'').substring(0,40)}... | ${floorCount}楼`);
+            const statusText = mode === 'end' ? '完结' : '暂停';
+            const thName = this._session.theaterName || (sc.charName + ' & ' + sc.userName);
+            ci.showCssSystemMessage(`【次元剧场${statusText}】「${thName}」${floorCount}楼 ◆TA可见`);
+        } else if (ci && this._session && floorCount === 0) {
+            // 什么都没演就退了，不通知AI
+            ci.showCssSystemMessage('【次元剧场】已退出（未开始演绎）');
         }
     }
 

@@ -160,6 +160,9 @@ class MemoryLibrary {
                         <div style="font-size:12px;color:rgba(255,100,100,0.6);margin-bottom:6px;">${this._esc(m.date || '')}</div>
                         <div style="font-size:14px;color:rgba(255,255,255,0.7);line-height:1.7;">${this._esc(m.content || '')}</div>
                     </div>`).join('')}
+                <div style="margin-top:20px;padding:12px;background:rgba(255,255,255,0.015);border-radius:10px;text-align:center;">
+                    <div style="font-size:11px;color:rgba(255,255,255,0.12);line-height:1.7;">&#9670; 记忆碎片（TA已遗忘的记忆）不在这里<br>如需查看，请到聊天设置 → 记忆 → 记忆碎片</div>
+                </div>
             </div>`;
         document.body.appendChild(page);
         page.querySelector('#mdBack')?.addEventListener('click', () => page.remove());
@@ -659,7 +662,16 @@ class MemoryLibrary {
     // ==================== 工具方法 ====================
 
     _findLibImage(name) {
-        const ld = window.base64Library?._getData();
+        // 尝试从base64Library获取
+        let ld = window.base64Library?._getData();
+        // 兜底：直接从storage读
+        if (!ld) {
+            const store = this._store();
+            if (store) {
+                const s = store.getUserSettings() || {};
+                ld = s.base64Library;
+            }
+        }
         if (!ld) return null;
         const all = [...(ld.avatars?.items||[]), ...(ld.webImages?.items||[]), ...(ld.stickers?.items||[]), ...(ld.transparent?.items||[])];
         return all.find(i => i.name === name) || all.find(i => (i.name||'').includes(name));
