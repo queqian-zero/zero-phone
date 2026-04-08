@@ -1,11 +1,11 @@
 // ==================== 记忆库（档案室） ====================
 class MemoryLibrary {
+    _store() { return window.chatInterface?.storage || window.chatApp?.storage; }
     open() {
         document.getElementById('memoryLibPage')?.remove();
-        const ci = window.chatInterface;
-        if (!ci?.storage) return;
+        if (!this._store()) { this._toast('存储不可用'); return; }
 
-        const friends = ci.storage.getAllFriends() || [];
+        const friends = this._store().getAllFriends() || [];
         const page = document.createElement('div');
         page.id = 'memoryLibPage';
         page.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:8000;background:#0d0d0d;display:flex;flex-direction:column;';
@@ -44,8 +44,8 @@ class MemoryLibrary {
     // ==================== 角色档案子页 ====================
     _openCharArchive(friendCode) {
         const ci = window.chatInterface;
-        if (!ci?.storage) return;
-        const friend = ci.storage.getFriendByCode(friendCode);
+        if (!this._store()) return;
+        const friend = this._store().getFriendByCode(friendCode);
         if (!friend) return;
         const name = friend.nickname || friend.name || '???';
 
@@ -116,8 +116,8 @@ class MemoryLibrary {
     // ==================== 聊天总结查看 ====================
     _showChatSummary(friendCode, name) {
         const ci = window.chatInterface;
-        if (!ci?.storage) return;
-        const summaries = ci.storage.getChatSummaries(friendCode) || [];
+        if (!this._store()) return;
+        const summaries = this._store().getChatSummaries(friendCode) || [];
 
         document.getElementById('mlDetailPage')?.remove();
         const page = document.createElement('div');
@@ -142,8 +142,8 @@ class MemoryLibrary {
     // ==================== 核心记忆查看 ====================
     _showCoreMemories(friendCode, name) {
         const ci = window.chatInterface;
-        if (!ci?.storage) return;
-        const memories = ci.storage.getCoreMemories(friendCode) || [];
+        if (!this._store()) return;
+        const memories = this._store().getCoreMemories(friendCode) || [];
 
         document.getElementById('mlDetailPage')?.remove();
         const page = document.createElement('div');
@@ -199,7 +199,7 @@ class MemoryLibrary {
 
     _refreshNotebook(page, friendCode, name) {
         const ci = window.chatInterface;
-        const data = ci?.storage?.getIntimacyData(friendCode) || {};
+        const data = this._store()?.getIntimacyData(friendCode) || {};
         if (!data.notebook) data.notebook = { notes: [], diary: [] };
         const items = this._nbTab === 'notes' ? (data.notebook.notes || []) : (data.notebook.diary || []);
         
@@ -290,7 +290,7 @@ class MemoryLibrary {
             const text = ov.querySelector('#nbNoteText')?.value.trim();
             if (!text) { this._toast('内容不能为空'); return; }
             const ci = window.chatInterface;
-            const data = ci.storage.getIntimacyData(friendCode);
+            const data = this._store().getIntimacyData(friendCode);
             if (!data.notebook) data.notebook = { notes: [], diary: [] };
             if (existing) {
                 const item = data.notebook.notes.find(n => n.id === existing.id);
@@ -298,7 +298,7 @@ class MemoryLibrary {
             } else {
                 data.notebook.notes.push({ id: 'note_' + Date.now(), content: text, createdAt: new Date().toISOString() });
             }
-            ci.storage.saveIntimacyData(friendCode, data);
+            this._store().saveIntimacyData(friendCode, data);
             ov.remove();
             this._refreshNotebook(parentPage, friendCode, name);
         });
@@ -307,9 +307,9 @@ class MemoryLibrary {
             const ok = window.zpConfirm ? await window.zpConfirm('删除', '删除这条碎碎念？', '删除', '取消') : confirm('删除？');
             if (!ok) return;
             const ci = window.chatInterface;
-            const data = ci.storage.getIntimacyData(friendCode);
+            const data = this._store().getIntimacyData(friendCode);
             data.notebook.notes = (data.notebook.notes || []).filter(n => n.id !== existing.id);
-            ci.storage.saveIntimacyData(friendCode, data);
+            this._store().saveIntimacyData(friendCode, data);
             ov.remove();
             this._refreshNotebook(parentPage, friendCode, name);
         });
@@ -390,7 +390,7 @@ class MemoryLibrary {
                 updatedAt: new Date().toISOString()
             };
             const ci = window.chatInterface;
-            const data = ci.storage.getIntimacyData(friendCode);
+            const data = this._store().getIntimacyData(friendCode);
             if (!data.notebook) data.notebook = { notes: [], diary: [] };
             if (existing) {
                 const idx = data.notebook.diary.findIndex(d => d.id === existing.id);
@@ -398,7 +398,7 @@ class MemoryLibrary {
             } else {
                 data.notebook.diary.push(entry);
             }
-            ci.storage.saveIntimacyData(friendCode, data);
+            this._store().saveIntimacyData(friendCode, data);
             this._toast('日记已保存');
             ov.remove();
             this._refreshNotebook(parentPage, friendCode, name);
@@ -408,9 +408,9 @@ class MemoryLibrary {
             const ok = window.zpConfirm ? await window.zpConfirm('删除', '删除这篇日记？', '删除', '取消') : confirm('删除？');
             if (!ok) return;
             const ci = window.chatInterface;
-            const data = ci.storage.getIntimacyData(friendCode);
+            const data = this._store().getIntimacyData(friendCode);
             data.notebook.diary = (data.notebook.diary || []).filter(d => d.id !== existing.id);
-            ci.storage.saveIntimacyData(friendCode, data);
+            this._store().saveIntimacyData(friendCode, data);
             ov.remove();
             this._refreshNotebook(parentPage, friendCode, name);
         });
@@ -535,8 +535,8 @@ class MemoryLibrary {
     // ==================== 剧场归档 ====================
     _showTheaterArchive(friendCode, name) {
         const ci = window.chatInterface;
-        if (!ci?.storage) return;
-        const data = ci.storage.getIntimacyData(friendCode);
+        if (!this._store()) return;
+        const data = this._store().getIntimacyData(friendCode);
         const sessions = data.theaterSessions || [];
 
         document.getElementById('mlDetailPage')?.remove();
