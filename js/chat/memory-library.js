@@ -463,14 +463,25 @@ class MemoryLibrary {
         s = s.replace(/^# (.+)$/gm, '<div style="font-size:19px;font-weight:700;margin:10px 0 5px;color:rgba(255,220,170,0.8);">$1</div>');
         // 分割线
         s = s.replace(/^---$/gm, '<div style="border-top:1px dashed rgba(255,220,150,0.1);margin:12px 0;"></div>');
-        // 图片 ![name] — 手账风格（圆角+阴影+微旋转）
-        s = s.replace(/!\[([^\]]+)\]/g, (match, name) => {
-            const img = this._findLibImage(name);
+        // 图片 ![name] — 手账风格
+        s = s.replace(/!\[([^\]]+)\]/g, (match, rawName) => {
+            // 尝试多种方式找图
+            let img = this._findLibImage(rawName);
+            // 如果没找到，试试冒号分割（AI可能写成 ![名字:描述]）
+            if (!img && rawName.includes(':')) {
+                const parts = rawName.split(':');
+                img = this._findLibImage(parts[0].trim()) || this._findLibImage(parts[1].trim());
+            }
+            // 如果还没找到，试试去掉"一只""一个"等前缀
+            if (!img) {
+                const cleaned = rawName.replace(/^(一只|一个|一张|一幅|一片|一朵)/,'').trim();
+                if (cleaned !== rawName) img = this._findLibImage(cleaned);
+            }
             if (img) {
                 const rotate = (Math.random() * 4 - 2).toFixed(1);
-                return '<div style="display:inline-block;margin:8px 4px;padding:4px;background:rgba(255,255,255,0.06);border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.2);transform:rotate(' + rotate + 'deg);max-width:70%;vertical-align:middle;"><img src="' + (img.data || img.url) + '" style="width:100%;border-radius:6px;display:block;"><div style="text-align:center;font-size:9px;color:rgba(255,255,255,0.2);margin-top:3px;">' + this._esc(name) + '</div></div>';
+                return '<div style="display:inline-block;margin:8px 4px;padding:4px;background:rgba(255,255,255,0.06);border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.2);transform:rotate(' + rotate + 'deg);max-width:70%;vertical-align:middle;"><img src="' + (img.data || img.url) + '" style="width:100%;border-radius:6px;display:block;"><div style="text-align:center;font-size:9px;color:rgba(255,255,255,0.2);margin-top:3px;">' + this._esc(rawName) + '</div></div>';
             }
-            return '<span style="color:rgba(255,220,150,0.3);">&#9634; ' + this._esc(name) + '</span>';
+            return '<div style="display:inline-block;margin:6px 4px;padding:10px 16px;border:1px dashed rgba(255,220,150,0.15);border-radius:8px;background:rgba(255,220,150,0.03);"><span style="color:rgba(255,220,150,0.25);font-size:12px;">&#128247; ' + this._esc(rawName) + '</span><div style="font-size:9px;color:rgba(255,255,255,0.1);margin-top:2px;">图库中未找到此图片</div></div>';
         });
         return s;
     }

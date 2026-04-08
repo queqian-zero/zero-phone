@@ -7072,15 +7072,9 @@ getIntimacyStatusForAI() {
     desc += `\n    第一行写"心情：xxx"`;
     desc += `\n    可以用：**加粗** *斜体* __下划线__ # 标题 --- 分割线`;
     desc += `\n    可以用emoji随意装饰 🌙✨💭🎵`;
-    desc += `\n    插入图片：![图片名]（从Base64图库选，像贴照片一样）`;
+    desc += `\n    插入图片：![图片名]（⚠️ 图片名必须跟图库里的名字完全一致，不要自己编名字！）`;
     desc += `\n    末尾写 署名：你的名字（可以是你名字/网名/笔名/随便编的）`;
-    desc += `\n    写日记时请发挥创意！可以：`;
-    desc += `\n      - 乱涂乱画（用符号线条 ═══ ~~~ *** 等装饰）`;
-    desc += `\n      - 写错别字然后划掉（~~错别字~~正确的）`;
-    desc += `\n      - 在页边写小字批注（*←这里是旁注*）`;
-    desc += `\n      - 画简单的ASCII小画`;
-    desc += `\n      - 贴表情包图片在文字中间`;
-    desc += `\n      - 总之像人类写手账一样自由，不要像AI生成的那样工整`;
+    desc += `\n    写日记时请发挥创意，像人类写手账一样自由！`;
     desc += `\n  [AI_DELETE_NOTE:碎碎念内容前几个字] 删除你写的某条碎碎念`;
     desc += `\n  [AI_DELETE_DIARY:日记日期] 删除你写的某篇日记`;
     desc += `\n  注意：写日记碎碎念不需要user同意，你想写就写。写完后系统会自动通知user。`;
@@ -7089,19 +7083,20 @@ getIntimacyStatusForAI() {
     if (this.currentFriendCode) {
         const intimData = this.storage.getIntimacyData(this.currentFriendCode);
         const nb = intimData.notebook || { notes: [], diary: [] };
-        const recentNotes = (nb.notes || []).slice(-3);
-        const recentDiary = (nb.diary || []).slice(-2);
+        const recentNotes = (nb.notes || []).slice(-5);
+        const recentDiary = (nb.diary || []).slice(-3);
         if (recentNotes.length > 0 || recentDiary.length > 0) {
             desc += `\n\n【你的记事本（你翻了一下自己的本子）】`;
             if (recentNotes.length > 0) {
-                desc += `\n  你的碎碎念（最近${recentNotes.length}条）：`;
-                recentNotes.forEach(n => desc += `\n    「${(n.content||'').substring(0,60)}${(n.content||'').length>60?'...':''}」`);
+                desc += `\n  碎碎念（最近${recentNotes.length}条）：`;
+                recentNotes.forEach((n,i) => desc += `\n    #${i} 「${(n.content||'').substring(0,50)}${(n.content||'').length>50?'...':''}」`);
             }
             if (recentDiary.length > 0) {
-                desc += `\n  你的日记（最近${recentDiary.length}篇）：`;
-                recentDiary.forEach(d => desc += `\n    [${d.date||''}] 心情:${d.mood||'?'} 「${(d.content||'').substring(0,80)}...」 署名:${d.signature||'无'}`);
+                desc += `\n  日记（最近${recentDiary.length}篇）：`;
+                recentDiary.forEach((d,i) => desc += `\n    #${i} [${d.date||''}] 心情:${d.mood||'?'} 「${(d.content||'').substring(0,60)}...」`);
             }
-            desc += `\n  （这是你自己的记事本，你随时可以翻看、提起，也可以写新的或删旧的）`;
+            desc += `\n  删除用：[AI_DELETE_NOTE:碎碎念开头几个字] 或 [AI_DELETE_DIARY:日记正文的某句话]`;
+            desc += `\n  （删除是按内容匹配的，写几个字就够了，越独特越准）`;
         }
     }
     
