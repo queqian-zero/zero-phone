@@ -214,34 +214,51 @@ class MemoryLibrary {
         }
         
         if (this._nbTab === 'notes') {
-            // 碎碎念 — 便签风格，乱序感
+            // 碎碎念 — 便签风格
             content.innerHTML = items.slice().reverse().map(n => `<div class="nb-note-card" data-id="${n.id}" style="margin-bottom:12px;padding:14px;background:rgba(255,240,200,0.04);border:1px dashed rgba(255,220,150,0.12);border-radius:10px;cursor:pointer;position:relative;">
-                <div style="font-size:13px;color:rgba(255,255,255,0.65);line-height:1.7;white-space:pre-wrap;font-family:serif;">${this._esc(n.content || '')}</div>
+                <div class="nb-note-text" style="font-size:14px;color:rgba(255,255,255,0.65);line-height:1.7;white-space:pre-wrap;font-family:serif;max-height:80px;overflow:hidden;">${this._esc(n.content || '')}</div>
                 <div style="margin-top:8px;font-size:9px;color:rgba(255,255,255,0.15);text-align:right;">${n.createdAt ? new Date(n.createdAt).toLocaleString('zh-CN') : ''}</div>
             </div>`).join('');
         } else {
-            // 日记 — 正式风格
-            content.innerHTML = items.slice().reverse().map(d => `<div class="nb-diary-card" data-id="${d.id}" style="margin-bottom:16px;padding:16px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;cursor:pointer;">
-                <div style="font-size:12px;color:rgba(255,100,100,0.5);margin-bottom:4px;">${this._esc(d.date || '')}</div>
-                <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-bottom:8px;">心情：${this._esc(d.mood || '未记录')}</div>
-                <div style="font-size:14px;color:rgba(255,255,255,0.7);line-height:1.8;white-space:pre-wrap;${d.fontId ? '' : ''}" ${d.fontId ? 'data-font="' + this._esc(d.fontId) + '"' : ''}>${this._renderDiaryContent(d.content || '', d.fontId)}</div>
-                ${d.signature ? `<div style="margin-top:10px;text-align:right;font-size:12px;color:rgba(255,255,255,0.25);font-style:italic;">—— ${this._esc(d.signature)}</div>` : ''}
-            </div>`).join('');
+            // 日记 — 手账风格
+            let diaryHtml = '';
+            items.slice().reverse().forEach(d => {
+                diaryHtml += '<div class="nb-diary-card" data-id="' + d.id + '" style="margin-bottom:20px;border-radius:14px;overflow:hidden;cursor:pointer;position:relative;background:linear-gradient(145deg,rgba(255,248,235,0.06),rgba(255,240,220,0.03));border:1px solid rgba(255,230,180,0.08);">';
+                // 日记头部：日期条
+                diaryHtml += '<div style="padding:12px 16px;background:rgba(255,230,180,0.04);border-bottom:1px dashed rgba(255,220,150,0.08);">';
+                diaryHtml += '<div style="font-size:15px;font-weight:700;color:rgba(255,220,170,0.7);letter-spacing:1px;">' + this._esc(d.date || '') + '</div>';
+                if (d.time) diaryHtml += '<div style="font-size:11px;color:rgba(255,255,255,0.2);margin-top:2px;">' + this._esc(d.time) + '</div>';
+                if (d.mood) diaryHtml += '<div style="font-size:12px;color:rgba(255,180,120,0.5);margin-top:4px;">♡ ' + this._esc(d.mood) + '</div>';
+                diaryHtml += '</div>';
+                // 正文预览
+                diaryHtml += '<div style="padding:14px 16px;min-height:60px;" ' + (d.fontId ? 'data-font="' + this._esc(d.fontId) + '"' : '') + '>';
+                const preview = (d.content || '').substring(0, 120);
+                diaryHtml += '<div style="font-size:14px;color:rgba(255,255,255,0.6);line-height:1.8;white-space:pre-wrap;">' + this._renderDiaryContent(preview + (d.content.length > 120 ? '...' : ''), d.fontId) + '</div>';
+                diaryHtml += '</div>';
+                // 署名
+                if (d.signature) diaryHtml += '<div style="padding:0 16px 12px;text-align:right;font-size:11px;color:rgba(255,255,255,0.15);font-style:italic;">—— ' + this._esc(d.signature) + '</div>';
+                diaryHtml += '</div>';
+            });
+            content.innerHTML = diaryHtml;
         }
         
-        // 点击编辑
+        // 点击碎碎念 — 只读查看
         content.querySelectorAll('.nb-note-card').forEach(card => {
             card.addEventListener('click', () => {
-                const id = card.dataset.id;
-                const item = (data.notebook.notes || []).find(n => n.id === id);
-                if (item) this._editNote(friendCode, name, item, page);
+                // 点击展开/收起全文
+                const textEl = card.querySelector('.nb-note-text');
+                if (textEl) {
+                    const isExpanded = textEl.style.maxHeight !== '80px';
+                    textEl.style.maxHeight = isExpanded ? '80px' : 'none';
+                    textEl.style.overflow = isExpanded ? 'hidden' : 'visible';
+                }
             });
         });
         content.querySelectorAll('.nb-diary-card').forEach(card => {
             card.addEventListener('click', () => {
                 const id = card.dataset.id;
                 const item = (data.notebook.diary || []).find(d => d.id === id);
-                if (item) this._editDiary(friendCode, name, item, page);
+                if (item) this._viewDiaryFull(item, name);
             });
             // 加载自定义字体
             const textEl = card.querySelector('[data-font]');
@@ -429,20 +446,90 @@ class MemoryLibrary {
         });
     }
 
-    // 日记内容渲染（支持简单markdown）
+    // 日记内容渲染（手账风格：markdown + 图片 + emoji）
     _renderDiaryContent(text, fontId) {
         let s = this._esc(text);
+        // markdown
         s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
         s = s.replace(/\*(.+?)\*/g, '<em>$1</em>');
         s = s.replace(/__(.+?)__/g, '<u>$1</u>');
         s = s.replace(/~~(.+?)~~/g, '<del>$1</del>');
-        // 图片 ![name]
+        // 标题
+        s = s.replace(/^### (.+)$/gm, '<div style="font-size:15px;font-weight:700;margin:6px 0 3px;color:rgba(255,220,170,0.6);">$1</div>');
+        s = s.replace(/^## (.+)$/gm, '<div style="font-size:17px;font-weight:700;margin:8px 0 4px;color:rgba(255,220,170,0.7);">$1</div>');
+        s = s.replace(/^# (.+)$/gm, '<div style="font-size:19px;font-weight:700;margin:10px 0 5px;color:rgba(255,220,170,0.8);">$1</div>');
+        // 分割线
+        s = s.replace(/^---$/gm, '<div style="border-top:1px dashed rgba(255,220,150,0.1);margin:12px 0;"></div>');
+        // 图片 ![name] — 手账风格（圆角+阴影+微旋转）
         s = s.replace(/!\[([^\]]+)\]/g, (match, name) => {
             const img = this._findLibImage(name);
-            if (img) return '<img src="' + (img.data || img.url) + '" style="max-width:100%;border-radius:6px;margin:4px 0;display:block;">';
-            return '<span style="color:rgba(255,255,255,0.2);">[图片:' + this._esc(name) + ']</span>';
+            if (img) {
+                const rotate = (Math.random() * 4 - 2).toFixed(1);
+                return '<div style="display:inline-block;margin:8px 4px;padding:4px;background:rgba(255,255,255,0.06);border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.2);transform:rotate(' + rotate + 'deg);max-width:70%;vertical-align:middle;"><img src="' + (img.data || img.url) + '" style="width:100%;border-radius:6px;display:block;"><div style="text-align:center;font-size:9px;color:rgba(255,255,255,0.2);margin-top:3px;">' + this._esc(name) + '</div></div>';
+            }
+            return '<span style="color:rgba(255,220,150,0.3);">&#9634; ' + this._esc(name) + '</span>';
         });
         return s;
+    }
+
+    // 全屏日记查看器（手账风格）
+    _viewDiaryFull(diary, charName) {
+        document.getElementById('diaryFullView')?.remove();
+        const page = document.createElement('div');
+        page.id = 'diaryFullView';
+        page.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9500;background:#0a0806;display:flex;flex-direction:column;';
+        
+        page.innerHTML = '<div style="display:flex;align-items:center;padding:12px 16px;flex-shrink:0;border-bottom:1px solid rgba(255,220,150,0.06);">' +
+            '<button id="dfvBack" style="background:none;border:none;color:rgba(255,220,170,0.5);font-size:20px;cursor:pointer;padding:4px 8px;">&#8592;</button>' +
+            '<div style="flex:1;text-align:center;font-size:14px;color:rgba(255,220,170,0.4);">' + this._esc(charName) + ' 的日记</div>' +
+        '</div>' +
+        '<div id="dfvContent" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;"></div>';
+        
+        document.body.appendChild(page);
+        
+        // 渲染日记页面
+        const contentEl = page.querySelector('#dfvContent');
+        let html = '';
+        
+        // 纸张效果
+        html += '<div style="max-width:420px;margin:16px auto;background:linear-gradient(180deg,rgba(255,248,235,0.05) 0%,rgba(255,240,220,0.03) 100%);border:1px solid rgba(255,230,180,0.08);border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.3);">';
+        
+        // 头部装饰条
+        html += '<div style="padding:20px 20px 0;background:rgba(255,230,180,0.03);">';
+        // 日期
+        html += '<div style="font-size:20px;font-weight:700;color:rgba(255,220,170,0.7);letter-spacing:2px;">' + this._esc(diary.date || '') + '</div>';
+        if (diary.time) html += '<div style="font-size:12px;color:rgba(255,255,255,0.2);margin-top:4px;">' + this._esc(diary.time) + '</div>';
+        // 心情
+        if (diary.mood) html += '<div style="margin-top:8px;display:inline-block;padding:4px 12px;background:rgba(255,180,120,0.08);border-radius:20px;font-size:12px;color:rgba(255,180,120,0.6);">&#9825; ' + this._esc(diary.mood) + '</div>';
+        html += '</div>';
+        
+        // 分割线
+        html += '<div style="margin:14px 20px;border-top:1px dashed rgba(255,220,150,0.08);"></div>';
+        
+        // 正文
+        html += '<div style="padding:0 20px 20px;font-size:15px;color:rgba(255,255,255,0.65);line-height:2;white-space:pre-wrap;"' + (diary.fontId ? ' data-font="' + this._esc(diary.fontId) + '"' : '') + '>';
+        html += this._renderDiaryContent(diary.content || '', diary.fontId);
+        html += '</div>';
+        
+        // 署名
+        if (diary.signature) {
+            html += '<div style="padding:0 20px 20px;text-align:right;">';
+            html += '<div style="display:inline-block;padding:6px 16px;border-top:1px solid rgba(255,220,150,0.08);font-size:13px;color:rgba(255,220,170,0.3);font-style:italic;letter-spacing:1px;">—— ' + this._esc(diary.signature) + '</div>';
+            html += '</div>';
+        }
+        
+        // 底部时间戳
+        html += '<div style="padding:8px 20px 16px;text-align:center;font-size:9px;color:rgba(255,255,255,0.1);">' + (diary.createdAt ? new Date(diary.createdAt).toLocaleString('zh-CN') : '') + '</div>';
+        
+        html += '</div>'; // 纸张结束
+        
+        contentEl.innerHTML = html;
+        
+        // 加载自定义字体
+        const fontEl = contentEl.querySelector('[data-font]');
+        if (fontEl) this._loadFont(fontEl.dataset.font, fontEl);
+        
+        page.querySelector('#dfvBack')?.addEventListener('click', () => page.remove());
     }
 
     // ==================== 剧场归档 ====================
