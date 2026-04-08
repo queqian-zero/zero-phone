@@ -711,7 +711,7 @@ class MemoryLibrary {
     }
 
     _esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-    _toast(msg) { window.chatInterface?.showCssToast?.(msg) || alert(msg); }
+    _toast(msg) { if (window.chatInterface?.showCssToast) window.chatInterface.showCssToast(msg); else alert(msg); }
 }
 
 window.memoryLibrary = new MemoryLibrary();
