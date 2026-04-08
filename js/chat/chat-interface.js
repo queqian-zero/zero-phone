@@ -2182,64 +2182,111 @@ ${archiveListText}
             console.log('👤 最终系统提示长度:', systemPrompt.length);
             console.log('🌐 开始调用API...');
             
-            // ====== 全面记忆检索注入 ======
+            // ====== 记忆检索（按模式分支） ======
+            const memMode = this.settings.memoryRetrievalMode || 'D';
             const coreMemories = this.storage.getCoreMemories(this.currentFriendCode);
             const summaries = this.storage.getChatSummaries(this.currentFriendCode);
             const intimacyData = this.storage.getIntimacyData(this.currentFriendCode);
             const theaterSessions = intimacyData.theaterSessions || [];
             const notebook = intimacyData.notebook || { notes: [], diary: [] };
             
-            // 构建全量可检索内容池
+            // 构建搜索池（所有模式共用）
             const searchPool = [];
-            coreMemories.forEach(m => searchPool.push({ type: '核心记忆', date: m.date || '', text: m.content || '', ts: m.createdAt || '' }));
-            summaries.forEach(s => searchPool.push({ type: '聊天总结', date: '', text: (s.summary || s.text || '').substring(0, 300), ts: s.createdAt || '' }));
-            theaterSessions.forEach(s => {
-                const sc = s.script || {};
-                const info = `次元剧场「${sc.charName||'?'} & ${sc.userName||'?'}」世界观：${(sc.world||'').substring(0,100)}`;
-                searchPool.push({ type: '剧场记忆', date: s.createdAt ? new Date(s.createdAt).toLocaleDateString('zh-CN') : '', text: info, ts: s.createdAt || '' });
-                (s.summaries || []).forEach(sm => searchPool.push({ type: '剧场总结', date: '', text: (sm.text || '').substring(0, 200), ts: sm.createdAt || '' }));
+            coreMemories.forEach((m,i) => searchPool.push({ id:'core_'+i, type:'核心记忆', date:m.date||'', text:m.content||'', ts:m.createdAt||'' }));
+            summaries.forEach((s,i) => searchPool.push({ id:'sum_'+i, type:'聊天总结', date:'', text:(s.summary||s.text||'').substring(0,300), ts:s.createdAt||'' }));
+            theaterSessions.forEach((s,i) => {
+                const sc=s.script||{};
+                searchPool.push({ id:'theater_'+i, type:'剧场记忆', date:s.createdAt?new Date(s.createdAt).toLocaleDateString('zh-CN'):'', text:`「${s.theaterName||sc.charName+'&'+sc.userName}」${(sc.world||'').substring(0,80)}`, ts:s.createdAt||'' });
+                (s.summaries||[]).forEach((sm,j) => searchPool.push({ id:'ts_'+i+'_'+j, type:'剧场总结', date:'', text:(sm.text||'').substring(0,200), ts:sm.createdAt||'' }));
             });
-            notebook.notes?.forEach(n => searchPool.push({ type: '碎碎念', date: '', text: (n.content || '').substring(0, 150), ts: n.createdAt || '' }));
-            notebook.diary?.forEach(d => searchPool.push({ type: '日记', date: d.date || '', text: `心情：${d.mood||''} ${(d.content||'').substring(0, 200)}`, ts: d.createdAt || '' }));
+            notebook.notes?.forEach((n,i) => searchPool.push({ id:'note_'+i, type:'碎碎念', date:'', text:(n.content||'').substring(0,150), ts:n.createdAt||'' }));
+            notebook.diary?.forEach((d,i) => searchPool.push({ id:'diary_'+i, type:'日记', date:d.date||'', text:`心情:${d.mood||'?'} ${(d.content||'').substring(0,200)}`, ts:d.createdAt||'' }));
             
-            // 关键词检索
-            const lastUserMsg = messagesWithTimestamps.filter(m => m.type === 'user').slice(-1)[0]?.text || '';
-            const recentContext = messagesWithTimestamps.slice(-4).map(m => m.text || '').join(' ');
-            const searchText = (lastUserMsg + ' ' + recentContext).toLowerCase();
-            const words = searchText.replace(/[，。！？、\s]/g, ' ').split(' ').filter(w => w.length >= 2);
+            const memIndex = `核心记忆${coreMemories.length}条、聊天印象${summaries.length}条、次元剧场${theaterSessions.length}段、碎碎念${(notebook.notes||[]).length}条、日记${(notebook.diary||[]).length}篇`;
+            const _fmtMem = (m) => { const t=m.ts?new Date(m.ts).toLocaleString('zh-CN',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):(m.date||''); return `[${m.type}${t?' '+t:''}] ${m.text}`; };
             
-            const scored = searchPool.map(item => {
-                const t = (item.text + ' ' + item.date + ' ' + item.type).toLowerCase();
-                let score = 0;
-                words.forEach(w => { if (t.includes(w)) score++; });
-                return { ...item, _score: score };
-            });
+            // 搜索函数
+            const _searchMemory = (keywords) => {
+                const kw = keywords.toLowerCase();
+                const ws = kw.replace(/[，。！？、\s]/g,' ').split(' ').filter(w=>w.length>=2);
+                return searchPool.map(item => {
+                    const t=(item.text+' '+item.date+' '+item.type).toLowerCase();
+                    let score=0; ws.forEach(w=>{if(t.includes(w))score++;}); return {...item,_score:score};
+                }).filter(s=>s._score>0).sort((a,b)=>b._score-a._score).slice(0,8);
+            };
             
-            // 取匹配的 + 保底最近几条
-            let relevant = scored.filter(s => s._score > 0).sort((a, b) => b._score - a._score).slice(0, 8);
-            if (relevant.length < 3 && searchPool.length > 0) {
-                // 保底：最近3条核心记忆 + 最近1条总结
-                const fallback = searchPool.filter(s => s.type === '核心记忆').slice(-3);
-                const fallbackSum = searchPool.filter(s => s.type === '聊天总结').slice(-1);
-                [...fallback, ...fallbackSum].forEach(f => { if (!relevant.find(r => r.text === f.text)) relevant.push(f); });
-            }
-            
-            // 注入到systemPrompt（带时间戳）
-            if (relevant.length > 0) {
-                let memoryBlock = '\n\n【你的记忆档案（根据当前对话检索到的相关记忆）】';
-                relevant.forEach(m => {
-                    const timeTag = m.ts ? new Date(m.ts).toLocaleString('zh-CN', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' }) : (m.date || '');
-                    memoryBlock += `\n  [${m.type}${timeTag ? ' ' + timeTag : ''}] ${m.text}`;
-                });
-                // 剧场时间信息（#18）
-                if (theaterSessions.length > 0) {
-                    const lastSession = theaterSessions[theaterSessions.length - 1];
-                    const startTime = lastSession.createdAt ? new Date(lastSession.createdAt).toLocaleString('zh-CN') : '未知';
-                    const status = lastSession.status === 'end' ? '已结束' : '进行中/暂停';
-                    memoryBlock += `\n  [最近的次元剧场] 开始于${startTime}，状态：${status}`;
+            if (searchPool.length > 0) {
+                if (memMode === 'A') {
+                    // ===== 模式A：AI自主检索（两次调用）=====
+                    const prePrompt = `你是${this.currentFriend?.nickname||'TA'}。用户刚说了一句话，你需要决定：要不要回忆一些往事？\n你的记忆库有：${memIndex}\n用户说的：「${messagesWithTimestamps.slice(-1)[0]?.text||''}」\n如果你想回忆，回复：RECALL:关键词1 关键词2（用空格分隔）\n如果不需要回忆，回复：NO_RECALL\n只回复这一行，不要说别的。`;
+                    try {
+                        const preResult = await this.apiManager.callAI([{type:'user',text:'记忆检索判断'}], prePrompt);
+                        if (preResult.success && preResult.text.includes('RECALL:')) {
+                            const recallKw = preResult.text.replace(/^.*RECALL:\s*/,'').trim();
+                            const found = _searchMemory(recallKw);
+                            if (found.length > 0) {
+                                systemPrompt += `\n\n【你翻阅记忆后找到了这些】`;
+                                found.forEach(m => systemPrompt += '\n  ' + _fmtMem(m));
+                            }
+                        }
+                        // 不管有没有找到，告诉AI记忆存在
+                        systemPrompt += `\n【你的记忆】${memIndex}`;
+                    } catch(e) { systemPrompt += `\n【你的记忆】${memIndex}`; }
+                    
+                } else if (memMode === 'B') {
+                    // ===== 模式B：下一轮回忆 =====
+                    systemPrompt += `\n\n【你的记忆】${memIndex}`;
+                    // 检查上一轮AI是否请求了回忆
+                    const pendingRecall = this._pendingRecallKeywords;
+                    if (pendingRecall) {
+                        const found = _searchMemory(pendingRecall);
+                        if (found.length > 0) {
+                            systemPrompt += `\n你上次说想回忆的事，找到了：`;
+                            found.forEach(m => systemPrompt += '\n  ' + _fmtMem(m));
+                        }
+                        this._pendingRecallKeywords = null;
+                    }
+                    systemPrompt += `\n（如果你想回忆什么，在回复末尾加 [RECALL:关键词]，下一轮会把结果给你）`;
+                    
+                } else if (memMode === 'C') {
+                    // ===== 模式C：目录式检索 =====
+                    systemPrompt += `\n\n【你的记忆目录】${memIndex}`;
+                    // 给目录（只有标题/日期，不给详情）
+                    if (searchPool.length <= 30) {
+                        searchPool.forEach(m => {
+                            const t=m.ts?new Date(m.ts).toLocaleString('zh-CN',{month:'numeric',day:'numeric'}):(m.date||'');
+                            systemPrompt += `\n  [${m.id}] ${m.type} ${t} ${m.text.substring(0,25)}...`;
+                        });
+                    } else {
+                        searchPool.slice(-30).forEach(m => {
+                            const t=m.ts?new Date(m.ts).toLocaleString('zh-CN',{month:'numeric',day:'numeric'}):(m.date||'');
+                            systemPrompt += `\n  [${m.id}] ${m.type} ${t} ${m.text.substring(0,25)}...`;
+                        });
+                    }
+                    // 上一轮AI请求的详情
+                    const pendingIds = this._pendingRecallIds;
+                    if (pendingIds && pendingIds.length > 0) {
+                        systemPrompt += `\n你上次要看的记忆详情：`;
+                        pendingIds.forEach(id => {
+                            const item = searchPool.find(s => s.id === id);
+                            if (item) systemPrompt += '\n  ' + _fmtMem(item);
+                        });
+                        this._pendingRecallIds = null;
+                    }
+                    systemPrompt += `\n（想看某条记忆的详情，在回复末尾加 [RECALL:id]，下一轮给你）`;
+                    
+                } else {
+                    // ===== 模式D：系统关键词匹配 =====
+                    const lastUserMsg = messagesWithTimestamps.filter(m=>m.type==='user').slice(-1)[0]?.text||'';
+                    const recentCtx = messagesWithTimestamps.slice(-4).map(m=>m.text||'').join(' ');
+                    const found = _searchMemory(lastUserMsg + ' ' + recentCtx);
+                    
+                    systemPrompt += `\n\n【你的记忆】${memIndex}`;
+                    if (found.length > 0) {
+                        systemPrompt += `\n你联想到了：`;
+                        found.forEach(m => systemPrompt += '\n  ' + _fmtMem(m));
+                    }
                 }
-                memoryBlock += '\n（以上是你记住的事情，时间标记帮你区分先后。自然地在对话中体现，不要刻意复述。）';
-                systemPrompt += memoryBlock;
             }
             
             // 记录本轮token分布（按字符估算）
@@ -2293,6 +2340,18 @@ ${archiveListText}
             // CSS/火花命令立即执行（不产生聊天通知）
             aiText = this.processAICssCommands(aiText);
             aiText = this.processFlameCommands(aiText);
+            
+            // ====== 模式B/C：捕获AI的[RECALL:xxx]标签 ======
+            const recallMode = this.settings.memoryRetrievalMode || 'D';
+            if (recallMode === 'B') {
+                const recallMatch = aiText.match(/\[RECALL:([^\]]+)\]/);
+                if (recallMatch) { this._pendingRecallKeywords = recallMatch[1].trim(); }
+                aiText = aiText.replace(/\[RECALL:[^\]]+\]/g, '');
+            } else if (recallMode === 'C') {
+                const recallMatches = [...aiText.matchAll(/\[RECALL:([^\]]+)\]/g)];
+                if (recallMatches.length > 0) { this._pendingRecallIds = recallMatches.map(m => m[1].trim()); }
+                aiText = aiText.replace(/\[RECALL:[^\]]+\]/g, '');
+            }
             
             // ====== 思维链 ======
             const thinkingText = result.thinking || '';
@@ -3417,7 +3476,7 @@ if (exportDataBtn) {
         // 先重置为默认值（防止切换好友时泄漏上一个好友的设置）
         const defaults = {
             aiRecognizeImage: true, chatPin: false, hideToken: false,
-            autoSummary: true, summaryInterval: 20, contextMessages: 20,
+            autoSummary: true, summaryInterval: 20, contextMessages: 20, memoryRetrievalMode: 'D',
             timeAwareness: true, chatWallpaper: 'default', bubbleStyle: 'default',
             avatarShape: 'circle', avatarBorderRadius: 50,
             avatarFrameType: 'none', avatarFrameSrc: '', avatarFrameOffsetX: 0, avatarFrameOffsetY: 0, avatarFrameScale: 100, avatarFrameCss: '',
@@ -3864,6 +3923,15 @@ this.applyWallpaper(this.settings.chatWallpaper || 'default');
             });
         }
         
+        // 记忆检索模式
+        document.querySelectorAll('input[name="memRetrievalMode"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                this.settings.memoryRetrievalMode = e.target.value;
+                console.log('记忆检索模式:', e.target.value);
+                this.saveSettings();
+            });
+        });
+        
         // 查看历史总结按钮
         const viewHistoryBtn = document.getElementById('memoryViewHistory');
         if (viewHistoryBtn) {
@@ -3892,6 +3960,11 @@ if (coreMemoryBtn) {
         if (summaryIntervalInput) {
             summaryIntervalInput.value = this.settings.summaryInterval || 20;
         }
+        
+        // 记忆检索模式
+        const mode = this.settings.memoryRetrievalMode || 'D';
+        const radio = document.querySelector(`input[name="memRetrievalMode"][value="${mode}"]`);
+        if (radio) radio.checked = true;
     }
     
     // ==================== 手动总结弹窗 ====================
@@ -6995,12 +7068,12 @@ getIntimacyStatusForAI() {
     // AI记事本
     desc += `\n\n【记事本（写日记/碎碎念）】`;
     desc += `\n  [AI_NOTE:内容] 在你的记事本碎碎念里写一条（随意写，没有格式要求）`;
-    desc += `\n  [AI_DIARY:内容] 写一篇日记。像在本子上写手账一样：`;
+    desc += `\n  [AI_DIARY]日记内容[/AI_DIARY] 写一篇日记。像在本子上写手账一样：`;
     desc += `\n    第一行写"心情：xxx"`;
     desc += `\n    可以用：**加粗** *斜体* __下划线__ # 标题 --- 分割线`;
     desc += `\n    可以用emoji随意装饰 🌙✨💭🎵`;
     desc += `\n    插入图片：![图片名]（从Base64图库选，像贴照片一样）`;
-    desc += `\n    末尾用[SIGNATURE:你的署名]签名（可以是你名字/网名/笔名/随便编的）`;
+    desc += `\n    末尾写 署名：你的名字（可以是你名字/网名/笔名/随便编的）`;
     desc += `\n    写日记时请发挥创意！可以：`;
     desc += `\n      - 乱涂乱画（用符号线条 ═══ ~~~ *** 等装饰）`;
     desc += `\n      - 写错别字然后划掉（~~错别字~~正确的）`;
@@ -7008,6 +7081,8 @@ getIntimacyStatusForAI() {
     desc += `\n      - 画简单的ASCII小画`;
     desc += `\n      - 贴表情包图片在文字中间`;
     desc += `\n      - 总之像人类写手账一样自由，不要像AI生成的那样工整`;
+    desc += `\n  [AI_DELETE_NOTE:碎碎念内容前几个字] 删除你写的某条碎碎念`;
+    desc += `\n  [AI_DELETE_DIARY:日记日期] 删除你写的某篇日记`;
     desc += `\n  注意：写日记碎碎念不需要user同意，你想写就写。写完后系统会自动通知user。`;
     
     // 注入AI已写的日记/碎碎念（让AI能看到自己写过的）
@@ -7017,7 +7092,7 @@ getIntimacyStatusForAI() {
         const recentNotes = (nb.notes || []).slice(-3);
         const recentDiary = (nb.diary || []).slice(-2);
         if (recentNotes.length > 0 || recentDiary.length > 0) {
-            desc += `\n\n【你的记事本（你之前写过的）】`;
+            desc += `\n\n【你的记事本（你翻了一下自己的本子）】`;
             if (recentNotes.length > 0) {
                 desc += `\n  你的碎碎念（最近${recentNotes.length}条）：`;
                 recentNotes.forEach(n => desc += `\n    「${(n.content||'').substring(0,60)}${(n.content||'').length>60?'...':''}」`);
@@ -7026,7 +7101,7 @@ getIntimacyStatusForAI() {
                 desc += `\n  你的日记（最近${recentDiary.length}篇）：`;
                 recentDiary.forEach(d => desc += `\n    [${d.date||''}] 心情:${d.mood||'?'} 「${(d.content||'').substring(0,80)}...」 署名:${d.signature||'无'}`);
             }
-            desc += `\n  （你可以在对话中自然提到你写过的内容，也可以写新的）`;
+            desc += `\n  （这是你自己的记事本，你随时可以翻看、提起，也可以写新的或删旧的）`;
         }
     }
     
@@ -12822,7 +12897,10 @@ _stripCommandTags(text) {
         .replace(/\[AI_CHANGE_AVATAR:[^\]]+\]/g, '')
         .replace(/\[AI_CHANGE_AVATAR_FROM_CHAT\]/g, '')
         .replace(/\[AI_NOTE:[^\]]+\]/g, '')
-        .replace(/\[AI_DIARY:[\s\S]*?\]/g, '')
+        .replace(/\[AI_DIARY\][\s\S]*?\[\/AI_DIARY\]/g, '')
+        .replace(/\[AI_DELETE_NOTE:[^\]]+\]/g, '')
+        .replace(/\[AI_DELETE_DIARY:[^\]]+\]/g, '')
+        .replace(/\[RECALL:[^\]]+\]/g, '')
         .replace(/\[STATUS_CSS\][\s\S]*?\[\/STATUS_CSS\]/g, '')
         .replace(/\[STATUS_?\s*CSS\][\s\S]*?\[\/?\s*STATUS_?\s*CSS\]/gi, '');
 }
@@ -12838,12 +12916,13 @@ _executeSegmentCommands(rawSeg) {
     if (window.friendProfile) window.friendProfile.processStatusCommands(rawSeg);
 }
 
-// AI写日记/碎碎念
+// AI写日记/碎碎念/删除
 processNotebookCommands(text) {
     if (!this.currentFriendCode) return;
     const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
     const data = this.storage.getIntimacyData(this.currentFriendCode);
     if (!data.notebook) data.notebook = { notes: [], diary: [] };
+    let changed = false;
     
     // [AI_NOTE:内容]
     const noteMatches = text.matchAll(/\[AI_NOTE:([^\]]+)\]/g);
@@ -12852,40 +12931,53 @@ processNotebookCommands(text) {
         if (!content) continue;
         data.notebook.notes.push({ id: 'note_' + Date.now() + Math.random().toString(36).substr(2,4), content, createdAt: new Date().toISOString() });
         this.showCssSystemMessage(`📓 ${friendName} 在碎碎念里写了点什么`);
+        changed = true;
     }
     
-    // [AI_DIARY:内容]
-    const diaryMatch = text.match(/\[AI_DIARY:([\s\S]*?)\]/);
+    // [AI_DIARY]内容[/AI_DIARY] — 块标签格式
+    const diaryMatch = text.match(/\[AI_DIARY\]([\s\S]*?)\[\/AI_DIARY\]/);
     if (diaryMatch) {
         const raw = diaryMatch[1].trim();
         const now = new Date();
         const dateStr = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日`;
         const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
         
-        // 提取署名
+        // 提取署名（署名：xxx 格式）
         let signature = '';
         let content = raw;
-        const sigMatch = raw.match(/\[SIGNATURE:([^\]]+)\]/);
+        const sigMatch = raw.match(/署名[：:]\s*(.+?)$/m);
         if (sigMatch) { signature = sigMatch[1].trim(); content = content.replace(sigMatch[0], '').trim(); }
         
-        // 提取心情（如果第一行有"心情"关键字）
+        // 提取心情
         let mood = '';
         const lines = content.split('\n');
         if (lines[0] && (lines[0].includes('心情') || lines[0].includes('mood'))) {
-            mood = lines[0].replace(/.*心情[:：]?\s*/, '').trim();
+            mood = lines[0].replace(/.*心情[：:]?\s*/, '').trim();
             content = lines.slice(1).join('\n').trim();
         }
         
-        data.notebook.diary.push({
-            id: 'diary_' + Date.now(),
-            date: dateStr, time: timeStr, mood,
-            content, signature,
-            createdAt: now.toISOString()
-        });
-        this.showCssSystemMessage(`📖 ${friendName} 写了一篇回忆录「${content.substring(0, 15)}...」`);
+        data.notebook.diary.push({ id: 'diary_' + Date.now(), date: dateStr, time: timeStr, mood, content, signature, createdAt: now.toISOString() });
+        this.showCssSystemMessage(`📖 ${friendName} 写了一篇日记`);
+        changed = true;
     }
     
-    this.storage.saveIntimacyData(this.currentFriendCode, data);
+    // [AI_DELETE_NOTE:关键字]
+    const delNoteMatch = text.match(/\[AI_DELETE_NOTE:([^\]]+)\]/);
+    if (delNoteMatch) {
+        const kw = delNoteMatch[1].trim().toLowerCase();
+        const idx = data.notebook.notes.findIndex(n => (n.content||'').toLowerCase().includes(kw));
+        if (idx >= 0) { data.notebook.notes.splice(idx, 1); this.showCssSystemMessage(`📓 ${friendName} 删了一条碎碎念`); changed = true; }
+    }
+    
+    // [AI_DELETE_DIARY:关键字]
+    const delDiaryMatch = text.match(/\[AI_DELETE_DIARY:([^\]]+)\]/);
+    if (delDiaryMatch) {
+        const kw = delDiaryMatch[1].trim().toLowerCase();
+        const idx = data.notebook.diary.findIndex(d => (d.date||'').toLowerCase().includes(kw) || (d.content||'').toLowerCase().includes(kw));
+        if (idx >= 0) { data.notebook.diary.splice(idx, 1); this.showCssSystemMessage(`📖 ${friendName} 删了一篇日记`); changed = true; }
+    }
+    
+    if (changed) this.storage.saveIntimacyData(this.currentFriendCode, data);
 }
 
 // 预提取关系卡片HTML（不写入状态，只生成卡片用于渲染）
