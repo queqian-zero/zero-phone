@@ -747,6 +747,43 @@
         </button>
     </div>
 </div>
+
+<!-- 记忆检索模式 -->
+<div class="memory-section">
+    <h3 class="memory-section-title">🔍 记忆检索模式</h3>
+    <div class="memory-section-content">
+        <div id="memoryRetrievalModeGroup" style="display:flex;flex-direction:column;gap:8px;">
+            <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;cursor:pointer;">
+                <input type="radio" name="memRetrievalMode" value="D" checked style="margin-top:3px;accent-color:#f0932b;">
+                <div>
+                    <div style="font-size:14px;color:rgba(255,255,255,0.7);font-weight:600;">D. 系统匹配（默认）</div>
+                    <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:3px;line-height:1.5;">系统根据对话关键词自动匹配相关记忆。没匹配到就不给。<br>✅ 快速、不多花钱 &nbsp; ⚠️ 不是AI自主的</div>
+                </div>
+            </label>
+            <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;cursor:pointer;">
+                <input type="radio" name="memRetrievalMode" value="A" style="margin-top:3px;accent-color:#f0932b;">
+                <div>
+                    <div style="font-size:14px;color:rgba(255,255,255,0.7);font-weight:600;">A. AI自主检索（两次调用）</div>
+                    <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:3px;line-height:1.5;">先问AI"你想回忆什么"，AI给关键词，系统搜索后再正式回复。<br>✅ AI真正自主决定 &nbsp; ⚠️ 每条消息2次API调用，更慢更贵</div>
+                </div>
+            </label>
+            <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;cursor:pointer;">
+                <input type="radio" name="memRetrievalMode" value="B" style="margin-top:3px;accent-color:#f0932b;">
+                <div>
+                    <div style="font-size:14px;color:rgba(255,255,255,0.7);font-weight:600;">B. 下一轮回忆</div>
+                    <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:3px;line-height:1.5;">AI回复时可以标记想回忆的东西，下一轮对话时系统把结果给TA。<br>✅ 不多花钱 &nbsp; ⚠️ 回忆有一轮延迟</div>
+                </div>
+            </label>
+            <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;cursor:pointer;">
+                <input type="radio" name="memRetrievalMode" value="C" style="margin-top:3px;accent-color:#f0932b;">
+                <div>
+                    <div style="font-size:14px;color:rgba(255,255,255,0.7);font-weight:600;">C. 目录式检索</div>
+                    <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:3px;line-height:1.5;">每轮给AI一个记忆目录（标题+日期），AI指定要看哪条，下一轮给详情。<br>✅ AI自己挑 &nbsp; ⚠️ 回忆有一轮延迟，目录占token</div>
+                </div>
+            </label>
+        </div>
+    </div>
+</div>
         
     </div>
 </div>
