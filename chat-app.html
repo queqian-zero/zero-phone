@@ -26,29 +26,15 @@
     <link rel="stylesheet" href="css/chat/data-management.css">  <!-- ← 新增这行 -->
 </head>
 <body>
-    <!-- 全局样式覆盖：字体加大 + 黑白简约主题 -->
-    <style id="globalThemeOverride">
-        /* #5 字体大小提升 */
-        .chat-app-container { font-size: 15px; }
+    <!-- 全局样式：字体加大 -->
+    <style id="globalFontBoost">
         .friend-item .friend-name { font-size: 16px !important; }
         .friend-item .friend-last-msg { font-size: 13px !important; }
         .chat-item .chat-name { font-size: 16px !important; }
         .chat-item .chat-last-msg { font-size: 13px !important; }
         .message-text { font-size: 16px !important; line-height: 1.5 !important; }
-        .nav-label { font-size: 11px !important; }
         .discover-label { font-size: 14px !important; }
-        .page-title { font-size: 18px !important; }
         .input-bar textarea { font-size: 16px !important; }
-        
-        /* #7 黑白简约主题覆盖 */
-        .chat-app-container, .pages-container, .chat-page { background: #000 !important; }
-        .top-bar { background: rgba(0,0,0,0.95) !important; border-bottom-color: rgba(255,255,255,0.06) !important; }
-        .nav-bar { background: rgba(0,0,0,0.95) !important; border-top-color: rgba(255,255,255,0.06) !important; }
-        .friend-item, .chat-item { background: rgba(255,255,255,0.03) !important; border-color: rgba(255,255,255,0.05) !important; }
-        .discover-item { background: rgba(255,255,255,0.03) !important; }
-        .setting-card, .setting-row { background: rgba(255,255,255,0.03) !important; }
-        .input-bar { background: rgba(0,0,0,0.95) !important; border-top-color: rgba(255,255,255,0.06) !important; }
-        .input-bar textarea { background: rgba(255,255,255,0.06) !important; border-color: rgba(255,255,255,0.08) !important; }
     </style>
     
     <!-- 聊天APP容器 -->
