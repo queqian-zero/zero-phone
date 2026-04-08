@@ -2182,67 +2182,63 @@ ${archiveListText}
             console.log('👤 最终系统提示长度:', systemPrompt.length);
             console.log('🌐 开始调用API...');
             
-            // ====== 核心记忆+聊天总结 关键词检索注入 ======
+            // ====== 全面记忆检索注入 ======
             const coreMemories = this.storage.getCoreMemories(this.currentFriendCode);
             const summaries = this.storage.getChatSummaries(this.currentFriendCode);
+            const intimacyData = this.storage.getIntimacyData(this.currentFriendCode);
+            const theaterSessions = intimacyData.theaterSessions || [];
+            const notebook = intimacyData.notebook || { notes: [], diary: [] };
             
-            // 取用户最近的输入作为检索关键词
+            // 构建全量可检索内容池
+            const searchPool = [];
+            coreMemories.forEach(m => searchPool.push({ type: '核心记忆', date: m.date || '', text: m.content || '', ts: m.createdAt || '' }));
+            summaries.forEach(s => searchPool.push({ type: '聊天总结', date: '', text: (s.summary || s.text || '').substring(0, 300), ts: s.createdAt || '' }));
+            theaterSessions.forEach(s => {
+                const sc = s.script || {};
+                const info = `次元剧场「${sc.charName||'?'} & ${sc.userName||'?'}」世界观：${(sc.world||'').substring(0,100)}`;
+                searchPool.push({ type: '剧场记忆', date: s.createdAt ? new Date(s.createdAt).toLocaleDateString('zh-CN') : '', text: info, ts: s.createdAt || '' });
+                (s.summaries || []).forEach(sm => searchPool.push({ type: '剧场总结', date: '', text: (sm.text || '').substring(0, 200), ts: sm.createdAt || '' }));
+            });
+            notebook.notes?.forEach(n => searchPool.push({ type: '碎碎念', date: '', text: (n.content || '').substring(0, 150), ts: n.createdAt || '' }));
+            notebook.diary?.forEach(d => searchPool.push({ type: '日记', date: d.date || '', text: `心情：${d.mood||''} ${(d.content||'').substring(0, 200)}`, ts: d.createdAt || '' }));
+            
+            // 关键词检索
             const lastUserMsg = messagesWithTimestamps.filter(m => m.type === 'user').slice(-1)[0]?.text || '';
             const recentContext = messagesWithTimestamps.slice(-4).map(m => m.text || '').join(' ');
             const searchText = (lastUserMsg + ' ' + recentContext).toLowerCase();
+            const words = searchText.replace(/[，。！？、\s]/g, ' ').split(' ').filter(w => w.length >= 2);
             
-            // 关键词匹配核心记忆（取最相关的5条）
-            let relevantMemories = [];
-            if (coreMemories.length > 0) {
-                const scored = coreMemories.map(m => {
-                    const content = (m.content || '').toLowerCase();
-                    const date = (m.date || '').toLowerCase();
-                    // 简单关键词匹配打分：按重叠词数
-                    const words = searchText.replace(/[，。！？、\s]/g, ' ').split(' ').filter(w => w.length >= 2);
-                    let score = 0;
-                    words.forEach(w => { if (content.includes(w) || date.includes(w)) score++; });
-                    return { ...m, _score: score };
-                });
-                // 取匹配度>0的，按分数排序，最多5条
-                relevantMemories = scored.filter(m => m._score > 0).sort((a, b) => b._score - a._score).slice(0, 5);
-                // 如果关键词没匹配到任何记忆，取最近3条（保底）
-                if (relevantMemories.length === 0 && coreMemories.length > 0) {
-                    relevantMemories = coreMemories.slice(-3);
-                }
+            const scored = searchPool.map(item => {
+                const t = (item.text + ' ' + item.date + ' ' + item.type).toLowerCase();
+                let score = 0;
+                words.forEach(w => { if (t.includes(w)) score++; });
+                return { ...item, _score: score };
+            });
+            
+            // 取匹配的 + 保底最近几条
+            let relevant = scored.filter(s => s._score > 0).sort((a, b) => b._score - a._score).slice(0, 8);
+            if (relevant.length < 3 && searchPool.length > 0) {
+                // 保底：最近3条核心记忆 + 最近1条总结
+                const fallback = searchPool.filter(s => s.type === '核心记忆').slice(-3);
+                const fallbackSum = searchPool.filter(s => s.type === '聊天总结').slice(-1);
+                [...fallback, ...fallbackSum].forEach(f => { if (!relevant.find(r => r.text === f.text)) relevant.push(f); });
             }
             
-            // 关键词匹配聊天总结（取最相关的2条）
-            let relevantSummaries = [];
-            if (summaries.length > 0) {
-                const scored = summaries.map(s => {
-                    const text = (s.summary || s.text || '').toLowerCase();
-                    const words = searchText.replace(/[，。！？、\s]/g, ' ').split(' ').filter(w => w.length >= 2);
-                    let score = 0;
-                    words.forEach(w => { if (text.includes(w)) score++; });
-                    return { ...s, _score: score };
-                });
-                relevantSummaries = scored.filter(s => s._score > 0).sort((a, b) => b._score - a._score).slice(0, 2);
-                if (relevantSummaries.length === 0 && summaries.length > 0) {
-                    relevantSummaries = summaries.slice(-1); // 保底最近1条
-                }
-            }
-            
-            // 注入到systemPrompt
-            if (relevantMemories.length > 0 || relevantSummaries.length > 0) {
+            // 注入到systemPrompt（带时间戳）
+            if (relevant.length > 0) {
                 let memoryBlock = '\n\n【你的记忆档案（根据当前对话检索到的相关记忆）】';
-                if (relevantMemories.length > 0) {
-                    memoryBlock += '\n核心记忆：';
-                    relevantMemories.forEach(m => {
-                        memoryBlock += `\n  [${m.date || ''}] ${m.content || ''}`;
-                    });
+                relevant.forEach(m => {
+                    const timeTag = m.ts ? new Date(m.ts).toLocaleString('zh-CN', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' }) : (m.date || '');
+                    memoryBlock += `\n  [${m.type}${timeTag ? ' ' + timeTag : ''}] ${m.text}`;
+                });
+                // 剧场时间信息（#18）
+                if (theaterSessions.length > 0) {
+                    const lastSession = theaterSessions[theaterSessions.length - 1];
+                    const startTime = lastSession.createdAt ? new Date(lastSession.createdAt).toLocaleString('zh-CN') : '未知';
+                    const status = lastSession.status === 'end' ? '已结束' : '进行中/暂停';
+                    memoryBlock += `\n  [最近的次元剧场] 开始于${startTime}，状态：${status}`;
                 }
-                if (relevantSummaries.length > 0) {
-                    memoryBlock += '\n聊天印象：';
-                    relevantSummaries.forEach(s => {
-                        memoryBlock += `\n  ${(s.summary || s.text || '').substring(0, 200)}`;
-                    });
-                }
-                memoryBlock += '\n（以上是你记住的事情，可以自然地在对话中体现，但不要刻意复述。）';
+                memoryBlock += '\n（以上是你记住的事情，时间标记帮你区分先后。自然地在对话中体现，不要刻意复述。）';
                 systemPrompt += memoryBlock;
             }
             

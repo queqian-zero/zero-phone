@@ -182,8 +182,8 @@ class MemoryLibrary {
                 <div id="nbTabDiary" class="nb-tab" style="flex:1;padding:10px;text-align:center;font-size:13px;cursor:pointer;color:rgba(255,255,255,0.4);">日记</div>
             </div>
             <div id="nbContent" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;min-height:0;"></div>
-            <div style="padding:10px 16px calc(10px + env(safe-area-inset-bottom));border-top:1px solid rgba(255,255,255,0.04);flex-shrink:0;">
-                <button id="nbAdd" style="width:100%;padding:12px;border:none;border-radius:10px;background:rgba(240,147,43,0.12);color:#f0932b;font-size:14px;font-weight:600;cursor:pointer;">+ 新建</button>
+            <div style="padding:10px 16px calc(10px + env(safe-area-inset-bottom));border-top:1px solid rgba(255,255,255,0.04);flex-shrink:0;text-align:center;">
+                <div style="font-size:10px;color:rgba(255,255,255,0.15);">记事本内容由TA撰写</div>
             </div>`;
         
         document.body.appendChild(page);
@@ -193,10 +193,6 @@ class MemoryLibrary {
         page.querySelector('#nbBack')?.addEventListener('click', () => { page.remove(); this._openCharArchive(friendCode); });
         page.querySelector('#nbTabNotes')?.addEventListener('click', () => { this._nbTab = 'notes'; this._refreshNotebook(page, friendCode, name); });
         page.querySelector('#nbTabDiary')?.addEventListener('click', () => { this._nbTab = 'diary'; this._refreshNotebook(page, friendCode, name); });
-        page.querySelector('#nbAdd')?.addEventListener('click', () => {
-            if (this._nbTab === 'notes') this._editNote(friendCode, name, null, page);
-            else this._editDiary(friendCode, name, null, page);
-        });
         
         this._refreshNotebook(page, friendCode, name);
     }
