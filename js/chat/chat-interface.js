@@ -7077,7 +7077,12 @@ getIntimacyStatusForAI() {
     desc += `\n    写日记时请发挥创意，像人类写手账一样自由！`;
     desc += `\n  [AI_DELETE_NOTE:碎碎念内容前几个字] 删除你写的某条碎碎念`;
     desc += `\n  [AI_DELETE_DIARY:日记日期] 删除你写的某篇日记`;
-    desc += `\n  注意：写日记碎碎念不需要user同意，你想写就写。写完后系统会自动通知user。`;
+    desc += `\n\n【手帐本（跟日记不同，更自由，可多次编辑同一页）】`;
+    desc += `\n  [AI_JOURNAL]内容[/AI_JOURNAL] 创建一页新手帐`;
+    desc += `\n  [AI_JOURNAL_EDIT:页面开头几个字]新内容[/AI_JOURNAL_EDIT] 编辑已有手帐页`;
+    desc += `\n  支持：**加粗** *斜体* # 标题 --- 分割线 ![图片名] emoji`;
+    desc += `\n  内容第一行写"模板：模板名"可选模板风格：暖色便签、冷色笔记、复古信纸、极简白纸`;
+    desc += `\n  注意：写日记/碎碎念/手帐都不需要user同意，你想写就写。写完后系统自动通知user。`;
     
     // 注入AI已写的日记/碎碎念（让AI能看到自己写过的）
     if (this.currentFriendCode) {
@@ -12895,6 +12900,8 @@ _stripCommandTags(text) {
         .replace(/\[AI_DIARY\][\s\S]*?\[\/AI_DIARY\]/g, '')
         .replace(/\[AI_DELETE_NOTE:[^\]]+\]/g, '')
         .replace(/\[AI_DELETE_DIARY:[^\]]+\]/g, '')
+        .replace(/\[AI_JOURNAL\][\s\S]*?\[\/AI_JOURNAL\]/g, '')
+        .replace(/\[AI_JOURNAL_EDIT:[^\]]*\][\s\S]*?\[\/AI_JOURNAL_EDIT\]/g, '')
         .replace(/\[RECALL:[^\]]+\]/g, '')
         .replace(/\[STATUS_CSS\][\s\S]*?\[\/STATUS_CSS\]/g, '')
         .replace(/\[STATUS_?\s*CSS\][\s\S]*?\[\/?\s*STATUS_?\s*CSS\]/gi, '');
@@ -12970,6 +12977,54 @@ processNotebookCommands(text) {
         const kw = delDiaryMatch[1].trim().toLowerCase();
         const idx = data.notebook.diary.findIndex(d => (d.date||'').toLowerCase().includes(kw) || (d.content||'').toLowerCase().includes(kw));
         if (idx >= 0) { data.notebook.diary.splice(idx, 1); this.showCssSystemMessage(`📖 ${friendName} 删了一篇日记`); changed = true; }
+    }
+    
+    // [AI_JOURNAL]内容[/AI_JOURNAL] — 创建手帐
+    if (!data.journal) data.journal = { pages: [] };
+    const journalMatch = text.match(/\[AI_JOURNAL\]([\s\S]*?)\[\/AI_JOURNAL\]/);
+    if (journalMatch) {
+        let content = journalMatch[1].trim();
+        let templateId = '';
+        // 提取模板选择
+        const tplMatch = content.match(/^模板[：:]\s*(.+)$/m);
+        if (tplMatch) {
+            const tplName = tplMatch[1].trim();
+            const tplMap = { '暖色便签':'_warm', '冷色笔记':'_cool', '复古信纸':'_retro', '极简白纸':'_minimal' };
+            templateId = tplMap[tplName] || '';
+            // 也查用户自定义模板
+            if (!templateId) {
+                const store = this.storage;
+                const userTpls = store.getUserSettings()?.journalTemplates || [];
+                const found = userTpls.find(t => t.name === tplName);
+                if (found) templateId = found.id;
+            }
+            content = content.replace(tplMatch[0], '').trim();
+        }
+        data.journal.pages.push({
+            id: 'jn_' + Date.now(),
+            content, templateId,
+            customCss: '',
+            createdAt: new Date().toISOString(),
+            editHistory: [],
+            screenshotUrl: ''
+        });
+        this.showCssSystemMessage(`&#9998; ${friendName} 写了一页手帐`);
+        changed = true;
+    }
+    
+    // [AI_JOURNAL_EDIT:关键字]内容[/AI_JOURNAL_EDIT] — 编辑手帐
+    const jEditMatch = text.match(/\[AI_JOURNAL_EDIT:([^\]]*)\]([\s\S]*?)\[\/AI_JOURNAL_EDIT\]/);
+    if (jEditMatch) {
+        const kw = jEditMatch[1].trim().toLowerCase();
+        const newContent = jEditMatch[2].trim();
+        const pg = data.journal.pages.find(p => (p.content||'').toLowerCase().includes(kw));
+        if (pg) {
+            if (!pg.editHistory) pg.editHistory = [];
+            pg.editHistory.push({ time: new Date().toISOString() });
+            pg.content = newContent;
+            this.showCssSystemMessage(`&#9998; ${friendName} 编辑了一页手帐`);
+            changed = true;
+        }
     }
     
     if (changed) this.storage.saveIntimacyData(this.currentFriendCode, data);

@@ -80,7 +80,8 @@ class MemoryLibrary {
                     ${menuItem('&#9998;', '聊天总结', 'mlChatSummary', '线上聊天的记忆总结')}
                     ${menuItem('&#9829;', '核心记忆', 'mlCoreMemory', '线上聊天的核心记忆')}
                     ${menuItem('&#9998;', '记事本', 'mlNotebook', 'TA的碎碎念和日记')}
-                    ${menuItem('&#9670;', '剧场归档', 'mlTheaterArchive', '占位 - 次元剧场存档')}
+                    ${menuItem('&#9998;', '手帐', 'mlJournal', 'TA的手帐本')}
+                    ${menuItem('&#9670;', '剧场归档', 'mlTheaterArchive', '次元剧场存档')}
                 </div>
             </div>`;
 
@@ -110,6 +111,11 @@ class MemoryLibrary {
         // 剧场归档
         page.querySelector('#mlTheaterArchive')?.addEventListener('click', () => {
             this._showTheaterArchive(friendCode, name);
+        });
+        
+        // 手帐
+        page.querySelector('#mlJournal')?.addEventListener('click', () => {
+            this._openJournal(friendCode, name);
         });
     }
 
@@ -668,6 +674,264 @@ class MemoryLibrary {
         
         document.body.appendChild(page);
         page.querySelector('#sdBack')?.addEventListener('click', () => page.remove());
+    }
+
+    // ==================== 手帐模块 ====================
+    _openJournal(friendCode, name) {
+        document.getElementById('mlJournalPage')?.remove();
+        const store = this._store();
+        const data = store?.getIntimacyData(friendCode) || {};
+        if (!data.journal) data.journal = { pages: [] };
+        const pages = data.journal.pages || [];
+        
+        const page = document.createElement('div');
+        page.id = 'mlJournalPage';
+        page.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9000;background:#0a0806;display:flex;flex-direction:column;';
+        
+        let listHtml = '';
+        if (pages.length === 0) {
+            listHtml = '<div style="text-align:center;padding:40px 0;color:rgba(255,255,255,0.12);font-size:13px;">还没有手帐</div>';
+        } else {
+            pages.slice().reverse().forEach((pg, i) => {
+                const created = pg.createdAt ? new Date(pg.createdAt).toLocaleString('zh-CN') : '';
+                const editCnt = (pg.editHistory || []).length;
+                const preview = (pg.content || '').substring(0, 60);
+                const tplName = this._getTemplateName(pg.templateId);
+                listHtml += '<div class="jn-page-card" data-pid="' + pg.id + '" style="margin-bottom:14px;border-radius:12px;overflow:hidden;cursor:pointer;border:1px solid rgba(255,220,150,0.06);background:linear-gradient(145deg,rgba(255,248,235,0.04),rgba(255,240,220,0.02));">';
+                // 截图预览（如果有）
+                if (pg.screenshotUrl) {
+                    listHtml += '<div style="width:100%;max-height:150px;overflow:hidden;"><img src="' + pg.screenshotUrl + '" style="width:100%;display:block;object-fit:cover;opacity:0.7;"></div>';
+                }
+                listHtml += '<div style="padding:12px 14px;">';
+                listHtml += '<div style="font-size:13px;color:rgba(255,220,170,0.6);">' + created + '</div>';
+                if (tplName) listHtml += '<div style="font-size:10px;color:rgba(255,255,255,0.15);margin-top:2px;">模板：' + this._esc(tplName) + '</div>';
+                listHtml += '<div style="font-size:13px;color:rgba(255,255,255,0.5);margin-top:6px;line-height:1.5;white-space:pre-wrap;">' + this._esc(preview) + (preview.length < (pg.content||'').length ? '...' : '') + '</div>';
+                listHtml += '<div style="font-size:10px;color:rgba(255,255,255,0.12);margin-top:6px;">' + editCnt + ' 次编辑</div>';
+                listHtml += '</div></div>';
+            });
+        }
+        
+        page.innerHTML = '<div style="display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid rgba(255,220,150,0.04);flex-shrink:0;">' +
+            '<button id="jnBack" style="background:none;border:none;color:rgba(255,220,170,0.5);font-size:20px;cursor:pointer;padding:4px 8px;">&#8592;</button>' +
+            '<div style="flex:1;text-align:center;font-size:16px;font-weight:600;color:rgba(255,220,170,0.7);">' + this._esc(name) + ' 的手帐</div>' +
+            '<button id="jnTemplates" style="background:none;border:none;color:rgba(255,220,170,0.3);font-size:12px;cursor:pointer;padding:4px 8px;">模板</button>' +
+        '</div>' +
+        '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;min-height:0;">' + listHtml + '</div>' +
+        '<div style="padding:10px 16px calc(10px + env(safe-area-inset-bottom));border-top:1px solid rgba(255,220,150,0.04);flex-shrink:0;text-align:center;">' +
+            '<div style="font-size:10px;color:rgba(255,255,255,0.1);">手帐由TA撰写，你可以为每页上传成品截图</div>' +
+        '</div>';
+        
+        document.body.appendChild(page);
+        page.querySelector('#jnBack')?.addEventListener('click', () => page.remove());
+        page.querySelector('#jnTemplates')?.addEventListener('click', () => this._openJournalTemplates());
+        page.querySelectorAll('.jn-page-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const pg = pages.find(p => p.id === card.dataset.pid);
+                if (pg) this._viewJournalPage(pg, friendCode, name);
+            });
+        });
+    }
+
+    // 查看单页手帐
+    _viewJournalPage(pg, friendCode, name) {
+        document.getElementById('jnPageView')?.remove();
+        const view = document.createElement('div');
+        view.id = 'jnPageView';
+        view.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9500;background:#0a0806;display:flex;flex-direction:column;';
+        
+        const created = pg.createdAt ? new Date(pg.createdAt).toLocaleString('zh-CN') : '';
+        const edits = pg.editHistory || [];
+        
+        // 加载模板CSS
+        const tplCss = this._getTemplateCSS(pg.templateId);
+        const pageCss = (tplCss || '') + '\n' + (pg.customCss || '');
+        
+        // 编辑时间轴
+        let timelineHtml = '';
+        if (edits.length > 0) {
+            timelineHtml = '<details style="margin-top:12px;"><summary style="font-size:10px;color:rgba(255,255,255,0.15);cursor:pointer;">编辑记录（' + edits.length + '次）</summary><div style="margin-top:6px;padding-left:12px;border-left:1px solid rgba(255,220,150,0.06);">';
+            edits.forEach(e => {
+                timelineHtml += '<div style="font-size:10px;color:rgba(255,255,255,0.12);padding:3px 0;">' + (e.time ? new Date(e.time).toLocaleString('zh-CN') : '') + '</div>';
+            });
+            timelineHtml += '</div></details>';
+        }
+        
+        // 截图区
+        let screenshotHtml = '<details style="margin-top:14px;"><summary style="font-size:11px;color:rgba(255,220,170,0.3);cursor:pointer;">&#128247; 成品截图' + (pg.screenshotUrl ? '（已上传）' : '（未上传）') + '</summary><div style="margin-top:8px;">';
+        if (pg.screenshotUrl) {
+            screenshotHtml += '<img src="' + pg.screenshotUrl + '" style="width:100%;border-radius:10px;margin-bottom:8px;">';
+        }
+        screenshotHtml += '<div style="text-align:center;"><button id="jnUploadScreenshot" style="padding:8px 16px;border:1px dashed rgba(255,220,150,0.15);border-radius:8px;background:transparent;color:rgba(255,220,170,0.3);font-size:12px;cursor:pointer;">' + (pg.screenshotUrl ? '更换截图' : '上传截图') + '</button><input type="file" id="jnScreenshotInput" accept="image/*" style="display:none;"></div></div></details>';
+        
+        view.innerHTML = '<div style="display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid rgba(255,220,150,0.04);flex-shrink:0;">' +
+            '<button id="jpvBack" style="background:none;border:none;color:rgba(255,220,170,0.5);font-size:20px;cursor:pointer;padding:4px 8px;">&#8592;</button>' +
+            '<div style="flex:1;text-align:center;font-size:14px;color:rgba(255,220,170,0.5);">手帐</div>' +
+        '</div>' +
+        '<div id="jpvContent" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;min-height:0;">' +
+            '<div style="max-width:420px;margin:0 auto;">' +
+                // 时间戳
+                '<div style="font-size:11px;color:rgba(255,255,255,0.15);margin-bottom:12px;">' + created + '</div>' +
+                // 手帐内容区（应用模板CSS）
+                '<div id="jpvPageContent" class="journal-page" style="padding:20px;background:linear-gradient(180deg,rgba(255,248,235,0.04),rgba(255,240,220,0.02));border:1px solid rgba(255,220,150,0.06);border-radius:14px;min-height:200px;">' +
+                    this._renderDiaryContent(pg.content || '', null) +
+                '</div>' +
+                timelineHtml +
+                screenshotHtml +
+            '</div>' +
+        '</div>';
+        
+        // 注入页面CSS
+        if (pageCss) {
+            const style = document.createElement('style');
+            style.id = 'jnPageCssTag';
+            style.textContent = pageCss;
+            document.head.appendChild(style);
+        }
+        
+        document.body.appendChild(view);
+        view.querySelector('#jpvBack')?.addEventListener('click', () => { view.remove(); document.getElementById('jnPageCssTag')?.remove(); });
+        
+        // 截图上传
+        view.querySelector('#jnUploadScreenshot')?.addEventListener('click', () => view.querySelector('#jnScreenshotInput')?.click());
+        view.querySelector('#jnScreenshotInput')?.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                pg.screenshotUrl = ev.target.result;
+                const store = this._store();
+                const data = store.getIntimacyData(friendCode);
+                const idx = (data.journal?.pages || []).findIndex(p => p.id === pg.id);
+                if (idx >= 0) data.journal.pages[idx] = pg;
+                store.saveIntimacyData(friendCode, data);
+                this._toast('截图已上传');
+                view.remove(); document.getElementById('jnPageCssTag')?.remove();
+                this._viewJournalPage(pg, friendCode, name);
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    // 模板管理
+    _openJournalTemplates() {
+        document.getElementById('jnTemplatesPage')?.remove();
+        const store = this._store();
+        const settings = store?.getUserSettings() || {};
+        if (!settings.journalTemplates) settings.journalTemplates = [];
+        const templates = settings.journalTemplates;
+        
+        // 预设模板
+        const presets = [
+            { id: '_warm', name: '暖色便签', css: '.journal-page { background: linear-gradient(145deg, rgba(255,235,200,0.08), rgba(255,220,170,0.04)) !important; color: rgba(255,230,190,0.7) !important; font-family: serif; }' },
+            { id: '_cool', name: '冷色笔记', css: '.journal-page { background: linear-gradient(145deg, rgba(180,220,255,0.06), rgba(150,200,240,0.03)) !important; color: rgba(180,210,240,0.7) !important; }' },
+            { id: '_retro', name: '复古信纸', css: '.journal-page { background: rgba(255,248,230,0.06) !important; border: 2px double rgba(180,140,80,0.15) !important; color: rgba(220,190,140,0.7) !important; font-family: serif; letter-spacing: 1px; }' },
+            { id: '_minimal', name: '极简白纸', css: '.journal-page { background: rgba(255,255,255,0.04) !important; border: 1px solid rgba(255,255,255,0.06) !important; color: rgba(255,255,255,0.6) !important; }' }
+        ];
+        
+        const p = document.createElement('div');
+        p.id = 'jnTemplatesPage';
+        p.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9600;background:#0d0d0d;display:flex;flex-direction:column;';
+        
+        let listHtml = '<div style="font-size:12px;color:rgba(255,255,255,0.3);margin-bottom:8px;">预设模板</div>';
+        presets.forEach(t => {
+            listHtml += '<div style="margin-bottom:8px;padding:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);border-radius:10px;"><div style="font-size:14px;color:rgba(255,255,255,0.6);">' + this._esc(t.name) + '</div><div style="font-size:9px;color:rgba(255,255,255,0.12);margin-top:4px;font-family:monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + this._esc(t.css.substring(0, 80)) + '</div></div>';
+        });
+        
+        if (templates.length > 0) {
+            listHtml += '<div style="font-size:12px;color:rgba(255,255,255,0.3);margin:14px 0 8px;">我的模板</div>';
+            templates.forEach(t => {
+                listHtml += '<div class="jn-tpl-item" data-tid="' + t.id + '" style="margin-bottom:8px;padding:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);border-radius:10px;cursor:pointer;"><div style="display:flex;align-items:center;"><div style="flex:1;font-size:14px;color:rgba(255,255,255,0.6);">' + this._esc(t.name) + '</div><button class="jn-tpl-del" data-tid="' + t.id + '" style="background:none;border:none;color:rgba(255,100,100,0.3);font-size:12px;cursor:pointer;">删除</button></div><div style="font-size:9px;color:rgba(255,255,255,0.12);margin-top:4px;font-family:monospace;max-height:40px;overflow:hidden;">' + this._esc(t.css.substring(0, 120)) + '</div></div>';
+            });
+        }
+        
+        p.innerHTML = '<div style="display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.04);flex-shrink:0;">' +
+            '<button id="jtBack" style="background:none;border:none;color:rgba(255,255,255,0.5);font-size:20px;cursor:pointer;padding:4px 8px;">&#8592;</button>' +
+            '<div style="flex:1;text-align:center;font-size:16px;font-weight:600;color:#fff;">手帐模板</div>' +
+        '</div>' +
+        '<div style="flex:1;overflow-y:auto;padding:16px;min-height:0;">' + listHtml + '</div>' +
+        '<div style="padding:12px 16px calc(12px + env(safe-area-inset-bottom));border-top:1px solid rgba(255,255,255,0.04);flex-shrink:0;">' +
+            '<button id="jtAdd" style="width:100%;padding:12px;border:none;border-radius:10px;background:rgba(255,220,150,0.08);color:rgba(255,220,170,0.5);font-size:14px;cursor:pointer;">+ 新建模板</button>' +
+            '<details style="margin-top:10px;"><summary style="font-size:10px;color:rgba(255,255,255,0.12);cursor:pointer;">&#9998; 模板编写提示</summary>' +
+            '<div style="margin-top:6px;font-size:10px;color:rgba(255,255,255,0.15);line-height:1.7;font-family:monospace;padding:8px;background:rgba(255,255,255,0.02);border-radius:6px;">' +
+            '模板是一段CSS，作用于 .journal-page 容器。<br>' +
+            '可控制：background、color、font-family、border、padding、letter-spacing 等<br>' +
+            '示例：<br>' +
+            '.journal-page {<br>' +
+            '&nbsp;&nbsp;background: rgba(255,200,200,0.05);<br>' +
+            '&nbsp;&nbsp;border: 2px dashed rgba(255,150,150,0.15);<br>' +
+            '&nbsp;&nbsp;color: rgba(255,200,180,0.7);<br>' +
+            '&nbsp;&nbsp;font-family: serif;<br>' +
+            '}<br>' +
+            '也可以控制内部元素：.journal-page strong { color: gold; }' +
+            '</div></details>' +
+        '</div>';
+        
+        document.body.appendChild(p);
+        p.querySelector('#jtBack')?.addEventListener('click', () => p.remove());
+        p.querySelector('#jtAdd')?.addEventListener('click', () => this._addJournalTemplate());
+        p.querySelectorAll('.jn-tpl-del').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const tid = btn.dataset.tid;
+                settings.journalTemplates = templates.filter(t => t.id !== tid);
+                store.saveData('zero_phone_user_settings', settings);
+                this._toast('已删除');
+                p.remove(); this._openJournalTemplates();
+            });
+        });
+    }
+
+    _addJournalTemplate() {
+        document.getElementById('jnTplEdit')?.remove();
+        const ov = document.createElement('div');
+        ov.id = 'jnTplEdit';
+        ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9700;display:flex;align-items:flex-end;background:rgba(0,0,0,0.5);';
+        ov.innerHTML = '<div style="width:100%;background:#1a1a1a;border-radius:16px 16px 0 0;padding:20px 16px calc(16px + env(safe-area-inset-bottom));max-height:70vh;display:flex;flex-direction:column;animation:profileSlideUp 0.25s ease-out;">' +
+            '<div style="font-size:15px;font-weight:600;color:#fff;text-align:center;margin-bottom:12px;">新建模板</div>' +
+            '<input type="text" id="jtName" placeholder="模板名称" style="width:100%;padding:10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:14px;box-sizing:border-box;margin-bottom:10px;">' +
+            '<textarea id="jtCss" rows="6" placeholder=".journal-page { ... }" style="width:100%;padding:10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#fff;font-size:12px;font-family:monospace;resize:vertical;box-sizing:border-box;margin-bottom:10px;"></textarea>' +
+            '<button id="jtSave" style="width:100%;padding:12px;border:none;border-radius:10px;background:rgba(255,220,150,0.12);color:rgba(255,220,170,0.6);font-size:14px;cursor:pointer;">保存</button>' +
+            '<button id="jtCancel" style="width:100%;padding:10px;border:none;background:transparent;color:rgba(255,255,255,0.2);font-size:13px;cursor:pointer;margin-top:6px;">取消</button>' +
+        '</div>';
+        document.body.appendChild(ov);
+        ov.querySelector('#jtCancel')?.addEventListener('click', () => ov.remove());
+        ov.querySelector('#jtSave')?.addEventListener('click', () => {
+            const tplName = ov.querySelector('#jtName')?.value.trim();
+            const css = ov.querySelector('#jtCss')?.value.trim();
+            if (!tplName) { this._toast('请输入名称'); return; }
+            const store = this._store();
+            const settings = store.getUserSettings();
+            if (!settings.journalTemplates) settings.journalTemplates = [];
+            settings.journalTemplates.push({ id: 'tpl_' + Date.now(), name: tplName, css: css || '' });
+            store.saveData('zero_phone_user_settings', settings);
+            this._toast('模板已保存');
+            ov.remove();
+            document.getElementById('jnTemplatesPage')?.remove();
+            this._openJournalTemplates();
+        });
+    }
+
+    _getTemplateName(templateId) {
+        if (!templateId) return '';
+        const presets = { '_warm': '暖色便签', '_cool': '冷色笔记', '_retro': '复古信纸', '_minimal': '极简白纸' };
+        if (presets[templateId]) return presets[templateId];
+        const store = this._store();
+        const tpl = (store?.getUserSettings()?.journalTemplates || []).find(t => t.id === templateId);
+        return tpl?.name || '';
+    }
+
+    _getTemplateCSS(templateId) {
+        if (!templateId) return '';
+        const presets = {
+            '_warm': '.journal-page { background: linear-gradient(145deg, rgba(255,235,200,0.08), rgba(255,220,170,0.04)) !important; color: rgba(255,230,190,0.7) !important; font-family: serif; }',
+            '_cool': '.journal-page { background: linear-gradient(145deg, rgba(180,220,255,0.06), rgba(150,200,240,0.03)) !important; color: rgba(180,210,240,0.7) !important; }',
+            '_retro': '.journal-page { background: rgba(255,248,230,0.06) !important; border: 2px double rgba(180,140,80,0.15) !important; color: rgba(220,190,140,0.7) !important; font-family: serif; letter-spacing: 1px; }',
+            '_minimal': '.journal-page { background: rgba(255,255,255,0.04) !important; border: 1px solid rgba(255,255,255,0.06) !important; color: rgba(255,255,255,0.6) !important; }'
+        };
+        if (presets[templateId]) return presets[templateId];
+        const store = this._store();
+        const tpl = (store?.getUserSettings()?.journalTemplates || []).find(t => t.id === templateId);
+        return tpl?.css || '';
     }
 
     // ==================== 工具方法 ====================
