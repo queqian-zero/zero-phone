@@ -28,7 +28,7 @@ class ProfileManager {
         if (!s.region) { s.region = ''; changed = true; }
         if (!s.poke) { s.poke = '拍了拍你'; changed = true; }
         if (!s.signature) { s.signature = ''; changed = true; }
-        if (!s.profileCss) { s.profileCss = ''; changed = true; }
+        if (s.profileCss === undefined) { s.profileCss = ''; changed = true; }
         if (!s.userPersona) { s.userPersona = ''; changed = true; }
         if (changed) this.storage.updateUserSettings(s);
     }
@@ -241,11 +241,23 @@ class ProfileManager {
             this._toast('CSS已应用');
         });
         page.querySelector('#profileCssClearBtn')?.addEventListener('click', () => {
-            this.storage.updateUserSettings({ profileCss: '' });
+            // 彻底清除：storage + style标签 + textarea
+            const s = this.storage.getUserSettings();
+            s.profileCss = '';
+            this.storage.saveData('zero_phone_user_settings', s);
             this._applyProfileCss('');
             const ta = page.querySelector('#profileCssTextarea');
             if (ta) ta.value = '';
             this._toast('CSS已清除');
+        });
+        // 离开textarea时自动保存（防止用户删了文字但忘了点按钮）
+        page.querySelector('#profileCssTextarea')?.addEventListener('blur', () => {
+            const css = page.querySelector('#profileCssTextarea')?.value.trim() || '';
+            const current = this.storage.getUserSettings().profileCss || '';
+            if (css !== current) {
+                this.storage.updateUserSettings({ profileCss: css });
+                this._applyProfileCss(css);
+            }
         });
     }
 
@@ -559,9 +571,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const app = (typeof chatApp !== 'undefined') ? chatApp : window.chatApp;
         if (app?.storage) {
             window.profileManager = new ProfileManager(app.storage);
-            // 启动时立即应用自定义CSS
+            // 启动时应用自定义CSS（仅当确实有内容时）
             const s = app.storage.getUserSettings() || {};
-            if (s.profileCss) window.profileManager._applyProfileCss(s.profileCss);
+            if (s.profileCss && s.profileCss.trim().length > 0) {
+                window.profileManager._applyProfileCss(s.profileCss);
+            }
             const observer = new MutationObserver(() => {
                 const page = document.getElementById('profilePage');
                 if (page && page.classList.contains('active')) window.profileManager.init();

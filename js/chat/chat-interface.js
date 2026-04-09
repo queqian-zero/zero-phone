@@ -13327,50 +13327,53 @@ _openScheduleViewer() {
     
     const p = document.createElement('div');
     p.id = 'scheduleViewer';
-    p.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9200;display:flex;align-items:flex-end;background:rgba(0,0,0,0.5);';
+    p.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9200;background:#0d0d0d;display:flex;flex-direction:column;';
     
     let calHtml = '';
     if (calendar.length === 0) {
-        calHtml = '<div style="text-align:center;padding:20px 0;color:rgba(255,255,255,0.12);font-size:12px;">暂无日程</div>';
+        calHtml = '<div style="text-align:center;padding:20px 0;color:rgba(255,255,255,0.12);font-size:13px;">暂无日程</div>';
     } else {
         const now = new Date().toISOString().split('T')[0];
         calendar.forEach(c => {
             const isPast = c.date < now;
             const isToday = c.date === now;
-            calHtml += '<div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.03);' + (isPast ? 'opacity:0.3;' : '') + '">';
-            calHtml += '<div style="min-width:70px;font-size:12px;color:' + (isToday ? 'rgba(240,147,43,0.7)' : 'rgba(255,255,255,0.3)') + ';">' + c.date.substring(5) + '<br>' + (c.time || '') + '</div>';
-            calHtml += '<div style="flex:1;font-size:13px;color:rgba(255,255,255,0.6);">' + this.escapeHtml(c.event || '') + '<div style="font-size:10px;color:rgba(255,255,255,0.2);margin-top:2px;">' + (c.duration || 60) + '分钟</div></div>';
+            calHtml += '<div style="display:flex;gap:12px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.03);' + (isPast ? 'opacity:0.3;' : '') + '">';
+            calHtml += '<div style="min-width:70px;font-size:13px;color:' + (isToday ? 'rgba(240,147,43,0.7)' : 'rgba(255,255,255,0.3)') + ';">' + c.date.substring(5) + '<br>' + (c.time || '') + '</div>';
+            calHtml += '<div style="flex:1;font-size:14px;color:rgba(255,255,255,0.6);">' + this.escapeHtml(c.event || '') + '<div style="font-size:11px;color:rgba(255,255,255,0.2);margin-top:3px;">' + (c.duration || 60) + '分钟</div></div>';
             calHtml += '</div>';
         });
     }
     
-    p.innerHTML = '<div style="width:100%;background:#1a1a1a;border-radius:16px 16px 0 0;padding:20px 16px calc(16px + env(safe-area-inset-bottom));max-height:75vh;overflow-y:auto;animation:profileSlideUp 0.25s ease-out;">' +
-        '<div style="font-size:16px;font-weight:600;color:#fff;text-align:center;margin-bottom:16px;">' + this.escapeHtml(friendName) + ' 的作息表</div>' +
+    p.innerHTML = '<div style="display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.04);flex-shrink:0;">' +
+        '<button id="svBack" style="background:none;border:none;color:rgba(255,255,255,0.6);font-size:20px;cursor:pointer;padding:4px 8px;">&#8592;</button>' +
+        '<div style="flex:1;text-align:center;font-size:16px;font-weight:600;color:#fff;">' + this.escapeHtml(friendName) + ' 的作息表</div>' +
+        '<div style="width:36px;"></div>' +
+    '</div>' +
+    '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;min-height:0;">' +
         
         // 当前状态
-        '<div style="padding:12px;background:rgba(255,255,255,0.03);border-radius:10px;margin-bottom:14px;">' +
-        '<div style="font-size:12px;color:rgba(255,255,255,0.3);margin-bottom:6px;">当前状态</div>' +
-        '<div style="font-size:15px;color:rgba(255,255,255,0.7);">' + (state.statusEmoji || '') + ' ' + (state.statusText || currentStatus) + '</div>' +
-        (state.autoReply ? '<div style="font-size:11px;color:rgba(255,255,255,0.2);margin-top:4px;font-style:italic;">自动回复：' + this.escapeHtml(state.autoReply) + '</div>' : '') +
+        '<div style="padding:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.04);border-radius:12px;margin-bottom:14px;">' +
+        '<div style="font-size:12px;color:rgba(255,255,255,0.3);margin-bottom:8px;">当前状态</div>' +
+        '<div style="font-size:16px;color:rgba(255,255,255,0.7);">' + (state.statusEmoji || '') + ' ' + (state.statusText || currentStatus) + '</div>' +
+        (state.autoReply ? '<div style="font-size:12px;color:rgba(255,255,255,0.2);margin-top:6px;font-style:italic;">自动回复：' + this.escapeHtml(state.autoReply) + '</div>' : '') +
         '</div>' +
         
         // 默认作息
-        '<div style="padding:12px;background:rgba(255,255,255,0.03);border-radius:10px;margin-bottom:14px;">' +
-        '<div style="font-size:12px;color:rgba(255,255,255,0.3);margin-bottom:6px;">默认作息</div>' +
-        (schedule.sleepTime ? '<div style="font-size:13px;color:rgba(255,255,255,0.5);">&#127769; 睡觉 ' + schedule.sleepTime + ' &nbsp; &#9728; 起床 ' + (schedule.wakeTime || '?') + '</div>' : '<div style="font-size:12px;color:rgba(255,255,255,0.15);">未设置（TA还没告诉你作息时间）</div>') +
+        '<div style="padding:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.04);border-radius:12px;margin-bottom:14px;">' +
+        '<div style="font-size:12px;color:rgba(255,255,255,0.3);margin-bottom:8px;">默认作息</div>' +
+        (schedule.sleepTime ? '<div style="font-size:14px;color:rgba(255,255,255,0.5);">&#127769; 睡觉 ' + schedule.sleepTime + ' &nbsp;&nbsp; &#9728; 起床 ' + (schedule.wakeTime || '?') + '</div>' : '<div style="font-size:13px;color:rgba(255,255,255,0.15);">未设置（TA还没告诉你作息时间）</div>') +
         '</div>' +
         
         // 日程
-        '<div style="padding:12px;background:rgba(255,255,255,0.03);border-radius:10px;margin-bottom:14px;">' +
-        '<div style="font-size:12px;color:rgba(255,255,255,0.3);margin-bottom:6px;">&#128197; 日程安排</div>' +
+        '<div style="padding:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.04);border-radius:12px;">' +
+        '<div style="font-size:12px;color:rgba(255,255,255,0.3);margin-bottom:8px;">&#128197; 日程安排</div>' +
         calHtml +
         '</div>' +
         
-        '<button id="svClose" style="width:100%;padding:10px;border:none;background:transparent;color:rgba(255,255,255,0.2);font-size:13px;cursor:pointer;">关闭</button>' +
     '</div>';
     
     document.body.appendChild(p);
-    p.querySelector('#svClose')?.addEventListener('click', () => p.remove());
+    p.querySelector('#svBack')?.addEventListener('click', () => p.remove());
 }
 
 _extractRelationInviteCardHtml(rawText) {
