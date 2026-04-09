@@ -5010,41 +5010,29 @@ exportMessagesAsJSON() {
 exportFullDataAsJSON() {
     console.log('📤 导出完整数据为JSON');
     
-    if (!this.currentFriend) {
-        alert('❌ 没有当前好友信息');
-        return;
-    }
+    if (!this.currentFriend) { alert('❌ 没有当前好友信息'); return; }
     
     const friendName = this.currentFriend.nickname || this.currentFriend.name;
+    const code = this.currentFriendCode;
     
-    // 获取聊天设置
-    const settings = this.storage.getChatSettings(this.currentFriendCode);
-    
-    // 获取聊天总结
-    const summaries = this.storage.getChatSummaries(this.currentFriendCode);
-    
-    const coreMemories = this.storage.getCoreMemories(this.currentFriendCode);
-const memoryFragments = this.storage.getMemoryFragments(this.currentFriendCode);
-
-const data = {
-    exportType: 'full',
-    exportTime: new Date().toISOString(),
-    friend: this.currentFriend,
-    messages: this.messages,
-    settings: settings || {},
-    summaries: summaries || [],
-    coreMemories: coreMemories || [],
-    memoryFragments: memoryFragments || []
-};
+    const data = {
+        exportType: 'full',
+        version: '2.1.0',
+        exportTime: new Date().toISOString(),
+        friend: this.currentFriend,
+        messages: this.messages,
+        settings: this.storage.getChatSettings(code) || {},
+        summaries: this.storage.getChatSummaries(code) || [],
+        coreMemories: this.storage.getCoreMemories(code) || [],
+        memoryFragments: this.storage.getMemoryFragments(code) || [],
+        // 亲密关系全套（含日记/碎碎念/手帐/剧场/状态/日程/幸运字符/关系/徽章/兑换所/岁月胶囊/星痕...）
+        intimacyData: this.storage.getIntimacyData(code)
+    };
     
     const content = JSON.stringify(data, null, 2);
-    
-    // 下载文件
     const now = new Date();
     const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
-    const filename = `full_${friendName}_${dateStr}.json`;
-    
-    this.downloadFile(content, filename, 'application/json');
+    this.downloadFile(content, `full_${friendName}_${dateStr}.json`, 'application/json');
     
     console.log('✅ 完整数据导出成功');
     alert('✅ 完整数据已导出！');
@@ -5372,6 +5360,11 @@ if (data.memoryFragments && data.memoryFragments.length > 0) {
         this.storage.saveData(this.storage.KEYS.CHATS, chats);
     }
 }
+
+// 导入亲密关系全套数据（日记/碎碎念/手帐/剧场/状态/日程/幸运字符/关系/徽章/兑换所/岁月胶囊/星痕...）
+if (data.intimacyData) {
+    this.storage.saveIntimacyData(oldCode, data.intimacyData);
+}
     
     // 重新加载
     this.loadChat(oldCode);
@@ -5463,6 +5456,11 @@ if (data.memoryFragments && data.memoryFragments.length > 0) {
         chat.memoryFragments = data.memoryFragments;
         this.storage.saveData(this.storage.KEYS.CHATS, chats);
     }
+}
+
+// 导入亲密关系全套数据
+if (data.intimacyData) {
+    this.storage.saveIntimacyData(newFriendCode, data.intimacyData);
 }
     
     console.log('✅ 新好友创建成功:', newFriendCode);
