@@ -13365,135 +13365,131 @@ _openScheduleViewer() {
     const currentStatus = this._getCurrentAIStatus(state);
     const esc = (s) => this.escapeHtml(s);
     
-    // 当前选中日期
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
     let selectedDate = todayStr;
+    let expanded = false;
     
-    const p = document.createElement('div');
-    p.id = 'scheduleViewer';
-    p.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9200;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);';
+    // 遮罩
+    const overlay = document.createElement('div');
+    overlay.id = 'scheduleViewer';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9200;background:rgba(0,0,0,0.4);';
     
-    const renderDialog = () => {
-        // 当天的日程
+    // 面板（从顶部滑下）
+    const panel = document.createElement('div');
+    panel.id = 'svPanel';
+    panel.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9201;background:#1a1a1a;border-radius:0 0 18px 18px;box-shadow:0 4px 20px rgba(0,0,0,0.4);max-height:85vh;overflow-y:auto;transform:translateY(-100%);transition:transform 0.3s ease-out;';
+    
+    const render = () => {
+        // 当天日程
         const dayEvents = calendar.filter(c => c.date === selectedDate);
         let dayHtml = '';
         if (dayEvents.length === 0) {
-            dayHtml = '<div style="text-align:center;padding:12px 0;color:rgba(255,255,255,0.12);font-size:12px;">这天没有日程</div>';
+            dayHtml = '<div style="text-align:center;padding:10px 0;color:rgba(255,255,255,0.1);font-size:12px;">这天没有日程</div>';
         } else {
             dayEvents.forEach(c => {
-                dayHtml += '<div style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.03);">';
-                dayHtml += '<div style="font-size:12px;color:rgba(240,147,43,0.6);min-width:45px;">' + (c.time||'') + '</div>';
-                dayHtml += '<div style="flex:1;font-size:13px;color:rgba(255,255,255,0.6);">' + esc(c.event||'') + ' <span style="font-size:10px;color:rgba(255,255,255,0.15);">' + (c.duration||60) + 'min</span></div>';
-                dayHtml += '</div>';
+                dayHtml += '<div style="display:flex;gap:8px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.02);"><div style="font-size:12px;color:rgba(240,147,43,0.5);min-width:42px;">' + (c.time||'') + '</div><div style="flex:1;font-size:13px;color:rgba(255,255,255,0.5);">' + esc(c.event||'') + ' <span style="font-size:10px;color:rgba(255,255,255,0.12);">' + (c.duration||60) + 'min</span></div></div>';
             });
         }
         
-        // 生成本月日历格子
-        const selDate = new Date(selectedDate + 'T00:00:00');
-        const year = selDate.getFullYear(), month = selDate.getMonth();
-        const firstDay = new Date(year, month, 1).getDay(); // 0=Sun
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-        const monthName = `${year}年${month+1}月`;
-        
-        // 哪些日期有日程
-        const eventDates = new Set(calendar.map(c => c.date));
-        
-        let calGrid = '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center;margin-top:6px;">';
-        ['日','一','二','三','四','五','六'].forEach(d => {
-            calGrid += '<div style="font-size:10px;color:rgba(255,255,255,0.15);padding:4px 0;">' + d + '</div>';
-        });
-        for (let i = 0; i < firstDay; i++) calGrid += '<div></div>';
-        for (let d = 1; d <= daysInMonth; d++) {
-            const ds = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-            const isToday = ds === todayStr;
-            const isSel = ds === selectedDate;
-            const hasEvent = eventDates.has(ds);
-            let bg = 'transparent', color = 'rgba(255,255,255,0.35)', border = 'none';
-            if (isSel) { bg = 'rgba(240,147,43,0.15)'; color = 'rgba(240,147,43,0.8)'; border = '1px solid rgba(240,147,43,0.3)'; }
-            else if (isToday) { bg = 'rgba(255,255,255,0.05)'; color = 'rgba(255,255,255,0.6)'; }
-            calGrid += '<div class="sv-day" data-date="' + ds + '" style="padding:6px 0;border-radius:6px;cursor:pointer;font-size:12px;color:' + color + ';background:' + bg + ';border:' + border + ';position:relative;">' + d;
-            if (hasEvent) calGrid += '<div style="width:3px;height:3px;border-radius:50%;background:rgba(240,147,43,0.5);margin:1px auto 0;"></div>';
-            calGrid += '</div>';
+        // 日历（仅展开时生成）
+        let calendarHtml = '';
+        if (expanded) {
+            const selDate = new Date(selectedDate + 'T00:00:00');
+            const year = selDate.getFullYear(), month = selDate.getMonth();
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const eventDates = new Set(calendar.map(c => c.date));
+            
+            calendarHtml += '<div style="padding:8px 16px 12px;">';
+            // 月份导航
+            calendarHtml += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;"><button class="sv-prev" style="background:none;border:none;color:rgba(255,255,255,0.25);font-size:16px;cursor:pointer;padding:4px 10px;">&#8249;</button><div style="font-size:13px;color:rgba(255,255,255,0.4);">' + year + '年' + (month+1) + '月</div><button class="sv-next" style="background:none;border:none;color:rgba(255,255,255,0.25);font-size:16px;cursor:pointer;padding:4px 10px;">&#8250;</button></div>';
+            // 星期头
+            calendarHtml += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center;">';
+            ['日','一','二','三','四','五','六'].forEach(d => { calendarHtml += '<div style="font-size:9px;color:rgba(255,255,255,0.12);padding:3px 0;">' + d + '</div>'; });
+            // 空格
+            for (let i = 0; i < firstDay; i++) calendarHtml += '<div></div>';
+            // 日期
+            for (let d = 1; d <= daysInMonth; d++) {
+                const ds = year + '-' + String(month+1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+                const isToday = ds === todayStr;
+                const isSel = ds === selectedDate;
+                const hasEv = eventDates.has(ds);
+                let bg = 'transparent', clr = 'rgba(255,255,255,0.3)', bdr = '1px solid transparent';
+                if (isSel) { bg = 'rgba(240,147,43,0.12)'; clr = 'rgba(240,147,43,0.8)'; bdr = '1px solid rgba(240,147,43,0.25)'; }
+                else if (isToday) { bg = 'rgba(255,255,255,0.04)'; clr = 'rgba(255,255,255,0.55)'; }
+                calendarHtml += '<div class="sv-day" data-date="' + ds + '" style="padding:5px 0;border-radius:6px;cursor:pointer;font-size:12px;color:' + clr + ';background:' + bg + ';border:' + bdr + ';text-align:center;position:relative;">' + d;
+                if (hasEv) calendarHtml += '<div style="width:3px;height:3px;border-radius:50%;background:rgba(240,147,43,0.4);margin:1px auto 0;"></div>';
+                calendarHtml += '</div>';
+            }
+            calendarHtml += '</div></div>';
+            
+            // 默认作息
+            calendarHtml += '<div style="padding:4px 16px 10px;font-size:12px;color:rgba(255,255,255,0.25);">' + (schedule.sleepTime ? '&#127769; ' + schedule.sleepTime + ' ~ &#9728; ' + (schedule.wakeTime||'?') : '默认作息未设置') + '</div>';
+            
+            // 状态开关
+            const isOn = !this.settings.hideStatusInHeader;
+            calendarHtml += '<div style="padding:6px 16px 12px;display:flex;align-items:center;justify-content:space-between;">';
+            calendarHtml += '<div style="font-size:12px;color:rgba(255,255,255,0.25);">顶栏显示状态</div>';
+            calendarHtml += '<div id="svToggle" style="width:40px;height:22px;border-radius:11px;background:' + (isOn ? 'rgba(240,147,43,0.4)' : 'rgba(255,255,255,0.08)') + ';position:relative;cursor:pointer;transition:background 0.3s;"><div style="width:18px;height:18px;border-radius:50%;background:#fff;position:absolute;top:2px;' + (isOn ? 'right:2px;' : 'left:2px;') + 'transition:all 0.3s;box-shadow:0 1px 3px rgba(0,0,0,0.3);"></div></div>';
+            calendarHtml += '</div>';
+            
+            // 自动回复
+            if (state.autoReply) calendarHtml += '<div style="padding:0 16px 10px;font-size:11px;color:rgba(255,255,255,0.12);font-style:italic;">自动回复：' + esc(state.autoReply) + '</div>';
         }
-        calGrid += '</div>';
         
-        // 状态开关
-        const toggleChecked = this.settings.hideStatusInHeader ? '' : 'checked';
-        const toggleBg = this.settings.hideStatusInHeader ? 'rgba(255,255,255,0.1)' : 'rgba(240,147,43,0.4)';
-        
-        p.innerHTML = '<div style="width:calc(100% - 40px);max-width:360px;background:#1c1c1c;border-radius:18px;border:1px solid rgba(255,255,255,0.06);max-height:85vh;overflow-y:auto;animation:profileSlideUp 0.2s ease-out;">' +
-            // 标题
-            '<div style="padding:16px 16px 12px;text-align:center;">' +
-            '<div style="font-size:16px;font-weight:600;color:#fff;">' + esc(friendName) + ' 的作息</div>' +
-            '<div style="font-size:13px;color:rgba(255,255,255,0.5);margin-top:4px;">' + (state.statusEmoji||'') + ' ' + esc(state.statusText||currentStatus) + '</div>' +
-            (state.doNotDisturb ? '<div style="font-size:10px;color:rgba(255,100,100,0.4);margin-top:3px;">&#128308; 勿扰' + (state.disturbFailRate>0?'（'+Math.round(state.disturbFailRate*100)+'%失败）':'') + '</div>' : '') +
+        panel.innerHTML = '<div style="padding:env(safe-area-inset-top) 0 0;">' +
+            // 标题行
+            '<div style="padding:14px 16px 8px;display:flex;align-items:center;">' +
+                '<div style="flex:1;">' +
+                    '<div style="font-size:15px;font-weight:600;color:rgba(255,255,255,0.8);">' + esc(friendName) + '</div>' +
+                    '<div style="font-size:12px;color:rgba(255,255,255,0.3);margin-top:2px;">' + (state.statusEmoji||'') + ' ' + esc(state.statusText||currentStatus) + 
+                    (state.doNotDisturb ? ' &#128308;' : '') + '</div>' +
+                '</div>' +
+                '<button id="svCloseBtn" style="background:none;border:none;color:rgba(255,255,255,0.2);font-size:20px;cursor:pointer;padding:4px 8px;">&#10005;</button>' +
             '</div>' +
-            
-            // 默认作息（收起）
-            '<details style="margin:0 12px 8px;"><summary style="font-size:12px;color:rgba(255,255,255,0.3);cursor:pointer;padding:8px 0;">&#127769; 默认作息</summary>' +
-            '<div style="padding:6px 0 10px;font-size:13px;color:rgba(255,255,255,0.5);">' +
-            (schedule.sleepTime ? '睡觉 ' + schedule.sleepTime + ' &nbsp; 起床 ' + (schedule.wakeTime||'?') : '未设置') +
-            '</div></details>' +
-            
-            // 日历
-            '<div style="padding:0 12px 8px;">' +
-            '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">' +
-            '<button id="svPrevMonth" style="background:none;border:none;color:rgba(255,255,255,0.3);font-size:16px;cursor:pointer;padding:4px 8px;">&#8249;</button>' +
-            '<div style="font-size:13px;color:rgba(255,255,255,0.5);">' + monthName + '</div>' +
-            '<button id="svNextMonth" style="background:none;border:none;color:rgba(255,255,255,0.3);font-size:16px;cursor:pointer;padding:4px 8px;">&#8250;</button>' +
+            // 当天日程
+            '<div style="padding:4px 16px 8px;">' +
+                '<div style="font-size:11px;color:rgba(255,255,255,0.15);margin-bottom:4px;">' + selectedDate.substring(5) + ' 日程</div>' +
+                dayHtml +
             '</div>' +
-            calGrid +
-            '</div>' +
-            
-            // 选中日期的日程
-            '<div style="padding:8px 12px 6px;font-size:11px;color:rgba(255,255,255,0.25);">' + selectedDate.substring(5) + ' 的日程</div>' +
-            '<div style="padding:0 12px 10px;">' + dayHtml + '</div>' +
-            
-            // 设置
-            '<details style="margin:0 12px 10px;"><summary style="font-size:12px;color:rgba(255,255,255,0.2);cursor:pointer;padding:6px 0;">设置</summary>' +
-            '<div style="padding:8px 0;display:flex;align-items:center;justify-content:space-between;">' +
-            '<div style="font-size:12px;color:rgba(255,255,255,0.4);">顶栏显示状态</div>' +
-            '<label style="position:relative;width:40px;height:22px;display:inline-block;"><input type="checkbox" id="svStatusToggle" ' + toggleChecked + ' style="opacity:0;width:0;height:0;"><span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:' + toggleBg + ';border-radius:11px;transition:0.3s;"></span></label>' +
-            '</div>' +
-            (state.autoReply ? '<div style="font-size:11px;color:rgba(255,255,255,0.15);padding:4px 0;font-style:italic;">自动回复：' + esc(state.autoReply) + '</div>' : '') +
-            '</details>' +
-            
-            // 关闭
-            '<div style="padding:8px 12px 16px;text-align:center;"><button id="svClose" style="padding:8px 20px;border:none;border-radius:8px;background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.3);font-size:13px;cursor:pointer;">关闭</button></div>' +
+            // 展开内容
+            calendarHtml +
+            // 展开/收起按钮
+            '<div style="text-align:center;padding:6px 0 ' + (expanded ? '12px' : '14px') + ';"><button id="svExpandBtn" style="background:none;border:none;color:rgba(255,255,255,0.12);font-size:11px;cursor:pointer;padding:4px 12px;">' + (expanded ? '&#9650; 收起' : '&#9660; 展开') + '</button></div>' +
         '</div>';
         
-        // 事件绑定
-        p.querySelector('#svClose')?.addEventListener('click', () => p.remove());
-        p.querySelector('#svStatusToggle')?.addEventListener('change', (e) => {
-            this.settings.hideStatusInHeader = !e.target.checked;
+        // 事件
+        panel.querySelector('#svCloseBtn')?.addEventListener('click', close);
+        panel.querySelector('#svExpandBtn')?.addEventListener('click', () => { expanded = !expanded; render(); });
+        panel.querySelector('#svToggle')?.addEventListener('click', () => {
+            this.settings.hideStatusInHeader = !this.settings.hideStatusInHeader;
             this.saveSettings();
             this._updateStatusDisplay();
+            render();
         });
-        p.querySelector('#svPrevMonth')?.addEventListener('click', () => {
-            const d = new Date(selectedDate + 'T00:00:00');
-            d.setMonth(d.getMonth() - 1);
-            selectedDate = d.toISOString().split('T')[0];
-            renderDialog();
-        });
-        p.querySelector('#svNextMonth')?.addEventListener('click', () => {
-            const d = new Date(selectedDate + 'T00:00:00');
-            d.setMonth(d.getMonth() + 1);
-            selectedDate = d.toISOString().split('T')[0];
-            renderDialog();
-        });
-        p.querySelectorAll('.sv-day').forEach(el => {
-            el.addEventListener('click', () => {
-                selectedDate = el.dataset.date;
-                renderDialog();
-            });
-        });
+        panel.querySelectorAll('.sv-prev').forEach(b => b.addEventListener('click', () => {
+            const d = new Date(selectedDate + 'T00:00:00'); d.setMonth(d.getMonth() - 1);
+            selectedDate = d.toISOString().split('T')[0]; render();
+        }));
+        panel.querySelectorAll('.sv-next').forEach(b => b.addEventListener('click', () => {
+            const d = new Date(selectedDate + 'T00:00:00'); d.setMonth(d.getMonth() + 1);
+            selectedDate = d.toISOString().split('T')[0]; render();
+        }));
+        panel.querySelectorAll('.sv-day').forEach(el => el.addEventListener('click', () => { selectedDate = el.dataset.date; render(); }));
     };
     
-    document.body.appendChild(p);
-    // 点遮罩关闭
-    p.addEventListener('click', (e) => { if (e.target === p) p.remove(); });
-    renderDialog();
+    const close = () => {
+        panel.style.transform = 'translateY(-100%)';
+        setTimeout(() => { overlay.remove(); panel.remove(); }, 300);
+    };
+    
+    overlay.addEventListener('click', close);
+    document.body.appendChild(overlay);
+    document.body.appendChild(panel);
+    render();
+    // 动画滑入
+    requestAnimationFrame(() => { panel.style.transform = 'translateY(0)'; });
 }
 
 _extractRelationInviteCardHtml(rawText) {
