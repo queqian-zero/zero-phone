@@ -121,7 +121,6 @@ class MemoryLibrary {
 
     // ==================== 聊天总结查看 ====================
     _showChatSummary(friendCode, name) {
-        const ci = window.chatInterface;
         if (!this._store()) return;
         const summaries = this._store().getChatSummaries(friendCode) || [];
 
@@ -129,20 +128,49 @@ class MemoryLibrary {
         const page = document.createElement('div');
         page.id = 'mlDetailPage';
         page.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9000;background:#111;display:flex;flex-direction:column;';
-        page.innerHTML = `
-            <div style="display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.04);flex-shrink:0;">
-                <button id="mdBack" style="background:none;border:none;color:rgba(255,255,255,0.6);font-size:20px;cursor:pointer;">&#8592;</button>
-                <div style="flex:1;font-size:16px;font-weight:600;color:#fff;text-align:center;">${this._esc(name)} 的聊天总结</div>
-            </div>
-            <div style="flex:1;overflow-y:auto;padding:16px;min-height:0;">
-                ${summaries.length === 0 ? '<div style="text-align:center;padding:40px 0;color:rgba(255,255,255,0.15);font-size:13px;">暂无聊天总结</div>' :
-                    summaries.slice().reverse().map(s => `<div style="margin-bottom:14px;padding:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;">
-                        <div style="font-size:10px;color:rgba(255,255,255,0.2);margin-bottom:6px;">${s.createdAt ? new Date(s.createdAt).toLocaleString('zh-CN') : ''} | ${s.messageCount||0}条消息</div>
-                        <div style="font-size:14px;color:rgba(255,255,255,0.7);line-height:1.8;white-space:pre-wrap;">${this._esc(s.summary || s.text || '')}</div>
-                    </div>`).join('')}
-            </div>`;
+        
+        let listHtml = '';
+        if (summaries.length === 0) {
+            listHtml = '<div style="text-align:center;padding:40px 0;color:rgba(255,255,255,0.15);font-size:13px;">暂无聊天总结</div>';
+        } else {
+            summaries.slice().reverse().forEach((s, i) => {
+                const time = s.createdAt ? new Date(s.createdAt).toLocaleString('zh-CN') : '';
+                const msgCnt = s.messageCount || 0;
+                const summary = s.summary || s.text || '';
+                const preview = summary.substring(0, 80);
+                const content = s.content || '';
+                
+                listHtml += '<div class="ml-summary-card" style="margin-bottom:14px;padding:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;cursor:pointer;">';
+                listHtml += '<div style="font-size:10px;color:rgba(255,255,255,0.2);margin-bottom:6px;">' + time + ' | ' + msgCnt + '条消息</div>';
+                listHtml += '<div style="font-size:14px;color:rgba(255,255,255,0.7);line-height:1.8;white-space:pre-wrap;" class="ml-sum-preview">' + this._esc(preview) + (summary.length > 80 ? '...' : '') + '</div>';
+                listHtml += '<div style="display:none;font-size:14px;color:rgba(255,255,255,0.6);line-height:1.8;white-space:pre-wrap;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.04);" class="ml-sum-full">' + this._esc(summary);
+                if (content) listHtml += '<div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.04);font-size:12px;color:rgba(255,255,255,0.35);">' + this._esc(content) + '</div>';
+                listHtml += '</div></div>';
+            });
+        }
+        
+        page.innerHTML = '<div style="display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.04);flex-shrink:0;">' +
+            '<button id="mdBack" style="background:none;border:none;color:rgba(255,255,255,0.6);font-size:20px;cursor:pointer;">&#8592;</button>' +
+            '<div style="flex:1;font-size:16px;font-weight:600;color:#fff;text-align:center;">' + this._esc(name) + ' 的聊天总结</div></div>' +
+            '<div style="flex:1;overflow-y:auto;padding:16px;min-height:0;">' + listHtml + '</div>';
+        
         document.body.appendChild(page);
         page.querySelector('#mdBack')?.addEventListener('click', () => page.remove());
+        
+        // 点击展开/收起
+        page.querySelectorAll('.ml-summary-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const preview = card.querySelector('.ml-sum-preview');
+                const full = card.querySelector('.ml-sum-full');
+                if (full.style.display === 'none') {
+                    full.style.display = 'block';
+                    if (preview) preview.style.display = 'none';
+                } else {
+                    full.style.display = 'none';
+                    if (preview) preview.style.display = 'block';
+                }
+            });
+        });
     }
 
     // ==================== 核心记忆查看 ====================

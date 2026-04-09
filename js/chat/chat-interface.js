@@ -13357,6 +13357,7 @@ processStateCommands(text) {
 // 作息表查看器
 _openScheduleViewer() {
     document.getElementById('scheduleViewer')?.remove();
+    document.getElementById('svPanel')?.remove();
     const data = this.storage.getIntimacyData(this.currentFriendCode);
     const state = data.aiState || {};
     const schedule = state.defaultSchedule || {};
@@ -13364,132 +13365,71 @@ _openScheduleViewer() {
     const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
     const currentStatus = this._getCurrentAIStatus(state);
     const esc = (s) => this.escapeHtml(s);
-    
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
     let selectedDate = todayStr;
     let expanded = false;
     
-    // 遮罩
+    // header底部位置
+    const header = document.querySelector('.chat-interface-header');
+    const hb = header ? header.getBoundingClientRect().bottom : 60;
+    
     const overlay = document.createElement('div');
     overlay.id = 'scheduleViewer';
-    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9200;background:rgba(0,0,0,0.4);';
+    overlay.style.cssText = 'position:fixed;top:'+hb+'px;left:0;right:0;bottom:0;z-index:9;background:rgba(0,0,0,0.35);';
     
-    // 面板（从顶部滑下）
     const panel = document.createElement('div');
     panel.id = 'svPanel';
-    panel.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9201;background:#1a1a1a;border-radius:0 0 18px 18px;box-shadow:0 4px 20px rgba(0,0,0,0.4);max-height:85vh;overflow-y:auto;transform:translateY(-100%);transition:transform 0.3s ease-out;';
+    panel.style.cssText = 'position:fixed;top:'+hb+'px;left:0;right:0;z-index:10;background:#1a1a1a;border-radius:0 0 16px 16px;box-shadow:0 4px 16px rgba(0,0,0,0.4);max-height:calc(85vh - '+hb+'px);overflow-y:auto;transform:translateY(-100%);transition:transform 0.25s ease-out;';
     
     const render = () => {
-        // 当天日程
-        const dayEvents = calendar.filter(c => c.date === selectedDate);
+        const dayEv = calendar.filter(c => c.date === selectedDate);
         let dayHtml = '';
-        if (dayEvents.length === 0) {
-            dayHtml = '<div style="text-align:center;padding:10px 0;color:rgba(255,255,255,0.1);font-size:12px;">这天没有日程</div>';
-        } else {
-            dayEvents.forEach(c => {
-                dayHtml += '<div style="display:flex;gap:8px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.02);"><div style="font-size:12px;color:rgba(240,147,43,0.5);min-width:42px;">' + (c.time||'') + '</div><div style="flex:1;font-size:13px;color:rgba(255,255,255,0.5);">' + esc(c.event||'') + ' <span style="font-size:10px;color:rgba(255,255,255,0.12);">' + (c.duration||60) + 'min</span></div></div>';
-            });
-        }
+        if (dayEv.length === 0) { dayHtml = '<div style="text-align:center;padding:8px 0;color:rgba(255,255,255,0.1);font-size:12px;">无日程</div>'; }
+        else { dayEv.forEach(c => { dayHtml += '<div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.02);"><div style="font-size:12px;color:rgba(240,147,43,0.5);min-width:42px;">'+(c.time||'')+'</div><div style="flex:1;font-size:13px;color:rgba(255,255,255,0.5);">'+esc(c.event||'')+' <span style="font-size:10px;color:rgba(255,255,255,0.1);">'+(c.duration||60)+'min</span></div></div>'; }); }
         
-        // 日历（仅展开时生成）
-        let calendarHtml = '';
+        let exHtml = '';
         if (expanded) {
-            const selDate = new Date(selectedDate + 'T00:00:00');
-            const year = selDate.getFullYear(), month = selDate.getMonth();
-            const firstDay = new Date(year, month, 1).getDay();
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
-            const eventDates = new Set(calendar.map(c => c.date));
-            
-            calendarHtml += '<div style="padding:8px 16px 12px;">';
-            // 月份导航
-            calendarHtml += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;"><button class="sv-prev" style="background:none;border:none;color:rgba(255,255,255,0.25);font-size:16px;cursor:pointer;padding:4px 10px;">&#8249;</button><div style="font-size:13px;color:rgba(255,255,255,0.4);">' + year + '年' + (month+1) + '月</div><button class="sv-next" style="background:none;border:none;color:rgba(255,255,255,0.25);font-size:16px;cursor:pointer;padding:4px 10px;">&#8250;</button></div>';
-            // 星期头
-            calendarHtml += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center;">';
-            ['日','一','二','三','四','五','六'].forEach(d => { calendarHtml += '<div style="font-size:9px;color:rgba(255,255,255,0.12);padding:3px 0;">' + d + '</div>'; });
-            // 空格
-            for (let i = 0; i < firstDay; i++) calendarHtml += '<div></div>';
-            // 日期
-            for (let d = 1; d <= daysInMonth; d++) {
-                const ds = year + '-' + String(month+1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
-                const isToday = ds === todayStr;
-                const isSel = ds === selectedDate;
-                const hasEv = eventDates.has(ds);
-                let bg = 'transparent', clr = 'rgba(255,255,255,0.3)', bdr = '1px solid transparent';
-                if (isSel) { bg = 'rgba(240,147,43,0.12)'; clr = 'rgba(240,147,43,0.8)'; bdr = '1px solid rgba(240,147,43,0.25)'; }
-                else if (isToday) { bg = 'rgba(255,255,255,0.04)'; clr = 'rgba(255,255,255,0.55)'; }
-                calendarHtml += '<div class="sv-day" data-date="' + ds + '" style="padding:5px 0;border-radius:6px;cursor:pointer;font-size:12px;color:' + clr + ';background:' + bg + ';border:' + bdr + ';text-align:center;position:relative;">' + d;
-                if (hasEv) calendarHtml += '<div style="width:3px;height:3px;border-radius:50%;background:rgba(240,147,43,0.4);margin:1px auto 0;"></div>';
-                calendarHtml += '</div>';
+            const sd = new Date(selectedDate+'T00:00:00'); const yr=sd.getFullYear(),mo=sd.getMonth();
+            const fd=new Date(yr,mo,1).getDay(),dim=new Date(yr,mo+1,0).getDate();
+            const evD=new Set(calendar.map(c=>c.date));
+            exHtml+='<div style="padding:6px 16px 10px;">';
+            exHtml+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;"><button class="sv-prev" style="background:none;border:none;color:rgba(255,255,255,0.2);font-size:16px;cursor:pointer;padding:2px 8px;">&#8249;</button><div style="font-size:12px;color:rgba(255,255,255,0.35);">'+yr+'年'+(mo+1)+'月</div><button class="sv-next" style="background:none;border:none;color:rgba(255,255,255,0.2);font-size:16px;cursor:pointer;padding:2px 8px;">&#8250;</button></div>';
+            exHtml+='<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:1px;text-align:center;">';
+            ['日','一','二','三','四','五','六'].forEach(d=>{exHtml+='<div style="font-size:9px;color:rgba(255,255,255,0.1);padding:2px 0;">'+d+'</div>';});
+            for(let i=0;i<fd;i++)exHtml+='<div></div>';
+            for(let d=1;d<=dim;d++){
+                const ds=yr+'-'+String(mo+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+                const iS=ds===selectedDate,iT=ds===todayStr,hE=evD.has(ds);
+                let bg='transparent',cl='rgba(255,255,255,0.25)',bd='1px solid transparent';
+                if(iS){bg='rgba(240,147,43,0.1)';cl='rgba(240,147,43,0.7)';bd='1px solid rgba(240,147,43,0.2)';}
+                else if(iT){bg='rgba(255,255,255,0.03)';cl='rgba(255,255,255,0.5)';}
+                exHtml+='<div class="sv-day" data-date="'+ds+'" style="padding:5px 0;border-radius:5px;cursor:pointer;font-size:11px;color:'+cl+';background:'+bg+';border:'+bd+';">'+d;
+                if(hE)exHtml+='<div style="width:3px;height:3px;border-radius:50%;background:rgba(240,147,43,0.35);margin:1px auto 0;"></div>';
+                exHtml+='</div>';
             }
-            calendarHtml += '</div></div>';
-            
-            // 默认作息
-            calendarHtml += '<div style="padding:4px 16px 10px;font-size:12px;color:rgba(255,255,255,0.25);">' + (schedule.sleepTime ? '&#127769; ' + schedule.sleepTime + ' ~ &#9728; ' + (schedule.wakeTime||'?') : '默认作息未设置') + '</div>';
-            
-            // 状态开关
-            const isOn = !this.settings.hideStatusInHeader;
-            calendarHtml += '<div style="padding:6px 16px 12px;display:flex;align-items:center;justify-content:space-between;">';
-            calendarHtml += '<div style="font-size:12px;color:rgba(255,255,255,0.25);">顶栏显示状态</div>';
-            calendarHtml += '<div id="svToggle" style="width:40px;height:22px;border-radius:11px;background:' + (isOn ? 'rgba(240,147,43,0.4)' : 'rgba(255,255,255,0.08)') + ';position:relative;cursor:pointer;transition:background 0.3s;"><div style="width:18px;height:18px;border-radius:50%;background:#fff;position:absolute;top:2px;' + (isOn ? 'right:2px;' : 'left:2px;') + 'transition:all 0.3s;box-shadow:0 1px 3px rgba(0,0,0,0.3);"></div></div>';
-            calendarHtml += '</div>';
-            
-            // 自动回复
-            if (state.autoReply) calendarHtml += '<div style="padding:0 16px 10px;font-size:11px;color:rgba(255,255,255,0.12);font-style:italic;">自动回复：' + esc(state.autoReply) + '</div>';
+            exHtml+='</div></div>';
+            exHtml+='<div style="padding:2px 16px 6px;font-size:11px;color:rgba(255,255,255,0.15);">'+(schedule.sleepTime?'&#127769; '+schedule.sleepTime+' ~ &#9728;&#65039; '+(schedule.wakeTime||'?'):'默认作息未设置')+'</div>';
+            const isOn=!this.settings.hideStatusInHeader;
+            exHtml+='<div style="padding:4px 16px 8px;display:flex;align-items:center;justify-content:space-between;"><div style="font-size:11px;color:rgba(255,255,255,0.2);">顶栏显示状态</div><div id="svToggle" style="width:36px;height:20px;border-radius:10px;background:'+(isOn?'rgba(240,147,43,0.35)':'rgba(255,255,255,0.06)')+';position:relative;cursor:pointer;transition:background 0.3s;"><div style="width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:2px;'+(isOn?'right:2px;':'left:2px;')+'transition:all 0.3s;box-shadow:0 1px 2px rgba(0,0,0,0.3);"></div></div></div>';
+            if(state.autoReply)exHtml+='<div style="padding:0 16px 6px;font-size:10px;color:rgba(255,255,255,0.1);font-style:italic;">自动回复：'+esc(state.autoReply)+'</div>';
         }
         
-        panel.innerHTML = '<div style="padding:env(safe-area-inset-top) 0 0;">' +
-            // 标题行
-            '<div style="padding:14px 16px 8px;display:flex;align-items:center;">' +
-                '<div style="flex:1;">' +
-                    '<div style="font-size:15px;font-weight:600;color:rgba(255,255,255,0.8);">' + esc(friendName) + '</div>' +
-                    '<div style="font-size:12px;color:rgba(255,255,255,0.3);margin-top:2px;">' + (state.statusEmoji||'') + ' ' + esc(state.statusText||currentStatus) + 
-                    (state.doNotDisturb ? ' &#128308;' : '') + '</div>' +
-                '</div>' +
-                '<button id="svCloseBtn" style="background:none;border:none;color:rgba(255,255,255,0.2);font-size:20px;cursor:pointer;padding:4px 8px;">&#10005;</button>' +
-            '</div>' +
-            // 当天日程
-            '<div style="padding:4px 16px 8px;">' +
-                '<div style="font-size:11px;color:rgba(255,255,255,0.15);margin-bottom:4px;">' + selectedDate.substring(5) + ' 日程</div>' +
-                dayHtml +
-            '</div>' +
-            // 展开内容
-            calendarHtml +
-            // 展开/收起按钮
-            '<div style="text-align:center;padding:6px 0 ' + (expanded ? '12px' : '14px') + ';"><button id="svExpandBtn" style="background:none;border:none;color:rgba(255,255,255,0.12);font-size:11px;cursor:pointer;padding:4px 12px;">' + (expanded ? '&#9650; 收起' : '&#9660; 展开') + '</button></div>' +
-        '</div>';
+        panel.innerHTML='<div style="padding:10px 16px 6px;display:flex;align-items:center;"><div style="flex:1;"><div style="font-size:14px;font-weight:600;color:rgba(255,255,255,0.7);">'+esc(friendName)+'</div><div style="font-size:11px;color:rgba(255,255,255,0.25);margin-top:1px;">'+(state.statusEmoji||'')+' '+esc(state.statusText||currentStatus)+(state.doNotDisturb?' &#128308;':'')+'</div></div><button id="svCloseX" style="background:none;border:none;color:rgba(255,255,255,0.15);font-size:18px;cursor:pointer;padding:2px 6px;">&#10005;</button></div><div style="padding:4px 16px 6px;"><div style="font-size:10px;color:rgba(255,255,255,0.12);margin-bottom:3px;">'+selectedDate.substring(5)+' 日程</div>'+dayHtml+'</div>'+exHtml+'<div style="text-align:center;padding:4px 0 10px;"><button id="svExpand" style="background:none;border:none;color:rgba(255,255,255,0.1);font-size:10px;cursor:pointer;padding:3px 10px;">'+(expanded?'&#9650; 收起':'&#9660; 展开')+'</button></div>';
         
-        // 事件
-        panel.querySelector('#svCloseBtn')?.addEventListener('click', close);
-        panel.querySelector('#svExpandBtn')?.addEventListener('click', () => { expanded = !expanded; render(); });
-        panel.querySelector('#svToggle')?.addEventListener('click', () => {
-            this.settings.hideStatusInHeader = !this.settings.hideStatusInHeader;
-            this.saveSettings();
-            this._updateStatusDisplay();
-            render();
-        });
-        panel.querySelectorAll('.sv-prev').forEach(b => b.addEventListener('click', () => {
-            const d = new Date(selectedDate + 'T00:00:00'); d.setMonth(d.getMonth() - 1);
-            selectedDate = d.toISOString().split('T')[0]; render();
-        }));
-        panel.querySelectorAll('.sv-next').forEach(b => b.addEventListener('click', () => {
-            const d = new Date(selectedDate + 'T00:00:00'); d.setMonth(d.getMonth() + 1);
-            selectedDate = d.toISOString().split('T')[0]; render();
-        }));
-        panel.querySelectorAll('.sv-day').forEach(el => el.addEventListener('click', () => { selectedDate = el.dataset.date; render(); }));
+        panel.querySelector('#svCloseX')?.addEventListener('click',close);
+        panel.querySelector('#svExpand')?.addEventListener('click',()=>{expanded=!expanded;render();});
+        panel.querySelector('#svToggle')?.addEventListener('click',()=>{this.settings.hideStatusInHeader=!this.settings.hideStatusInHeader;this.saveSettings();this._updateStatusDisplay();render();});
+        panel.querySelectorAll('.sv-prev').forEach(b=>b.addEventListener('click',()=>{const d=new Date(selectedDate+'T00:00:00');d.setMonth(d.getMonth()-1);selectedDate=d.toISOString().split('T')[0];render();}));
+        panel.querySelectorAll('.sv-next').forEach(b=>b.addEventListener('click',()=>{const d=new Date(selectedDate+'T00:00:00');d.setMonth(d.getMonth()+1);selectedDate=d.toISOString().split('T')[0];render();}));
+        panel.querySelectorAll('.sv-day').forEach(el=>el.addEventListener('click',()=>{selectedDate=el.dataset.date;render();}));
     };
-    
-    const close = () => {
-        panel.style.transform = 'translateY(-100%)';
-        setTimeout(() => { overlay.remove(); panel.remove(); }, 300);
-    };
-    
-    overlay.addEventListener('click', close);
+    const close=()=>{panel.style.transform='translateY(-100%)';setTimeout(()=>{overlay.remove();panel.remove();},250);};
+    overlay.addEventListener('click',close);
     document.body.appendChild(overlay);
     document.body.appendChild(panel);
     render();
-    // 动画滑入
-    requestAnimationFrame(() => { panel.style.transform = 'translateY(0)'; });
+    requestAnimationFrame(()=>{panel.style.transform='translateY(0)';});
 }
 
 _extractRelationInviteCardHtml(rawText) {
