@@ -560,6 +560,10 @@ class FriendProfileManager {
                     <div class="fp-row-value">${this._esc(friend.poke) || '拍了拍你'}</div>
                 </div>
                 <div class="fp-row">
+                    <div class="fp-row-label">自动回复</div>
+                    <div class="fp-row-value" style="font-style:italic;">${(() => { const d = ci?.storage?.getIntimacyData(ci?.currentFriendCode); return this._esc(d?.aiState?.autoReply) || '未设置'; })()}</div>
+                </div>
+                <div class="fp-row">
                     <div class="fp-row-label">个性签名</div>
                     <div class="fp-row-value">${this._esc(friend.signature) || '这个人很懒...'}</div>
                 </div>
@@ -893,6 +897,8 @@ class FriendProfileManager {
                     if (ci.currentFriend) ci.currentFriend.avatar = src;
                     const friendName = ci.currentFriend?.nickname || ci.currentFriend?.name || 'TA';
                     ci.showCssSystemMessage(`${friendName} 换了头像「${found.name}」`);
+                    // 刷新聊天界面中的AI头像
+                    document.querySelectorAll('.message-ai .message-avatar img').forEach(img => { img.src = src; });
                 }
             }
         }
@@ -908,6 +914,7 @@ class FriendProfileManager {
                     if (ci.currentFriend) ci.currentFriend.avatar = recentImg._imageUrl;
                     const friendName = ci.currentFriend?.nickname || ci.currentFriend?.name || 'TA';
                     ci.showCssSystemMessage(`${friendName} 把你发的图片设为了头像`);
+                    document.querySelectorAll('.message-ai .message-avatar img').forEach(img => { img.src = recentImg._imageUrl; });
                 }
             }
         }

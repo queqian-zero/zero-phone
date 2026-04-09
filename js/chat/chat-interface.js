@@ -622,6 +622,12 @@ class ChatInterface {
             });
         }
         
+        // 作息表按钮
+        const scheduleBtn = document.getElementById('scheduleBtn');
+        if (scheduleBtn) {
+            scheduleBtn.addEventListener('click', () => this._openScheduleViewer());
+        }
+        
         // 统一信息面板
         const infoPanelToggle = document.getElementById('infoPanelToggle');
         const infoPanelHeader = document.getElementById('infoPanelHeader');
@@ -1265,6 +1271,9 @@ class ChatInterface {
         
         // 显示待处理的关系邀请/解绑悬浮条
         setTimeout(() => this.showPendingRelationBar(), 200);
+        
+        // 更新AI状态显示
+        setTimeout(() => this._updateStatusDisplay(), 100);
         
         window.chatInterface = this;
     }
@@ -1946,6 +1955,16 @@ class ChatInterface {
         
         this.showTypingIndicator();
         
+        // ====== AI状态检查拦截 ======
+        const stateCheck = await this._checkAIState();
+        if (stateCheck === 'blocked') {
+            this.hideTypingIndicator();
+            this._isSendingAI = false;
+            return;
+        }
+        // stateCheck可能是 'normal' 或 'wakeup' 或 'interrupt'
+        const _stateOverride = stateCheck; // 传给prompt用
+        
         try {
             const maxMessages = this.settings.contextMessages || 20;
             // 过滤掉系统消息（CSS操作提示等），只发user和ai消息给API
@@ -2172,6 +2191,13 @@ ${archiveListText}
             
             // ====== 黑名单状态注入 ======
             systemPrompt += this._getBlacklistPrompt();
+
+            // ====== AI状态注入 ======
+            if (_stateOverride === 'wakeup') {
+                systemPrompt += `\n\n【状态】user刚把你叫醒了。你之前在睡觉，现在被吵醒了。根据你的人设自然反应（可能有起床气，可能迷糊，可能开心被想起，随你）。`;
+            } else if (_stateOverride === 'interrupt') {
+                systemPrompt += `\n\n【状态】user打断了你正在做的事。你之前在忙/不在，现在被打断了。根据你的人设自然反应。`;
+            }
 
             // 偶尔报备记忆清理
             if (this._pendingMemoryReport) {
@@ -7083,6 +7109,18 @@ getIntimacyStatusForAI() {
     desc += `\n  支持：**加粗** *斜体* # 标题 --- 分割线 ![图片名] emoji`;
     desc += `\n  内容第一行写"模板：模板名"可选模板风格：暖色便签、冷色笔记、复古信纸、极简白纸`;
     desc += `\n  注意：写日记/碎碎念/手帐都不需要user同意，你想写就写。写完后系统自动通知user。`;
+    
+    // AI状态系统
+    desc += `\n\n【你的状态管理】`;
+    desc += `\n  [AI_STATUS:emoji|状态文字] 设置你的当前状态（显示在你名字下方）`;
+    desc += `\n  [AI_SLEEP:醒来时间] 去睡觉（时间格式如 8:00 或 8小时后）`;
+    desc += `\n  [AI_WAKE] 醒来（睡醒后用这个）`;
+    desc += `\n  [AI_BUSY:原因] 设为忙碌`;
+    desc += `\n  [AI_ONLINE] 恢复在线`;
+    desc += `\n  [AI_AUTO_REPLY:内容] 设置自动回复（你不在时系统代你回复）`;
+    desc += `\n  [AI_SCHEDULE:睡觉时间|起床时间] 设默认作息（如 23:00|8:00）`;
+    desc += `\n  [AI_CALENDAR:日期|时间|时长分钟|事件] 添加日程（如 2026-04-10|15:00|60|开会）`;
+    desc += `\n  你睡觉/忙碌时，user发消息会先弹窗询问要不要打扰你，不打扰则显示自动回复。`;
     
     // 注入AI已写的日记/碎碎念（让AI能看到自己写过的）
     if (this.currentFriendCode) {
@@ -12902,6 +12940,14 @@ _stripCommandTags(text) {
         .replace(/\[AI_DELETE_DIARY:[^\]]+\]/g, '')
         .replace(/\[AI_JOURNAL\][\s\S]*?\[\/AI_JOURNAL\]/g, '')
         .replace(/\[AI_JOURNAL_EDIT:[^\]]*\][\s\S]*?\[\/AI_JOURNAL_EDIT\]/g, '')
+        .replace(/\[AI_STATUS:[^\]]+\]/g, '')
+        .replace(/\[AI_SLEEP:[^\]]+\]/g, '')
+        .replace(/\[AI_WAKE\]/g, '')
+        .replace(/\[AI_BUSY:[^\]]+\]/g, '')
+        .replace(/\[AI_ONLINE\]/g, '')
+        .replace(/\[AI_AUTO_REPLY:[^\]]+\]/g, '')
+        .replace(/\[AI_SCHEDULE:[^\]]+\]/g, '')
+        .replace(/\[AI_CALENDAR:[^\]]+\]/g, '')
         .replace(/\[RECALL:[^\]]+\]/g, '')
         .replace(/\[STATUS_CSS\][\s\S]*?\[\/STATUS_CSS\]/g, '')
         .replace(/\[STATUS_?\s*CSS\][\s\S]*?\[\/?\s*STATUS_?\s*CSS\]/gi, '');
@@ -12915,6 +12961,7 @@ _executeSegmentCommands(rawSeg) {
     this.processExchangeCommands(rawSeg);
     this.processCapsuleCommands(rawSeg);
     this.processNotebookCommands(rawSeg);
+    this.processStateCommands(rawSeg);
     if (window.friendProfile) window.friendProfile.processStatusCommands(rawSeg);
 }
 
@@ -13030,7 +13077,302 @@ processNotebookCommands(text) {
     if (changed) this.storage.saveIntimacyData(this.currentFriendCode, data);
 }
 
-// 预提取关系卡片HTML（不写入状态，只生成卡片用于渲染）
+// ====== AI状态系统 ======
+
+// 检查AI状态，返回 'normal'/'wakeup'/'interrupt'/'blocked'
+async _checkAIState() {
+    if (!this.currentFriendCode) return 'normal';
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    const state = data.aiState || {};
+    const status = this._getCurrentAIStatus(state);
+    
+    if (status === 'online') return 'normal';
+    
+    const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
+    const emoji = state.statusEmoji || '';
+    const text = state.statusText || status;
+    const autoReply = state.autoReply || '';
+    
+    if (status === 'sleeping') {
+        const wakeTime = state.wakeUpTime ? new Date(state.wakeUpTime).toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit'}) : '未知';
+        const ok = window.zpConfirm ? await window.zpConfirm(`${emoji} ${friendName}在睡觉`, `${text}\n预计${wakeTime}醒来\n\n要叫醒TA吗？`, '叫醒', '算了') : confirm('叫醒？');
+        if (ok) {
+            // 叫醒：清除睡觉状态
+            state.status = 'online'; state.statusEmoji = ''; state.statusText = '';
+            data.aiState = state;
+            this.storage.saveIntimacyData(this.currentFriendCode, data);
+            this._updateStatusDisplay();
+            return 'wakeup';
+        } else {
+            if (autoReply) this._showAutoReply(autoReply, friendName);
+            return 'blocked';
+        }
+    }
+    
+    if (status === 'busy' || status === 'away' || status === 'custom') {
+        const ok = window.zpConfirm ? await window.zpConfirm(`${emoji} ${friendName}`, `${text}\n\n要打扰TA吗？`, '打扰一下', '算了') : confirm('打扰？');
+        if (ok) {
+            return 'interrupt';
+        } else {
+            if (autoReply) this._showAutoReply(autoReply, friendName);
+            return 'blocked';
+        }
+    }
+    
+    return 'normal';
+}
+
+// 判断当前实际状态（AI设的状态 + 作息表 + 时间）
+_getCurrentAIStatus(state) {
+    // AI主动设的状态优先
+    if (state.status && state.status !== 'online') {
+        // 检查睡觉状态是否已到醒来时间
+        if (state.status === 'sleeping' && state.wakeUpTime) {
+            const now = new Date();
+            const wake = new Date(state.wakeUpTime);
+            // 加随机偏差（-30min ~ +30min）
+            const variance = (state._wakeVariance || 0);
+            wake.setMinutes(wake.getMinutes() + variance);
+            if (now >= wake) {
+                state.status = 'online'; state.statusEmoji = ''; state.statusText = '';
+                return 'online';
+            }
+        }
+        return state.status;
+    }
+    
+    // 检查默认作息表
+    const schedule = state.defaultSchedule;
+    if (schedule?.sleepTime && schedule?.wakeTime) {
+        const now = new Date();
+        const h = now.getHours(), m = now.getMinutes();
+        const nowMin = h * 60 + m;
+        const [sh, sm] = schedule.sleepTime.split(':').map(Number);
+        const [wh, wm] = schedule.wakeTime.split(':').map(Number);
+        const sleepMin = sh * 60 + (sm||0);
+        const wakeMin = wh * 60 + (wm||0);
+        
+        if (sleepMin > wakeMin) {
+            // 跨午夜（如23:00-8:00）
+            if (nowMin >= sleepMin || nowMin < wakeMin) return 'sleeping';
+        } else {
+            if (nowMin >= sleepMin && nowMin < wakeMin) return 'sleeping';
+        }
+    }
+    
+    // 检查日程表
+    const calendar = state.calendar || [];
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+    for (const cal of calendar) {
+        if (cal.date !== todayStr) continue;
+        const [ch, cm] = (cal.time || '').split(':').map(Number);
+        const startMin = ch * 60 + (cm||0);
+        const endMin = startMin + (cal.duration || 60);
+        if (nowMin >= startMin && nowMin < endMin) {
+            state._calendarEvent = cal.event;
+            return 'busy';
+        }
+    }
+    
+    return 'online';
+}
+
+// 显示自动回复
+_showAutoReply(text, friendName) {
+    const ts = new Date().toISOString();
+    // 显示在聊天里（但不存储为真正的AI消息）
+    const msgDiv = document.createElement('div');
+    msgDiv.className = 'message message-ai';
+    msgDiv.innerHTML = `<div class="message-content"><div class="message-bubble" style="opacity:0.5;border:1px dashed rgba(255,255,255,0.1);"><div class="message-text" style="font-style:italic;"><span style="font-size:10px;color:rgba(255,255,255,0.3);display:block;margin-bottom:4px;">&#9670; 自动回复</span>${this.escapeHtml(text)}</div></div></div>`;
+    const container = document.getElementById('messagesContainer');
+    if (container) { container.appendChild(msgDiv); container.scrollTop = container.scrollHeight; }
+}
+
+// 更新顶栏状态显示
+_updateStatusDisplay() {
+    const el = document.getElementById('aiStatusLine');
+    if (!el) return;
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    const state = data.aiState || {};
+    const status = this._getCurrentAIStatus(state);
+    
+    if (status === 'online') {
+        el.style.display = 'none';
+    } else {
+        el.style.display = 'block';
+        el.textContent = (state.statusEmoji || '') + ' ' + (state.statusText || status);
+    }
+}
+
+// AI状态指令处理
+processStateCommands(text) {
+    if (!this.currentFriendCode) return;
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    if (!data.aiState) data.aiState = {};
+    const state = data.aiState;
+    const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
+    let changed = false;
+    
+    // [AI_STATUS:emoji|状态文字] — 设置状态
+    const statusMatch = text.match(/\[AI_STATUS:([^\]]+)\]/);
+    if (statusMatch) {
+        const parts = statusMatch[1].split('|');
+        state.statusEmoji = parts[0]?.trim() || '';
+        state.statusText = parts[1]?.trim() || parts[0]?.trim() || '';
+        state.status = 'custom';
+        changed = true;
+    }
+    
+    // [AI_SLEEP:醒来时间] — 睡觉
+    const sleepMatch = text.match(/\[AI_SLEEP:([^\]]+)\]/);
+    if (sleepMatch) {
+        state.status = 'sleeping';
+        state.statusEmoji = state.statusEmoji || '💤';
+        state.statusText = state.statusText || '睡觉中';
+        // 解析醒来时间
+        const wakeStr = sleepMatch[1].trim();
+        const now = new Date();
+        let wakeDate = new Date(now);
+        const timeMatch = wakeStr.match(/(\d{1,2})[：:](\d{2})/);
+        if (timeMatch) {
+            wakeDate.setHours(parseInt(timeMatch[1]), parseInt(timeMatch[2]), 0);
+            if (wakeDate <= now) wakeDate.setDate(wakeDate.getDate() + 1);
+        } else {
+            const hoursMatch = wakeStr.match(/(\d+)/);
+            if (hoursMatch) wakeDate = new Date(now.getTime() + parseInt(hoursMatch[1]) * 3600000);
+            else wakeDate = new Date(now.getTime() + 8 * 3600000);
+        }
+        state.wakeUpTime = wakeDate.toISOString();
+        state._wakeVariance = Math.round(Math.random() * 60 - 30); // -30~+30分钟随机
+        this.showCssSystemMessage(`💤 ${friendName} 去睡觉了（预计${wakeDate.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'})}醒来）`);
+        changed = true;
+    }
+    
+    // [AI_WAKE] — 醒来
+    if (text.includes('[AI_WAKE]')) {
+        state.status = 'online';
+        state.statusEmoji = ''; state.statusText = '';
+        state.wakeUpTime = null;
+        changed = true;
+    }
+    
+    // [AI_BUSY:原因] — 忙碌
+    const busyMatch = text.match(/\[AI_BUSY:([^\]]+)\]/);
+    if (busyMatch) {
+        state.status = 'busy';
+        state.statusEmoji = state.statusEmoji || '🔴';
+        state.statusText = busyMatch[1].trim();
+        changed = true;
+    }
+    
+    // [AI_ONLINE] — 恢复在线
+    if (text.includes('[AI_ONLINE]')) {
+        state.status = 'online';
+        state.statusEmoji = ''; state.statusText = '';
+        changed = true;
+    }
+    
+    // [AI_AUTO_REPLY:内容] — 设置自动回复
+    const arMatch = text.match(/\[AI_AUTO_REPLY:([^\]]+)\]/);
+    if (arMatch) {
+        state.autoReply = arMatch[1].trim();
+        this.showCssSystemMessage(`${friendName} 设置了自动回复`);
+        changed = true;
+    }
+    
+    // [AI_SCHEDULE:睡觉时间|起床时间] — 设默认作息
+    const schedMatch = text.match(/\[AI_SCHEDULE:([^\]]+)\]/);
+    if (schedMatch) {
+        const parts = schedMatch[1].split('|');
+        if (!state.defaultSchedule) state.defaultSchedule = {};
+        state.defaultSchedule.sleepTime = parts[0]?.trim() || '23:00';
+        state.defaultSchedule.wakeTime = parts[1]?.trim() || '08:00';
+        changed = true;
+    }
+    
+    // [AI_CALENDAR:日期|时间|时长分钟|事件] — 添加日程
+    const calMatch = text.match(/\[AI_CALENDAR:([^\]]+)\]/);
+    if (calMatch) {
+        const parts = calMatch[1].split('|');
+        if (!state.calendar) state.calendar = [];
+        state.calendar.push({
+            id: 'cal_' + Date.now(),
+            date: parts[0]?.trim() || new Date().toISOString().split('T')[0],
+            time: parts[1]?.trim() || '12:00',
+            duration: parseInt(parts[2]) || 60,
+            event: parts[3]?.trim() || '有事'
+        });
+        this.showCssSystemMessage(`📅 ${friendName} 添加了日程：${parts[3]?.trim()||'有事'}`);
+        changed = true;
+    }
+    
+    if (changed) {
+        data.aiState = state;
+        this.storage.saveIntimacyData(this.currentFriendCode, data);
+        this._updateStatusDisplay();
+    }
+}
+
+// 作息表查看器
+_openScheduleViewer() {
+    document.getElementById('scheduleViewer')?.remove();
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    const state = data.aiState || {};
+    const schedule = state.defaultSchedule || {};
+    const calendar = (state.calendar || []).sort((a,b) => (a.date+a.time).localeCompare(b.date+b.time));
+    const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
+    const currentStatus = this._getCurrentAIStatus(state);
+    
+    const p = document.createElement('div');
+    p.id = 'scheduleViewer';
+    p.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9200;display:flex;align-items:flex-end;background:rgba(0,0,0,0.5);';
+    
+    let calHtml = '';
+    if (calendar.length === 0) {
+        calHtml = '<div style="text-align:center;padding:20px 0;color:rgba(255,255,255,0.12);font-size:12px;">暂无日程</div>';
+    } else {
+        const now = new Date().toISOString().split('T')[0];
+        calendar.forEach(c => {
+            const isPast = c.date < now;
+            const isToday = c.date === now;
+            calHtml += '<div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.03);' + (isPast ? 'opacity:0.3;' : '') + '">';
+            calHtml += '<div style="min-width:70px;font-size:12px;color:' + (isToday ? 'rgba(240,147,43,0.7)' : 'rgba(255,255,255,0.3)') + ';">' + c.date.substring(5) + '<br>' + (c.time || '') + '</div>';
+            calHtml += '<div style="flex:1;font-size:13px;color:rgba(255,255,255,0.6);">' + this.escapeHtml(c.event || '') + '<div style="font-size:10px;color:rgba(255,255,255,0.2);margin-top:2px;">' + (c.duration || 60) + '分钟</div></div>';
+            calHtml += '</div>';
+        });
+    }
+    
+    p.innerHTML = '<div style="width:100%;background:#1a1a1a;border-radius:16px 16px 0 0;padding:20px 16px calc(16px + env(safe-area-inset-bottom));max-height:75vh;overflow-y:auto;animation:profileSlideUp 0.25s ease-out;">' +
+        '<div style="font-size:16px;font-weight:600;color:#fff;text-align:center;margin-bottom:16px;">' + this.escapeHtml(friendName) + ' 的作息表</div>' +
+        
+        // 当前状态
+        '<div style="padding:12px;background:rgba(255,255,255,0.03);border-radius:10px;margin-bottom:14px;">' +
+        '<div style="font-size:12px;color:rgba(255,255,255,0.3);margin-bottom:6px;">当前状态</div>' +
+        '<div style="font-size:15px;color:rgba(255,255,255,0.7);">' + (state.statusEmoji || '') + ' ' + (state.statusText || currentStatus) + '</div>' +
+        (state.autoReply ? '<div style="font-size:11px;color:rgba(255,255,255,0.2);margin-top:4px;font-style:italic;">自动回复：' + this.escapeHtml(state.autoReply) + '</div>' : '') +
+        '</div>' +
+        
+        // 默认作息
+        '<div style="padding:12px;background:rgba(255,255,255,0.03);border-radius:10px;margin-bottom:14px;">' +
+        '<div style="font-size:12px;color:rgba(255,255,255,0.3);margin-bottom:6px;">默认作息</div>' +
+        (schedule.sleepTime ? '<div style="font-size:13px;color:rgba(255,255,255,0.5);">&#127769; 睡觉 ' + schedule.sleepTime + ' &nbsp; &#9728; 起床 ' + (schedule.wakeTime || '?') + '</div>' : '<div style="font-size:12px;color:rgba(255,255,255,0.15);">未设置（TA还没告诉你作息时间）</div>') +
+        '</div>' +
+        
+        // 日程
+        '<div style="padding:12px;background:rgba(255,255,255,0.03);border-radius:10px;margin-bottom:14px;">' +
+        '<div style="font-size:12px;color:rgba(255,255,255,0.3);margin-bottom:6px;">&#128197; 日程安排</div>' +
+        calHtml +
+        '</div>' +
+        
+        '<button id="svClose" style="width:100%;padding:10px;border:none;background:transparent;color:rgba(255,255,255,0.2);font-size:13px;cursor:pointer;">关闭</button>' +
+    '</div>';
+    
+    document.body.appendChild(p);
+    p.querySelector('#svClose')?.addEventListener('click', () => p.remove());
+}
+
 _extractRelationInviteCardHtml(rawText) {
     // 如果AI已经自己写了RENDER_HTML，不重复生成
     if (rawText.includes('[RENDER_HTML]')) return '';
