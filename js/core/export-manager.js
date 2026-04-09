@@ -1,4 +1,4 @@
-/* Export Manager - 导出功能管理 */
+/* Export Manager - 导出功能管理（含所有新功能数据） */
 
 class ExportManager {
     constructor() {
@@ -6,17 +6,26 @@ class ExportManager {
     }
     
     // ==================== 完整导出 ====================
-    
-    // 完整导出
     exportFull(format = 'json') {
         try {
+            const friends = this.storage.getAllFriendsIncludingDeleted();
+            
+            // 收集每个好友的亲密关系数据
+            const intimacyDataMap = {};
+            friends.forEach(f => {
+                const d = this.storage.getIntimacyData(f.code);
+                if (d && Object.keys(d).length > 0) intimacyDataMap[f.code] = d;
+            });
+            
             const data = {
-                version: '1.0.0',
+                version: '2.0.0',
                 exportTime: new Date().toISOString(),
-                friends: this.storage.getAllFriendsIncludingDeleted(),
+                friends: friends,
                 chats: this.storage.getData(this.storage.KEYS.CHATS) || [],
                 memories: this.storage.getData(this.storage.KEYS.MEMORIES) || [],
                 userSettings: this.storage.getUserSettings(),
+                intimacyData: intimacyDataMap,
+                intimacyConfig: this.storage.getIntimacyConfig ? this.storage.getIntimacyConfig() : (this.storage.getData('zero_phone_intimacy_config') || {}),
                 apiConfig: new APIManager().getCurrentConfig(),
                 apiPresets: new APIManager().getPresets(),
                 minimaxConfig: new APIManager().getMinimaxConfig()
@@ -27,7 +36,6 @@ class ExportManager {
             } else {
                 this.downloadTXT(this.convertToTXT(data), 'zero-phone-full-export.txt');
             }
-            
             return true;
         } catch (e) {
             console.error('❌ 完整导出失败:', e);
@@ -36,60 +44,35 @@ class ExportManager {
     }
     
     // ==================== 流式导出 ====================
-    
-    // 流式导出（分类 + 后台导出）
     async exportStream(format = 'json') {
         try {
-            // 显示进度提示
             const progressMsg = document.createElement('div');
-            progressMsg.className = 'export-progress';
             progressMsg.innerHTML = '正在后台导出...';
-            progressMsg.style.cssText = `
-                position: fixed;
-                top: 80px;
-                left: 50%;
-                transform: translateX(-50%);
-                background: rgba(0, 212, 255, 0.9);
-                color: #fff;
-                padding: 12px 24px;
-                border-radius: 8px;
-                font-size: 14px;
-                z-index: 10000;
-            `;
+            progressMsg.style.cssText = 'position:fixed;top:80px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,0.12);color:#fff;padding:12px 24px;border-radius:8px;font-size:14px;z-index:10000;backdrop-filter:blur(10px);';
             document.body.appendChild(progressMsg);
             
-            // 延迟执行，不阻塞UI
             setTimeout(async () => {
                 try {
-                    // 好友数据
-                    const friendsData = {
-                        exportTime: new Date().toISOString(),
-                        type: 'friends',
-                        data: this.storage.getAllFriendsIncludingDeleted()
-                    };
+                    const friends = this.storage.getAllFriendsIncludingDeleted();
                     
-                    // 聊天记录
-                    const chatsData = {
-                        exportTime: new Date().toISOString(),
-                        type: 'chats',
-                        data: this.storage.getData(this.storage.KEYS.CHATS) || []
-                    };
+                    // 好友+人设+亲密关系数据
+                    const friendsData = { exportTime: new Date().toISOString(), type: 'friends', data: friends };
+                    const intimacyMap = {};
+                    friends.forEach(f => {
+                        const d = this.storage.getIntimacyData(f.code);
+                        if (d && Object.keys(d).length > 0) intimacyMap[f.code] = d;
+                    });
+                    const intimacyExport = { exportTime: new Date().toISOString(), type: 'intimacy', data: intimacyMap, config: this.storage.getData('zero_phone_intimacy_config') || {} };
+                    
+                    // 聊天记录（含总结、核心记忆、设置）
+                    const chatsData = { exportTime: new Date().toISOString(), type: 'chats', data: this.storage.getData(this.storage.KEYS.CHATS) || [] };
                     
                     // 记忆库
-                    const memoriesData = {
-                        exportTime: new Date().toISOString(),
-                        type: 'memories',
-                        data: this.storage.getData(this.storage.KEYS.MEMORIES) || []
-                    };
+                    const memoriesData = { exportTime: new Date().toISOString(), type: 'memories', data: this.storage.getData(this.storage.KEYS.MEMORIES) || [] };
                     
-                    // 世界书（TODO）
-                    const worldbookData = {
-                        exportTime: new Date().toISOString(),
-                        type: 'worldbook',
-                        data: []
-                    };
+                    // 用户设置（含base64图库、自定义模板等）
+                    const settingsData = { exportTime: new Date().toISOString(), type: 'settings', data: this.storage.getUserSettings() };
                     
-                    // 导出文件
                     if (format === 'json') {
                         this.downloadJSON(friendsData, 'zero-phone-friends.json');
                         await this.delay(100);
@@ -97,7 +80,9 @@ class ExportManager {
                         await this.delay(100);
                         this.downloadJSON(memoriesData, 'zero-phone-memories.json');
                         await this.delay(100);
-                        this.downloadJSON(worldbookData, 'zero-phone-worldbook.json');
+                        this.downloadJSON(intimacyExport, 'zero-phone-intimacy.json');
+                        await this.delay(100);
+                        this.downloadJSON(settingsData, 'zero-phone-settings.json');
                     } else {
                         this.downloadTXT(this.convertToTXT(friendsData), 'zero-phone-friends.txt');
                         await this.delay(100);
@@ -105,30 +90,22 @@ class ExportManager {
                         await this.delay(100);
                         this.downloadTXT(this.convertToTXT(memoriesData), 'zero-phone-memories.txt');
                         await this.delay(100);
-                        this.downloadTXT(this.convertToTXT(worldbookData), 'zero-phone-worldbook.txt');
+                        this.downloadTXT(this.convertToTXT(intimacyExport), 'zero-phone-intimacy.txt');
+                        await this.delay(100);
+                        this.downloadTXT(this.convertToTXT(settingsData), 'zero-phone-settings.txt');
                     }
                     
-                    // 移除进度提示
                     document.body.removeChild(progressMsg);
-                    
-                    // 显示完成提示
-                    const successMsg = document.createElement('div');
-                    successMsg.className = 'export-success';
-                    successMsg.innerHTML = '✅ 流式导出完成！';
-                    successMsg.style.cssText = progressMsg.style.cssText;
-                    successMsg.style.background = 'rgba(46, 213, 115, 0.9)';
-                    document.body.appendChild(successMsg);
-                    
-                    setTimeout(() => {
-                        document.body.removeChild(successMsg);
-                    }, 2000);
-                    
+                    const msg = document.createElement('div');
+                    msg.innerHTML = '✅ 流式导出完成！';
+                    msg.style.cssText = progressMsg.style.cssText;
+                    document.body.appendChild(msg);
+                    setTimeout(() => document.body.removeChild(msg), 2000);
                 } catch (e) {
                     console.error('❌ 流式导出失败:', e);
                     document.body.removeChild(progressMsg);
                 }
             }, 100);
-            
             return true;
         } catch (e) {
             console.error('❌ 流式导出失败:', e);
@@ -137,54 +114,49 @@ class ExportManager {
     }
     
     // ==================== 部分导出 ====================
-    
-    // 部分导出
     exportPartial(options, format = 'json') {
         try {
-            const data = {
-                version: '1.0.0',
-                exportTime: new Date().toISOString(),
-                type: 'partial'
-            };
+            const data = { version: '2.0.0', exportTime: new Date().toISOString(), type: 'partial' };
             
-            // 根据选项导出
-            if (options.worldbook) {
-                data.worldbook = []; // TODO: 世界书数据
-            }
+            if (options.worldbook) data.worldbook = [];
             
             if (options.friends) {
                 const friends = this.storage.getAllFriendsIncludingDeleted();
-                
-                // 根据子选项过滤
                 data.friends = friends.map(friend => {
-                    const exportFriend = { code: friend.code };
+                    const ef = { code: friend.code };
                     
                     if (options.persona) {
-                        exportFriend.name = friend.name;
-                        exportFriend.persona = friend.persona;
-                        exportFriend.signature = friend.signature;
-                        // ... 其他人设字段
+                        ef.name = friend.name;
+                        ef.nickname = friend.nickname;
+                        ef.persona = friend.persona;
+                        ef.signature = friend.signature;
+                        ef.avatar = friend.avatar;
+                        ef.poke = friend.poke;
+                        ef.timezone = friend.timezone;
+                        ef.avatarFrameCss = friend.avatarFrameCss;
+                        ef.bubbleCss = friend.bubbleCss;
                     }
                     
                     if (options.chats) {
                         const chat = this.storage.getChatByFriendCode(friend.code);
                         if (chat) {
-                            exportFriend.chats = chat.messages;
+                            ef.messages = chat.messages;
+                            ef.summaries = chat.summaries;
+                            ef.coreMemories = chat.coreMemories;
+                            ef.memoryFragments = chat.memoryFragments;
+                            ef.chatSettings = chat.settings;
                         }
                     }
                     
                     if (options.memories) {
-                        const memories = this.storage.getMemoriesByFriendCode(friend.code);
-                        if (memories) {
-                            exportFriend.memories = memories;
-                        }
+                        // 亲密关系全套数据
+                        const intim = this.storage.getIntimacyData(friend.code);
+                        ef.intimacyData = intim;
                     }
                     
-                    if (options.worldbooks) {
-                        exportFriend.worldbooks = []; // TODO: 挂载的世界书
-                    }
+                    if (options.worldbooks) ef.worldbooks = [];
                     
-                    return exportFriend;
+                    return ef;
                 });
             }
             
@@ -193,7 +165,6 @@ class ExportManager {
             } else {
                 this.downloadTXT(this.convertToTXT(data), 'zero-phone-partial-export.txt');
             }
-            
             return true;
         } catch (e) {
             console.error('❌ 部分导出失败:', e);
@@ -202,21 +173,17 @@ class ExportManager {
     }
     
     // ==================== 工具方法 ====================
-    
-    // 下载JSON文件
     downloadJSON(data, filename) {
         const json = JSON.stringify(data, null, 2);
         const blob = new Blob([json], { type: 'application/json' });
         this.downloadBlob(blob, filename);
     }
     
-    // 下载TXT文件
     downloadTXT(text, filename) {
         const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
         this.downloadBlob(blob, filename);
     }
     
-    // 下载Blob
     downloadBlob(blob, filename) {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -228,7 +195,6 @@ class ExportManager {
         URL.revokeObjectURL(url);
     }
     
-    // 转换为TXT格式
     convertToTXT(data) {
         let text = '';
         text += '='.repeat(50) + '\n';
@@ -236,14 +202,11 @@ class ExportManager {
         text += '导出时间: ' + (data.exportTime || new Date().toISOString()) + '\n';
         text += '='.repeat(50) + '\n\n';
         
-        // 递归转换对象为文本
         const convertObject = (obj, indent = 0) => {
             let result = '';
             const spaces = '  '.repeat(indent);
-            
             for (const [key, value] of Object.entries(obj)) {
                 if (value === null || value === undefined) continue;
-                
                 if (typeof value === 'object' && !Array.isArray(value)) {
                     result += `${spaces}${key}:\n`;
                     result += convertObject(value, indent + 1);
@@ -258,10 +221,10 @@ class ExportManager {
                         }
                     });
                 } else {
-                    result += `${spaces}${key}: ${value}\n`;
+                    const v = String(value);
+                    result += `${spaces}${key}: ${v.length > 200 ? v.substring(0,200) + '...' : v}\n`;
                 }
             }
-            
             return result;
         };
         
@@ -269,11 +232,7 @@ class ExportManager {
         return text;
     }
     
-    // 延迟函数
-    delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
+    delay(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 }
 
-// 导出
 window.ExportManager = ExportManager;
