@@ -1,9 +1,9 @@
 /* ==================== AI动态状态栏（点名字弹出） ==================== */
 .ai-status-dropdown { position:fixed;top:0;left:0;right:0;bottom:0;z-index:7000;display:none; }
 .ai-status-dropdown.open { display:block; }
-.ai-status-backdrop { position:absolute;top:0;left:0;right:0;bottom:0; }
-.ai-status-card { position:absolute;top:56px;left:50%;transform:translateX(-50%);width:calc(100% - 32px);max-width:360px;max-height:calc(100vh - 80px);overflow-y:auto;background:rgba(22,22,22,0.96);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-radius:16px;border:1px solid rgba(255,255,255,0.06);animation:statusSlideDown 0.2s ease-out; }
-@keyframes statusSlideDown { from{opacity:0;transform:translateX(-50%) translateY(-10px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+.ai-status-backdrop { position:absolute;top:60px;left:0;right:0;bottom:0; }
+.ai-status-card { position:absolute;top:60px;left:0;right:0;max-height:calc(100vh - 80px);overflow-y:auto;background:rgba(22,22,22,0.96);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-radius:0 0 16px 16px;border-bottom:1px solid rgba(255,255,255,0.06);animation:statusSlideDown 0.2s ease-out; }
+@keyframes statusSlideDown { from{opacity:0;transform:translateY(-10px)} to{opacity:1;transform:translateY(0)} }
 
 .ai-status-header { display:flex;align-items:center;gap:12px;padding:16px; }
 .ai-status-avatar { width:50px;height:50px;border-radius:10px;object-fit:cover;border:1px solid rgba(255,255,255,0.08); }
