@@ -7111,16 +7111,18 @@ getIntimacyStatusForAI() {
     desc += `\n  注意：写日记/碎碎念/手帐都不需要user同意，你想写就写。写完后系统自动通知user。`;
     
     // AI状态系统
-    desc += `\n\n【你的状态管理】`;
-    desc += `\n  [AI_STATUS:emoji|状态文字] 设置你的当前状态（显示在你名字下方）`;
-    desc += `\n  [AI_SLEEP:醒来时间] 去睡觉（时间格式如 8:00 或 8小时后）`;
-    desc += `\n  [AI_WAKE] 醒来（睡醒后用这个）`;
+    desc += `\n\n【你的状态管理（这是你自己的状态、作息表、日程表）】`;
+    desc += `\n  [AI_STATUS:emoji|状态文字] 设置你的状态（显示在你名字下方）`;
+    desc += `\n  [AI_SLEEP:醒来时间] 去睡觉（如 8:00 或 6小时后）`;
+    desc += `\n  [AI_WAKE] 醒来`;
     desc += `\n  [AI_BUSY:原因] 设为忙碌`;
     desc += `\n  [AI_ONLINE] 恢复在线`;
     desc += `\n  [AI_AUTO_REPLY:内容] 设置自动回复（你不在时系统代你回复）`;
+    desc += `\n  [AI_DND:on|失败概率] 开启勿扰模式（user发消息会弹窗询问，概率0-1，如 on|0.3 表示30%概率打扰失败）`;
+    desc += `\n  [AI_DND:off] 关闭勿扰模式`;
     desc += `\n  [AI_SCHEDULE:睡觉时间|起床时间] 设默认作息（如 23:00|8:00）`;
     desc += `\n  [AI_CALENDAR:日期|时间|时长分钟|事件] 添加日程（如 2026-04-10|15:00|60|开会）`;
-    desc += `\n  你睡觉/忙碌时，user发消息会先弹窗询问要不要打扰你，不打扰则显示自动回复。`;
+    desc += `\n  说明：只有开了勿扰模式，user发消息时才会弹窗问要不要打扰你。不开勿扰的话，就算你在睡觉/忙碌，user也能直接发消息给你（但你会知道自己被叫醒/打断了）。`;
     
     // 注入AI已写的日记/碎碎念（让AI能看到自己写过的）
     if (this.currentFriendCode) {
@@ -12948,6 +12950,7 @@ _stripCommandTags(text) {
         .replace(/\[AI_AUTO_REPLY:[^\]]+\]/g, '')
         .replace(/\[AI_SCHEDULE:[^\]]+\]/g, '')
         .replace(/\[AI_CALENDAR:[^\]]+\]/g, '')
+        .replace(/\[AI_DND:[^\]]+\]/g, '')
         .replace(/\[RECALL:[^\]]+\]/g, '')
         .replace(/\[STATUS_CSS\][\s\S]*?\[\/STATUS_CSS\]/g, '')
         .replace(/\[STATUS_?\s*CSS\][\s\S]*?\[\/?\s*STATUS_?\s*CSS\]/gi, '');
@@ -13085,19 +13088,29 @@ async _checkAIState() {
     const data = this.storage.getIntimacyData(this.currentFriendCode);
     const state = data.aiState || {};
     const status = this._getCurrentAIStatus(state);
+    const dnd = state.doNotDisturb || false;
     
+    // 没开勿扰 → 完全正常，当什么都没发生
+    if (!dnd) return 'normal';
+    
+    // 以下只有勿扰模式才会触发
     if (status === 'online') return 'normal';
     
     const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
     const emoji = state.statusEmoji || '';
     const text = state.statusText || status;
     const autoReply = state.autoReply || '';
+    const failRate = state.disturbFailRate || 0;
+    const failHint = failRate > 0 ? `\n打扰失败概率：${Math.round(failRate * 100)}%` : '';
     
     if (status === 'sleeping') {
         const wakeTime = state.wakeUpTime ? new Date(state.wakeUpTime).toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit'}) : '未知';
-        const ok = window.zpConfirm ? await window.zpConfirm(`${emoji} ${friendName}在睡觉`, `${text}\n预计${wakeTime}醒来\n\n要叫醒TA吗？`, '叫醒', '算了') : confirm('叫醒？');
+        const ok = window.zpConfirm ? await window.zpConfirm(`${emoji} ${friendName}在睡觉`, `${text}\n预计${wakeTime}醒来${failHint}\n\n要叫醒TA吗？`, '叫醒', '算了') : confirm('叫醒？');
         if (ok) {
-            // 叫醒：清除睡觉状态
+            if (failRate > 0 && Math.random() < failRate) {
+                this._showAutoReply('（翻了个身继续睡了...叫不醒）', friendName);
+                return 'blocked';
+            }
             state.status = 'online'; state.statusEmoji = ''; state.statusText = '';
             data.aiState = state;
             this.storage.saveIntimacyData(this.currentFriendCode, data);
@@ -13109,17 +13122,18 @@ async _checkAIState() {
         }
     }
     
-    if (status === 'busy' || status === 'away' || status === 'custom') {
-        const ok = window.zpConfirm ? await window.zpConfirm(`${emoji} ${friendName}`, `${text}\n\n要打扰TA吗？`, '打扰一下', '算了') : confirm('打扰？');
-        if (ok) {
-            return 'interrupt';
-        } else {
-            if (autoReply) this._showAutoReply(autoReply, friendName);
+    // 其他勿扰状态（忙碌/自定义等）
+    const ok = window.zpConfirm ? await window.zpConfirm(`${emoji} ${friendName}`, `${text}${failHint}\n\n要打扰TA吗？`, '打扰一下', '算了') : confirm('打扰？');
+    if (ok) {
+        if (failRate > 0 && Math.random() < failRate) {
+            this._showAutoReply('（没理你...）', friendName);
             return 'blocked';
         }
+        return 'interrupt';
+    } else {
+        if (autoReply) this._showAutoReply(autoReply, friendName);
+        return 'blocked';
     }
-    
-    return 'normal';
 }
 
 // 判断当前实际状态（AI设的状态 + 作息表 + 时间）
@@ -13194,6 +13208,13 @@ _showAutoReply(text, friendName) {
 _updateStatusDisplay() {
     const el = document.getElementById('aiStatusLine');
     if (!el) return;
+    
+    // 检查开关
+    if (this.settings.hideStatusInHeader) {
+        el.style.display = 'none';
+        return;
+    }
+    
     const data = this.storage.getIntimacyData(this.currentFriendCode);
     const state = data.aiState || {};
     const status = this._getCurrentAIStatus(state);
@@ -13308,6 +13329,24 @@ processStateCommands(text) {
         changed = true;
     }
     
+    // [AI_DND:on|失败概率] 或 [AI_DND:off]
+    const dndMatch = text.match(/\[AI_DND:([^\]]+)\]/);
+    if (dndMatch) {
+        const val = dndMatch[1].trim().toLowerCase();
+        if (val === 'off') {
+            state.doNotDisturb = false;
+            state.disturbFailRate = 0;
+            this.showCssSystemMessage(`${friendName} 关闭了勿扰模式`);
+        } else {
+            const parts = val.split('|');
+            state.doNotDisturb = true;
+            state.disturbFailRate = parseFloat(parts[1]) || 0;
+            const pct = Math.round((state.disturbFailRate || 0) * 100);
+            this.showCssSystemMessage(`${friendName} 开启了勿扰模式${pct > 0 ? `（打扰失败概率${pct}%）` : ''}`);
+        }
+        changed = true;
+    }
+    
     if (changed) {
         data.aiState = state;
         this.storage.saveIntimacyData(this.currentFriendCode, data);
@@ -13324,56 +13363,137 @@ _openScheduleViewer() {
     const calendar = (state.calendar || []).sort((a,b) => (a.date+a.time).localeCompare(b.date+b.time));
     const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
     const currentStatus = this._getCurrentAIStatus(state);
+    const esc = (s) => this.escapeHtml(s);
+    
+    // 当前选中日期
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    let selectedDate = todayStr;
     
     const p = document.createElement('div');
     p.id = 'scheduleViewer';
-    p.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9200;background:#0d0d0d;display:flex;flex-direction:column;';
+    p.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9200;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);';
     
-    let calHtml = '';
-    if (calendar.length === 0) {
-        calHtml = '<div style="text-align:center;padding:20px 0;color:rgba(255,255,255,0.12);font-size:13px;">暂无日程</div>';
-    } else {
-        const now = new Date().toISOString().split('T')[0];
-        calendar.forEach(c => {
-            const isPast = c.date < now;
-            const isToday = c.date === now;
-            calHtml += '<div style="display:flex;gap:12px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.03);' + (isPast ? 'opacity:0.3;' : '') + '">';
-            calHtml += '<div style="min-width:70px;font-size:13px;color:' + (isToday ? 'rgba(240,147,43,0.7)' : 'rgba(255,255,255,0.3)') + ';">' + c.date.substring(5) + '<br>' + (c.time || '') + '</div>';
-            calHtml += '<div style="flex:1;font-size:14px;color:rgba(255,255,255,0.6);">' + this.escapeHtml(c.event || '') + '<div style="font-size:11px;color:rgba(255,255,255,0.2);margin-top:3px;">' + (c.duration || 60) + '分钟</div></div>';
-            calHtml += '</div>';
+    const renderDialog = () => {
+        // 当天的日程
+        const dayEvents = calendar.filter(c => c.date === selectedDate);
+        let dayHtml = '';
+        if (dayEvents.length === 0) {
+            dayHtml = '<div style="text-align:center;padding:12px 0;color:rgba(255,255,255,0.12);font-size:12px;">这天没有日程</div>';
+        } else {
+            dayEvents.forEach(c => {
+                dayHtml += '<div style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.03);">';
+                dayHtml += '<div style="font-size:12px;color:rgba(240,147,43,0.6);min-width:45px;">' + (c.time||'') + '</div>';
+                dayHtml += '<div style="flex:1;font-size:13px;color:rgba(255,255,255,0.6);">' + esc(c.event||'') + ' <span style="font-size:10px;color:rgba(255,255,255,0.15);">' + (c.duration||60) + 'min</span></div>';
+                dayHtml += '</div>';
+            });
+        }
+        
+        // 生成本月日历格子
+        const selDate = new Date(selectedDate + 'T00:00:00');
+        const year = selDate.getFullYear(), month = selDate.getMonth();
+        const firstDay = new Date(year, month, 1).getDay(); // 0=Sun
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const monthName = `${year}年${month+1}月`;
+        
+        // 哪些日期有日程
+        const eventDates = new Set(calendar.map(c => c.date));
+        
+        let calGrid = '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center;margin-top:6px;">';
+        ['日','一','二','三','四','五','六'].forEach(d => {
+            calGrid += '<div style="font-size:10px;color:rgba(255,255,255,0.15);padding:4px 0;">' + d + '</div>';
         });
-    }
-    
-    p.innerHTML = '<div style="display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.04);flex-shrink:0;">' +
-        '<button id="svBack" style="background:none;border:none;color:rgba(255,255,255,0.6);font-size:20px;cursor:pointer;padding:4px 8px;">&#8592;</button>' +
-        '<div style="flex:1;text-align:center;font-size:16px;font-weight:600;color:#fff;">' + this.escapeHtml(friendName) + ' 的作息表</div>' +
-        '<div style="width:36px;"></div>' +
-    '</div>' +
-    '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;min-height:0;">' +
+        for (let i = 0; i < firstDay; i++) calGrid += '<div></div>';
+        for (let d = 1; d <= daysInMonth; d++) {
+            const ds = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+            const isToday = ds === todayStr;
+            const isSel = ds === selectedDate;
+            const hasEvent = eventDates.has(ds);
+            let bg = 'transparent', color = 'rgba(255,255,255,0.35)', border = 'none';
+            if (isSel) { bg = 'rgba(240,147,43,0.15)'; color = 'rgba(240,147,43,0.8)'; border = '1px solid rgba(240,147,43,0.3)'; }
+            else if (isToday) { bg = 'rgba(255,255,255,0.05)'; color = 'rgba(255,255,255,0.6)'; }
+            calGrid += '<div class="sv-day" data-date="' + ds + '" style="padding:6px 0;border-radius:6px;cursor:pointer;font-size:12px;color:' + color + ';background:' + bg + ';border:' + border + ';position:relative;">' + d;
+            if (hasEvent) calGrid += '<div style="width:3px;height:3px;border-radius:50%;background:rgba(240,147,43,0.5);margin:1px auto 0;"></div>';
+            calGrid += '</div>';
+        }
+        calGrid += '</div>';
         
-        // 当前状态
-        '<div style="padding:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.04);border-radius:12px;margin-bottom:14px;">' +
-        '<div style="font-size:12px;color:rgba(255,255,255,0.3);margin-bottom:8px;">当前状态</div>' +
-        '<div style="font-size:16px;color:rgba(255,255,255,0.7);">' + (state.statusEmoji || '') + ' ' + (state.statusText || currentStatus) + '</div>' +
-        (state.autoReply ? '<div style="font-size:12px;color:rgba(255,255,255,0.2);margin-top:6px;font-style:italic;">自动回复：' + this.escapeHtml(state.autoReply) + '</div>' : '') +
-        '</div>' +
+        // 状态开关
+        const toggleChecked = this.settings.hideStatusInHeader ? '' : 'checked';
+        const toggleBg = this.settings.hideStatusInHeader ? 'rgba(255,255,255,0.1)' : 'rgba(240,147,43,0.4)';
         
-        // 默认作息
-        '<div style="padding:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.04);border-radius:12px;margin-bottom:14px;">' +
-        '<div style="font-size:12px;color:rgba(255,255,255,0.3);margin-bottom:8px;">默认作息</div>' +
-        (schedule.sleepTime ? '<div style="font-size:14px;color:rgba(255,255,255,0.5);">&#127769; 睡觉 ' + schedule.sleepTime + ' &nbsp;&nbsp; &#9728; 起床 ' + (schedule.wakeTime || '?') + '</div>' : '<div style="font-size:13px;color:rgba(255,255,255,0.15);">未设置（TA还没告诉你作息时间）</div>') +
-        '</div>' +
+        p.innerHTML = '<div style="width:calc(100% - 40px);max-width:360px;background:#1c1c1c;border-radius:18px;border:1px solid rgba(255,255,255,0.06);max-height:85vh;overflow-y:auto;animation:profileSlideUp 0.2s ease-out;">' +
+            // 标题
+            '<div style="padding:16px 16px 12px;text-align:center;">' +
+            '<div style="font-size:16px;font-weight:600;color:#fff;">' + esc(friendName) + ' 的作息</div>' +
+            '<div style="font-size:13px;color:rgba(255,255,255,0.5);margin-top:4px;">' + (state.statusEmoji||'') + ' ' + esc(state.statusText||currentStatus) + '</div>' +
+            (state.doNotDisturb ? '<div style="font-size:10px;color:rgba(255,100,100,0.4);margin-top:3px;">&#128308; 勿扰' + (state.disturbFailRate>0?'（'+Math.round(state.disturbFailRate*100)+'%失败）':'') + '</div>' : '') +
+            '</div>' +
+            
+            // 默认作息（收起）
+            '<details style="margin:0 12px 8px;"><summary style="font-size:12px;color:rgba(255,255,255,0.3);cursor:pointer;padding:8px 0;">&#127769; 默认作息</summary>' +
+            '<div style="padding:6px 0 10px;font-size:13px;color:rgba(255,255,255,0.5);">' +
+            (schedule.sleepTime ? '睡觉 ' + schedule.sleepTime + ' &nbsp; 起床 ' + (schedule.wakeTime||'?') : '未设置') +
+            '</div></details>' +
+            
+            // 日历
+            '<div style="padding:0 12px 8px;">' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">' +
+            '<button id="svPrevMonth" style="background:none;border:none;color:rgba(255,255,255,0.3);font-size:16px;cursor:pointer;padding:4px 8px;">&#8249;</button>' +
+            '<div style="font-size:13px;color:rgba(255,255,255,0.5);">' + monthName + '</div>' +
+            '<button id="svNextMonth" style="background:none;border:none;color:rgba(255,255,255,0.3);font-size:16px;cursor:pointer;padding:4px 8px;">&#8250;</button>' +
+            '</div>' +
+            calGrid +
+            '</div>' +
+            
+            // 选中日期的日程
+            '<div style="padding:8px 12px 6px;font-size:11px;color:rgba(255,255,255,0.25);">' + selectedDate.substring(5) + ' 的日程</div>' +
+            '<div style="padding:0 12px 10px;">' + dayHtml + '</div>' +
+            
+            // 设置
+            '<details style="margin:0 12px 10px;"><summary style="font-size:12px;color:rgba(255,255,255,0.2);cursor:pointer;padding:6px 0;">设置</summary>' +
+            '<div style="padding:8px 0;display:flex;align-items:center;justify-content:space-between;">' +
+            '<div style="font-size:12px;color:rgba(255,255,255,0.4);">顶栏显示状态</div>' +
+            '<label style="position:relative;width:40px;height:22px;display:inline-block;"><input type="checkbox" id="svStatusToggle" ' + toggleChecked + ' style="opacity:0;width:0;height:0;"><span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:' + toggleBg + ';border-radius:11px;transition:0.3s;"></span></label>' +
+            '</div>' +
+            (state.autoReply ? '<div style="font-size:11px;color:rgba(255,255,255,0.15);padding:4px 0;font-style:italic;">自动回复：' + esc(state.autoReply) + '</div>' : '') +
+            '</details>' +
+            
+            // 关闭
+            '<div style="padding:8px 12px 16px;text-align:center;"><button id="svClose" style="padding:8px 20px;border:none;border-radius:8px;background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.3);font-size:13px;cursor:pointer;">关闭</button></div>' +
+        '</div>';
         
-        // 日程
-        '<div style="padding:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.04);border-radius:12px;">' +
-        '<div style="font-size:12px;color:rgba(255,255,255,0.3);margin-bottom:8px;">&#128197; 日程安排</div>' +
-        calHtml +
-        '</div>' +
-        
-    '</div>';
+        // 事件绑定
+        p.querySelector('#svClose')?.addEventListener('click', () => p.remove());
+        p.querySelector('#svStatusToggle')?.addEventListener('change', (e) => {
+            this.settings.hideStatusInHeader = !e.target.checked;
+            this.saveSettings();
+            this._updateStatusDisplay();
+        });
+        p.querySelector('#svPrevMonth')?.addEventListener('click', () => {
+            const d = new Date(selectedDate + 'T00:00:00');
+            d.setMonth(d.getMonth() - 1);
+            selectedDate = d.toISOString().split('T')[0];
+            renderDialog();
+        });
+        p.querySelector('#svNextMonth')?.addEventListener('click', () => {
+            const d = new Date(selectedDate + 'T00:00:00');
+            d.setMonth(d.getMonth() + 1);
+            selectedDate = d.toISOString().split('T')[0];
+            renderDialog();
+        });
+        p.querySelectorAll('.sv-day').forEach(el => {
+            el.addEventListener('click', () => {
+                selectedDate = el.dataset.date;
+                renderDialog();
+            });
+        });
+    };
     
     document.body.appendChild(p);
-    p.querySelector('#svBack')?.addEventListener('click', () => p.remove());
+    // 点遮罩关闭
+    p.addEventListener('click', (e) => { if (e.target === p) p.remove(); });
+    renderDialog();
 }
 
 _extractRelationInviteCardHtml(rawText) {
@@ -13642,21 +13762,7 @@ getRelationBadgeHtml() {
 
 // 更新聊天顶部名字旁的关系标识
 updateChatHeaderRelationBadge() {
-    const nameContainer = document.getElementById('chatFriendName');
-    if (!nameContainer) return;
-    
-    // 移除旧标识
-    const oldBadge = nameContainer.querySelector('.chat-header-rel-badge');
-    if (oldBadge) oldBadge.remove();
-    
-    const badgeHtml = this.getRelationBadgeHtml();
-    if (badgeHtml) {
-        const badge = document.createElement('span');
-        badge.className = 'chat-header-rel-badge';
-        badge.innerHTML = badgeHtml;
-        badge.style.cssText = 'display:inline;vertical-align:middle;';
-        nameContainer.appendChild(badge);
-    }
+    // 关系图标不在顶栏显示（在好友资料页显示）
 }
 
 }
