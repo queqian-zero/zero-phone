@@ -1,4 +1,4 @@
-/* Import Manager - 全量恢复版 */
+/* Import Manager - 全量恢复版（支持大数据/IDB） */
 class ImportManager {
     constructor() { this.storage = new StorageManager(); }
     
@@ -10,28 +10,29 @@ class ImportManager {
             
             if(!confirm('确定要导入数据吗？\n\n这将覆盖当前所有数据！')) return false;
             
+            let count = 0;
+            
             // 优先用_rawStorage全量恢复（v2.1+）
             if(data._rawStorage && typeof data._rawStorage === 'object') {
                 Object.entries(data._rawStorage).forEach(([key, value]) => {
-                    localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value));
+                    this.storage.saveData(key, value); // 用saveData走缓存+IDB，不直接写localStorage
+                    count++;
                 });
-                alert('✅ 全量恢复成功！页面即将刷新。');
-                location.reload();
-                return true;
             }
             
-            // 兼容旧格式
-            if(data.friends) this.storage.saveData(this.storage.KEYS.FRIENDS, data.friends);
-            if(data.chats) this.storage.saveData(this.storage.KEYS.CHATS, data.chats);
-            if(data.memories) this.storage.saveData(this.storage.KEYS.MEMORIES, data.memories);
-            if(data.userSettings) this.storage.saveData(this.storage.KEYS.USER, data.userSettings);
+            // 结构化数据（兼容+补充）
+            if(data.friends) { this.storage.saveData(this.storage.KEYS.FRIENDS, data.friends); count++; }
+            if(data.chats) { this.storage.saveData(this.storage.KEYS.CHATS, data.chats); count++; }
+            if(data.memories) { this.storage.saveData(this.storage.KEYS.MEMORIES, data.memories); count++; }
+            if(data.userSettings) { this.storage.saveData(this.storage.KEYS.USER, data.userSettings); count++; }
             if(data.intimacyData && typeof data.intimacyData === 'object') {
-                Object.entries(data.intimacyData).forEach(([fc, d]) => { this.storage.saveData('zero_phone_intimacy_'+fc, d); });
+                Object.entries(data.intimacyData).forEach(([fc, d]) => { this.storage.saveData('zero_phone_intimacy_'+fc, d); count++; });
             }
-            if(data.intimacyConfig) this.storage.saveData('zero_phone_intimacy_config', data.intimacyConfig);
+            if(data.intimacyConfig) { this.storage.saveData('zero_phone_intimacy_config', data.intimacyConfig); count++; }
             
-            alert('✅ 导入成功！页面即将刷新。');
-            location.reload();
+            // 等待IDB写入完成再刷新
+            alert('✅ 导入成功（' + count + '条数据）！页面即将刷新。');
+            setTimeout(() => location.reload(), 500);
             return true;
         } catch(e) { console.error('导入失败:',e); alert('导入失败: '+e.message); return false; }
     }
@@ -49,18 +50,22 @@ class ImportManager {
                     const content=await this.readFile(file);
                     let data=file.name.endsWith('.json')?JSON.parse(content):this.parseTXT(content);
                     
-                    // 全量快照格式
                     if(data.type==='full_dump' && data.data) {
-                        Object.entries(data.data).forEach(([key,value])=>{localStorage.setItem(key,typeof value==='string'?value:JSON.stringify(value));});
+                        Object.entries(data.data).forEach(([key,value])=>{ this.storage.saveData(key, value); });
                     }
-                    else if(data.type==='friends') this.storage.saveData(this.storage.KEYS.FRIENDS,data.data);
+                    if(data._rawStorage) {
+                        Object.entries(data._rawStorage).forEach(([k,v])=>{ this.storage.saveData(k, v); });
+                    }
+                    if(data.type==='friends') this.storage.saveData(this.storage.KEYS.FRIENDS,data.data);
                     else if(data.type==='chats') this.storage.saveData(this.storage.KEYS.CHATS,data.data);
                     else if(data.type==='memories') this.storage.saveData(this.storage.KEYS.MEMORIES,data.data);
                     else if(data.type==='intimacy') { if(data.data)Object.entries(data.data).forEach(([fc,d])=>{this.storage.saveData('zero_phone_intimacy_'+fc,d);}); if(data.config)this.storage.saveData('zero_phone_intimacy_config',data.config); }
                     else if(data.type==='settings') this.storage.saveData(this.storage.KEYS.USER,data.data);
                     
-                    // 也尝试_rawStorage
-                    if(data._rawStorage) Object.entries(data._rawStorage).forEach(([k,v])=>{localStorage.setItem(k,typeof v==='string'?v:JSON.stringify(v));});
+                    // 结构化字段
+                    if(data.friends) this.storage.saveData(this.storage.KEYS.FRIENDS,data.friends);
+                    if(data.chats) this.storage.saveData(this.storage.KEYS.CHATS,data.chats);
+                    if(data.userSettings) this.storage.saveData(this.storage.KEYS.USER,data.userSettings);
                     
                     await this.delay(100);
                 }catch(e){console.error('导入文件失败 '+file.name+':',e);}
@@ -68,7 +73,7 @@ class ImportManager {
             
             document.body.removeChild(p);
             alert('✅ 导入完成！页面即将刷新。');
-            location.reload();
+            setTimeout(() => location.reload(), 500);
             return true;
         }catch(e){console.error('导入失败:',e);alert('导入失败: '+e.message);return false;}
     }
@@ -86,14 +91,8 @@ class ImportManager {
             
             data.friends.forEach(ef=>{
                 const idx=curFriends.findIndex(f=>f.code===ef.code);
-                if(idx>=0){
-                    // 合并所有好友字段
-                    Object.keys(ef).forEach(k=>{if(k!=='code'&&k!=='chatData'&&k!=='intimacyData')curFriends[idx][k]=ef[k];});
-                }
-                if(ef.chatData){
-                    const ci=curChats.findIndex(c=>c.friendCode===ef.code);
-                    if(ci>=0)curChats[ci]=ef.chatData;else curChats.push(ef.chatData);
-                }
+                if(idx>=0) Object.keys(ef).forEach(k=>{if(k!=='code'&&k!=='chatData'&&k!=='intimacyData')curFriends[idx][k]=ef[k];});
+                if(ef.chatData){const ci=curChats.findIndex(c=>c.friendCode===ef.code);if(ci>=0)curChats[ci]=ef.chatData;else curChats.push(ef.chatData);}
                 if(ef.intimacyData) this.storage.saveData('zero_phone_intimacy_'+ef.code,ef.intimacyData);
             });
             
@@ -101,7 +100,7 @@ class ImportManager {
             this.storage.saveData(this.storage.KEYS.CHATS,curChats);
             
             alert('✅ 部分导入成功！页面即将刷新。');
-            location.reload();
+            setTimeout(() => location.reload(), 500);
             return true;
         }catch(e){console.error('部分导入失败:',e);alert('导入失败: '+e.message);return false;}
     }
