@@ -193,7 +193,7 @@
             <div id="aiStatusLine" style="display:none;font-size:11px;color:rgba(255,255,255,0.35);margin-top:1px;font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
         </div>
         <button class="offline-toggle" id="offlineToggle" title="次元剧场">🔴</button>
-        <button id="scheduleBtn" title="作息表" style="background:none;border:none;font-size:16px;cursor:pointer;padding:4px 6px;">&#128197;</button>
+        <button id="scheduleBtn" title="作息表" style="background:none;border:none;font-size:16px;cursor:pointer;padding:4px 6px;opacity:0.35;filter:grayscale(1);">&#128197;</button>
         <button class="chat-settings-btn" id="chatSettingsBtn" title="聊天设置">⚙️</button>
     </div>
 
@@ -1068,14 +1068,14 @@
 <!-- ==================== 导入数据弹窗结束 ==================== -->
 
 <!-- ==================== 创建聊天弹窗 ==================== -->
-<div class="create-chat-modal" id="createChatModal" style="display:none;">
-    <div class="create-chat-overlay" id="createChatOverlay"></div>
-    <div class="create-chat-dialog">
+<div class="create-chat-modal" id="createChatModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;align-items:center;justify-content:center;">
+    <div class="create-chat-overlay" id="createChatOverlay" style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);"></div>
+    <div class="create-chat-dialog" style="position:relative;z-index:1;width:calc(100% - 40px);max-width:360px;background:#1c1c1c;border-radius:18px;border:1px solid rgba(255,255,255,0.06);max-height:70vh;display:flex;flex-direction:column;overflow:hidden;">
         <div class="create-chat-header">
             <h3>选择好友开始聊天</h3>
             <button class="create-chat-close" id="createChatClose">×</button>
         </div>
-        <div class="create-chat-body" id="createChatBody">
+        <div class="create-chat-body" id="createChatBody" style="flex:1;overflow-y:auto;min-height:0;">
             <!-- 好友列表动态生成 -->
         </div>
     </div>
