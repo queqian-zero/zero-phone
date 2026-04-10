@@ -236,10 +236,7 @@
             </div>
             <div class="modal-body">
                 <div class="checkbox-group">
-                    <label class="checkbox-item">
-                        <input type="checkbox" value="worldbook" checked>
-                        <span>世界书</span>
-                    </label>
+                    <!-- 好友（角色卡） -->
                     <label class="checkbox-item">
                         <input type="checkbox" value="friends" checked>
                         <span>好友（角色卡）</span>
@@ -247,23 +244,62 @@
                     <div class="sub-options" id="friendsSubOptions">
                         <label class="checkbox-item">
                             <input type="checkbox" value="persona" checked>
-                            <span>人物设定</span>
+                            <span>人物设定 / 头像 / 自定义CSS</span>
                         </label>
                         <label class="checkbox-item">
                             <input type="checkbox" value="chats" checked>
-                            <span>聊天记录</span>
+                            <span>聊天记录 + 聊天设置</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" value="summaries" checked>
+                            <span>聊天总结 + 核心记忆 + 记忆碎片</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" value="notebook" checked>
+                            <span>记事本（碎碎念 + 日记）</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" value="journal" checked>
+                            <span>手帐</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" value="theater" checked>
+                            <span>次元剧场存档</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" value="aistate" checked>
+                            <span>AI状态 / 作息 / 日程</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" value="intimacy" checked>
+                            <span>亲密关系（星痕 / 字符 / 徽章 / 关系）</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" value="exchange" checked>
+                            <span>兑换所 + 岁月胶囊</span>
                         </label>
                         <label class="checkbox-item">
                             <input type="checkbox" value="worldbooks" checked>
                             <span>挂载的世界书</span>
                         </label>
-                        <label class="checkbox-item">
-                            <input type="checkbox" value="memories" checked>
-                            <span>记忆库</span>
-                        </label>
                     </div>
+                    <!-- 用户设置 -->
+                    <label class="checkbox-item">
+                        <input type="checkbox" value="userSettings" checked>
+                        <span>用户设置（个人资料 / Base64图库 / 模板）</span>
+                    </label>
+                    <!-- 世界书 -->
+                    <label class="checkbox-item">
+                        <input type="checkbox" value="worldbook">
+                        <span>世界书</span>
+                    </label>
+                    <!-- API配置 -->
+                    <label class="checkbox-item">
+                        <input type="checkbox" value="apiConfig">
+                        <span>API配置 + 预设</span>
+                    </label>
                 </div>
-                <div class="form-group">
+                <div class="form-group" style="margin-top:16px;">
                     <label>选择导出格式</label>
                     <div class="radio-group">
                         <label class="radio-item">
