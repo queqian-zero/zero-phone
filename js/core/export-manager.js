@@ -40,16 +40,74 @@ class ExportManager {
         try {
             const data={version:'2.1.0',exportTime:new Date().toISOString(),type:'partial'};
             if(options.worldbook) data.worldbook=[];
+            
+            if(options.userSettings) {
+                data.userSettings = this.storage.getUserSettings();
+            }
+            
+            if(options.apiConfig) {
+                data.apiConfig = new APIManager().getCurrentConfig();
+                data.apiPresets = new APIManager().getPresets();
+                data.minimaxConfig = new APIManager().getMinimaxConfig();
+            }
+            
             if(options.friends) {
                 const friends=this.storage.getAllFriendsIncludingDeleted();
                 data.friends=friends.map(f=>{
-                    const ef={code:f.code};
+                    const ef={code:f.code, name:f.name};
+                    
+                    // 人设/头像/自定义CSS
                     if(options.persona) Object.assign(ef,f);
-                    if(options.chats){const c=(this.storage.getData(this.storage.KEYS.CHATS)||[]).find(c=>c.friendCode===f.code);if(c)ef.chatData=c;}
-                    if(options.memories){const raw=localStorage.getItem('zero_phone_intimacy_'+f.code);if(raw)try{ef.intimacyData=JSON.parse(raw);}catch(e){}}
+                    
+                    // 聊天记录+设置
+                    if(options.chats) {
+                        const chat=(this.storage.getData(this.storage.KEYS.CHATS)||[]).find(c=>c.friendCode===f.code);
+                        if(chat) {
+                            ef.messages = chat.messages;
+                            ef.chatSettings = chat.settings;
+                        }
+                    }
+                    
+                    // 聊天总结+核心记忆+记忆碎片
+                    if(options.summaries) {
+                        const chat=(this.storage.getData(this.storage.KEYS.CHATS)||[]).find(c=>c.friendCode===f.code);
+                        if(chat) {
+                            ef.summaries = chat.summaries || [];
+                            ef.coreMemories = chat.coreMemories || [];
+                            ef.memoryFragments = chat.memoryFragments || [];
+                        }
+                    }
+                    
+                    // 以下从intimacyData按需取
+                    const intim = this.storage.getIntimacyData(f.code);
+                    
+                    // 记事本
+                    if(options.notebook) ef.notebook = intim.notebook || {notes:[],diary:[]};
+                    // 手帐
+                    if(options.journal) ef.journal = intim.journal || {pages:[]};
+                    // 次元剧场
+                    if(options.theater) ef.theaterSessions = intim.theaterSessions || [];
+                    // AI状态/作息/日程
+                    if(options.aistate) ef.aiState = intim.aiState || {};
+                    // 亲密关系核心（星痕/字符/关系/徽章）
+                    if(options.intimacy) {
+                        ef.value = intim.value; ef.timeline = intim.timeline;
+                        ef.luckyChars = intim.luckyChars; ef.relationship = intim.relationship;
+                        ef.badges = intim.badges; ef.bgImage = intim.bgImage;
+                        ef.totalMessages = intim.totalMessages; ef.todayMessages = intim.todayMessages;
+                    }
+                    // 兑换所+岁月胶囊
+                    if(options.exchange) {
+                        ef.exchange = intim.exchange || {};
+                        ef.capsule = intim.capsule || {};
+                    }
+                    // 世界书
+                    if(options.worldbooks) ef.worldbooks = [];
+                    
                     return ef;
                 });
             }
+            
             if(format==='json')this.downloadJSON(data,'zero-phone-partial-export.json'); else this.downloadTXT(this.convertToTXT(data),'zero-phone-partial-export.txt');
             return true;
         }catch(e){console.error('部分导出失败:',e);return false;}
