@@ -178,26 +178,40 @@ class MemoryLibrary {
         const ci = window.chatInterface;
         if (!this._store()) return;
         const memories = this._store().getCoreMemories(friendCode) || [];
+        const fragments = this._store().getMemoryFragments(friendCode) || [];
 
         document.getElementById('mlDetailPage')?.remove();
         const page = document.createElement('div');
         page.id = 'mlDetailPage';
         page.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9000;background:#111;display:flex;flex-direction:column;';
-        page.innerHTML = `
-            <div style="display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.04);flex-shrink:0;">
-                <button id="mdBack" style="background:none;border:none;color:rgba(255,255,255,0.6);font-size:20px;cursor:pointer;">&#8592;</button>
-                <div style="flex:1;font-size:16px;font-weight:600;color:#fff;text-align:center;">${this._esc(name)} 的核心记忆</div>
-            </div>
-            <div style="flex:1;overflow-y:auto;padding:16px;min-height:0;">
-                ${memories.length === 0 ? '<div style="text-align:center;padding:40px 0;color:rgba(255,255,255,0.15);font-size:13px;">暂无核心记忆</div>' :
-                    memories.map(m => `<div style="margin-bottom:14px;padding:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;">
-                        <div style="font-size:12px;color:rgba(255,100,100,0.6);margin-bottom:6px;">${this._esc(m.date || '')}</div>
-                        <div style="font-size:14px;color:rgba(255,255,255,0.7);line-height:1.7;">${this._esc(m.content || '')}</div>
-                    </div>`).join('')}
-                <div style="margin-top:20px;padding:12px;background:rgba(255,255,255,0.015);border-radius:10px;text-align:center;">
-                    <div style="font-size:11px;color:rgba(255,255,255,0.12);line-height:1.7;">&#9670; 记忆碎片（TA已遗忘的记忆）不在这里<br>如需查看，请到聊天设置 → 记忆 → 记忆碎片</div>
-                </div>
-            </div>`;
+        
+        let memHtml = '';
+        if (memories.length === 0) {
+            memHtml = '<div style="text-align:center;padding:24px 0;color:rgba(255,255,255,0.15);font-size:13px;">暂无核心记忆</div>';
+        } else {
+            memHtml = memories.map(m => '<div style="margin-bottom:14px;padding:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;">' +
+                '<div style="font-size:12px;color:rgba(255,100,100,0.6);margin-bottom:6px;">' + this._esc(m.date || '') + '</div>' +
+                '<div style="font-size:14px;color:rgba(255,255,255,0.7);line-height:1.7;">' + this._esc(m.content || '') + '</div>' +
+            '</div>').join('');
+        }
+        
+        let fragHtml = '';
+        if (fragments.length > 0) {
+            fragHtml = '<div style="margin-top:24px;margin-bottom:10px;padding:0 4px;"><div style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.35);">&#9670; 记忆碎片 (' + fragments.length + ')</div><div style="font-size:11px;color:rgba(255,255,255,0.15);margin-top:3px;">TA已经遗忘的记忆，但仍留存在系统里</div></div>';
+            fragHtml += fragments.map(f => '<div style="margin-bottom:12px;padding:12px;background:rgba(255,255,255,0.02);border:1px dashed rgba(255,255,255,0.06);border-radius:10px;opacity:0.7;">' +
+                '<div style="font-size:11px;color:rgba(255,255,255,0.25);margin-bottom:4px;">' + this._esc(f.date || '') + '</div>' +
+                '<div style="font-size:13px;color:rgba(255,255,255,0.45);line-height:1.6;font-style:italic;">' + this._esc(f.content || '') + '</div>' +
+            '</div>').join('');
+        }
+        
+        page.innerHTML = '<div style="display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.04);flex-shrink:0;">' +
+            '<button id="mdBack" style="background:none;border:none;color:rgba(255,255,255,0.6);font-size:20px;cursor:pointer;">&#8592;</button>' +
+            '<div style="flex:1;font-size:16px;font-weight:600;color:#fff;text-align:center;">' + this._esc(name) + ' 的核心记忆</div>' +
+        '</div>' +
+        '<div style="flex:1;overflow-y:auto;padding:16px;min-height:0;">' +
+            memHtml + fragHtml +
+        '</div>';
+        
         document.body.appendChild(page);
         page.querySelector('#mdBack')?.addEventListener('click', () => page.remove());
     }

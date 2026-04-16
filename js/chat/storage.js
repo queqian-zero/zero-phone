@@ -170,6 +170,11 @@ class StorageManager {
             const f = all.find(f => f.code === code);
             if (!f || !f.isDeleted) return false;
             f.isDeleted = false; f.deletedAt = null;
+            // 记录重新添加的历史
+            if (!f.addHistory) {
+                f.addHistory = [{ date: f.addedDate || f.createdAt || new Date().toISOString(), method: f.source || '首次添加' }];
+            }
+            f.addHistory.push({ date: new Date().toISOString(), method: '编码重新添加' });
             return this.saveData(this.KEYS.FRIENDS, all);
         } catch(e) { return false; }
     }

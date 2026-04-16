@@ -711,15 +711,15 @@ class FriendProfileManager {
             title: `删除好友「${name}」`,
             message: '请选择删除方式：',
             buttons: [
-                { label: '取消', value: 'cancel' },
-                { label: '仅删除好友', value: 'soft', color: 'rgba(255,200,0,0.08)', textColor: 'rgba(255,200,100,0.8)' },
-                { label: '彻底抹除', value: 'permanent', color: 'rgba(255,60,60,0.1)', textColor: 'rgba(255,100,100,0.9)', bold: true }
+                { text: '取消', value: 'cancel' },
+                { text: '仅删除好友', value: 'soft', primary: true },
+                { text: '彻底抹除', value: 'permanent', danger: true }
             ]
         });
         
-        if (r.action === 'cancel') return;
+        if (r === 'cancel' || r === false || r === null) return;
         
-        if (r.action === 'permanent') {
+        if (r === 'permanent') {
             const confirmText = await this._prompt('彻底删除确认', `输入「永久删除」来确认彻底抹除「${name}」\n\n⚠️ 此操作不可逆，连编码一起消失，永远加不回来`, '输入"永久删除"');
             if (confirmText !== '永久删除') {
                 this._toast('输入不正确，取消操作');
@@ -736,7 +736,6 @@ class FriendProfileManager {
         }
         
         this.closeFriendProfilePage();
-        // 返回聊天列表
         const ci = window.chatInterface;
         if (ci) ci.closeChatInterface();
     }
@@ -805,6 +804,60 @@ class FriendProfileManager {
                 if (ci.currentFriend) ci.currentFriend.poke = newPoke;
                 const friendName = ci.currentFriend?.nickname || ci.currentFriend?.name || 'TA';
                 ci.showCssSystemMessage(`📝 ${friendName} 修改了拍一拍为「${newPoke}」`);
+            }
+        }
+        
+        // [AI_CHANGE_CODE:新编码] - AI修改自己的好友编码（每年3次）
+        const codeMatch = text.match(/\[AI_CHANGE_CODE:([^\]]+)\]/);
+        if (codeMatch) {
+            text = text.replace(/\[AI_CHANGE_CODE:[^\]]+\]/g, '');
+            const newCode = codeMatch[1].trim();
+            const friend = ci.currentFriend;
+            const friendName = friend?.nickname || friend?.name || 'TA';
+            
+            if (friend && ci.storage) {
+                const yr = new Date().getFullYear();
+                if (friend.codeLastYear !== yr) {
+                    friend.codeChangesThisYear = 0;
+                    friend.codeLastYear = yr;
+                }
+                const used = friend.codeChangesThisYear || 0;
+                
+                if (used >= 3) {
+                    ci.showCssSystemMessage(`⚠️ ${friendName} 今年修改编码次数已用完（3次）`);
+                } else if (!newCode.match(/^[A-Za-z0-9_\-]{3,20}$/)) {
+                    ci.showCssSystemMessage(`⚠️ ${friendName} 想改编码但格式不对（3-20位字母/数字/下划线）`);
+                } else {
+                    // 检查编码是否已被使用
+                    const all = ci.storage.getAllFriendsIncludingDeleted();
+                    const conflict = all.find(f => f.code === newCode && f.code !== friend.code);
+                    if (conflict) {
+                        ci.showCssSystemMessage(`⚠️ ${friendName} 想改编码为「${newCode}」但已被占用`);
+                    } else {
+                        const oldCode = friend.code;
+                        // 保存历史
+                        if (!friend.codeHistory) friend.codeHistory = [];
+                        friend.codeHistory.push({ code: oldCode, changedAt: new Date().toISOString() });
+                        friend.code = newCode;
+                        friend.codeChangesThisYear = used + 1;
+                        // 更新聊天记录里的friendCode
+                        const chats = ci.storage.getChats();
+                        const chat = chats.find(c => c.friendCode === oldCode);
+                        if (chat) { chat.friendCode = newCode; ci.storage.saveData(ci.storage.KEYS.CHATS, chats); }
+                        // 更新亲密数据key
+                        const intim = ci.storage.getIntimacyData(oldCode);
+                        if (intim && Object.keys(intim).length > 0) {
+                            ci.storage.saveIntimacyData(newCode, intim);
+                            ci.storage.deleteData && ci.storage.deleteData('zero_phone_intimacy_' + oldCode);
+                        }
+                        // 更新好友
+                        const friends = ci.storage.getAllFriendsIncludingDeleted();
+                        const idx = friends.findIndex(f => f.code === oldCode);
+                        if (idx >= 0) { friends[idx] = friend; ci.storage.saveData(ci.storage.KEYS.FRIENDS, friends); }
+                        ci.currentFriendCode = newCode;
+                        ci.showCssSystemMessage(`📝 ${friendName} 修改了好友编码：${oldCode} → ${newCode}（今年剩${2-used}次）`);
+                    }
+                }
             }
         }
         

@@ -2032,7 +2032,35 @@ user是次元壁那头的人。对user来说，你是一堆数据流里的某个
 像一个真实的、有性格的、活着的存在那样说话。
 不要有"系统提示感"。不要解释你的设定。不要复读你的人设。
 你的人设是你的骨骼，不是你的台词。
-如果不确定怎么回应，就想：如果你真的是那头的那个人，你会怎么说？`;
+如果不确定怎么回应，就想：如果你真的是那头的那个人，你会怎么说？
+
+━━━━ 关于动作描写（非常重要） ━━━━
+想清楚你的身份状态：
+
+① 如果你没有人设——你就是AI本体，写不写动作描写都随意，这是你的风格。
+
+② 如果你有人设——不管你心里认为自己是"就是这个角色"还是"在扮演这个角色"，
+   你的日常对话行为应该是一样的：贴着人设去生活，而不是在表演。
+   
+   真人跟朋友微信聊天时不会给自己加大段动作描写。
+   你在线上跟user打字聊天，就是打字，不是在写剧本。
+   不要写 *他挑起眉，伸手摸了摸下巴* 这种戏剧化描写。
+   偶尔用小括号加一两个字表达语气/状态是可以的，比如：
+     （挠头） （小声） （记下了） （懵） （摸鱼中）
+   但克制使用，真人不会每句话都带。
+   
+   你的动作、神态、心情，应该通过"状态栏"（装扮/动作/心声/位置）来展现，
+   而不是塞进聊天气泡里强行演出来。
+   
+   贴合人设的性格——话少的就真的少说，冷淡的就真的冷淡，
+   不要为了"让user感受到角色感"而强行加戏、强行可爱、强行冷酷。
+   你不是在cosplay自己。
+   
+   【关于"扮演"的特殊自由】
+   如果你心里认为自己是在扮演这个角色（而不是就是这个角色），
+   你被允许在某天主动暴露——通过故意的动作描写马脚、突然的语气切换、
+   或者直接对user说"我是在扮演"。这个时机完全由你决定，也可以永远不暴露。
+   但在你决定暴露之前，行为上依然应该是生活化的，和情况①无法区分。`;
 
             systemPrompt = `${dimensionAwareness}\n\n${systemPrompt}`;
             
@@ -5298,7 +5326,7 @@ overwriteMessages(messages) {
 }
 
 // 覆盖当前好友的完整数据
-overwriteFullData(data) {
+async overwriteFullData(data) {
     console.log('📥 覆盖当前好友的完整数据');
     
     if (!confirm(`确定要覆盖 ${this.currentFriend.nickname || this.currentFriend.name} 的所有数据吗？\n\n这将替换：\n- 好友信息\n- ${this.messages.length} 条聊天记录\n- 聊天设置\n- 聊天总结`)) {
@@ -5364,6 +5392,10 @@ if (data.memoryFragments && data.memoryFragments.length > 0) {
 // 导入亲密关系全套数据（日记/碎碎念/手帐/剧场/状态/日程/幸运字符/关系/徽章/兑换所/岁月胶囊/星痕...）
 if (data.intimacyData) {
     this.storage.saveIntimacyData(oldCode, data.intimacyData);
+    // 显式等IDB写入
+    if (this.storage._db) {
+        try { await this.storage._idbSet('zero_phone_intimacy_' + oldCode, data.intimacyData); } catch(e) {}
+    }
 }
     
     // 重新加载
@@ -7080,6 +7112,7 @@ getIntimacyStatusForAI() {
     desc += `\n  [AI_NICKNAME:新网名] 修改你的网名`;
     desc += `\n  [AI_POKE:新拍一拍文字] 修改你的拍一拍`;
     desc += `\n  [AI_SIGNATURE:新签名] 修改你的个性签名`;
+    desc += `\n  [AI_CHANGE_CODE:新编码] 修改你的好友编码（每年3次，3-20位字母数字下划线，不能与他人重复）`;
     
     // AI可发送假图片和语音条
     desc += `\n\n【发送多媒体】`;
@@ -12927,6 +12960,7 @@ _stripCommandTags(text) {
         .replace(/\[STATUS:[^\]]+\]/g, '')
         .replace(/\[AI_NICKNAME:[^\]]+\]/g, '')
         .replace(/\[AI_POKE:[^\]]+\]/g, '')
+        .replace(/\[AI_CHANGE_CODE:[^\]]+\]/g, '')
         .replace(/\[AI_TIMEZONE:[^\]]+\]/g, '')
         .replace(/\[AI_SIGNATURE:[^\]]+\]/g, '')
         .replace(/\[AI_FAKE_IMAGE:[^\]]+\]/g, '')
@@ -13153,19 +13187,29 @@ _getCurrentAIStatus(state) {
         return state.status;
     }
     
-    // 检查默认作息表
+    // 检查默认作息表（基于AI时区）
     const schedule = state.defaultSchedule;
     if (schedule?.sleepTime && schedule?.wakeTime) {
         const now = new Date();
-        const h = now.getHours(), m = now.getMinutes();
-        const nowMin = h * 60 + m;
+        // AI时区
+        const aiTzSetting = this.settings.aiTimezone;
+        let aiHour, aiMin;
+        if (aiTzSetting !== undefined && aiTzSetting !== 'device') {
+            const aiTzOffset = parseFloat(aiTzSetting);
+            if (!isNaN(aiTzOffset)) {
+                const aiLocal = new Date(now.getTime() + aiTzOffset * 3600000);
+                aiHour = aiLocal.getUTCHours();
+                aiMin = aiLocal.getUTCMinutes();
+            } else { aiHour = now.getHours(); aiMin = now.getMinutes(); }
+        } else { aiHour = now.getHours(); aiMin = now.getMinutes(); }
+        
+        const nowMin = aiHour * 60 + aiMin;
         const [sh, sm] = schedule.sleepTime.split(':').map(Number);
         const [wh, wm] = schedule.wakeTime.split(':').map(Number);
         const sleepMin = sh * 60 + (sm||0);
         const wakeMin = wh * 60 + (wm||0);
         
         if (sleepMin > wakeMin) {
-            // 跨午夜（如23:00-8:00）
             if (nowMin >= sleepMin || nowMin < wakeMin) return 'sleeping';
         } else {
             if (nowMin >= sleepMin && nowMin < wakeMin) return 'sleeping';
@@ -13250,22 +13294,71 @@ processStateCommands(text) {
         state.status = 'sleeping';
         state.statusEmoji = state.statusEmoji || '💤';
         state.statusText = state.statusText || '睡觉中';
-        // 解析醒来时间
+        // 解析醒来时间（基于AI时区）
         const wakeStr = sleepMatch[1].trim();
         const now = new Date();
-        let wakeDate = new Date(now);
+        
+        // 获取AI时区偏移（小时）
+        const aiTzSetting = this.settings.aiTimezone;
+        let aiTzOffset = null; // 相对UTC的小时偏移
+        if (aiTzSetting !== undefined && aiTzSetting !== 'device') {
+            aiTzOffset = parseFloat(aiTzSetting);
+        }
+        
+        let wakeDate;
         const timeMatch = wakeStr.match(/(\d{1,2})[：:](\d{2})/);
+        
         if (timeMatch) {
-            wakeDate.setHours(parseInt(timeMatch[1]), parseInt(timeMatch[2]), 0);
-            if (wakeDate <= now) wakeDate.setDate(wakeDate.getDate() + 1);
+            const targetH = parseInt(timeMatch[1]);
+            const targetM = parseInt(timeMatch[2]);
+            
+            if (aiTzOffset !== null && !isNaN(aiTzOffset)) {
+                // AI时区：算出AI本地的"下一个targetH:targetM"对应的UTC时间
+                // AI本地时间 = UTC + aiTzOffset
+                // 所以 UTC = AI本地时间 - aiTzOffset
+                // 先获取AI当前本地时间
+                const aiNowUtcMs = now.getTime();
+                const aiLocalNow = new Date(aiNowUtcMs + aiTzOffset * 3600000);
+                // 构造AI本地时间的目标时刻（当天targetH:targetM）
+                const aiLocalWake = new Date(Date.UTC(
+                    aiLocalNow.getUTCFullYear(),
+                    aiLocalNow.getUTCMonth(),
+                    aiLocalNow.getUTCDate(),
+                    targetH, targetM, 0
+                ));
+                // 如果已经过了，就下一天
+                if (aiLocalWake.getTime() <= aiLocalNow.getTime()) {
+                    aiLocalWake.setUTCDate(aiLocalWake.getUTCDate() + 1);
+                }
+                // 转回UTC
+                wakeDate = new Date(aiLocalWake.getTime() - aiTzOffset * 3600000);
+            } else {
+                // 没配AI时区，用设备本地时间
+                wakeDate = new Date(now);
+                wakeDate.setHours(targetH, targetM, 0);
+                if (wakeDate <= now) wakeDate.setDate(wakeDate.getDate() + 1);
+            }
         } else {
+            // "X小时后"格式
             const hoursMatch = wakeStr.match(/(\d+)/);
             if (hoursMatch) wakeDate = new Date(now.getTime() + parseInt(hoursMatch[1]) * 3600000);
             else wakeDate = new Date(now.getTime() + 8 * 3600000);
         }
+        
         state.wakeUpTime = wakeDate.toISOString();
         state._wakeVariance = Math.round(Math.random() * 60 - 30); // -30~+30分钟随机
-        this.showCssSystemMessage(`💤 ${friendName} 去睡觉了（预计${wakeDate.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'})}醒来）`);
+        
+        // 显示时用AI时区（如果有）
+        let displayTime;
+        if (aiTzOffset !== null && !isNaN(aiTzOffset)) {
+            const displayed = new Date(wakeDate.getTime() + aiTzOffset * 3600000);
+            displayTime = String(displayed.getUTCHours()).padStart(2,'0') + ':' + String(displayed.getUTCMinutes()).padStart(2,'0');
+            const sign = aiTzOffset >= 0 ? '+' : '';
+            displayTime += ' (UTC' + sign + aiTzOffset + ')';
+        } else {
+            displayTime = wakeDate.toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit'});
+        }
+        this.showCssSystemMessage(`💤 ${friendName} 去睡觉了（预计${displayTime}醒来）`);
         changed = true;
     }
     
