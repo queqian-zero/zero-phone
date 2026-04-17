@@ -838,23 +838,37 @@ class FriendProfileManager {
                         // 保存历史
                         if (!friend.codeHistory) friend.codeHistory = [];
                         friend.codeHistory.push({ code: oldCode, changedAt: new Date().toISOString() });
-                        friend.code = newCode;
                         friend.codeChangesThisYear = used + 1;
-                        // 更新聊天记录里的friendCode
+                        
+                        // 1. 先在好友列表里找到自己（趁code还没改）
+                        const friends = ci.storage.getAllFriendsIncludingDeleted();
+                        const idx = friends.findIndex(f => f.code === oldCode);
+                        
+                        // 2. 改code
+                        friend.code = newCode;
+                        
+                        // 3. 保存好友列表
+                        if (idx >= 0) { friends[idx] = {...friend}; }
+                        ci.storage.saveData(ci.storage.KEYS.FRIENDS, friends);
+                        
+                        // 4. 更新聊天记录里的friendCode
                         const chats = ci.storage.getChats();
                         const chat = chats.find(c => c.friendCode === oldCode);
                         if (chat) { chat.friendCode = newCode; ci.storage.saveData(ci.storage.KEYS.CHATS, chats); }
-                        // 更新亲密数据key
+                        
+                        // 5. 迁移亲密数据key
                         const intim = ci.storage.getIntimacyData(oldCode);
                         if (intim && Object.keys(intim).length > 0) {
-                            ci.storage.saveIntimacyData(newCode, intim);
+                            ci.storage.saveData('zero_phone_intimacy_' + newCode, intim);
                             ci.storage.deleteData && ci.storage.deleteData('zero_phone_intimacy_' + oldCode);
                         }
-                        // 更新好友
-                        const friends = ci.storage.getAllFriendsIncludingDeleted();
-                        const idx = friends.findIndex(f => f.code === oldCode);
-                        if (idx >= 0) { friends[idx] = friend; ci.storage.saveData(ci.storage.KEYS.FRIENDS, friends); }
+                        
+                        // 6. 更新当前引用
                         ci.currentFriendCode = newCode;
+                        
+                        // 7. 重新加载聊天（刷新所有设置/壁纸/气泡等）
+                        ci.loadChat(newCode);
+                        
                         ci.showCssSystemMessage(`📝 ${friendName} 修改了好友编码：${oldCode} → ${newCode}（今年剩${2-used}次）`);
                     }
                 }
