@@ -4061,10 +4061,12 @@ if (coreMemoryBtn) {
         
         modal.style.display = 'flex';
         
-        // 计算消息统计
+        // 计算消息统计（只统计当前角色的）
         const summaries = this.storage.getChatSummaries(this.currentFriendCode);
-        const summarizedCount = summaries.reduce((sum, s) => sum + s.messageCount, 0);
-        const unsummarizedCount = this.messages.length - summarizedCount;
+        const rawSummarizedCount = summaries.reduce((sum, s) => sum + (s.messageCount || 0), 0);
+        // 如果已总结数 > 当前消息数（说明清空过消息但总结没清），修正为当前消息数
+        const summarizedCount = Math.min(rawSummarizedCount, this.messages.length);
+        const unsummarizedCount = Math.max(0, this.messages.length - summarizedCount);
         
         // 更新统计信息
         document.getElementById('manualTotalMessages').textContent = this.messages.length;
@@ -4072,15 +4074,20 @@ if (coreMemoryBtn) {
         document.getElementById('manualUnsummarizedMessages').textContent = unsummarizedCount;
         document.getElementById('manualUnsummarizedCount').textContent = unsummarizedCount;
         
-        // 显示未总结范围提示
+        // 如果总结计数明显不对，提示用户
         const hintEl = document.getElementById('manualUnsummarizedHint');
         if (hintEl) {
-            if (unsummarizedCount > 0) {
+            if (rawSummarizedCount > this.messages.length && this.messages.length > 0) {
+                hintEl.textContent = '⚠️ 总结记录与消息数不一致，建议清空总结后重新生成';
+                hintEl.style.color = 'rgba(255,200,100,0.6)';
+            } else if (unsummarizedCount > 0) {
                 const fromFloor = summarizedCount + 1;
                 const toFloor = this.messages.length;
                 hintEl.textContent = `💡 第 ${fromFloor} 楼 ~ 第 ${toFloor} 楼 还未总结`;
+                hintEl.style.color = '';
             } else {
                 hintEl.textContent = '✅ 所有消息都已总结';
+                hintEl.style.color = '';
             }
         }
         

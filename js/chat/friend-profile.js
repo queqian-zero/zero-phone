@@ -676,14 +676,33 @@ class FriendProfileManager {
 
     // ==================== 危险操作 ====================
     async _clearChat(code, storage) {
-        const ok = await this._confirm('清空聊天记录', '仅清空聊天消息记录。\n如果想连总结和记忆一起清空，请在清空后到记忆模块手动删除。', '清空', '取消');
-        if (!ok) return;
+        const r = await this._showDialog({
+            title: '清空聊天记录',
+            message: '请选择清空方式：',
+            buttons: [
+                { text: '取消', value: 'cancel' },
+                { text: '仅聊天消息', value: 'messages' },
+                { text: '全部清空', value: 'all', danger: true }
+            ]
+        });
         
-        // 清空消息
-        const chat = storage.getChatByFriendCode(code);
+        if (r === 'cancel' || r === false || r === null) return;
+        
+        const chats = storage.getData('zero_phone_chats') || [];
+        const chat = chats.find(c => c.friendCode === code);
+        
         if (chat) {
+            // 清空消息
             chat.messages = [];
-            storage.saveData('zero_phone_chats', storage.getData('zero_phone_chats').map(c => c.friendCode === code ? chat : c));
+            
+            if (r === 'all') {
+                // 连总结、核心记忆、记忆碎片一起清空
+                chat.summaries = [];
+                chat.coreMemories = [];
+                chat.memoryFragments = [];
+            }
+            
+            storage.saveData('zero_phone_chats', chats);
         }
         
         // 刷新界面
@@ -692,7 +711,7 @@ class FriendProfileManager {
             ci.messages = [];
             ci.renderMessages();
         }
-        this._toast('聊天记录已清空');
+        this._toast(r === 'all' ? '聊天记录、总结、记忆已全部清空' : '聊天消息已清空');
     }
 
     async _blacklistFriend(code, friend, storage) {
