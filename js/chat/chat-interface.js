@@ -2246,27 +2246,54 @@ ${archiveListText}
             
             // 构建搜索池（所有模式共用）
             const searchPool = [];
-            coreMemories.forEach((m,i) => searchPool.push({ id:'core_'+i, type:'核心记忆', date:m.date||'', text:m.content||'', ts:m.createdAt||'' }));
-            summaries.forEach((s,i) => searchPool.push({ id:'sum_'+i, type:'聊天总结', date:'', text:(s.summary||s.text||'').substring(0,300), ts:s.createdAt||'' }));
+            const _ago = (ts) => {
+                if (!ts) return '';
+                const diff = Date.now() - new Date(ts).getTime();
+                const mins = Math.floor(diff / 60000);
+                if (mins < 60) return mins + '分钟前';
+                const hrs = Math.floor(mins / 60);
+                if (hrs < 24) return hrs + '小时前';
+                const days = Math.floor(hrs / 24);
+                if (days < 30) return days + '天前';
+                const months = Math.floor(days / 30);
+                return months + '个月前';
+            };
+            const _dateStr = (ts) => {
+                if (!ts) return '';
+                return new Date(ts).toLocaleString('zh-CN', {year:'numeric',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
+            };
+            
+            coreMemories.forEach((m,i) => searchPool.push({ id:'core_'+i, type:'核心记忆', text:m.content||'', ts:m.createdAt||m.date||'' }));
+            summaries.forEach((s,i) => searchPool.push({ id:'sum_'+i, type:'聊天总结', text:(s.summary||s.text||'').substring(0,300), ts:s.createdAt||'' }));
             theaterSessions.forEach((s,i) => {
                 const sc=s.script||{};
-                searchPool.push({ id:'theater_'+i, type:'剧场记忆', date:s.createdAt?new Date(s.createdAt).toLocaleDateString('zh-CN'):'', text:`「${s.theaterName||sc.charName+'&'+sc.userName}」${(sc.world||'').substring(0,80)}`, ts:s.createdAt||'' });
-                (s.summaries||[]).forEach((sm,j) => searchPool.push({ id:'ts_'+i+'_'+j, type:'剧场总结', date:'', text:(sm.text||'').substring(0,200), ts:sm.createdAt||'' }));
+                searchPool.push({ id:'theater_'+i, type:'剧场记忆', text:`「${s.theaterName||sc.charName+'&'+sc.userName}」${(sc.world||'').substring(0,80)}`, ts:s.createdAt||'' });
+                (s.summaries||[]).forEach((sm,j) => searchPool.push({ id:'ts_'+i+'_'+j, type:'剧场总结', text:(sm.text||'').substring(0,200), ts:sm.createdAt||'' }));
             });
-            notebook.notes?.forEach((n,i) => searchPool.push({ id:'note_'+i, type:'碎碎念', date:'', text:(n.content||'').substring(0,150), ts:n.createdAt||'' }));
-            notebook.diary?.forEach((d,i) => searchPool.push({ id:'diary_'+i, type:'日记', date:d.date||'', text:`心情:${d.mood||'?'} ${(d.content||'').substring(0,200)}`, ts:d.createdAt||'' }));
+            notebook.notes?.forEach((n,i) => searchPool.push({ id:'note_'+i, type:'碎碎念', text:(n.content||'').substring(0,150), ts:n.createdAt||'' }));
+            notebook.diary?.forEach((d,i) => searchPool.push({ id:'diary_'+i, type:'日记', text:`心情:${d.mood||'?'} ${(d.content||'').substring(0,200)}`, ts:d.createdAt||d.date||'' }));
+            // 手帐
+            const journal = intimacyData.journal || { pages: [] };
+            (journal.pages||[]).forEach((p,i) => searchPool.push({ id:'journal_'+i, type:'手帐', text:(p.content||'').substring(0,150), ts:p.createdAt||'' }));
             
-            const memIndex = `核心记忆${coreMemories.length}条、聊天印象${summaries.length}条、次元剧场${theaterSessions.length}段、碎碎念${(notebook.notes||[]).length}条、日记${(notebook.diary||[]).length}篇`;
-            const _fmtMem = (m) => { const t=m.ts?new Date(m.ts).toLocaleString('zh-CN',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):(m.date||''); return `[${m.type}${t?' '+t:''}] ${m.text}`; };
+            const memIndex = `核心记忆${coreMemories.length}条、聊天印象${summaries.length}条、次元剧场${theaterSessions.length}段、碎碎念${(notebook.notes||[]).length}条、日记${(notebook.diary||[]).length}篇、手帐${(journal.pages||[]).length}页`;
+            const _fmtMem = (m) => {
+                const dateAbs = _dateStr(m.ts);
+                const dateRel = _ago(m.ts);
+                const timeLabel = dateAbs ? `${dateAbs}（${dateRel}）` : '';
+                return `[${m.type}｜${timeLabel}] ${m.text}`;
+            };
             
             // 搜索函数
             const _searchMemory = (keywords) => {
                 const kw = keywords.toLowerCase();
                 const ws = kw.replace(/[，。！？、\s]/g,' ').split(' ').filter(w=>w.length>=2);
                 return searchPool.map(item => {
-                    const t=(item.text+' '+item.date+' '+item.type).toLowerCase();
-                    let score=0; ws.forEach(w=>{if(t.includes(w))score++;}); return {...item,_score:score};
-                }).filter(s=>s._score>0).sort((a,b)=>b._score-a._score).slice(0,8);
+                    const searchText = (item.text + ' ' + item.type + ' ' + (item.ts ? _dateStr(item.ts) : '')).toLowerCase();
+                    let score = 0;
+                    ws.forEach(w => { if (searchText.includes(w)) score++; });
+                    return {...item, _score: score};
+                }).filter(s => s._score > 0).sort((a,b) => b._score - a._score).slice(0, 8);
             };
             
             if (searchPool.length > 0) {
@@ -2279,7 +2306,7 @@ ${archiveListText}
                             const recallKw = preResult.text.replace(/^.*RECALL:\s*/,'').trim();
                             const found = _searchMemory(recallKw);
                             if (found.length > 0) {
-                                systemPrompt += `\n\n【你翻阅记忆后找到了这些】`;
+                                systemPrompt += `\n\n【你翻阅记忆后找到了这些（注意日期，不要把旧事当成最近的）】`;
                                 found.forEach(m => systemPrompt += '\n  ' + _fmtMem(m));
                             }
                         }
@@ -2295,7 +2322,7 @@ ${archiveListText}
                     if (pendingRecall) {
                         const found = _searchMemory(pendingRecall);
                         if (found.length > 0) {
-                            systemPrompt += `\n你上次说想回忆的事，找到了：`;
+                            systemPrompt += `\n你上次说想回忆的事，找到了（注意日期）：`;
                             found.forEach(m => systemPrompt += '\n  ' + _fmtMem(m));
                         }
                         this._pendingRecallKeywords = null;
@@ -2308,13 +2335,15 @@ ${archiveListText}
                     // 给目录（只有标题/日期，不给详情）
                     if (searchPool.length <= 30) {
                         searchPool.forEach(m => {
-                            const t=m.ts?new Date(m.ts).toLocaleString('zh-CN',{month:'numeric',day:'numeric'}):(m.date||'');
-                            systemPrompt += `\n  [${m.id}] ${m.type} ${t} ${m.text.substring(0,25)}...`;
+                            const t = m.ts ? _dateStr(m.ts).split(' ')[0] : '';
+                            const rel = _ago(m.ts);
+                            systemPrompt += `\n  [${m.id}] ${m.type}｜${t}${rel?'('+rel+')':''} ${m.text.substring(0,25)}...`;
                         });
                     } else {
                         searchPool.slice(-30).forEach(m => {
-                            const t=m.ts?new Date(m.ts).toLocaleString('zh-CN',{month:'numeric',day:'numeric'}):(m.date||'');
-                            systemPrompt += `\n  [${m.id}] ${m.type} ${t} ${m.text.substring(0,25)}...`;
+                            const t = m.ts ? _dateStr(m.ts).split(' ')[0] : '';
+                            const rel = _ago(m.ts);
+                            systemPrompt += `\n  [${m.id}] ${m.type}｜${t}${rel?'('+rel+')':''} ${m.text.substring(0,25)}...`;
                         });
                     }
                     // 上一轮AI请求的详情
@@ -2337,7 +2366,7 @@ ${archiveListText}
                     
                     systemPrompt += `\n\n【你的记忆】${memIndex}`;
                     if (found.length > 0) {
-                        systemPrompt += `\n你联想到了：`;
+                        systemPrompt += `\n你联想到了（注意每条记忆后面的日期和"X天前"标记，不要把很久前的事当成最近发生的）：`;
                         found.forEach(m => systemPrompt += '\n  ' + _fmtMem(m));
                     }
                 }
