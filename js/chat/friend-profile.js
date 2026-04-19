@@ -835,39 +835,53 @@ class FriendProfileManager {
                         ci.showCssSystemMessage(`⚠️ ${friendName} 想改编码为「${newCode}」但已被占用`);
                     } else {
                         const oldCode = friend.code;
-                        // 保存历史
                         if (!friend.codeHistory) friend.codeHistory = [];
                         friend.codeHistory.push({ code: oldCode, changedAt: new Date().toISOString() });
                         friend.codeChangesThisYear = used + 1;
                         
-                        // 1. 先在好友列表里找到自己（趁code还没改）
+                        // ====== 通用迁移：扫描所有包含旧编码的key，自动换成新编码 ======
+                        // 这样不管以后加什么新功能，只要key里含friendCode就会自动迁移
+                        const cache = ci.storage._cache;
+                        const keysToMigrate = Object.keys(cache).filter(k => k.includes(oldCode));
+                        keysToMigrate.forEach(oldKey => {
+                            const newKey = oldKey.replace(oldCode, newCode);
+                            if (newKey !== oldKey) {
+                                ci.storage.saveData(newKey, cache[oldKey]);
+                                ci.storage.deleteData(oldKey);
+                            }
+                        });
+                        // 也扫localStorage（兜底）
+                        const lsKeys = [];
+                        for (let i = 0; i < localStorage.length; i++) {
+                            const k = localStorage.key(i);
+                            if (k && k.includes(oldCode)) lsKeys.push(k);
+                        }
+                        lsKeys.forEach(oldKey => {
+                            const newKey = oldKey.replace(oldCode, newCode);
+                            if (newKey !== oldKey) {
+                                try {
+                                    const val = localStorage.getItem(oldKey);
+                                    localStorage.setItem(newKey, val);
+                                    localStorage.removeItem(oldKey);
+                                } catch(e) {}
+                            }
+                        });
+                        
+                        // 更新好友列表里的code字段
                         const friends = ci.storage.getAllFriendsIncludingDeleted();
                         const idx = friends.findIndex(f => f.code === oldCode);
-                        
-                        // 2. 改code
                         friend.code = newCode;
-                        
-                        // 3. 保存好友列表
-                        if (idx >= 0) { friends[idx] = {...friend}; }
+                        if (idx >= 0) friends[idx] = {...friend};
                         ci.storage.saveData(ci.storage.KEYS.FRIENDS, friends);
                         
-                        // 4. 更新聊天记录里的friendCode
+                        // 更新聊天记录里的friendCode
                         const chats = ci.storage.getChats();
                         const chat = chats.find(c => c.friendCode === oldCode);
                         if (chat) { chat.friendCode = newCode; ci.storage.saveData(ci.storage.KEYS.CHATS, chats); }
                         
-                        // 5. 迁移亲密数据key
-                        const intim = ci.storage.getIntimacyData(oldCode);
-                        if (intim && Object.keys(intim).length > 0) {
-                            ci.storage.saveData('zero_phone_intimacy_' + newCode, intim);
-                            ci.storage.deleteData && ci.storage.deleteData('zero_phone_intimacy_' + oldCode);
-                        }
-                        
-                        // 6. 更新当前引用
+                        // 更新当前引用（不reload，保持当前状态）
                         ci.currentFriendCode = newCode;
-                        
-                        // 7. 重新加载聊天（刷新所有设置/壁纸/气泡等）
-                        ci.loadChat(newCode);
+                        ci.currentFriend = friend;
                         
                         ci.showCssSystemMessage(`📝 ${friendName} 修改了好友编码：${oldCode} → ${newCode}（今年剩${2-used}次）`);
                     }
