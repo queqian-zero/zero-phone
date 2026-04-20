@@ -1315,10 +1315,51 @@ class ChatInterface {
         
         messagesList.innerHTML = '';
         
+        // 按分条模式预处理消息
+        const splitMode = this.settings.aiMsgSplitMode || 'whole';
+        let displayMessages = [...this.messages];
+        
+        if (splitMode === 'whole') {
+            // 整段模式：合并连续的AI消息（没有[MSG_SPLIT]标签的）
+            const merged = [];
+            for (let i = 0; i < displayMessages.length; i++) {
+                const msg = displayMessages[i];
+                if (msg.type === 'ai' && !msg._hasSplitTag && merged.length > 0) {
+                    const prev = merged[merged.length - 1];
+                    if (prev.type === 'ai' && !prev._hasSplitTag) {
+                        // 合并到上一条
+                        prev.text = (prev.text || '') + '\n\n' + (msg.text || '');
+                        prev._merged = true;
+                        continue;
+                    }
+                }
+                merged.push({...msg});
+            }
+            displayMessages = merged;
+        } else if (splitMode === 'split') {
+            // 分条模式：把长AI消息按段落拆开（没有[MSG_SPLIT]标签的）
+            const split = [];
+            for (const msg of displayMessages) {
+                if (msg.type === 'ai' && !msg._hasSplitTag) {
+                    const text = msg.text || '';
+                    let parts = text.split(/\n{2,}/).map(s => s.trim()).filter(Boolean);
+                    if (parts.length <= 1) parts = text.split(/\n/).map(s => s.trim()).filter(Boolean);
+                    if (parts.length <= 1) parts = [text];
+                    parts.forEach((p, idx) => {
+                        split.push({...msg, text: p, _sequential: idx > 0});
+                    });
+                } else {
+                    split.push(msg);
+                }
+            }
+            displayMessages = split;
+        }
+        
         // 只渲染最近N条，大幅减少初始加载时间
         const INITIAL_RENDER = 50;
-        const total = this.messages.length;
+        const total = displayMessages.length;
         this._renderStartIndex = Math.max(0, total - INITIAL_RENDER);
+        this._displayMessages = displayMessages; // 缓存给loadMore用
         
         // "加载更多"按钮
         if (this._renderStartIndex > 0) {
@@ -1333,7 +1374,7 @@ class ChatInterface {
         // 渲染可见消息
         const fragment = document.createDocumentFragment();
         for (let i = this._renderStartIndex; i < total; i++) {
-            const msg = this.messages[i];
+            const msg = displayMessages[i];
             if (msg.thinking && msg.type === 'ai') {
                 const block = this._createThinkingBlockEl(msg.thinking);
                 if (block) fragment.appendChild(block);
@@ -1384,7 +1425,7 @@ class ChatInterface {
         }
         
         for (let i = newStart; i < this._renderStartIndex; i++) {
-            const msg = this.messages[i];
+            const msg = (this._displayMessages || this.messages)[i];
             if (msg.thinking && msg.type === 'ai') {
                 const block = this._createThinkingBlockEl(msg.thinking);
                 if (block) fragment.appendChild(block);
@@ -2370,6 +2411,66 @@ ${archiveListText}
                         found.forEach(m => systemPrompt += '\n  ' + _fmtMem(m));
                     }
                 }
+            } else if (memMode === 'E') {
+                // ===== 模式E：全量开放（外置记忆库）=====
+                // 把所有记忆直接展开给AI，AI自己决定要不要用
+                systemPrompt += `\n\n【你的外置记忆库——以下是你所有的记忆，你可以随时翻阅，注意每条记忆的日期】`;
+                
+                if (coreMemories.length > 0) {
+                    systemPrompt += `\n\n═══ 核心记忆（${coreMemories.length}条）═══`;
+                    coreMemories.forEach((m, i) => {
+                        systemPrompt += `\n[核心记忆 #${i+1}｜${_dateStr(m.createdAt||m.date||'')}（${_ago(m.createdAt||m.date||'')}）] ${m.content||''}`;
+                    });
+                }
+                
+                if (summaries.length > 0) {
+                    systemPrompt += `\n\n═══ 聊天总结（${summaries.length}条）═══`;
+                    summaries.forEach((s, i) => {
+                        systemPrompt += `\n[聊天总结 #${i+1}｜${_dateStr(s.createdAt||'')}（${_ago(s.createdAt||'')}）] ${(s.summary||s.text||'').substring(0, 500)}`;
+                    });
+                }
+                
+                if ((notebook.notes||[]).length > 0) {
+                    systemPrompt += `\n\n═══ 碎碎念（${notebook.notes.length}条）═══`;
+                    notebook.notes.forEach((n, i) => {
+                        systemPrompt += `\n[碎碎念 #${i+1}｜${_dateStr(n.createdAt||'')}（${_ago(n.createdAt||'')}）] ${(n.content||'').substring(0, 200)}`;
+                    });
+                }
+                
+                if ((notebook.diary||[]).length > 0) {
+                    systemPrompt += `\n\n═══ 日记（${notebook.diary.length}篇）═══`;
+                    notebook.diary.forEach((d, i) => {
+                        systemPrompt += `\n[日记 #${i+1}｜${_dateStr(d.createdAt||d.date||'')}（${_ago(d.createdAt||d.date||'')}）｜心情:${d.mood||'?'}] ${(d.content||'').substring(0, 300)}`;
+                    });
+                }
+                
+                if ((journal.pages||[]).length > 0) {
+                    systemPrompt += `\n\n═══ 手帐（${journal.pages.length}页）═══`;
+                    journal.pages.forEach((p, i) => {
+                        systemPrompt += `\n[手帐 #${i+1}｜${_dateStr(p.createdAt||'')}（${_ago(p.createdAt||'')}）] ${(p.content||'').substring(0, 200)}`;
+                    });
+                }
+                
+                if (theaterSessions.length > 0) {
+                    systemPrompt += `\n\n═══ 次元剧场（${theaterSessions.length}段）═══`;
+                    theaterSessions.forEach((s, i) => {
+                        const sc = s.script || {};
+                        systemPrompt += `\n[剧场 #${i+1}｜${_dateStr(s.createdAt||'')}（${_ago(s.createdAt||'')}）｜「${s.theaterName||''}」] ${(sc.world||'').substring(0, 100)}`;
+                        (s.summaries||[]).forEach((sm, j) => {
+                            systemPrompt += `\n  └ 剧场总结：${(sm.text||'').substring(0, 150)}`;
+                        });
+                    });
+                }
+                
+                const fragments = this.storage.getMemoryFragments(this.currentFriendCode) || [];
+                if (fragments.length > 0) {
+                    systemPrompt += `\n\n═══ 记忆碎片（已遗忘，${fragments.length}条）═══`;
+                    fragments.forEach((f, i) => {
+                        systemPrompt += `\n[碎片 #${i+1}｜${_dateStr(f.createdAt||f.date||'')}（${_ago(f.createdAt||f.date||'')}）] ${(f.content||'').substring(0, 200)}`;
+                    });
+                }
+                
+                systemPrompt += `\n\n以上是你所有的记忆，你不需要每次都翻完。根据当前对话自然地使用就好。注意日期，不要把旧事当成最近的。`;
             }
             
             // 记录本轮token分布（按字符估算）
@@ -2499,6 +2600,7 @@ ${archiveListText}
                 const storeMsg = { type: 'ai', text: cleanText, timestamp: partTs };
                 if (i === 0 && thinkingText) storeMsg.thinking = thinkingText;
                 if (i > 0) storeMsg._sequential = true;
+                if (hasSplitTag) storeMsg._hasSplitTag = true;
                 this.storage.addMessage(this.currentFriendCode, storeMsg);
                 
                 // 4. 执行该段里的指令（通知自然出现在这个气泡下方）
@@ -3467,6 +3569,9 @@ div.innerHTML = `
                 this.settings.aiMsgSplitMode = e.target.value;
                 console.log('AI消息模式:', this.settings.aiMsgSplitMode);
                 this.saveSettings();
+                // 立即重新渲染所有消息
+                this.renderMessages();
+                this.scrollToBottom();
             });
         }
         
@@ -4061,29 +4166,50 @@ if (coreMemoryBtn) {
         
         modal.style.display = 'flex';
         
-        // 计算消息统计（只统计当前角色的）
+        // 计算消息统计（排除系统消息，只算user和ai）
         const summaries = this.storage.getChatSummaries(this.currentFriendCode);
+        const realMessages = this.messages.filter(m => m.type === 'user' || m.type === 'ai');
         const rawSummarizedCount = summaries.reduce((sum, s) => sum + (s.messageCount || 0), 0);
-        // 如果已总结数 > 当前消息数（说明清空过消息但总结没清），修正为当前消息数
-        const summarizedCount = Math.min(rawSummarizedCount, this.messages.length);
-        const unsummarizedCount = Math.max(0, this.messages.length - summarizedCount);
+        const summarizedCount = Math.min(rawSummarizedCount, realMessages.length);
+        const unsummarizedCount = Math.max(0, realMessages.length - summarizedCount);
         
         // 更新统计信息
-        document.getElementById('manualTotalMessages').textContent = this.messages.length;
+        document.getElementById('manualTotalMessages').textContent = realMessages.length;
         document.getElementById('manualSummarizedMessages').textContent = summarizedCount;
         document.getElementById('manualUnsummarizedMessages').textContent = unsummarizedCount;
         document.getElementById('manualUnsummarizedCount').textContent = unsummarizedCount;
         
-        // 如果总结计数明显不对，提示用户
         const hintEl = document.getElementById('manualUnsummarizedHint');
         if (hintEl) {
-            if (rawSummarizedCount > this.messages.length && this.messages.length > 0) {
-                hintEl.textContent = '⚠️ 总结记录与消息数不一致，建议清空总结后重新生成';
+            if (rawSummarizedCount > realMessages.length && realMessages.length > 0) {
+                hintEl.innerHTML = '⚠️ 总结记录与消息数不一致（已总结' + rawSummarizedCount + '条 > 实际' + realMessages.length + '条）<br><button id="fixSummaryCountBtn" style="margin-top:6px;padding:6px 14px;border:1px solid rgba(255,200,100,0.3);border-radius:8px;background:rgba(255,200,100,0.08);color:rgba(255,200,100,0.7);font-size:12px;cursor:pointer;">修复计数</button>';
                 hintEl.style.color = 'rgba(255,200,100,0.6)';
+                // 修复按钮
+                setTimeout(() => {
+                    document.getElementById('fixSummaryCountBtn')?.addEventListener('click', () => {
+                        // 重新计算每条总结的messageCount，按比例缩放到实际消息数
+                        const chats = this.storage.getChats();
+                        const chat = chats.find(c => c.friendCode === this.currentFriendCode);
+                        if (chat && chat.summaries) {
+                            const ratio = realMessages.length / rawSummarizedCount;
+                            let remaining = realMessages.length;
+                            chat.summaries.forEach((s, i) => {
+                                if (i === chat.summaries.length - 1) {
+                                    s.messageCount = remaining;
+                                } else {
+                                    s.messageCount = Math.max(1, Math.round((s.messageCount || 0) * ratio));
+                                    remaining -= s.messageCount;
+                                }
+                            });
+                            this.storage.saveData(this.storage.KEYS.CHATS, chats);
+                            this.openManualSummaryModal(); // 重新打开刷新数字
+                        }
+                    });
+                }, 100);
             } else if (unsummarizedCount > 0) {
                 const fromFloor = summarizedCount + 1;
-                const toFloor = this.messages.length;
-                hintEl.textContent = `💡 第 ${fromFloor} 楼 ~ 第 ${toFloor} 楼 还未总结`;
+                const toFloor = realMessages.length;
+                hintEl.textContent = '💡 第 ' + fromFloor + ' 楼 ~ 第 ' + toFloor + ' 楼 还未总结';
                 hintEl.style.color = '';
             } else {
                 hintEl.textContent = '✅ 所有消息都已总结';
@@ -4697,19 +4823,14 @@ handleEditSummaryConfirm() {
         }
         
         const interval = this.settings.summaryInterval || 20;
-        
-        // 获取当前聊天的所有总结
         const summaries = this.storage.getChatSummaries(this.currentFriendCode);
+        const summarizedCount = summaries.reduce((sum, s) => sum + (s.messageCount || 0), 0);
+        // 只算user和ai消息，排除系统消息
+        const realCount = this.messages.filter(m => m.type === 'user' || m.type === 'ai').length;
+        const unsummarizedCount = Math.max(0, realCount - summarizedCount);
         
-        // 计算已经总结过的消息数量
-        const summarizedCount = summaries.reduce((sum, s) => sum + s.messageCount, 0);
+        console.log(`📊 消息统计: 总${realCount}条(含系统${this.messages.length-realCount}条), 已总结${summarizedCount}条, 未总结${unsummarizedCount}条`);
         
-        // 计算未总结的消息数量
-        const unsummarizedCount = this.messages.length - summarizedCount;
-        
-        console.log(`📊 消息统计: 总${this.messages.length}条, 已总结${summarizedCount}条, 未总结${unsummarizedCount}条`);
-        
-        // 如果未总结的消息达到间隔数量，触发自动总结
         if (unsummarizedCount >= interval) {
             console.log('🎯 达到自动总结条件，开始生成总结...');
             this.generateAutoSummary(summarizedCount, this.messages.length);
@@ -4721,8 +4842,9 @@ handleEditSummaryConfirm() {
         if (!this.currentFriendCode || !this.currentFriend) return;
         const interval = this.settings.summaryInterval || 20;
         const summaries = this.storage.getChatSummaries(this.currentFriendCode);
-        const summarizedCount = summaries.reduce((sum, s) => sum + s.messageCount, 0);
-        const unsummarizedCount = this.messages.length - summarizedCount;
+        const summarizedCount = summaries.reduce((sum, s) => sum + (s.messageCount || 0), 0);
+        const realCount = this.messages.filter(m => m.type === 'user' || m.type === 'ai').length;
+        const unsummarizedCount = Math.max(0, realCount - summarizedCount);
         
         if (unsummarizedCount >= interval) {
             console.log('🎯 达到自动总结条件，开始生成总结...');
@@ -4739,8 +4861,8 @@ handleEditSummaryConfirm() {
             return;
         }
         
-        // 获取需要总结的消息
-        const messagesToSummarize = this.messages.slice(startIndex, endIndex);
+        // 获取需要总结的消息（排除系统消息）
+        const messagesToSummarize = this.messages.slice(startIndex, endIndex).filter(m => m.type === 'user' || m.type === 'ai');
         
         if (messagesToSummarize.length === 0) {
             console.warn('⚠️ 没有需要总结的消息');
