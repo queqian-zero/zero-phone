@@ -98,7 +98,7 @@
                 <div class="discover-page-content">
                     <!-- 社交区 -->
                     <div class="discover-group">
-                        <div class="discover-item" id="discoverMoments" onclick="window.chatInterface?.showCssToast?.('📷 朋友圈开发中...') || alert('📷 朋友圈开发中...')">
+                        <div class="discover-item" id="discoverMoments" onclick="window.momentsManager?.open()">
                             <div class="discover-icon">📷</div>
                             <div class="discover-label">朋友圈</div>
                             <span class="discover-arrow">›</span>
@@ -1291,6 +1291,7 @@
 <script src="js/chat/base64-library.js"></script>
 <script src="js/chat/theater-mode.js"></script>
 <script src="js/chat/memory-library.js"></script>
+<script src="js/chat/moments-manager.js"></script>
     
     <!-- ==================== 聊天壁纸弹窗 ==================== -->
 <!-- 
