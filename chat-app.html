@@ -783,6 +783,13 @@
                     <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:3px;line-height:1.5;">每轮给AI一个记忆目录（标题+日期），AI指定要看哪条，下一轮给详情。<br>✅ AI自己挑 &nbsp; ⚠️ 回忆有一轮延迟，目录占token</div>
                 </div>
             </label>
+            <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;cursor:pointer;">
+                <input type="radio" name="memRetrievalMode" value="E" style="margin-top:3px;accent-color:#f0932b;">
+                <div>
+                    <div style="font-size:14px;color:rgba(255,255,255,0.7);font-weight:600;">E. 全量开放（外置记忆库）</div>
+                    <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:3px;line-height:1.5;">把所有记忆全部展开给AI看，AI自己决定要不要翻、翻哪条。<br>✅ 最完整，AI完全自主 &nbsp; ⚠️ 占大量token，记忆多时很贵</div>
+                </div>
+            </label>
         </div>
     </div>
 </div>
