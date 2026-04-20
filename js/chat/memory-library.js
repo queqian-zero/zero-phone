@@ -81,6 +81,7 @@ class MemoryLibrary {
                     ${menuItem('&#9829;', '核心记忆', 'mlCoreMemory', '线上聊天的核心记忆')}
                     ${menuItem('&#9998;', '记事本', 'mlNotebook', 'TA的碎碎念和日记')}
                     ${menuItem('&#9998;', '手帐', 'mlJournal', 'TA的手帐本')}
+                    ${menuItem('&#128101;', '人际关系', 'mlRelations', '占位 - TA的社交圈')}
                     ${menuItem('&#9670;', '剧场归档', 'mlTheaterArchive', '次元剧场存档')}
                 </div>
             </div>`;
@@ -116,6 +117,11 @@ class MemoryLibrary {
         // 手帐
         page.querySelector('#mlJournal')?.addEventListener('click', () => {
             this._openJournal(friendCode, name);
+        });
+        
+        // 人际关系（占位）
+        page.querySelector('#mlRelations')?.addEventListener('click', () => {
+            this._toast('人际关系功能设计中...');
         });
     }
 
