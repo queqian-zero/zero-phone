@@ -229,11 +229,63 @@ class MomentsManager {
         });
         
         page.querySelectorAll('.moment-detail-btn').forEach(btn => { btn.addEventListener('click', () => { const idx = parseInt(btn.dataset.idx); if (this._moments[idx]) this._openDetail(this._moments[idx]); }); });
-        page.querySelectorAll('.moment-like-btn').forEach(btn => { btn.addEventListener('click', () => this._toast('点赞功能开发中...')); });
-        page.querySelectorAll('.moment-fav-btn').forEach(btn => { btn.addEventListener('click', () => this._toast('收藏功能开发中...')); });
+        page.querySelectorAll('.moment-like-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const idx = parseInt(btn.dataset.idx);
+                const m = this._moments[idx]; if (!m) return;
+                const user = this._getUserInfo();
+                if (!m.likes) m.likes = [];
+                const existing = m.likes.findIndex(l => l.name === user.name);
+                if (existing >= 0) { m.likes.splice(existing, 1); this._toast('已取消点赞'); }
+                else { m.likes.push({ name: user.name, ts: new Date().toISOString() }); this._toast('已点赞'); }
+                this._saveMoment(m);
+                this.open(); // 刷新
+            });
+        });
+        page.querySelectorAll('.moment-fav-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const idx = parseInt(btn.dataset.idx);
+                const m = this._moments[idx]; if (!m) return;
+                const user = this._getUserInfo();
+                if (!m.favorites) m.favorites = [];
+                const existing = m.favorites.findIndex(f => f.name === user.name);
+                if (existing >= 0) { m.favorites.splice(existing, 1); this._toast('已取消收藏'); }
+                else { m.favorites.push({ name: user.name, ts: new Date().toISOString() }); this._toast('已收藏'); }
+                this._saveMoment(m);
+                this.open();
+            });
+        });
     }
     
     close() { this._page?.remove(); this._page = null; }
+    
+    // 保存朋友圈数据（根据friendCode找到对应存储位置）
+    _saveMoment(moment) {
+        const store = this._store(); if (!store) return;
+        if (moment.isSelf || moment.friendCode === '_self') {
+            const s = store.getUserSettings();
+            const idx = (s.myMoments||[]).findIndex(m => m.id === moment.id);
+            if (idx >= 0) { s.myMoments[idx] = moment; store.saveData('zero_phone_user_settings', s); }
+        } else {
+            const d = store.getIntimacyData(moment.friendCode);
+            const idx = (d.moments||[]).findIndex(m => m.id === moment.id);
+            if (idx >= 0) { d.moments[idx] = moment; store.saveIntimacyData(moment.friendCode, d); }
+        }
+    }
+    
+    // 删除朋友圈
+    _deleteMoment(moment) {
+        const store = this._store(); if (!store) return;
+        if (moment.isSelf || moment.friendCode === '_self') {
+            const s = store.getUserSettings();
+            s.myMoments = (s.myMoments||[]).filter(m => m.id !== moment.id);
+            store.saveData('zero_phone_user_settings', s);
+        } else {
+            const d = store.getIntimacyData(moment.friendCode);
+            d.moments = (d.moments||[]).filter(m => m.id !== moment.id);
+            store.saveIntimacyData(moment.friendCode, d);
+        }
+    }
     
     // ====== 发布朋友圈页面 ======
     _openPostPage() {
@@ -600,8 +652,12 @@ class MomentsManager {
         p.id = 'momentDetailPage';
         p.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:8500;background:#1a1a1a;display:flex;flex-direction:column;';
         
+        const user = this._getUserInfo();
+        const isMine = moment.isSelf || moment.friendCode === '_self';
         const time = moment.createdAt ? new Date(moment.createdAt).toLocaleString('zh-CN') : '';
         const lk = (moment.likes||[]).length, fv = (moment.favorites||[]).length, cm = (moment.comments||[]).length;
+        const myLiked = (moment.likes||[]).some(l => l.name === user.name);
+        const myFaved = (moment.favorites||[]).some(f => f.name === user.name);
         
         let imagesHtml = '';
         if (moment.images?.length) {
@@ -612,30 +668,66 @@ class MomentsManager {
         
         let commentsHtml = '';
         if (cm) {
-            (moment.comments||[]).forEach(c => {
-                const rp = c.replyTo ? '<span style="color:rgba(255,255,255,0.15);">回复</span> <span style="color:rgba(240,147,43,0.5);">'+this._esc(c.replyTo)+'</span> ' : '';
+            (moment.comments||[]).forEach((c, ci) => {
+                const rp = c.replyTo ? '<span style="color:rgba(255,255,255,0.15);">\u56de\u590d</span> <span style="color:rgba(240,147,43,0.5);">'+this._esc(c.replyTo)+'</span> ' : '';
                 const cTime = c.ts ? new Date(c.ts).toLocaleString('zh-CN',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
-                commentsHtml += '<div style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.02);"><div style="display:flex;justify-content:space-between;"><span style="font-size:14px;font-weight:600;color:rgba(240,147,43,0.6);">'+this._esc(c.name)+'</span><span style="font-size:11px;color:rgba(255,255,255,0.12);">'+cTime+'</span></div><div style="font-size:14px;color:rgba(255,255,255,0.5);margin-top:4px;line-height:1.6;">'+rp+this._esc(c.content)+'</div></div>';
+                const isMyComment = c.name === user.name;
+                commentsHtml += '<div class="detail-comment" data-cidx="'+ci+'" style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.02);'+(isMyComment?'cursor:pointer;':'')+'">';
+                commentsHtml += '<div style="display:flex;justify-content:space-between;"><span style="font-size:14px;font-weight:600;color:rgba(240,147,43,0.6);">'+this._esc(c.name)+'</span><span style="font-size:11px;color:rgba(255,255,255,0.12);">'+cTime+'</span></div>';
+                commentsHtml += '<div style="font-size:14px;color:rgba(255,255,255,0.5);margin-top:4px;line-height:1.6;">'+rp+this._esc(c.content)+'</div>';
+                if (isMyComment) commentsHtml += '<div style="font-size:10px;color:rgba(255,255,255,0.08);margin-top:2px;">\u70b9\u51fb\u53ef\u5220\u9664</div>';
+                commentsHtml += '</div>';
             });
-        } else { commentsHtml = '<div style="text-align:center;padding:20px 0;color:rgba(255,255,255,0.08);font-size:13px;">暂无评论</div>'; }
+        } else { commentsHtml = '<div style="text-align:center;padding:20px 0;color:rgba(255,255,255,0.08);font-size:13px;">\u6682\u65e0\u8bc4\u8bba</div>'; }
         
-        let likesHtml = lk ? '<div style="padding:8px 0;"><span style="font-size:12px;color:rgba(255,255,255,0.2);">&#9825; '+(moment.likes||[]).map(l=>this._esc(l.name)).join('、')+'</span></div>' : '';
+        let likesHtml = lk ? '<div style="padding:8px 0;"><span style="font-size:12px;color:rgba(255,255,255,0.2);">&#9825; '+(moment.likes||[]).map(l=>this._esc(l.name)).join('\u3001')+'</span></div>' : '';
         
         p.innerHTML =
-            // 详情页header（同样匹配top-bar）
-            '<div style="height:60px;background:rgba(255,255,255,0.95);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid rgba(0,0,0,0.1);display:flex;align-items:center;justify-content:space-between;padding:0 16px;padding-top:env(safe-area-inset-top);flex-shrink:0;box-shadow:0 2px 10px rgba(0,0,0,0.05);">' +
+            '<div style="height:60px;background:rgba(255,255,255,0.95);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid rgba(0,0,0,0.1);display:flex;align-items:center;padding:0 16px;padding-top:env(safe-area-inset-top);flex-shrink:0;box-shadow:0 2px 10px rgba(0,0,0,0.05);">' +
                 '<button id="mdBack" style="width:40px;height:40px;border:none;background:rgba(0,0,0,0.05);border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;color:rgba(0,0,0,0.6);">&#8592;</button>' +
-                '<div style="font-size:18px;font-weight:600;color:#000;">动态详情</div>' +
+                '<div style="flex:1;text-align:center;font-size:18px;font-weight:600;color:#000;">\u52a8\u6001\u8be6\u60c5</div>' +
                 '<div style="width:40px;"></div>' +
             '</div>' +
             '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;min-height:0;">' +
                 '<div style="display:flex;gap:12px;align-items:center;margin-bottom:16px;">'+this._avatarHtml(moment.friendAvatar,moment.friendName,44)+'<div><div style="font-size:16px;font-weight:600;color:rgba(240,147,43,0.7);">'+this._esc(moment.friendName)+'</div><div style="font-size:12px;color:rgba(255,255,255,0.2);margin-top:2px;">'+time+'</div></div></div>' +
                 '<div style="font-size:15px;color:rgba(255,255,255,0.7);line-height:1.8;white-space:pre-wrap;">'+this._esc(moment.content||'')+'</div>'+imagesHtml+
-                '<div style="display:flex;gap:20px;margin-top:16px;padding:12px 0;border-top:1px solid rgba(255,255,255,0.04);border-bottom:1px solid rgba(255,255,255,0.04);"><span style="font-size:13px;color:rgba(255,255,255,0.2);">&#9825; '+lk+' 点赞</span><span style="font-size:13px;color:rgba(255,255,255,0.2);">&#9733; '+fv+' 收藏</span><span style="font-size:13px;color:rgba(255,255,255,0.2);">&#128172; '+cm+' 评论</span></div>'+
-                likesHtml+'<div style="margin-top:8px;"><div style="font-size:13px;color:rgba(255,255,255,0.15);margin-bottom:8px;">评论</div>'+commentsHtml+'</div></div>';
+                '<div style="display:flex;gap:16px;margin-top:16px;padding:12px 0;border-top:1px solid rgba(255,255,255,0.04);border-bottom:1px solid rgba(255,255,255,0.04);">' +
+                    '<button id="mdLike" style="background:none;border:none;font-size:13px;color:rgba(255,255,255,'+(myLiked?'0.6':'0.2')+');cursor:pointer;padding:4px 0;">'+(myLiked?'&#9829; \u5df2\u70b9\u8d5e':'&#9825; \u70b9\u8d5e')+' '+lk+'</button>' +
+                    '<button id="mdFav" style="background:none;border:none;font-size:13px;color:rgba(255,255,255,'+(myFaved?'0.6':'0.2')+');cursor:pointer;padding:4px 0;">'+(myFaved?'&#9733; \u5df2\u6536\u85cf':'&#9734; \u6536\u85cf')+' '+fv+'</button>' +
+                    '<span style="font-size:13px;color:rgba(255,255,255,0.2);padding:4px 0;">&#128172; '+cm+'</span>' +
+                    (isMine ? '<button id="mdDelete" style="background:none;border:none;font-size:13px;color:rgba(255,100,100,0.4);cursor:pointer;padding:4px 0;margin-left:auto;">\u5220\u9664</button>' : '') +
+                '</div>' +
+                likesHtml+'<div style="margin-top:8px;"><div style="font-size:13px;color:rgba(255,255,255,0.15);margin-bottom:8px;">\u8bc4\u8bba</div>'+commentsHtml+'</div></div>';
         
         document.body.appendChild(p);
         p.querySelector('#mdBack')?.addEventListener('click', () => p.remove());
+        p.querySelector('#mdLike')?.addEventListener('click', () => {
+            if (!moment.likes) moment.likes = [];
+            const idx = moment.likes.findIndex(l => l.name === user.name);
+            if (idx >= 0) moment.likes.splice(idx, 1); else moment.likes.push({ name: user.name, ts: new Date().toISOString() });
+            this._saveMoment(moment); p.remove(); this._openDetail(moment);
+        });
+        p.querySelector('#mdFav')?.addEventListener('click', () => {
+            if (!moment.favorites) moment.favorites = [];
+            const idx = moment.favorites.findIndex(f => f.name === user.name);
+            if (idx >= 0) moment.favorites.splice(idx, 1); else moment.favorites.push({ name: user.name, ts: new Date().toISOString() });
+            this._saveMoment(moment); p.remove(); this._openDetail(moment);
+        });
+        p.querySelector('#mdDelete')?.addEventListener('click', async () => {
+            const ml = window.memoryLibrary;
+            const ok = ml ? await ml._zpConfirm('\u5220\u9664\u670b\u53cb\u5708', '\u786e\u5b9a\u5220\u9664\u8fd9\u6761\u670b\u53cb\u5708\uff1f') : confirm('\u5220\u9664\uff1f');
+            if (ok) { this._deleteMoment(moment); p.remove(); this.open(); }
+        });
+        p.querySelectorAll('.detail-comment').forEach(el => {
+            el.addEventListener('click', async () => {
+                const cidx = parseInt(el.dataset.cidx);
+                const comment = (moment.comments||[])[cidx];
+                if (!comment || comment.name !== user.name) return;
+                const ml = window.memoryLibrary;
+                const ok = ml ? await ml._zpConfirm('\u5220\u9664\u8bc4\u8bba', '\u5220\u9664\u4f60\u7684\u8bc4\u8bba\uff1f') : confirm('\u5220\u9664\uff1f');
+                if (ok) { moment.comments.splice(cidx, 1); this._saveMoment(moment); p.remove(); this._openDetail(moment); }
+            });
+        });
     }
     
     _relTime(ts) {

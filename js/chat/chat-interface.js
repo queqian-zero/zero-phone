@@ -7334,10 +7334,17 @@ getIntimacyStatusForAI() {
     
     // 朋友圈系统
     desc += `\n\n【朋友圈】`;
-    desc += `\n  [AI_MOMENT:朋友圈内容] 发一条朋友圈动态（user和你的朋友都能看到）`;
-    desc += `\n  [AI_MOMENT_IMAGE:图片描述] 紧跟在AI_MOMENT后面，给朋友圈配图（假图）`;
-    desc += `\n  [AI_MOMENT_NOTIFY:方式] 通知user你发了朋友圈：toast（弹窗几秒消失）/ system（聊天系统消息）/ silent（偷偷发不通知）`;
-    desc += `\n  说明：你可以在聊天中随时发朋友圈，就像真人刷手机一样自然。你可以选择通知或偷偷发。`;
+    desc += `\n  [AI_MOMENT:朋友圈内容] 发一条朋友圈动态`;
+    desc += `\n  [AI_MOMENT_IMAGE:图片描述] 紧跟AI_MOMENT后面配图`;
+    desc += `\n  [AI_MOMENT_NOTIFY:方式] 通知方式：toast（弹窗几秒消失）/ system（系统消息）/ silent（不通知）`;
+    desc += `\n  [AI_DELETE_MOMENT:关键字] 删除你自己发的包含该关键字的朋友圈`;
+    desc += `\n  [AI_LIKE_MOMENT:好友名|关键字] 给某人的朋友圈点赞`;
+    desc += `\n  [AI_UNLIKE_MOMENT:好友名|关键字] 取消点赞`;
+    desc += `\n  [AI_FAV_MOMENT:好友名|关键字] 收藏某人的朋友圈`;
+    desc += `\n  [AI_UNFAV_MOMENT:好友名|关键字] 取消收藏`;
+    desc += `\n  [AI_COMMENT_MOMENT:好友名|关键字|评论内容] 评论某人的朋友圈`;
+    desc += `\n  [AI_DELETE_COMMENT:关键字] 删除你自己发的包含该关键字的评论`;
+    desc += `\n  说明：你可以随时发/删朋友圈、点赞评论，就像真人一样。好友名用"user"表示对方。`;
     
     // 注入AI已写的日记/碎碎念（让AI能看到自己写过的）
     if (this.currentFriendCode) {
@@ -13176,6 +13183,13 @@ _stripCommandTags(text) {
         .replace(/\[AI_MOMENT:[^\]]+\]/g, '')
         .replace(/\[AI_MOMENT_IMAGE:[^\]]+\]/g, '')
         .replace(/\[AI_MOMENT_NOTIFY:[^\]]+\]/g, '')
+        .replace(/\[AI_DELETE_MOMENT:[^\]]+\]/g, '')
+        .replace(/\[AI_LIKE_MOMENT:[^\]]+\]/g, '')
+        .replace(/\[AI_UNLIKE_MOMENT:[^\]]+\]/g, '')
+        .replace(/\[AI_FAV_MOMENT:[^\]]+\]/g, '')
+        .replace(/\[AI_UNFAV_MOMENT:[^\]]+\]/g, '')
+        .replace(/\[AI_COMMENT_MOMENT:[^\]]+\]/g, '')
+        .replace(/\[AI_DELETE_COMMENT:[^\]]+\]/g, '')
         .replace(/\[RECALL:[^\]]+\]/g, '')
         .replace(/\[STATUS_CSS\][\s\S]*?\[\/STATUS_CSS\]/g, '')
         .replace(/\[STATUS_?\s*CSS\][\s\S]*?\[\/?\s*STATUS_?\s*CSS\]/gi, '');
@@ -13508,9 +13522,125 @@ processMomentCommands(text) {
             }
         }
     }
+    
+    // [AI_DELETE_MOMENT:关键字] — AI删除自己的朋友圈
+    const delMomMatch = text.match(/\[AI_DELETE_MOMENT:([^\]]+)\]/);
+    if (delMomMatch) {
+        const kw = delMomMatch[1].trim().toLowerCase();
+        const data = this.storage.getIntimacyData(this.currentFriendCode);
+        if (data.moments) {
+            const before = data.moments.length;
+            data.moments = data.moments.filter(m => !(m.content||'').toLowerCase().includes(kw));
+            if (data.moments.length < before) { this.storage.saveIntimacyData(this.currentFriendCode, data); this.showCssSystemMessage(`📷 ${friendName} 删除了一条朋友圈`); }
+        }
+    }
+    
+    // [AI_LIKE_MOMENT:好友名|关键字] — AI给某人朋友圈点赞
+    const likeMomMatch = text.match(/\[AI_LIKE_MOMENT:([^\]]+)\]/);
+    if (likeMomMatch) {
+        const parts = likeMomMatch[1].split('|');
+        const targetName = parts[0]?.trim(); const kw = (parts[1]||'').trim().toLowerCase();
+        this._aiMomentAction(targetName, kw, friendName, 'like');
+    }
+    
+    // [AI_UNLIKE_MOMENT:好友名|关键字] — AI取消点赞
+    const unlikeMomMatch = text.match(/\[AI_UNLIKE_MOMENT:([^\]]+)\]/);
+    if (unlikeMomMatch) {
+        const parts = unlikeMomMatch[1].split('|');
+        const targetName = parts[0]?.trim(); const kw = (parts[1]||'').trim().toLowerCase();
+        this._aiMomentAction(targetName, kw, friendName, 'unlike');
+    }
+    
+    // [AI_FAV_MOMENT:好友名|关键字] — AI收藏
+    const favMomMatch = text.match(/\[AI_FAV_MOMENT:([^\]]+)\]/);
+    if (favMomMatch) {
+        const parts = favMomMatch[1].split('|');
+        this._aiMomentAction(parts[0]?.trim(), (parts[1]||'').trim().toLowerCase(), friendName, 'fav');
+    }
+    
+    // [AI_UNFAV_MOMENT:好友名|关键字] — AI取消收藏
+    const unfavMomMatch = text.match(/\[AI_UNFAV_MOMENT:([^\]]+)\]/);
+    if (unfavMomMatch) {
+        const parts = unfavMomMatch[1].split('|');
+        this._aiMomentAction(parts[0]?.trim(), (parts[1]||'').trim().toLowerCase(), friendName, 'unfav');
+    }
+    
+    // [AI_COMMENT_MOMENT:好友名|关键字|评论内容] — AI评论
+    const commentMomMatch = text.match(/\[AI_COMMENT_MOMENT:([^\]]+)\]/);
+    if (commentMomMatch) {
+        const parts = commentMomMatch[1].split('|');
+        const targetName = parts[0]?.trim(); const kw = (parts[1]||'').trim().toLowerCase(); const comment = parts.slice(2).join('|').trim();
+        if (comment) this._aiMomentAction(targetName, kw, friendName, 'comment', comment);
+    }
+    
+    // [AI_DELETE_COMMENT:关键字] — AI删除自己的评论
+    const delComMatch = text.match(/\[AI_DELETE_COMMENT:([^\]]+)\]/);
+    if (delComMatch) {
+        const kw = delComMatch[1].trim().toLowerCase();
+        // 搜索所有好友的朋友圈里AI的评论
+        const friends = this.storage.getAllFriends();
+        friends.forEach(f => {
+            const d = this.storage.getIntimacyData(f.code);
+            let changed = false;
+            (d.moments||[]).forEach(m => {
+                const before = (m.comments||[]).length;
+                m.comments = (m.comments||[]).filter(c => !(c.name === friendName && (c.content||'').toLowerCase().includes(kw)));
+                if (m.comments.length < before) changed = true;
+            });
+            if (changed) this.storage.saveIntimacyData(f.code, d);
+        });
+        // 也搜用户的朋友圈
+        const userSettings = this.storage.getUserSettings();
+        (userSettings.myMoments||[]).forEach(m => {
+            m.comments = (m.comments||[]).filter(c => !(c.name === friendName && (c.content||'').toLowerCase().includes(kw)));
+        });
+        this.storage.saveData(this.storage.KEYS.USER, userSettings);
+    }
 }
 
-// AI人际关系指令处理
+// AI操作朋友圈辅助
+_aiMomentAction(targetName, kw, aiName, action, commentText) {
+    if (!targetName) return;
+    const store = this.storage;
+    // 找目标好友的朋友圈
+    const friends = store.getAllFriends();
+    const target = friends.find(f => (f.nickname||f.name) === targetName);
+    let moments, saveFunc;
+    
+    if (target) {
+        const d = store.getIntimacyData(target.code);
+        moments = d.moments || [];
+        saveFunc = () => store.saveIntimacyData(target.code, d);
+    } else {
+        // 可能是用户的朋友圈
+        const userSettings = store.getUserSettings();
+        const userName = userSettings.userNickname || userSettings.userName || '我';
+        if (targetName === userName || targetName === '我' || targetName === 'user') {
+            moments = userSettings.myMoments || [];
+            saveFunc = () => store.saveData(store.KEYS.USER, userSettings);
+        } else return;
+    }
+    
+    const m = kw ? moments.find(m => (m.content||'').toLowerCase().includes(kw)) : moments[0];
+    if (!m) return;
+    
+    if (action === 'like') {
+        if (!m.likes) m.likes = [];
+        if (!m.likes.find(l => l.name === aiName)) m.likes.push({ name: aiName, ts: new Date().toISOString() });
+    } else if (action === 'unlike') {
+        m.likes = (m.likes||[]).filter(l => l.name !== aiName);
+    } else if (action === 'fav') {
+        if (!m.favorites) m.favorites = [];
+        if (!m.favorites.find(f => f.name === aiName)) m.favorites.push({ name: aiName, ts: new Date().toISOString() });
+    } else if (action === 'unfav') {
+        m.favorites = (m.favorites||[]).filter(f => f.name !== aiName);
+    } else if (action === 'comment' && commentText) {
+        if (!m.comments) m.comments = [];
+        m.comments.push({ id: 'c_'+Date.now(), name: aiName, content: commentText, ts: new Date().toISOString() });
+    }
+    saveFunc();
+}
+
 processRelationCommands(text) {
     if (!this.currentFriendCode) return;
     const data = this.storage.getIntimacyData(this.currentFriendCode);
