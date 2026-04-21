@@ -7332,6 +7332,13 @@ getIntimacyStatusForAI() {
         }
     }
     
+    // 朋友圈系统
+    desc += `\n\n【朋友圈】`;
+    desc += `\n  [AI_MOMENT:朋友圈内容] 发一条朋友圈动态（user和你的朋友都能看到）`;
+    desc += `\n  [AI_MOMENT_IMAGE:图片描述] 紧跟在AI_MOMENT后面，给朋友圈配图（假图）`;
+    desc += `\n  [AI_MOMENT_NOTIFY:方式] 通知user你发了朋友圈：toast（弹窗几秒消失）/ system（聊天系统消息）/ silent（偷偷发不通知）`;
+    desc += `\n  说明：你可以在聊天中随时发朋友圈，就像真人刷手机一样自然。你可以选择通知或偷偷发。`;
+    
     // 注入AI已写的日记/碎碎念（让AI能看到自己写过的）
     if (this.currentFriendCode) {
         const intimData = this.storage.getIntimacyData(this.currentFriendCode);
@@ -13166,6 +13173,9 @@ _stripCommandTags(text) {
         .replace(/\[AI_DELETE_RELATION:[^\]]+\]/g, '')
         .replace(/\[AI_DELETE_EVENT:[^\]]+\]/g, '')
         .replace(/\[AI_EDIT_EVENT:[^\]]+\]/g, '')
+        .replace(/\[AI_MOMENT:[^\]]+\]/g, '')
+        .replace(/\[AI_MOMENT_IMAGE:[^\]]+\]/g, '')
+        .replace(/\[AI_MOMENT_NOTIFY:[^\]]+\]/g, '')
         .replace(/\[RECALL:[^\]]+\]/g, '')
         .replace(/\[STATUS_CSS\][\s\S]*?\[\/STATUS_CSS\]/g, '')
         .replace(/\[STATUS_?\s*CSS\][\s\S]*?\[\/?\s*STATUS_?\s*CSS\]/gi, '');
@@ -13181,6 +13191,7 @@ _executeSegmentCommands(rawSeg) {
     this.processNotebookCommands(rawSeg);
     this.processStateCommands(rawSeg);
     this.processRelationCommands(rawSeg);
+    this.processMomentCommands(rawSeg);
     if (window.friendProfile) window.friendProfile.processStatusCommands(rawSeg);
 }
 
@@ -13454,6 +13465,51 @@ _updateStatusDisplay() {
 }
 
 // AI状态指令处理
+// AI朋友圈指令处理
+processMomentCommands(text) {
+    if (!this.currentFriendCode) return;
+    const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
+    
+    // [AI_MOMENT:朋友圈内容]
+    const momentMatch = text.match(/\[AI_MOMENT:([^\]]+)\]/);
+    if (momentMatch) {
+        const content = momentMatch[1].trim();
+        if (content) {
+            const data = this.storage.getIntimacyData(this.currentFriendCode);
+            if (!data.moments) data.moments = [];
+            const moment = { id:'aim_'+Date.now(), content, images:[], createdAt:new Date().toISOString(), likes:[], favorites:[], comments:[] };
+            
+            // 检查是否紧跟图片
+            const imgMatches = text.matchAll(/\[AI_MOMENT_IMAGE:([^\]]+)\]/g);
+            for (const im of imgMatches) {
+                moment.images.push('fake:' + im[1].trim());
+            }
+            
+            data.moments.unshift(moment);
+            this.storage.saveIntimacyData(this.currentFriendCode, data);
+            
+            // 通知方式：[AI_MOMENT_NOTIFY:toast/system/silent]
+            const notifyMatch = text.match(/\[AI_MOMENT_NOTIFY:([^\]]+)\]/);
+            const notifyMode = notifyMatch ? notifyMatch[1].trim() : 'system';
+            
+            if (notifyMode === 'toast') {
+                // 弹窗通知（几秒自动消失）
+                const toast = document.createElement('div');
+                toast.style.cssText = 'position:fixed;top:80px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,0.12);backdrop-filter:blur(10px);color:#fff;padding:12px 20px;border-radius:12px;font-size:14px;z-index:99999;pointer-events:none;opacity:0;transition:opacity 0.3s;';
+                toast.textContent = '📷 ' + friendName + ' 发了一条朋友圈';
+                document.body.appendChild(toast);
+                requestAnimationFrame(() => toast.style.opacity = '1');
+                setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
+            } else if (notifyMode === 'silent') {
+                // 偷偷发，不通知
+            } else {
+                // 系统消息
+                this.showCssSystemMessage(`📷 ${friendName} 发了一条朋友圈`);
+            }
+        }
+    }
+}
+
 // AI人际关系指令处理
 processRelationCommands(text) {
     if (!this.currentFriendCode) return;

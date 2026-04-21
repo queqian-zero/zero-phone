@@ -141,15 +141,21 @@ class MomentsManager {
             const dd = document.createElement('div');
             dd.id = '_momentsDropdown';
             dd.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:99998;';
-            dd.innerHTML = '<div style="position:absolute;top:60px;right:16px;background:rgba(255,255,255,0.96);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.15);border:1px solid rgba(0,0,0,0.08);overflow:hidden;min-width:150px;">' +
-                '<div class="_mdd" style="padding:12px 16px;font-size:15px;color:#333;cursor:pointer;border-bottom:1px solid rgba(0,0,0,0.06);">刷新朋友圈</div>' +
-                '<div class="_mdd" style="padding:12px 16px;font-size:15px;color:#333;cursor:pointer;border-bottom:1px solid rgba(0,0,0,0.06);">朋友圈设置</div>' +
-                '<div class="_mdd" style="padding:12px 16px;font-size:15px;color:#333;cursor:pointer;">发布朋友圈</div>' +
+            dd.innerHTML = '<div id="_mddPanel" style="position:absolute;top:60px;right:16px;background:rgba(255,255,255,0.96);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.15);border:1px solid rgba(0,0,0,0.08);overflow:hidden;min-width:150px;transform:scale(0.8) translateY(-10px);opacity:0;transition:all 0.2s ease;transform-origin:top right;">' +
+                '<div class="_mdd" data-action="refresh" style="padding:13px 18px;font-size:15px;color:#333;cursor:pointer;border-bottom:1px solid rgba(0,0,0,0.06);">刷新朋友圈</div>' +
+                '<div class="_mdd" data-action="settings" style="padding:13px 18px;font-size:15px;color:#333;cursor:pointer;border-bottom:1px solid rgba(0,0,0,0.06);">朋友圈设置</div>' +
+                '<div class="_mdd" data-action="post" style="padding:13px 18px;font-size:15px;color:#333;cursor:pointer;">发布朋友圈</div>' +
             '</div>';
             document.body.appendChild(dd);
+            requestAnimationFrame(() => { const p = dd.querySelector('#_mddPanel'); if (p) { p.style.transform = 'scale(1) translateY(0)'; p.style.opacity = '1'; } });
             dd.addEventListener('click', (e) => {
-                dd.remove();
-                if (e.target.classList.contains('_mdd')) this._toast(e.target.textContent + ' - 功能开发中...');
+                const panel = dd.querySelector('#_mddPanel');
+                if (panel) { panel.style.transform = 'scale(0.8) translateY(-10px)'; panel.style.opacity = '0'; }
+                setTimeout(() => dd.remove(), 200);
+                const action = e.target.dataset?.action;
+                if (action === 'post') setTimeout(() => this._openPostPage(), 250);
+                else if (action === 'settings') setTimeout(() => this._openSettingsPage(), 250);
+                else if (action === 'refresh') setTimeout(() => this._openRefreshPage(), 250);
             });
         });
         
@@ -228,6 +234,364 @@ class MomentsManager {
     }
     
     close() { this._page?.remove(); this._page = null; }
+    
+    // ====== 发布朋友圈页面 ======
+    _openPostPage() {
+        document.getElementById('momentPostPage')?.remove();
+        const p = document.createElement('div');
+        p.id = 'momentPostPage';
+        p.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:8500;background:#111;display:flex;flex-direction:column;';
+        
+        const store = this._store();
+        const friends = store?.getAllFriends() || [];
+        let selectedImages = []; // {type:'file'|'url', data:'base64/url', desc:''}
+        let visibility = 'public'; // 'public' | 'exclude'
+        let excludeList = [];
+        let notifyList = [];
+        
+        const renderImages = () => {
+            const container = p.querySelector('#postImageGrid');
+            if (!container) return;
+            let html = '';
+            selectedImages.forEach((img, i) => {
+                html += '<div style="position:relative;width:calc(33.3% - 4px);aspect-ratio:1;border-radius:8px;overflow:hidden;background:rgba(255,255,255,0.05);">';
+                html += '<img src="'+(img.data||'')+'" style="width:100%;height:100%;object-fit:cover;">';
+                html += '<button data-idx="'+i+'" class="postImgDel" style="position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;border:none;background:rgba(0,0,0,0.5);color:#fff;font-size:12px;cursor:pointer;">&#10005;</button>';
+                html += '</div>';
+            });
+            if (selectedImages.length < 9) {
+                html += '<div id="postAddImg" style="width:calc(33.3% - 4px);aspect-ratio:1;border-radius:8px;background:rgba(255,255,255,0.05);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;border:1px dashed rgba(255,255,255,0.1);">';
+                html += '<div style="font-size:24px;color:rgba(255,255,255,0.2);">+</div>';
+                html += '<div style="font-size:10px;color:rgba(255,255,255,0.1);margin-top:4px;">'+selectedImages.length+'/9</div>';
+                html += '</div>';
+            }
+            container.innerHTML = html;
+            // 删除图片
+            container.querySelectorAll('.postImgDel').forEach(btn => {
+                btn.addEventListener('click', (e) => { e.stopPropagation(); selectedImages.splice(parseInt(btn.dataset.idx), 1); renderImages(); });
+            });
+            // 添加图片
+            container.querySelector('#postAddImg')?.addEventListener('click', () => this._addPostImage(selectedImages, renderImages));
+        };
+        
+        p.innerHTML =
+            '<div style="height:60px;background:rgba(255,255,255,0.95);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid rgba(0,0,0,0.1);display:flex;align-items:center;padding:0 16px;padding-top:env(safe-area-inset-top);flex-shrink:0;">' +
+                '<button id="postBack" style="width:40px;height:40px;border:none;background:rgba(0,0,0,0.05);border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;color:rgba(0,0,0,0.6);">&#8592;</button>' +
+                '<div style="flex:1;"></div>' +
+                '<button id="postSubmit" style="padding:8px 20px;border:none;border-radius:10px;background:rgba(240,147,43,0.15);color:rgba(240,147,43,0.8);font-size:14px;font-weight:600;cursor:pointer;">发表</button>' +
+            '</div>' +
+            '<div style="flex:1;overflow-y:auto;padding:16px;">' +
+                '<textarea id="postContent" placeholder="这一刻的想法..." style="width:100%;box-sizing:border-box;min-height:120px;background:transparent;border:none;color:rgba(255,255,255,0.7);font-size:16px;line-height:1.8;outline:none;resize:none;"></textarea>' +
+                '<div id="postImageGrid" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;"></div>' +
+                '<div style="margin-top:24px;border-top:1px solid rgba(255,255,255,0.04);padding-top:12px;">' +
+                    '<div id="postVisibility" style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.03);cursor:pointer;">' +
+                        '<div style="display:flex;align-items:center;gap:10px;"><span style="font-size:16px;">&#128100;</span><span style="font-size:15px;color:rgba(255,255,255,0.5);">谁可以看</span></div>' +
+                        '<span id="postVisLabel" style="font-size:14px;color:rgba(255,255,255,0.25);">公开 &#8250;</span>' +
+                    '</div>' +
+                    '<div id="postNotify" style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;cursor:pointer;">' +
+                        '<div style="display:flex;align-items:center;gap:10px;"><span style="font-size:16px;">@</span><span style="font-size:15px;color:rgba(255,255,255,0.5);">提醒谁看</span></div>' +
+                        '<span id="postNotifyLabel" style="font-size:14px;color:rgba(255,255,255,0.25);">无 &#8250;</span>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+        
+        document.body.appendChild(p);
+        renderImages();
+        
+        p.querySelector('#postBack')?.addEventListener('click', () => p.remove());
+        // 谁可以看
+        p.querySelector('#postVisibility')?.addEventListener('click', async () => {
+            const ml = window.memoryLibrary;
+            if (!ml) return;
+            const mode = await ml._zpMenu('谁可以看', '', [
+                { label: '公开（所有好友可见）', value: 'public' },
+                { label: '选择不给谁看', value: 'exclude' }
+            ]);
+            if (!mode) return;
+            if (mode === 'public') {
+                visibility = 'public'; excludeList = [];
+                p.querySelector('#postVisLabel').textContent = '公开 ›';
+            } else {
+                // 多选好友
+                const fList = friends.map(f => f.nickname || f.name);
+                let tempExclude = [...excludeList];
+                const pickNext = async () => {
+                    const remaining = fList.filter(n => !tempExclude.includes(n));
+                    if (remaining.length === 0) { this._toast('已全部屏蔽'); return; }
+                    const btns = remaining.map(n => ({ label: n, value: n }));
+                    btns.push({ label: '✓ 完成选择', value: '_done' });
+                    const pick = await ml._zpMenu('选择不给谁看', '已屏蔽：' + (tempExclude.length ? tempExclude.join('、') : '无'), btns);
+                    if (!pick || pick === '_done') return;
+                    tempExclude.push(pick);
+                    await pickNext();
+                };
+                await pickNext();
+                excludeList = tempExclude;
+                visibility = tempExclude.length > 0 ? 'exclude' : 'public';
+                p.querySelector('#postVisLabel').textContent = excludeList.length > 0 ? '不给' + excludeList.join('、') + '看 ›' : '公开 ›';
+            }
+        });
+        
+        // 提醒谁看
+        p.querySelector('#postNotify')?.addEventListener('click', async () => {
+            const ml = window.memoryLibrary;
+            if (!ml) return;
+            const fList = friends.map(f => f.nickname || f.name);
+            let tempNotify = [...notifyList];
+            const pickNext = async () => {
+                const remaining = fList.filter(n => !tempNotify.includes(n));
+                if (remaining.length === 0) { this._toast('已全部提醒'); return; }
+                const btns = remaining.map(n => ({ label: n, value: n }));
+                btns.push({ label: '✓ 完成选择', value: '_done' });
+                const pick = await ml._zpMenu('提醒谁看', '已选：' + (tempNotify.length ? tempNotify.join('、') : '无') + '\n\n被提醒的好友回应概率更高', btns);
+                if (!pick || pick === '_done') return;
+                tempNotify.push(pick);
+                await pickNext();
+            };
+            await pickNext();
+            notifyList = tempNotify;
+            p.querySelector('#postNotifyLabel').textContent = notifyList.length > 0 ? notifyList.join('、') + ' ›' : '无 ›';
+        });
+        
+        // 发表
+        p.querySelector('#postSubmit')?.addEventListener('click', () => {
+            const content = p.querySelector('#postContent')?.value?.trim();
+            if (!content && selectedImages.length === 0) { this._toast('请输入内容或添加图片'); return; }
+            const user = this._getUserInfo();
+            const moment = {
+                id: 'my_' + Date.now(),
+                content: content || '',
+                images: selectedImages.map(img => img.data),
+                imageDescs: selectedImages.filter(img => img.desc).map(img => ({url: img.data, desc: img.desc})),
+                createdAt: new Date().toISOString(),
+                likes: [], favorites: [], comments: [],
+                visibility, excludeList, notifyList
+            };
+            const settings = store.getUserSettings();
+            if (!settings.myMoments) settings.myMoments = [];
+            settings.myMoments.unshift(moment);
+            store.saveData('zero_phone_user_settings', settings);
+            p.remove();
+            this._toast('朋友圈已发布');
+            this.open(); // 刷新
+        });
+    }
+    
+    // 添加图片（选择相册或URL）
+    async _addPostImage(selectedImages, renderCallback) {
+        const ml = window.memoryLibrary;
+        const action = ml ? await ml._zpMenu('添加图片', '', [
+            {label: '从相册选图', value: 'album'},
+            {label: '输入图片URL', value: 'url'}
+        ]) : 'album';
+        
+        if (action === 'album') {
+            const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.multiple = true;
+            inp.onchange = (e) => {
+                const files = Array.from(e.target.files).slice(0, 9 - selectedImages.length);
+                let processed = 0;
+                files.forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            const canvas = document.createElement('canvas');
+                            const maxW = 800; let w = img.width, h = img.height;
+                            if (w > maxW) { h = h * maxW / w; w = maxW; }
+                            canvas.width = w; canvas.height = h;
+                            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                            selectedImages.push({ type: 'file', data: canvas.toDataURL('image/jpeg', 0.7), desc: '' });
+                            processed++;
+                            if (processed === files.length) renderCallback();
+                        };
+                        img.src = ev.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                });
+            };
+            inp.click();
+        } else if (action === 'url') {
+            const url = ml ? await ml._zpInput('图片URL', '输入图片地址') : prompt('图片URL：');
+            if (!url?.trim()) return;
+            const desc = ml ? await ml._zpInput('图片描述（必填）', '帮助AI理解这张图') : prompt('图片描述：');
+            if (!desc?.trim()) { this._toast('URL图片必须添加描述'); return; }
+            selectedImages.push({ type: 'url', data: url.trim(), desc: desc.trim() });
+            renderCallback();
+        }
+    }
+    
+    // ====== 朋友圈设置页面 ======
+    _openSettingsPage() {
+        document.getElementById('momentSettingsPage')?.remove();
+        const store = this._store();
+        const settings = store?.getUserSettings() || {};
+        const msCfg = settings.momentsConfig || { responseMode: 'B', customCss: '' };
+        
+        const p = document.createElement('div');
+        p.id = 'momentSettingsPage';
+        p.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:8500;background:#111;display:flex;flex-direction:column;';
+        
+        p.innerHTML =
+            '<div style="height:60px;background:rgba(255,255,255,0.95);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid rgba(0,0,0,0.1);display:flex;align-items:center;padding:0 16px;padding-top:env(safe-area-inset-top);flex-shrink:0;">' +
+                '<button id="msBack" style="width:40px;height:40px;border:none;background:rgba(0,0,0,0.05);border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;color:rgba(0,0,0,0.6);">&#8592;</button>' +
+                '<div style="flex:1;text-align:center;font-size:18px;font-weight:600;color:#000;">朋友圈设置</div>' +
+                '<div style="width:40px;"></div>' +
+            '</div>' +
+            '<div style="flex:1;overflow-y:auto;padding:16px;">' +
+                // AI回应模式
+                '<div style="font-size:14px;font-weight:600;color:rgba(255,255,255,0.6);margin-bottom:12px;">AI回应我的朋友圈的方式</div>' +
+                '<label style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;margin-bottom:8px;cursor:pointer;">' +
+                    '<input type="radio" name="msResMode" value="A" '+(msCfg.responseMode==='A'?'checked':'')+' style="margin-top:3px;">' +
+                    '<div><div style="font-size:14px;color:rgba(255,255,255,0.6);">A. 发完立刻回应</div><div style="font-size:12px;color:rgba(255,255,255,0.25);margin-top:3px;">每个AI立刻调API决定是否回应。<br>✅ 即时 ⚠️ 同时调多个API，较贵</div></div>' +
+                '</label>' +
+                '<label style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;margin-bottom:8px;cursor:pointer;">' +
+                    '<input type="radio" name="msResMode" value="B" '+(msCfg.responseMode==='B'?'checked':'')+' style="margin-top:3px;">' +
+                    '<div><div style="font-size:14px;color:rgba(255,255,255,0.6);">B. 下次聊天时回应</div><div style="font-size:12px;color:rgba(255,255,255,0.25);margin-top:3px;">下次跟某AI聊天时告诉它有新朋友圈。<br>✅ 省token ⚠️ 不主动聊就不会回应</div></div>' +
+                '</label>' +
+                '<label style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;margin-bottom:16px;cursor:pointer;">' +
+                    '<input type="radio" name="msResMode" value="C" '+(msCfg.responseMode==='C'?'checked':'')+' style="margin-top:3px;">' +
+                    '<div><div style="font-size:14px;color:rgba(255,255,255,0.6);">C. 刷新时回应</div><div style="font-size:12px;color:rgba(255,255,255,0.25);margin-top:3px;">点"刷新朋友圈"时统一处理。<br>✅ 可控 ⚠️ 需要手动触发</div></div>' +
+                '</label>' +
+                // 自定义CSS
+                '<div style="font-size:14px;font-weight:600;color:rgba(255,255,255,0.6);margin-bottom:8px;">自定义CSS美化</div>' +
+                '<div style="font-size:11px;color:rgba(255,255,255,0.15);margin-bottom:8px;">作用于 #momentsPage 容器，仅自己可见。<br>示例类名：.moment-item / .moment-expand / #momentsTimeline / #momentsBanner</div>' +
+                '<textarea id="msCssInput" placeholder="输入自定义CSS..." style="width:100%;box-sizing:border-box;min-height:100px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;color:rgba(255,255,255,0.6);font-size:13px;font-family:monospace;padding:10px;outline:none;resize:vertical;">'+(this._esc(msCfg.customCss||''))+'</textarea>' +
+                '<button id="msSave" style="width:100%;margin-top:16px;padding:12px;border:none;border-radius:10px;background:rgba(240,147,43,0.12);color:rgba(240,147,43,0.8);font-size:15px;font-weight:600;cursor:pointer;">保存设置</button>' +
+            '</div>';
+        
+        document.body.appendChild(p);
+        p.querySelector('#msBack')?.addEventListener('click', () => p.remove());
+        p.querySelector('#msSave')?.addEventListener('click', () => {
+            const mode = p.querySelector('input[name="msResMode"]:checked')?.value || 'B';
+            const css = p.querySelector('#msCssInput')?.value || '';
+            const s = store.getUserSettings();
+            s.momentsConfig = { responseMode: mode, customCss: css };
+            store.saveData('zero_phone_user_settings', s);
+            this._toast('设置已保存');
+            p.remove();
+        });
+    }
+    
+    // ====== 刷新朋友圈页面 ======
+    _openRefreshPage() {
+        const store = this._store();
+        const friends = store?.getAllFriends() || [];
+        const ml = window.memoryLibrary;
+        if (!ml) { this._toast('系统未就绪'); return; }
+        
+        ml._zpMenu('刷新朋友圈', '选择刷新方式', [
+            { label: '让AI评论/回复我的朋友圈', value: 'comment' },
+            { label: '让AI发新的朋友圈', value: 'post' }
+        ]).then(async action => {
+            if (!action) return;
+            
+            // 选择哪些AI参与
+            const checkFriends = friends.map(f => ({ label: f.nickname || f.name, value: f.code }));
+            checkFriends.unshift({ label: '全部好友', value: '_all' });
+            
+            const selected = await ml._zpMenu('选择好友', action === 'comment' ? '谁来评论你的朋友圈？' : '谁来发朋友圈？', checkFriends);
+            if (!selected) return;
+            
+            const targetCodes = selected === '_all' ? friends.map(f => f.code) : [selected];
+            
+            if (action === 'post') {
+                this._toast('正在让AI发朋友圈...');
+                for (const code of targetCodes) {
+                    await this._generateAIMoment(code);
+                }
+                this._toast('刷新完成');
+                this.open();
+            } else {
+                this._toast('正在让AI评论...');
+                for (const code of targetCodes) {
+                    await this._generateAIComment(code);
+                }
+                this._toast('刷新完成');
+                this.open();
+            }
+        });
+    }
+    
+    // 简单API调用（用于朋友圈功能）
+    async _simpleAICall(systemPrompt, userMessage) {
+        try {
+            const config = new APIManager().getCurrentConfig();
+            if (!config?.apiKey || !config?.endpoint) { console.warn('API未配置'); return null; }
+            const url = config.endpoint.replace(/\/$/, '') + '/v1/chat/completions';
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + config.apiKey },
+                body: JSON.stringify({ model: config.model || 'gpt-4', messages: [
+                    ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+                    { role: 'user', content: userMessage }
+                ], max_tokens: 500, temperature: 0.9 })
+            });
+            const data = await res.json();
+            return data.choices?.[0]?.message?.content?.trim() || null;
+        } catch(e) { console.error('API调用失败:', e); return null; }
+    }
+    
+    // 让AI发朋友圈（调API）
+    async _generateAIMoment(friendCode) {
+        const store = this._store();
+        if (!store) return;
+        const friend = store.getAllFriends().find(f => f.code === friendCode);
+        if (!friend) return;
+        const name = friend.nickname || friend.name;
+        const persona = friend.persona || '';
+        
+        try {
+            const response = await this._simpleAICall(
+                persona.substring(0, 500),
+                '你现在可以发一条朋友圈动态。可以发，也可以不发。\n如果要发，请只输出朋友圈内容（纯文字，不需要任何标签或前缀）。\n如果不想发，请只回复"不发"二字。'
+            );
+            if (!response || response.includes('不发') || response.length < 3) return;
+            
+            const data = store.getIntimacyData(friendCode);
+            if (!data.moments) data.moments = [];
+            data.moments.unshift({
+                id: 'ai_' + Date.now(), content: response.replace(/\[.*?\]/g, '').trim(),
+                images: [], createdAt: new Date().toISOString(), likes: [], favorites: [], comments: []
+            });
+            store.saveIntimacyData(friendCode, data);
+        } catch(e) { console.error('AI发朋友圈失败:', e); }
+    }
+    
+    // 让AI评论我的朋友圈（调API）
+    async _generateAIComment(friendCode) {
+        const store = this._store();
+        if (!store) return;
+        const friend = store.getAllFriends().find(f => f.code === friendCode);
+        if (!friend) return;
+        const settings = store.getUserSettings();
+        const myMoments = settings.myMoments || [];
+        if (myMoments.length === 0) return;
+        
+        const latest = myMoments[0];
+        const name = friend.nickname || friend.name;
+        const persona = friend.persona || '';
+        
+        try {
+            const response = await this._simpleAICall(
+                persona.substring(0, 300),
+                '你的朋友发了一条朋友圈：\n"' + latest.content + '"\n\n请决定：\n1. 点赞：只回复"点赞"\n2. 评论：回复你想写的评论内容（简短自然）\n3. 忽略：只回复"忽略"\n\n只回复操作内容，不要加解释。'
+            );
+            
+            if (!response || response.includes('忽略')) return;
+            
+            if (response === '点赞' || response === '点赞。') {
+                if (!latest.likes) latest.likes = [];
+                if (!latest.likes.find(l => l.name === name)) {
+                    latest.likes.push({ name, ts: new Date().toISOString() });
+                }
+            } else {
+                if (!latest.comments) latest.comments = [];
+                latest.comments.push({ id: 'c_' + Date.now(), name, content: response.replace(/^评论[：:]\s*/, '').trim(), ts: new Date().toISOString() });
+            }
+            
+            store.saveData('zero_phone_user_settings', settings);
+        } catch(e) { console.error('AI评论失败:', e); }
+    }
     
     // ====== 详情页 ======
     _openDetail(moment) {
