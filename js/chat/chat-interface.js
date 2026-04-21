@@ -7313,6 +7313,22 @@ getIntimacyStatusForAI() {
     desc += `\n  [AI_CALENDAR:日期|时间|时长分钟|事件] 添加日程（如 2026-04-10|15:00|60|开会）`;
     desc += `\n  说明：只有开了勿扰模式，user发消息时才会弹窗问要不要打扰你。不开勿扰的话，就算你在睡觉/忙碌，user也能直接发消息给你（但你会知道自己被叫醒/打断了）。`;
     
+    // 人际关系系统
+    desc += `\n\n【你的人际关系】`;
+    desc += `\n  [AI_ADD_RELATION:名字|关系描述] 添加一个你认识的人到关系图（如 小王|公司同事，性格很好）`;
+    desc += `\n  [AI_UPDATE_RELATION:名字|新关系描述] 更新某人的关系描述`;
+    desc += `\n  [AI_RELATION_EVENT:名字|事件描述] 记录你和某人之间发生的事（如 小王|今天一起吃了午饭）`;
+    desc += `\n  说明：你有自己的社交圈，user不一定认识你的朋友。你可以随时添加你认识的人和发生的事。`;
+    
+    // 注入AI已有的人际关系
+    if (this.currentFriendCode) {
+        const _relData = this.storage.getIntimacyData(this.currentFriendCode).relations || {};
+        const _relPeople = _relData.people || [];
+        if (_relPeople.length > 0) {
+            desc += `\n  你认识的人：${_relPeople.map(p => p.name + (p.relation ? '（'+p.relation+'）' : '')).join('、')}`;
+        }
+    }
+    
     // 注入AI已写的日记/碎碎念（让AI能看到自己写过的）
     if (this.currentFriendCode) {
         const intimData = this.storage.getIntimacyData(this.currentFriendCode);
@@ -13141,6 +13157,9 @@ _stripCommandTags(text) {
         .replace(/\[AI_SCHEDULE:[^\]]+\]/g, '')
         .replace(/\[AI_CALENDAR:[^\]]+\]/g, '')
         .replace(/\[AI_DND:[^\]]+\]/g, '')
+        .replace(/\[AI_ADD_RELATION:[^\]]+\]/g, '')
+        .replace(/\[AI_RELATION_EVENT:[^\]]+\]/g, '')
+        .replace(/\[AI_UPDATE_RELATION:[^\]]+\]/g, '')
         .replace(/\[RECALL:[^\]]+\]/g, '')
         .replace(/\[STATUS_CSS\][\s\S]*?\[\/STATUS_CSS\]/g, '')
         .replace(/\[STATUS_?\s*CSS\][\s\S]*?\[\/?\s*STATUS_?\s*CSS\]/gi, '');
@@ -13155,6 +13174,7 @@ _executeSegmentCommands(rawSeg) {
     this.processCapsuleCommands(rawSeg);
     this.processNotebookCommands(rawSeg);
     this.processStateCommands(rawSeg);
+    this.processRelationCommands(rawSeg);
     if (window.friendProfile) window.friendProfile.processStatusCommands(rawSeg);
 }
 
@@ -13428,6 +13448,63 @@ _updateStatusDisplay() {
 }
 
 // AI状态指令处理
+// AI人际关系指令处理
+processRelationCommands(text) {
+    if (!this.currentFriendCode) return;
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    if (!data.relations) data.relations = { people: [], events: [] };
+    const rel = data.relations;
+    const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
+    let changed = false;
+    
+    // [AI_ADD_RELATION:名字|关系描述]
+    const addMatch = text.match(/\[AI_ADD_RELATION:([^\]]+)\]/);
+    if (addMatch) {
+        const parts = addMatch[1].split('|');
+        const name = parts[0]?.trim();
+        const relation = parts[1]?.trim() || '';
+        if (name) {
+            if (!rel.people) rel.people = [];
+            const existing = rel.people.find(p => p.name === name);
+            if (existing) {
+                if (relation) existing.relation = relation;
+            } else {
+                const colors = ['rgba(200,120,120,0.5)','rgba(120,160,200,0.5)','rgba(160,200,120,0.5)','rgba(200,160,120,0.5)','rgba(160,120,200,0.5)'];
+                rel.people.push({ id:'rel_'+Date.now(), name, relation, color:colors[rel.people.length % colors.length] });
+                this.showCssSystemMessage(`👥 ${friendName} 的人际关系中添加了「${name}」`);
+            }
+            changed = true;
+        }
+    }
+    
+    // [AI_RELATION_EVENT:名字|事件描述]
+    const evMatch = text.match(/\[AI_RELATION_EVENT:([^\]]+)\]/);
+    if (evMatch) {
+        const parts = evMatch[1].split('|');
+        const person = parts[0]?.trim();
+        const content = parts.slice(1).join('|').trim();
+        if (person && content) {
+            if (!rel.events) rel.events = [];
+            rel.events.push({ id:'evt_'+Date.now(), person, date:new Date().toISOString().split('T')[0], content, createdAt:new Date().toISOString() });
+            changed = true;
+        }
+    }
+    
+    // [AI_UPDATE_RELATION:名字|新关系描述]
+    const upMatch = text.match(/\[AI_UPDATE_RELATION:([^\]]+)\]/);
+    if (upMatch) {
+        const parts = upMatch[1].split('|');
+        const name = parts[0]?.trim();
+        const newRel = parts[1]?.trim();
+        if (name && newRel) {
+            const p = (rel.people||[]).find(p => p.name === name);
+            if (p) { p.relation = newRel; changed = true; }
+        }
+    }
+    
+    if (changed) { data.relations = rel; this.storage.saveIntimacyData(this.currentFriendCode, data); }
+}
+
 processStateCommands(text) {
     if (!this.currentFriendCode) return;
     const data = this.storage.getIntimacyData(this.currentFriendCode);

@@ -119,9 +119,9 @@ class MemoryLibrary {
             this._openJournal(friendCode, name);
         });
         
-        // 人际关系（占位）
+        // 人际关系
         page.querySelector('#mlRelations')?.addEventListener('click', () => {
-            this._toast('人际关系功能设计中...');
+            this._openRelations(friendCode, name);
         });
     }
 
@@ -1043,6 +1043,253 @@ class MemoryLibrary {
         p.querySelectorAll('.ip-item').forEach(item => {
             item.addEventListener('click', () => { callback(item.dataset.name); p.remove(); });
         });
+    }
+
+    // ==================== 人际关系 ====================
+    _openRelations(friendCode, charName) {
+        if (!this._store()) return;
+        const data = this._store().getIntimacyData(friendCode);
+        if (!data.relations) data.relations = { people: [], events: [] };
+        const rel = data.relations;
+        const save = () => { data.relations = rel; this._store().saveIntimacyData(friendCode, data); };
+        
+        document.getElementById('mlRelationsPage')?.remove();
+        const page = document.createElement('div');
+        page.id = 'mlRelationsPage';
+        page.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9100;background:#111;display:flex;flex-direction:column;';
+        
+        let filterPerson = null; // 事件筛选
+        
+        const render = () => {
+            const people = rel.people || [];
+            const events = (rel.events || []).sort((a,b) => (b.date||'').localeCompare(a.date||''));
+            
+            // ====== 关系图（SVG）======
+            const W = 360, H = 280;
+            const cx = W/2, cy = H/2;
+            let svgContent = '';
+            
+            // 中心节点
+            svgContent += `<circle cx="${cx}" cy="${cy}" r="22" fill="rgba(240,147,43,0.5)" stroke="rgba(240,147,43,0.3)" stroke-width="2"/>`;
+            svgContent += `<text x="${cx}" y="${cy+4}" text-anchor="middle" fill="#fff" font-size="11" font-weight="600">${this._esc(charName.substring(0,4))}</text>`;
+            
+            // 计算环绕节点位置
+            const positions = [];
+            people.forEach((p, i) => {
+                const angle = (Math.PI * 2 * i / Math.max(people.length, 1)) - Math.PI/2;
+                const dist = 90 + (i % 2) * 30; // 交错距离
+                const nx = cx + Math.cos(angle) * dist;
+                const ny = cy + Math.sin(angle) * dist;
+                positions.push({ x: nx, y: ny });
+                
+                const col = p.color || 'rgba(180,180,180,0.5)';
+                
+                // 连线
+                svgContent += `<line x1="${cx}" y1="${cy}" x2="${nx}" y2="${ny}" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>`;
+                
+                // 箭头（可点击区域）— 在连线中点
+                const mx = (cx + nx) / 2, my = (cy + ny) / 2;
+                const angle2 = Math.atan2(ny - cy, nx - cx);
+                const ax = 6;
+                const p1x = mx + Math.cos(angle2) * ax, p1y = my + Math.sin(angle2) * ax;
+                const p2x = mx + Math.cos(angle2 + 2.5) * ax, p2y = my + Math.sin(angle2 + 2.5) * ax;
+                const p3x = mx + Math.cos(angle2 - 2.5) * ax, p3y = my + Math.sin(angle2 - 2.5) * ax;
+                svgContent += `<polygon points="${p1x},${p1y} ${p2x},${p2y} ${p3x},${p3y}" fill="rgba(200,100,120,0.6)" class="rel-arrow" data-idx="${i}" style="cursor:pointer;"/>`;
+                // 扩大点击区域
+                svgContent += `<circle cx="${mx}" cy="${my}" r="14" fill="transparent" class="rel-arrow" data-idx="${i}" style="cursor:pointer;"/>`;
+                
+                // 节点圆
+                svgContent += `<circle cx="${nx}" cy="${ny}" r="14" fill="${col}" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>`;
+                // 名字
+                const nameLen = p.name.length;
+                const fontSize = nameLen > 6 ? 8 : nameLen > 4 ? 9 : 10;
+                svgContent += `<text x="${nx}" y="${ny + 28}" text-anchor="middle" fill="rgba(255,255,255,0.5)" font-size="${fontSize}">${this._esc(p.name.substring(0,8))}</text>`;
+            });
+            
+            // 事件列表
+            let eventsHtml = '';
+            const filteredEvents = filterPerson ? events.filter(e => e.person === filterPerson) : events;
+            if (filteredEvents.length === 0) {
+                eventsHtml = '<div style="text-align:center;padding:24px 0;color:rgba(255,255,255,0.1);font-size:13px;">暂无事件档案</div>';
+            } else {
+                filteredEvents.forEach(ev => {
+                    eventsHtml += '<div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.02);">';
+                    eventsHtml += '<div style="min-width:60px;font-size:11px;color:rgba(255,255,255,0.2);">' + this._esc(ev.date || '') + '</div>';
+                    eventsHtml += '<div style="flex:1;font-size:13px;color:rgba(255,255,255,0.5);line-height:1.5;">';
+                    eventsHtml += '<span style="color:rgba(240,147,43,0.6);font-weight:600;">' + this._esc(ev.person || '') + '</span> ';
+                    eventsHtml += this._esc(ev.content || '');
+                    eventsHtml += '</div></div>';
+                });
+            }
+            
+            // 人物筛选标签
+            let filterTabs = '<button class="rel-filter-tab" data-person="" style="padding:4px 12px;border:1px solid rgba(255,255,255,'+(filterPerson?'0.06':'0.2')+');border-radius:12px;background:'+(filterPerson?'transparent':'rgba(255,255,255,0.06)')+';color:rgba(255,255,255,'+(filterPerson?'0.2':'0.5')+');font-size:11px;cursor:pointer;">全部</button>';
+            people.forEach(p => {
+                const active = filterPerson === p.name;
+                filterTabs += '<button class="rel-filter-tab" data-person="'+this._esc(p.name)+'" style="padding:4px 12px;border:1px solid rgba(255,255,255,'+(active?'0.2':'0.06')+');border-radius:12px;background:'+(active?'rgba(255,255,255,0.06)':'transparent')+';color:rgba(255,255,255,'+(active?'0.5':'0.2')+');font-size:11px;cursor:pointer;">'+this._esc(p.name)+'</button>';
+            });
+            
+            page.innerHTML =
+                // Header
+                '<div style="height:60px;background:rgba(255,255,255,0.95);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid rgba(0,0,0,0.1);display:flex;align-items:center;justify-content:space-between;padding:0 16px;padding-top:env(safe-area-inset-top);flex-shrink:0;box-shadow:0 2px 10px rgba(0,0,0,0.05);">' +
+                    '<button id="relBack" style="width:40px;height:40px;border:none;background:rgba(0,0,0,0.05);border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;color:rgba(0,0,0,0.6);">&#8592;</button>' +
+                    '<div style="font-size:18px;font-weight:600;color:#000;">人际关系</div>' +
+                    '<div style="display:flex;gap:8px;">' +
+                        '<button id="relAddPerson" style="width:40px;height:40px;border:none;background:rgba(0,0,0,0.05);border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;color:rgba(0,0,0,0.5);" title="添加人物">&#128100;+</button>' +
+                        '<button id="relAddEvent" style="width:40px;height:40px;border:none;background:rgba(0,0,0,0.05);border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;color:rgba(0,0,0,0.5);" title="添加事件">&#128221;</button>' +
+                    '</div>' +
+                '</div>' +
+                // 内容
+                '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;">' +
+                    // 关系图
+                    '<div style="padding:12px 0;text-align:center;background:rgba(255,255,255,0.02);">' +
+                        '<svg id="relGraph" viewBox="0 0 '+W+' '+H+'" style="width:100%;max-width:400px;touch-action:none;">' + svgContent + '</svg>' +
+                    '</div>' +
+                    // 筛选标签
+                    '<div style="padding:8px 16px;display:flex;gap:6px;flex-wrap:wrap;">' + filterTabs + '</div>' +
+                    // 事件档案
+                    '<div style="padding:4px 16px 16px;">' +
+                        '<div style="font-size:12px;color:rgba(255,255,255,0.15);margin-bottom:6px;">事件档案'+(filterPerson ? ' · '+this._esc(filterPerson) : '')+'</div>' +
+                        eventsHtml +
+                    '</div>' +
+                '</div>';
+            
+            // 事件绑定
+            page.querySelector('#relBack')?.addEventListener('click', () => page.remove());
+            
+            // 添加人物
+            page.querySelector('#relAddPerson')?.addEventListener('click', async () => {
+                const name = prompt('人物名字：');
+                if (!name?.trim()) return;
+                const relation = prompt('与' + charName + '的关系描述（可选）：') || '';
+                if (!rel.people) rel.people = [];
+                const colors = ['rgba(200,120,120,0.5)','rgba(120,160,200,0.5)','rgba(160,200,120,0.5)','rgba(200,160,120,0.5)','rgba(160,120,200,0.5)','rgba(200,200,120,0.5)'];
+                rel.people.push({ id:'rel_'+Date.now(), name:name.trim(), relation:relation.trim(), color:colors[rel.people.length % colors.length] });
+                save(); render();
+            });
+            
+            // 添加事件
+            page.querySelector('#relAddEvent')?.addEventListener('click', async () => {
+                if (!rel.people?.length) { this._toast('请先添加人物'); return; }
+                const person = prompt('相关人物（'+rel.people.map(p=>p.name).join('/')+')：');
+                if (!person?.trim()) return;
+                const date = prompt('日期（如 2026-04-20）：', new Date().toISOString().split('T')[0]) || '';
+                const content = prompt('事件描述：');
+                if (!content?.trim()) return;
+                if (!rel.events) rel.events = [];
+                rel.events.push({ id:'evt_'+Date.now(), person:person.trim(), date:date.trim(), content:content.trim(), createdAt:new Date().toISOString() });
+                save(); render();
+            });
+            
+            // 箭头点击 → 弹出关系描述
+            page.querySelectorAll('.rel-arrow').forEach(el => {
+                el.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const idx = parseInt(el.dataset.idx);
+                    const p = people[idx];
+                    if (!p) return;
+                    // 弹出关系卡片
+                    document.getElementById('relPopup')?.remove();
+                    const popup = document.createElement('div');
+                    popup.id = 'relPopup';
+                    popup.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9500;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.4);';
+                    popup.innerHTML = '<div style="width:calc(100% - 48px);max-width:320px;background:#222;border-radius:16px;padding:20px;border:1px solid rgba(255,255,255,0.06);">' +
+                        '<div style="font-size:15px;font-weight:600;color:rgba(240,147,43,0.7);margin-bottom:8px;">'+this._esc(p.name)+' &#8596; '+this._esc(charName)+'</div>' +
+                        '<div style="font-size:14px;color:rgba(255,255,255,0.5);line-height:1.7;min-height:40px;">'+(this._esc(p.relation) || '<span style="color:rgba(255,255,255,0.15);">暂无关系描述</span>')+'</div>' +
+                        '<div style="display:flex;gap:10px;margin-top:14px;">' +
+                            '<button id="relPopEdit" style="flex:1;padding:8px;border:1px solid rgba(255,255,255,0.08);border-radius:8px;background:transparent;color:rgba(255,255,255,0.4);font-size:13px;cursor:pointer;">编辑</button>' +
+                            '<button id="relPopDel" style="padding:8px 12px;border:1px solid rgba(255,100,100,0.15);border-radius:8px;background:transparent;color:rgba(255,100,100,0.4);font-size:13px;cursor:pointer;">删除</button>' +
+                            '<button id="relPopClose" style="flex:1;padding:8px;border:1px solid rgba(255,255,255,0.08);border-radius:8px;background:transparent;color:rgba(255,255,255,0.4);font-size:13px;cursor:pointer;">关闭</button>' +
+                        '</div>' +
+                    '</div>';
+                    document.body.appendChild(popup);
+                    popup.addEventListener('click', (e) => { if (e.target === popup) popup.remove(); });
+                    popup.querySelector('#relPopClose')?.addEventListener('click', () => popup.remove());
+                    popup.querySelector('#relPopEdit')?.addEventListener('click', () => {
+                        const newRel = prompt('编辑关系描述：', p.relation || '');
+                        if (newRel !== null) { p.relation = newRel.trim(); save(); popup.remove(); render(); }
+                    });
+                    popup.querySelector('#relPopDel')?.addEventListener('click', () => {
+                        if (confirm('删除 '+p.name+' ？')) {
+                            rel.people = rel.people.filter(x => x.id !== p.id);
+                            save(); popup.remove(); render();
+                        }
+                    });
+                });
+            });
+            
+            // 筛选标签
+            page.querySelectorAll('.rel-filter-tab').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    filterPerson = btn.dataset.person || null;
+                    render();
+                });
+            });
+            
+            // SVG拖拽/缩放
+            const svg = page.querySelector('#relGraph');
+            if (svg) {
+                let vb = { x: 0, y: 0, w: W, h: H };
+                let isPanning = false, startPt = null, startVB = null;
+                
+                const getPoint = (e) => {
+                    const t = e.touches ? e.touches[0] : e;
+                    return { x: t.clientX, y: t.clientY };
+                };
+                
+                svg.addEventListener('touchstart', (e) => {
+                    if (e.target.closest('.rel-arrow')) return;
+                    if (e.touches.length === 1) {
+                        isPanning = true;
+                        startPt = getPoint(e);
+                        startVB = {...vb};
+                    }
+                }, { passive: true });
+                
+                svg.addEventListener('touchmove', (e) => {
+                    if (!isPanning || !startPt) return;
+                    const pt = getPoint(e);
+                    const dx = (startPt.x - pt.x) * (vb.w / svg.clientWidth);
+                    const dy = (startPt.y - pt.y) * (vb.h / svg.clientHeight);
+                    vb.x = startVB.x + dx;
+                    vb.y = startVB.y + dy;
+                    svg.setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
+                }, { passive: true });
+                
+                svg.addEventListener('touchend', () => { isPanning = false; startPt = null; });
+                
+                // 双指缩放
+                let lastDist = 0;
+                svg.addEventListener('touchstart', (e) => {
+                    if (e.touches.length === 2) {
+                        const dx = e.touches[0].clientX - e.touches[1].clientX;
+                        const dy = e.touches[0].clientY - e.touches[1].clientY;
+                        lastDist = Math.sqrt(dx*dx + dy*dy);
+                    }
+                }, { passive: true });
+                svg.addEventListener('touchmove', (e) => {
+                    if (e.touches.length === 2) {
+                        const dx = e.touches[0].clientX - e.touches[1].clientX;
+                        const dy = e.touches[0].clientY - e.touches[1].clientY;
+                        const dist = Math.sqrt(dx*dx + dy*dy);
+                        if (lastDist > 0) {
+                            const scale = lastDist / dist;
+                            const ncx = vb.x + vb.w/2, ncy = vb.y + vb.h/2;
+                            vb.w = Math.max(100, Math.min(800, vb.w * scale));
+                            vb.h = Math.max(70, Math.min(600, vb.h * scale));
+                            vb.x = ncx - vb.w/2;
+                            vb.y = ncy - vb.h/2;
+                            svg.setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
+                        }
+                        lastDist = dist;
+                        isPanning = false;
+                    }
+                }, { passive: true });
+            }
+        };
+        
+        document.body.appendChild(page);
+        render();
     }
 
     _esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
