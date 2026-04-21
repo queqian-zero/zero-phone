@@ -19,7 +19,7 @@ class TheaterMode {
         
         const ov = document.createElement('div');
         ov.id = 'theaterEntryDialog';
-        ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9500;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,0.6);';
+        ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9500;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);';
         
         let sessionListHtml = '';
         if (activeSessions.length > 0) {
@@ -28,7 +28,7 @@ class TheaterMode {
                 const sc = s.script || {};
                 const name = s.theaterName || (sc.charName + ' & ' + sc.userName);
                 const floors = (s.messages||[]).filter(m=>m.type==='char'||m.type==='user').length;
-                sessionListHtml += '<div class="te-session" data-sid="' + s.id + '" data-status="active" style="padding:12px;background:rgba(240,147,43,0.06);border:1px solid rgba(240,147,43,0.12);border-radius:10px;margin-bottom:8px;cursor:pointer;"><div style="font-size:14px;color:#f0932b;font-weight:600;">' + this._esc(name) + '</div><div style="font-size:11px;color:rgba(255,255,255,0.25);margin-top:3px;">' + floors + '楼 | ' + (s.createdAt ? new Date(s.createdAt).toLocaleDateString('zh-CN') : '') + '</div></div>';
+                sessionListHtml += '<div class="te-session" data-sid="' + s.id + '" data-status="active" style="padding:12px;background:rgba(240,147,43,0.06);border:1px solid rgba(240,147,43,0.12);border-radius:10px;margin-bottom:8px;cursor:pointer;"><div style="font-size:14px;color:#f0932b;font-weight:600;">' + this._esc(name) + '</div><div style="font-size:13px;color:rgba(255,255,255,0.25);margin-top:3px;">' + floors + '楼 | ' + (s.createdAt ? new Date(s.createdAt).toLocaleDateString('zh-CN') : '') + '</div></div>';
             });
         }
         if (endedSessions.length > 0) {
@@ -36,18 +36,18 @@ class TheaterMode {
             endedSessions.slice(-3).forEach(s => {
                 const sc = s.script || {};
                 const name = s.theaterName || (sc.charName + ' & ' + sc.userName);
-                sessionListHtml += '<div class="te-session" data-sid="' + s.id + '" data-status="ended" style="padding:10px 12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:10px;margin-bottom:6px;cursor:pointer;opacity:0.5;"><div style="font-size:13px;color:rgba(255,255,255,0.4);">' + this._esc(name) + ' <span style="font-size:10px;">（已完结）</span></div></div>';
+                sessionListHtml += '<div class="te-session" data-sid="' + s.id + '" data-status="ended" style="padding:10px 12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);border-radius:10px;margin-bottom:6px;cursor:pointer;opacity:0.5;"><div style="font-size:13px;color:rgba(255,255,255,0.4);">' + this._esc(name) + ' <span style="font-size:12px;">（已完结）</span></div></div>';
             });
         }
         
-        ov.innerHTML = '<div style="width:100%;max-width:400px;background:#1c1c1c;border-radius:20px 20px 0 0;border:1px solid rgba(255,255,255,0.06);padding:24px 20px calc(20px + env(safe-area-inset-bottom));max-height:80vh;overflow-y:auto;animation:profileSlideUp 0.25s ease-out;">' +
+        ov.innerHTML = '<div style="width:calc(100% - 40px);max-width:380px;background:#1c1c1c;border-radius:18px;border:1px solid rgba(255,255,255,0.06);padding:24px 20px;max-height:80vh;overflow-y:auto;animation:profileSlideUp 0.2s ease-out;">' +
             '<div style="text-align:center;margin-bottom:4px;font-size:18px;letter-spacing:2px;">&#9670;</div>' +
             '<div style="font-size:17px;font-weight:700;color:#fff;text-align:center;margin-bottom:4px;">次元剧场</div>' +
             '<div style="font-size:12px;color:rgba(255,255,255,0.2);text-align:center;margin-bottom:18px;">以皮下身份操控角色，展开故事</div>' +
             sessionListHtml +
             '<div style="margin-top:12px;display:flex;flex-direction:column;gap:10px;">' +
-                '<button id="theaterAiScript" style="padding:14px;border:1px solid rgba(240,147,43,0.15);border-radius:12px;background:rgba(240,147,43,0.06);color:#f0932b;font-size:14px;font-weight:600;cursor:pointer;text-align:left;"><div>&#9998; 让TA写新剧本</div><div style="font-size:11px;font-weight:400;opacity:0.5;margin-top:3px;">AI构思，你可以修改</div></button>' +
-                '<button id="theaterUserScript" style="padding:14px;border:1px solid rgba(255,255,255,0.06);border-radius:12px;background:rgba(255,255,255,0.02);color:rgba(255,255,255,0.6);font-size:14px;cursor:pointer;text-align:left;"><div>&#9997; 我写新剧本</div><div style="font-size:11px;opacity:0.3;margin-top:3px;">自己设定一切</div></button>' +
+                '<button id="theaterAiScript" style="padding:14px;border:1px solid rgba(240,147,43,0.15);border-radius:12px;background:rgba(240,147,43,0.06);color:#f0932b;font-size:14px;font-weight:600;cursor:pointer;text-align:left;"><div>&#9998; 让TA写新剧本</div><div style="font-size:13px;font-weight:400;opacity:0.5;margin-top:3px;">AI构思，你可以修改</div></button>' +
+                '<button id="theaterUserScript" style="padding:14px;border:1px solid rgba(255,255,255,0.06);border-radius:12px;background:rgba(255,255,255,0.02);color:rgba(255,255,255,0.6);font-size:14px;cursor:pointer;text-align:left;"><div>&#9997; 我写新剧本</div><div style="font-size:13px;opacity:0.3;margin-top:3px;">自己设定一切</div></button>' +
             '</div>' +
             '<button id="theaterCancel" style="width:100%;padding:10px;border:none;background:transparent;color:rgba(255,255,255,0.15);font-size:13px;cursor:pointer;margin-top:10px;">取消</button>' +
         '</div>';
@@ -157,7 +157,7 @@ class TheaterMode {
         ui.innerHTML=`
             <div class="theater-topbar" style="display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid ${t.border};flex-shrink:0;background:${t.topBg};">
                 <button id="theaterExit" style="background:none;border:none;color:${t.sub};font-size:22px;cursor:pointer;padding:6px 10px;">&#8592;</button>
-                <div style="flex:1;text-align:center;"><div class="theater-title" style="font-size:15px;font-weight:600;color:${t.text};">${this._esc(this._session.theaterName || '次元剧场')}</div><div style="font-size:11px;color:${t.sub};">${this._esc(s.charName)} & ${this._esc(s.userName)}</div></div>
+                <div style="flex:1;text-align:center;"><div class="theater-title" style="font-size:15px;font-weight:600;color:${t.text};">${this._esc(this._session.theaterName || '次元剧场')}</div><div style="font-size:13px;color:${t.sub};">${this._esc(s.charName)} & ${this._esc(s.userName)}</div></div>
                 <button id="theaterMemory" style="background:none;border:none;color:${t.sub};font-size:18px;cursor:pointer;padding:6px 10px;">&#9776;</button>
                 <button id="theaterSettings" style="background:none;border:none;color:${t.sub};font-size:20px;cursor:pointer;padding:6px 10px;">&#9881;</button>
             </div>
@@ -175,7 +175,7 @@ class TheaterMode {
             ${this._typing?`<div class="theater-typing" style="padding:6px 16px;font-size:12px;color:${t.accent};font-style:italic;opacity:0.7;">${this._esc(s.charName)} 正在书写... &#9998;</div>`:''}
 
             <div class="theater-inputbar" style="padding:10px 14px calc(10px + env(safe-area-inset-bottom));border-top:1px solid ${t.border};display:flex;gap:8px;flex-shrink:0;align-items:flex-end;background:${t.topBg};">
-                <button id="theaterOOC" class="theater-ooc-btn" style="padding:8px;border:none;border-radius:8px;background:${t.itemBg};color:${t.sub};font-size:11px;cursor:pointer;flex-shrink:0;">OOC</button>
+                <button id="theaterOOC" class="theater-ooc-btn" style="padding:8px;border:none;border-radius:8px;background:${t.itemBg};color:${t.sub};font-size:13px;cursor:pointer;flex-shrink:0;">OOC</button>
                 <textarea id="theaterInput" class="theater-input" rows="1" placeholder="以 ${this._esc(s.userName)} 的身份..." style="flex:1;padding:10px 12px;background:${t.itemBg};border:1px solid ${t.border};border-radius:10px;color:${t.text};font-size:14px;resize:none;font-family:inherit;max-height:100px;"></textarea>
                 <button id="theaterSend" class="theater-send-btn" style="padding:8px 14px;border:none;border-radius:8px;background:${t.accentBg};color:${t.accent};font-size:13px;font-weight:600;cursor:pointer;flex-shrink:0;">&#9654;</button>
             </div>`;
@@ -192,7 +192,7 @@ class TheaterMode {
 
     // ==================== 渲染消息（SillyTavern风格） ====================
     _renderMsg(msg, t, floor, charAvatar, userAvatar) {
-        if(msg.type==='system') return `<div class="theater-system-msg" style="text-align:center;padding:10px 0;font-size:11px;color:${t.sub};font-style:italic;">${this._esc(msg.text)}</div>`;
+        if(msg.type==='system') return `<div class="theater-system-msg" style="text-align:center;padding:10px 0;font-size:13px;color:${t.sub};font-style:italic;">${this._esc(msg.text)}</div>`;
 
         const isChar=msg.type==='char';
         const name=isChar?this._session.script.charName:this._session.script.userName;
@@ -209,14 +209,14 @@ class TheaterMode {
             headerHtml=`<div class="theater-header-block" style="margin-bottom:10px;padding:12px 16px;background:${t.headerBg};border:1px solid ${t.headerBorder};border-radius:6px;font-family:monospace;">
                 <div class="theater-header-date" style="font-size:12px;color:${t.headerText};letter-spacing:1px;">${this._esc(h.date||'')}${h.season?' &nbsp;|&nbsp; '+this._esc(h.season):''}${h.weather?' &nbsp;|&nbsp; '+this._esc(h.weather):''}</div>
                 <div class="theater-header-time" style="font-size:26px;font-weight:700;color:${t.accent};margin:4px 0;letter-spacing:3px;font-family:monospace;">${this._esc(h.time||'--:--:--')}</div>
-                <div class="theater-header-location" style="font-size:11px;color:${t.headerText};opacity:0.7;">LOC: ${this._esc(h.location||'???')}</div>
+                <div class="theater-header-location" style="font-size:13px;color:${t.headerText};opacity:0.7;">LOC: ${this._esc(h.location||'???')}</div>
             </div>`;
         }
 
         // 思考链
         let thinkHtml='';
         if(msg.thinking){
-            thinkHtml=`<details class="theater-thinking" style="margin-top:6px;"><summary style="font-size:10px;color:${t.sub};cursor:pointer;">&#10024; 思考了一会 &#9660;</summary><div style="margin-top:4px;padding:8px;background:${t.itemBg};border-radius:6px;font-size:11px;color:${t.sub};line-height:1.6;white-space:pre-wrap;">${this._esc(msg.thinking)}</div></details>`;
+            thinkHtml=`<details class="theater-thinking" style="margin-top:6px;"><summary style="font-size:12px;color:${t.sub};cursor:pointer;">&#10024; 思考了一会 &#9660;</summary><div style="margin-top:4px;padding:8px;background:${t.itemBg};border-radius:6px;font-size:13px;color:${t.sub};line-height:1.6;white-space:pre-wrap;">${this._esc(msg.thinking)}</div></details>`;
         }
 
         // 状态栏（7个折叠模块）
@@ -227,7 +227,7 @@ class TheaterMode {
                 if(!content) return '';
                 return `<details class="theater-status-fold" style="border-bottom:1px solid ${t.border};">
                     <summary class="theater-status-summary" style="padding:10px 12px;font-size:12px;color:${t.accent};cursor:pointer;user-select:none;font-family:monospace;">&#9654; [${code}] ${title}</summary>
-                    <div class="theater-status-block" style="padding:8px 12px 12px;font-size:11px;color:${t.text};line-height:1.9;">${content}</div>
+                    <div class="theater-status-block" style="padding:8px 12px 12px;font-size:13px;color:${t.text};line-height:1.9;">${content}</div>
                 </details>`;
             };
 
@@ -238,7 +238,7 @@ class TheaterMode {
             if(st.outfit) c1items.push(`<div class="theater-status-item"><span class="theater-status-label" style="color:${t.sub};">[OUTFIT]:</span> ${this._esc(st.outfit)}</div>`);
             if(st.action) c1items.push(`<div class="theater-status-item"><span class="theater-status-label" style="color:${t.sub};">[ACTION]:</span> ${this._esc(st.action)}</div>`);
             if(st.thought) c1items.push(`<div class="theater-status-item"><span class="theater-status-label" style="color:${t.sub};">[THOUGHT]:</span> <i>${this._esc(st.thought)}</i></div>`);
-            if(st.note) c1items.push(`<div class="theater-status-item theater-notepad" style="margin-top:4px;padding:8px 10px;background:rgba(255,240,200,0.06);border:1px dashed ${t.border};border-radius:6px;"><span class="theater-status-label" style="color:${t.sub};font-size:10px;">&#9998; 碎碎念</span><div style="margin-top:4px;font-size:11px;color:${t.text};line-height:1.6;white-space:pre-wrap;font-family:serif;">${this._esc(st.note)}</div></div>`);
+            if(st.note) c1items.push(`<div class="theater-status-item theater-notepad" style="margin-top:4px;padding:8px 10px;background:rgba(255,240,200,0.06);border:1px dashed ${t.border};border-radius:6px;"><span class="theater-status-label" style="color:${t.sub};font-size:12px;">&#9998; 碎碎念</span><div style="margin-top:4px;font-size:13px;color:${t.text};line-height:1.6;white-space:pre-wrap;font-family:serif;">${this._esc(st.note)}</div></div>`);
             if(st.relationship) c1items.push(`<div class="theater-status-item"><span class="theater-status-label" style="color:${t.sub};">[RELATION]:</span> ${this._esc(st.relationship)}</div>`);
             core1=c1items.join('');
 
@@ -259,7 +259,7 @@ class TheaterMode {
                 const pv=parseInt(st.progressValue)||0;
                 progressContent=`<div style="margin-bottom:6px;font-size:12px;color:${t.text};">${this._esc(st.progressName||'进度')}: ${pv}%</div>
                     <div style="height:8px;background:${t.itemBg};border-radius:4px;overflow:hidden;margin-bottom:6px;"><div style="height:100%;width:${pv}%;background:${t.accent};border-radius:4px;transition:width 0.3s;"></div></div>
-                    ${st.progressNote?`<div style="font-size:10px;color:${t.sub};">${this._esc(st.progressNote)}</div>`:''}`;
+                    ${st.progressNote?`<div style="font-size:12px;color:${t.sub};">${this._esc(st.progressNote)}</div>`:''}`;
             }
 
             // [SYS_MAP] 环境拓扑图（带位置描述+虚线框地图）
@@ -285,8 +285,8 @@ class TheaterMode {
                     const contact=parts[0].trim();
                     const otherMsg=parts[1]?.trim()||'';
                     const charMsg=parts[2]?.trim()||'';
-                    chatContent=`<div style="background:${t.itemBg};border-radius:8px;padding:10px;font-size:11px;">
-                        <div style="text-align:center;font-size:10px;color:${t.sub};margin-bottom:8px;">-- ${this._esc(contact)} --</div>
+                    chatContent=`<div style="background:${t.itemBg};border-radius:8px;padding:10px;font-size:13px;">
+                        <div style="text-align:center;font-size:12px;color:${t.sub};margin-bottom:8px;">-- ${this._esc(contact)} --</div>
                         ${otherMsg?`<div style="margin-bottom:6px;"><div style="display:inline-block;padding:6px 10px;background:rgba(255,255,255,0.06);border-radius:8px;max-width:80%;color:${t.text};">${this._esc(otherMsg)}</div></div>`:''}
                         ${charMsg?`<div style="text-align:right;"><div style="display:inline-block;padding:6px 10px;background:${t.accentBg};border-radius:8px;max-width:80%;color:${t.accent};">${this._esc(charMsg)}</div></div>`:''}
                     </div>`;
@@ -296,7 +296,7 @@ class TheaterMode {
             // [SYS_MEMO] 目标设备备忘录（记事本风格）
             let memoContent='';
             if(st.memoTitle||st.memoContent){
-                memoContent=`<div class="theater-memo-box" style="background:rgba(255,250,230,0.05);border:1px solid ${t.border};border-radius:8px;padding:12px;font-size:11px;position:relative;">
+                memoContent=`<div class="theater-memo-box" style="background:rgba(255,250,230,0.05);border:1px solid ${t.border};border-radius:8px;padding:12px;font-size:13px;position:relative;">
                     <div style="position:absolute;top:0;left:16px;right:16px;border-top:1px solid ${t.border};"></div>
                     ${st.memoTitle?`<div style="font-weight:600;color:${t.accent};margin-bottom:6px;font-size:12px;border-bottom:1px solid ${t.border};padding-bottom:4px;">${this._esc(st.memoTitle)}</div>`:''}
                     ${st.memoContent?`<div style="color:${t.text};line-height:1.7;white-space:pre-wrap;font-family:serif;opacity:0.8;">${this._esc(st.memoContent)}</div>`:''}
@@ -323,8 +323,8 @@ class TheaterMode {
                 <div style="flex:1;min-width:0;${isChar?'':'text-align:right;'}">
                     <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px;${isChar?'':'flex-direction:row-reverse;'}">
                         <span class="theater-msg-name" style="font-size:14px;font-weight:700;color:${t.accent};">${this._esc(name)}</span>
-                        <span style="font-size:10px;color:${t.sub};font-family:monospace;">#${floor}</span>
-                        <span style="font-size:10px;color:${t.sub};">${time}</span>
+                        <span style="font-size:12px;color:${t.sub};font-family:monospace;">#${floor}</span>
+                        <span style="font-size:12px;color:${t.sub};">${time}</span>
                     </div>
                     <div class="theater-msg-text" style="font-size:15px;line-height:1.8;color:${t.text};white-space:pre-wrap;text-align:left;">${this._renderMd(msg.text)}</div>
                     ${thinkHtml}
@@ -511,7 +511,7 @@ MEMO_CONTENT: 备忘录内容（${s.charName}最近记的一条备忘，可以�
                 <button id="oocMiniBtn" style="background:none;border:none;color:rgba(255,255,255,0.3);font-size:12px;cursor:pointer;padding:4px 8px;">小窗 &#8595;</button>
             </div>
             <div id="oocMessages" style="flex:1;overflow-y:auto;padding:12px 16px;min-height:0;">
-                <div style="text-align:center;padding:16px 0;font-size:11px;color:rgba(255,255,255,0.2);line-height:1.8;">以线上人设（${this._esc(fn)} & 你本人）交流<br>不影响剧本</div>
+                <div style="text-align:center;padding:16px 0;font-size:13px;color:rgba(255,255,255,0.2);line-height:1.8;">以线上人设（${this._esc(fn)} & 你本人）交流<br>不影响剧本</div>
                 ${this._renderOOCMsgs(msgs, fn)}
             </div>
             <div style="padding:10px 14px calc(10px + env(safe-area-inset-bottom));border-top:1px solid rgba(255,255,255,0.06);display:flex;gap:8px;flex-shrink:0;">
@@ -535,7 +535,7 @@ MEMO_CONTENT: 备忘录内容（${s.charName}最近记的一条备忘，可以�
         // 可拖拽头部
         m.innerHTML = `<div id="oocMiniHeader" style="display:flex;align-items:center;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,0.06);cursor:move;flex-shrink:0;-webkit-user-select:none;user-select:none;">
                 <div style="flex:1;font-size:12px;color:rgba(255,255,255,0.5);">OOC 皮下</div>
-                <button id="oocMiniExpand" style="background:none;border:none;color:rgba(255,255,255,0.3);font-size:11px;cursor:pointer;padding:2px 6px;">全屏</button>
+                <button id="oocMiniExpand" style="background:none;border:none;color:rgba(255,255,255,0.3);font-size:13px;cursor:pointer;padding:2px 6px;">全屏</button>
                 <button id="oocMiniClose" style="background:none;border:none;color:rgba(255,255,255,0.3);font-size:14px;cursor:pointer;padding:2px 6px;">&#10005;</button>
             </div>
             <div id="oocMiniMsgs" style="flex:1;overflow-y:auto;padding:8px 10px;min-height:0;max-height:180px;">
@@ -543,7 +543,7 @@ MEMO_CONTENT: 备忘录内容（${s.charName}最近记的一条备忘，可以�
             </div>
             <div style="display:flex;gap:6px;padding:8px;border-top:1px solid rgba(255,255,255,0.06);flex-shrink:0;">
                 <input type="text" id="oocMiniInput" placeholder="皮下..." style="flex:1;padding:7px 10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:12px;font-family:inherit;">
-                <button id="oocMiniSend" style="padding:6px 10px;border:none;border-radius:8px;background:rgba(240,147,43,0.15);color:#f0932b;font-size:11px;cursor:pointer;flex-shrink:0;">&#9654;</button>
+                <button id="oocMiniSend" style="padding:6px 10px;border:none;border-radius:8px;background:rgba(240,147,43,0.15);color:#f0932b;font-size:13px;cursor:pointer;flex-shrink:0;">&#9654;</button>
             </div>`;
         
         document.body.appendChild(m);
@@ -613,7 +613,7 @@ MEMO_CONTENT: 备忘录内容（${s.charName}最近记的一条备忘，可以�
         const msgContainer = isMini ? document.querySelector('#oocMiniMsgs') : document.querySelector('#oocMessages');
         if(msgContainer) {
             const tip = document.createElement('div');
-            tip.style.cssText = 'text-align:left;padding:6px 0;font-size:11px;color:rgba(255,255,255,0.2);font-style:italic;';
+            tip.style.cssText = 'text-align:left;padding:6px 0;font-size:13px;color:rgba(255,255,255,0.2);font-style:italic;';
             const ci2 = window.chatInterface;
             tip.textContent = (ci2?.currentFriend?.nickname||ci2?.currentFriend?.name||'TA') + ' 正在输入...';
             msgContainer.appendChild(tip);
@@ -666,8 +666,8 @@ ${recentTheater||'（还没开始）'}
                 ${['scifi','dark','light'].map(th=>`<button class="ts-theme" data-t="${th}" style="flex:1;padding:10px;border:1px solid ${this._theme===th?'rgba(240,147,43,0.4)':'rgba(255,255,255,0.06)'};border-radius:10px;background:${this._theme===th?'rgba(240,147,43,0.1)':'rgba(255,255,255,0.03)'};color:${this._theme===th?'#f0932b':'rgba(255,255,255,0.5)'};font-size:13px;cursor:pointer;">${{scifi:'科幻',dark:'深色',light:'浅色'}[th]}</button>`).join('')}
             </div>
             <div style="font-size:12px;color:rgba(255,255,255,0.3);margin-bottom:6px;">自定义CSS</div>
-            <details style="margin-bottom:8px;"><summary style="font-size:10px;color:rgba(255,255,255,0.2);cursor:pointer;">&#9660; 类名参考</summary><div style="font-size:9px;color:rgba(255,255,255,0.15);line-height:1.8;font-family:monospace;margin-top:4px;padding:8px;background:rgba(255,255,255,0.02);border-radius:6px;">.theater-ui、.theater-topbar、.theater-title、.theater-messages、.theater-msg、.theater-msg-char、.theater-msg-user、.theater-msg-avatar、.theater-msg-name、.theater-msg-text、.theater-header-block、.theater-header-date、.theater-header-time、.theater-header-location、.theater-status-area、.theater-status-fold、.theater-status-summary、.theater-status-block、.theater-status-item、.theater-status-label、.theater-inputbar、.theater-input、.theater-send-btn、.theater-ooc-btn、.theater-typing、.theater-curtain、.theater-system-msg、.theater-thinking、.theater-scifi / .theater-dark / .theater-light</div></details>
-            <textarea id="tsCss" rows="3" placeholder="CSS..." style="width:100%;padding:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#fff;font-size:11px;font-family:monospace;resize:vertical;box-sizing:border-box;margin-bottom:8px;">${this._esc(this._session?.customCss||'')}</textarea>
+            <details style="margin-bottom:8px;"><summary style="font-size:12px;color:rgba(255,255,255,0.2);cursor:pointer;">&#9660; 类名参考</summary><div style="font-size:9px;color:rgba(255,255,255,0.15);line-height:1.8;font-family:monospace;margin-top:4px;padding:8px;background:rgba(255,255,255,0.02);border-radius:6px;">.theater-ui、.theater-topbar、.theater-title、.theater-messages、.theater-msg、.theater-msg-char、.theater-msg-user、.theater-msg-avatar、.theater-msg-name、.theater-msg-text、.theater-header-block、.theater-header-date、.theater-header-time、.theater-header-location、.theater-status-area、.theater-status-fold、.theater-status-summary、.theater-status-block、.theater-status-item、.theater-status-label、.theater-inputbar、.theater-input、.theater-send-btn、.theater-ooc-btn、.theater-typing、.theater-curtain、.theater-system-msg、.theater-thinking、.theater-scifi / .theater-dark / .theater-light</div></details>
+            <textarea id="tsCss" rows="3" placeholder="CSS..." style="width:100%;padding:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#fff;font-size:13px;font-family:monospace;resize:vertical;box-sizing:border-box;margin-bottom:8px;">${this._esc(this._session?.customCss||'')}</textarea>
             <div style="display:flex;gap:8px;margin-bottom:14px;"><button id="tsCssOk" style="flex:1;padding:8px;border:none;border-radius:8px;background:rgba(240,147,43,0.12);color:#f0932b;font-size:12px;cursor:pointer;">应用</button><button id="tsCssX" style="padding:8px 12px;border:none;border-radius:8px;background:rgba(255,60,60,0.08);color:rgba(255,100,100,0.5);font-size:12px;cursor:pointer;">清除</button></div>
             <button id="tsView" style="width:100%;padding:12px;border:1px solid rgba(255,255,255,0.06);border-radius:10px;background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.5);font-size:13px;cursor:pointer;margin-bottom:8px;">查看剧本设定</button>
             <button id="tsExit" style="width:100%;padding:12px;border:1px solid rgba(255,60,60,0.15);border-radius:10px;background:rgba(255,60,60,0.05);color:rgba(255,100,100,0.6);font-size:13px;cursor:pointer;margin-bottom:8px;">退出剧场</button>
@@ -687,7 +687,7 @@ ${recentTheater||'（还没开始）'}
         document.getElementById('theaterScriptView')?.remove();
         const ov=document.createElement('div');ov.id='theaterScriptView';
         ov.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;z-index:9300;background:#111;display:flex;flex-direction:column;';
-        const sec=(l,v)=>`<div style="margin-bottom:16px;"><div style="font-size:11px;color:rgba(255,255,255,0.3);margin-bottom:4px;">${l}</div><div style="font-size:14px;color:rgba(255,255,255,0.7);line-height:1.6;white-space:pre-wrap;">${this._esc(v||'未设定')}</div></div>`;
+        const sec=(l,v)=>`<div style="margin-bottom:16px;"><div style="font-size:13px;color:rgba(255,255,255,0.3);margin-bottom:4px;">${l}</div><div style="font-size:14px;color:rgba(255,255,255,0.7);line-height:1.6;white-space:pre-wrap;">${this._esc(v||'未设定')}</div></div>`;
         ov.innerHTML=`<div style="display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.04);flex-shrink:0;"><button id="svBack" style="background:none;border:none;color:rgba(255,255,255,0.6);font-size:20px;cursor:pointer;">&#8592;</button><div style="flex:1;font-size:16px;font-weight:600;color:#fff;text-align:center;">剧本设定</div></div><div style="flex:1;overflow-y:auto;padding:16px;min-height:0;">${sec('世界观',s.world)}${sec(s.charName+' 的人设',s.charPersona)}${sec(s.userName+' 的人设',s.userPersona)}${sec('开场情境',s.opening)}</div>`;
         document.body.appendChild(ov);
         ov.querySelector('#svBack')?.addEventListener('click',()=>{ov.remove();this._openSettings();});
@@ -747,7 +747,7 @@ ${timeHint ? '提示：' + timeHint : ''}
         if (existingSummaries.length > 0) {
             existingHtml = '<div style="margin-bottom:16px;"><div style="font-size:13px;color:rgba(255,255,255,0.5);margin-bottom:8px;">已有总结（' + existingSummaries.length + '篇）</div>';
             existingSummaries.forEach(sm => {
-                existingHtml += '<div style="margin-bottom:10px;padding:12px;background:rgba(255,255,255,0.03);border-radius:10px;border-left:3px solid rgba(240,147,43,0.3);"><div style="font-size:10px;color:rgba(255,255,255,0.2);margin-bottom:4px;">第' + sm.from + '-' + sm.to + '楼 | ' + (sm.createdAt ? new Date(sm.createdAt).toLocaleString('zh-CN') : '') + '</div><div style="font-size:13px;color:rgba(255,255,255,0.6);line-height:1.7;white-space:pre-wrap;max-height:120px;overflow-y:auto;">' + this._esc(sm.text) + '</div></div>';
+                existingHtml += '<div style="margin-bottom:10px;padding:12px;background:rgba(255,255,255,0.03);border-radius:10px;border-left:3px solid rgba(240,147,43,0.3);"><div style="font-size:12px;color:rgba(255,255,255,0.2);margin-bottom:4px;">第' + sm.from + '-' + sm.to + '楼 | ' + (sm.createdAt ? new Date(sm.createdAt).toLocaleString('zh-CN') : '') + '</div><div style="font-size:13px;color:rgba(255,255,255,0.6);line-height:1.7;white-space:pre-wrap;max-height:120px;overflow-y:auto;">' + this._esc(sm.text) + '</div></div>';
             });
             existingHtml += '</div>';
         }
@@ -760,8 +760,8 @@ ${timeHint ? '提示：' + timeHint : ''}
             ${existingHtml}
             <div style="font-size:12px;color:rgba(255,255,255,0.3);margin-bottom:8px;">生成新总结（共 ${totalFloors} 楼）</div>
             <div style="display:flex;gap:8px;margin-bottom:12px;">
-                <div style="flex:1;"><div style="font-size:10px;color:rgba(255,255,255,0.3);margin-bottom:4px;">从第</div><input type="number" id="memFrom" min="1" max="${totalFloors}" value="1" style="width:100%;padding:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:14px;box-sizing:border-box;"></div>
-                <div style="flex:1;"><div style="font-size:10px;color:rgba(255,255,255,0.3);margin-bottom:4px;">到第</div><input type="number" id="memTo" min="1" max="${totalFloors}" value="${totalFloors}" style="width:100%;padding:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:14px;box-sizing:border-box;"></div>
+                <div style="flex:1;"><div style="font-size:12px;color:rgba(255,255,255,0.3);margin-bottom:4px;">从第</div><input type="number" id="memFrom" min="1" max="${totalFloors}" value="1" style="width:100%;padding:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:14px;box-sizing:border-box;"></div>
+                <div style="flex:1;"><div style="font-size:12px;color:rgba(255,255,255,0.3);margin-bottom:4px;">到第</div><input type="number" id="memTo" min="1" max="${totalFloors}" value="${totalFloors}" style="width:100%;padding:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:14px;box-sizing:border-box;"></div>
             </div>
             <button id="memGenerate" style="width:100%;padding:12px;border:none;border-radius:10px;background:rgba(240,147,43,0.15);color:#f0932b;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:8px;">生成总结</button>
             <div id="memResult" style="display:none;margin-top:12px;padding:14px;background:rgba(255,255,255,0.03);border-radius:10px;border:1px solid rgba(255,255,255,0.06);font-size:13px;color:rgba(255,255,255,0.7);line-height:1.8;white-space:pre-wrap;"></div>
