@@ -30,8 +30,9 @@ class MomentsManager {
         friends.forEach(f => { if (store.getIntimacyData(f.code).moments?.length) hasAny = true; });
         if (hasAny) return;
         const f = friends[0]; const intim = store.getIntimacyData(f.code); const name = f.nickname || f.name;
+        const userName = (store.getUserSettings().userNickname || store.getUserSettings().userName || '我');
         intim.moments = [
-            { id:'demo_1', content:'今天天气真好，适合发呆 ☀️', images:[], createdAt:new Date(Date.now()-7200000).toISOString(), likes:[{name:'我',ts:new Date().toISOString()}], favorites:[], comments:[{id:'c1',name:'我',content:'确实！',ts:new Date(Date.now()-3600000).toISOString()},{id:'c2',name:name,content:'你也出来走走嘛',ts:new Date(Date.now()-1800000).toISOString(),replyTo:'我'}] },
+            { id:'demo_1', content:'今天天气真好，适合发呆 ☀️', images:[], createdAt:new Date(Date.now()-7200000).toISOString(), likes:[{name:userName,ts:new Date().toISOString()}], favorites:[], comments:[{id:'c1',name:userName,content:'确实！',ts:new Date(Date.now()-3600000).toISOString()},{id:'c2',name:name,content:'你也出来走走嘛',ts:new Date(Date.now()-1800000).toISOString(),replyTo:userName}] },
             { id:'demo_2', content:'刚才在整理房间，翻到了一些旧东西…突然有点感慨', images:[], createdAt:new Date(Date.now()-86400000).toISOString(), likes:[], favorites:[], comments:[] }
         ];
         store.saveIntimacyData(f.code, intim);
@@ -105,15 +106,11 @@ class MomentsManager {
         }
         
         page.innerHTML =
-            // ====== Header（完全匹配 .top-bar 样式）======
-            '<div style="height:60px;background:rgba(255,255,255,0.95);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid rgba(0,0,0,0.1);display:flex;align-items:center;justify-content:space-between;padding:0 16px;padding-top:env(safe-area-inset-top);flex-shrink:0;box-shadow:0 2px 10px rgba(0,0,0,0.05);">' +
-                '<button id="momentsBack" style="width:40px;height:40px;border:none;background:rgba(0,0,0,0.05);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;color:rgba(0,0,0,0.6);">&#8592;</button>' +
-                '<div style="font-size:18px;font-weight:600;color:#000;">朋友圈</div>' +
-                '<div style="display:flex;gap:8px;">' +
-                    '<button class="moments-header-btn" title="设置" style="width:40px;height:40px;border:none;background:rgba(0,0,0,0.05);border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;color:rgba(0,0,0,0.5);">&#9881;</button>' +
-                    '<button class="moments-header-btn" title="刷新" style="width:40px;height:40px;border:none;background:rgba(0,0,0,0.05);border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;color:rgba(0,0,0,0.5);">&#8635;</button>' +
-                    '<button class="moments-header-btn" title="发朋友圈" style="width:40px;height:40px;border:none;background:rgba(0,0,0,0.05);border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;color:rgba(0,0,0,0.5);">&#10010;</button>' +
-                '</div>' +
+            // ====== Header ======
+            '<div style="height:60px;background:rgba(255,255,255,0.95);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid rgba(0,0,0,0.1);display:flex;align-items:center;padding:0 16px;padding-top:env(safe-area-inset-top);flex-shrink:0;box-shadow:0 2px 10px rgba(0,0,0,0.05);">' +
+                '<button id="momentsBack" style="width:40px;height:40px;border:none;background:rgba(0,0,0,0.05);border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;color:rgba(0,0,0,0.6);">&#8592;</button>' +
+                '<div style="flex:1;text-align:center;font-size:18px;font-weight:600;color:#000;">朋友圈</div>' +
+                '<div style="position:relative;"><button id="momentsMenuBtn" style="width:40px;height:40px;border:none;background:rgba(0,0,0,0.05);border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:20px;color:rgba(0,0,0,0.4);">&#8943;</button></div>' +
             '</div>' +
             // ====== 滚动内容 ======
             '<div id="momentsScroll" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;">' +
@@ -138,7 +135,23 @@ class MomentsManager {
         this._page = page; this._moments = moments;
         
         page.querySelector('#momentsBack')?.addEventListener('click', () => this.close());
-        page.querySelectorAll('.moments-header-btn').forEach(btn => { btn.addEventListener('click', () => this._toast('功能开发中...')); });
+        // 菜单按钮 → 抽屉
+        page.querySelector('#momentsMenuBtn')?.addEventListener('click', () => {
+            document.getElementById('_momentsDropdown')?.remove();
+            const dd = document.createElement('div');
+            dd.id = '_momentsDropdown';
+            dd.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:99998;';
+            dd.innerHTML = '<div style="position:absolute;top:60px;right:16px;background:rgba(255,255,255,0.96);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.15);border:1px solid rgba(0,0,0,0.08);overflow:hidden;min-width:150px;">' +
+                '<div class="_mdd" style="padding:12px 16px;font-size:15px;color:#333;cursor:pointer;border-bottom:1px solid rgba(0,0,0,0.06);">刷新朋友圈</div>' +
+                '<div class="_mdd" style="padding:12px 16px;font-size:15px;color:#333;cursor:pointer;border-bottom:1px solid rgba(0,0,0,0.06);">朋友圈设置</div>' +
+                '<div class="_mdd" style="padding:12px 16px;font-size:15px;color:#333;cursor:pointer;">发布朋友圈</div>' +
+            '</div>';
+            document.body.appendChild(dd);
+            dd.addEventListener('click', (e) => {
+                dd.remove();
+                if (e.target.classList.contains('_mdd')) this._toast(e.target.textContent + ' - 功能开发中...');
+            });
+        });
         
         // 背景图更换
         page.querySelector('#momentsBanner')?.addEventListener('click', () => {

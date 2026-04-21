@@ -141,7 +141,7 @@ class MemoryLibrary {
                     ${menuItem('&#9829;', '核心记忆', 'mlCoreMemory', '线上聊天的核心记忆')}
                     ${menuItem('&#9998;', '记事本', 'mlNotebook', 'TA的碎碎念和日记')}
                     ${menuItem('&#9998;', '手帐', 'mlJournal', 'TA的手帐本')}
-                    ${menuItem('&#128101;', '人际关系', 'mlRelations', '占位 - TA的社交圈')}
+                    ${menuItem('&#128101;', '人际关系', 'mlRelations', 'TA的社交圈')}
                     ${menuItem('&#9670;', '剧场归档', 'mlTheaterArchive', '次元剧场存档')}
                 </div>
             </div>`;
