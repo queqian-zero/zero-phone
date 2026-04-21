@@ -1059,45 +1059,22 @@ class MemoryLibrary {
         page.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9100;background:#111;display:flex;flex-direction:column;';
         
         let filterPerson = null;
+        let arrowInfo = null; // 当前显示的箭头卡片
+        // 节点位置存储
+        const nodePositions = {};
         
         const render = () => {
             const people = rel.people || [];
-            const events = (rel.events || []).sort((a,b) => (b.createdAt||b.date||'').localeCompare(a.createdAt||a.date||''));
+            const events = (rel.events || []).sort((a,b) => (b.createdAt||'').localeCompare(a.createdAt||''));
             
-            // SVG关系图
-            const W = 360, H = 260;
-            const cx = W/2, cy = H/2;
-            let svgContent = '';
-            
-            // 中心节点（小）
-            svgContent += '<circle cx="'+cx+'" cy="'+cy+'" r="12" fill="rgba(240,147,43,0.5)" stroke="rgba(240,147,43,0.3)" stroke-width="1.5"/>';
-            svgContent += '<text x="'+cx+'" y="'+(cy+3)+'" text-anchor="middle" fill="#fff" font-size="8" font-weight="600">'+this._esc(charName.substring(0,4))+'</text>';
-            
+            // 初始化节点位置（如果没有就按环形分布）
+            const W = 360, H = 280, cx = W/2, cy = H/2;
             people.forEach((p, i) => {
-                const angle = (Math.PI * 2 * i / Math.max(people.length, 1)) - Math.PI/2;
-                const dist = 70 + (i % 2) * 25;
-                const nx = cx + Math.cos(angle) * dist;
-                const ny = cy + Math.sin(angle) * dist;
-                const col = p.color || 'rgba(180,180,180,0.5)';
-                
-                // 连线
-                svgContent += '<line x1="'+cx+'" y1="'+cy+'" x2="'+nx+'" y2="'+ny+'" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>';
-                
-                // 箭头（小三角+点击区域）
-                const mx = (cx+nx)/2, my = (cy+ny)/2;
-                const a2 = Math.atan2(ny-cy, nx-cx);
-                const ax = 4;
-                const p1x=mx+Math.cos(a2)*ax, p1y=my+Math.sin(a2)*ax;
-                const p2x=mx+Math.cos(a2+2.5)*ax, p2y=my+Math.sin(a2+2.5)*ax;
-                const p3x=mx+Math.cos(a2-2.5)*ax, p3y=my+Math.sin(a2-2.5)*ax;
-                svgContent += '<polygon points="'+p1x+','+p1y+' '+p2x+','+p2y+' '+p3x+','+p3y+'" fill="rgba(200,100,120,0.5)" class="rel-arrow" data-idx="'+i+'" style="cursor:pointer;"/>';
-                svgContent += '<circle cx="'+mx+'" cy="'+my+'" r="10" fill="transparent" class="rel-arrow" data-idx="'+i+'" style="cursor:pointer;"/>';
-                
-                // 节点圆（小）
-                svgContent += '<circle cx="'+nx+'" cy="'+ny+'" r="8" fill="'+col+'" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>';
-                // 名字
-                const fs = p.name.length > 6 ? 7 : p.name.length > 4 ? 8 : 9;
-                svgContent += '<text x="'+nx+'" y="'+(ny+20)+'" text-anchor="middle" fill="rgba(255,255,255,0.45)" font-size="'+fs+'">'+this._esc(p.name.substring(0,8))+'</text>';
+                if (!nodePositions[p.id]) {
+                    const angle = (Math.PI * 2 * i / Math.max(people.length, 1)) - Math.PI/2;
+                    const dist = 80 + (i % 2) * 25;
+                    nodePositions[p.id] = { x: cx + Math.cos(angle) * dist, y: cy + Math.sin(angle) * dist };
+                }
             });
             
             // 事件列表
@@ -1108,12 +1085,7 @@ class MemoryLibrary {
             } else {
                 filteredEvents.forEach(ev => {
                     const ts = ev.createdAt ? new Date(ev.createdAt).toLocaleString('zh-CN',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'}) : (ev.date||'');
-                    eventsHtml += '<div class="rel-event-item" data-id="'+this._esc(ev.id)+'" style="display:flex;gap:10px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.02);cursor:pointer;">';
-                    eventsHtml += '<div style="min-width:80px;font-size:12px;color:rgba(255,255,255,0.2);line-height:1.4;">'+ts+'</div>';
-                    eventsHtml += '<div style="flex:1;font-size:14px;color:rgba(255,255,255,0.5);line-height:1.6;">';
-                    eventsHtml += '<span style="color:rgba(240,147,43,0.6);font-weight:600;">'+this._esc(ev.person||'')+'</span> ';
-                    eventsHtml += this._esc(ev.content||'');
-                    eventsHtml += '</div></div>';
+                    eventsHtml += '<div class="rel-event-item" data-id="'+this._esc(ev.id)+'" style="display:flex;gap:10px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.02);cursor:pointer;"><div style="min-width:80px;font-size:12px;color:rgba(255,255,255,0.2);line-height:1.4;">'+ts+'</div><div style="flex:1;font-size:14px;color:rgba(255,255,255,0.5);line-height:1.6;"><span style="color:rgba(240,147,43,0.6);font-weight:600;">'+this._esc(ev.person||'')+'</span> '+this._esc(ev.content||'')+'</div></div>';
                 });
             }
             
@@ -1134,8 +1106,11 @@ class MemoryLibrary {
                     '</div>' +
                 '</div>' +
                 '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;">' +
-                    '<div style="padding:12px 0;text-align:center;background:rgba(255,255,255,0.02);overflow:hidden;">' +
-                        '<svg id="relGraph" viewBox="0 0 '+W+' '+H+'" style="width:100%;max-width:400px;touch-action:none;">'+svgContent+'</svg>' +
+                    // 关系图容器
+                    '<div style="position:relative;background:rgba(255,255,255,0.02);overflow:hidden;">' +
+                        '<canvas id="relCanvas" width="720" height="560" style="width:100%;height:280px;touch-action:none;"></canvas>' +
+                        // 箭头信息卡片（图下方浮动）
+                        '<div id="relArrowCard" style="display:none;margin:0 16px;padding:12px 16px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);border-radius:12px;margin-bottom:8px;"></div>' +
                     '</div>' +
                     '<div style="padding:10px 16px;display:flex;gap:6px;flex-wrap:wrap;">'+filterTabs+'</div>' +
                     '<div style="padding:4px 16px 16px;">' +
@@ -1144,18 +1119,17 @@ class MemoryLibrary {
                     '</div>' +
                 '</div>';
             
-            // 事件绑定
+            // 绑定事件
             page.querySelector('#relBack')?.addEventListener('click', () => page.remove());
-            
             page.querySelector('#relAddPerson')?.addEventListener('click', () => {
                 const name = prompt('人物名字：'); if (!name?.trim()) return;
                 const relation = prompt('与'+charName+'的关系描述（可选）：') || '';
+                const persona = prompt('人物简介/人设（可选）：') || '';
                 if (!rel.people) rel.people = [];
-                const colors = ['rgba(200,120,120,0.5)','rgba(120,160,200,0.5)','rgba(160,200,120,0.5)','rgba(200,160,120,0.5)','rgba(160,120,200,0.5)','rgba(200,200,120,0.5)'];
-                rel.people.push({ id:'rel_'+Date.now(), name:name.trim(), relation:relation.trim(), color:colors[rel.people.length%colors.length] });
+                const colors = ['#e07070','#70a0e0','#70c070','#e0a050','#b070d0','#d0d060','#60c0c0','#e070b0'];
+                rel.people.push({ id:'rel_'+Date.now(), name:name.trim(), relation:relation.trim(), persona:persona.trim(), color:colors[rel.people.length%colors.length] });
                 save(); render();
             });
-            
             page.querySelector('#relAddEvent')?.addEventListener('click', () => {
                 if (!rel.people?.length) { this._toast('请先添加人物'); return; }
                 const person = prompt('相关人物（'+rel.people.map(p=>p.name).join('/')+')：'); if (!person?.trim()) return;
@@ -1164,142 +1138,215 @@ class MemoryLibrary {
                 rel.events.push({ id:'evt_'+Date.now(), person:person.trim(), date:new Date().toISOString().split('T')[0], content:content.trim(), createdAt:new Date().toISOString() });
                 save(); render();
             });
-            
-            // 箭头点击
-            page.querySelectorAll('.rel-arrow').forEach(el => {
-                el.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const idx = parseInt(el.dataset.idx);
-                    const p = people[idx]; if (!p) return;
-                    document.getElementById('relPopup')?.remove();
-                    const popup = document.createElement('div');
-                    popup.id = 'relPopup';
-                    popup.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9500;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.4);';
-                    popup.innerHTML = '<div style="width:calc(100% - 48px);max-width:320px;background:#222;border-radius:16px;padding:20px;border:1px solid rgba(255,255,255,0.06);">' +
-                        '<div style="font-size:16px;font-weight:600;color:rgba(240,147,43,0.7);margin-bottom:10px;">'+this._esc(p.name)+' &#8596; '+this._esc(charName)+'</div>' +
-                        '<div style="font-size:14px;color:rgba(255,255,255,0.5);line-height:1.7;min-height:40px;">'+(this._esc(p.relation)||'<span style="color:rgba(255,255,255,0.15);">暂无关系描述</span>')+'</div>' +
-                        '<div style="display:flex;gap:10px;margin-top:14px;">' +
-                            '<button id="relPopEdit" style="flex:1;padding:9px;border:1px solid rgba(255,255,255,0.08);border-radius:8px;background:transparent;color:rgba(255,255,255,0.4);font-size:14px;cursor:pointer;">编辑</button>' +
-                            '<button id="relPopDel" style="padding:9px 14px;border:1px solid rgba(255,100,100,0.15);border-radius:8px;background:transparent;color:rgba(255,100,100,0.4);font-size:14px;cursor:pointer;">删除</button>' +
-                            '<button id="relPopClose" style="flex:1;padding:9px;border:1px solid rgba(255,255,255,0.08);border-radius:8px;background:transparent;color:rgba(255,255,255,0.4);font-size:14px;cursor:pointer;">关闭</button>' +
-                        '</div></div>';
-                    document.body.appendChild(popup);
-                    popup.addEventListener('click', (e) => { if (e.target===popup) popup.remove(); });
-                    popup.querySelector('#relPopClose')?.addEventListener('click', () => popup.remove());
-                    popup.querySelector('#relPopEdit')?.addEventListener('click', () => {
-                        const newRel = prompt('编辑关系描述：', p.relation||'');
-                        if (newRel!==null) { p.relation=newRel.trim(); save(); popup.remove(); render(); }
-                    });
-                    popup.querySelector('#relPopDel')?.addEventListener('click', () => {
-                        if (confirm('删除 '+p.name+' ？')) { rel.people=rel.people.filter(x=>x.id!==p.id); save(); popup.remove(); render(); }
-                    });
-                });
-            });
-            
-            // 事件点击 → 编辑/删除
+            page.querySelectorAll('.rel-filter-tab').forEach(btn => { btn.addEventListener('click', () => { filterPerson=btn.dataset.person||null; render(); }); });
             page.querySelectorAll('.rel-event-item').forEach(el => {
                 el.addEventListener('click', () => {
-                    const evId = el.dataset.id;
-                    const ev = (rel.events||[]).find(e => e.id === evId);
-                    if (!ev) return;
-                    document.getElementById('relEvPopup')?.remove();
-                    const popup = document.createElement('div');
-                    popup.id = 'relEvPopup';
-                    popup.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9500;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.4);';
+                    const ev = (rel.events||[]).find(e => e.id===el.dataset.id); if (!ev) return;
                     const ts = ev.createdAt ? new Date(ev.createdAt).toLocaleString('zh-CN') : (ev.date||'');
-                    popup.innerHTML = '<div style="width:calc(100% - 48px);max-width:320px;background:#222;border-radius:16px;padding:20px;border:1px solid rgba(255,255,255,0.06);">' +
-                        '<div style="font-size:14px;color:rgba(240,147,43,0.6);font-weight:600;margin-bottom:4px;">'+this._esc(ev.person||'')+'</div>' +
-                        '<div style="font-size:12px;color:rgba(255,255,255,0.2);margin-bottom:8px;">'+ts+'</div>' +
-                        '<div style="font-size:14px;color:rgba(255,255,255,0.5);line-height:1.7;">'+this._esc(ev.content||'')+'</div>' +
-                        '<div style="display:flex;gap:10px;margin-top:14px;">' +
-                            '<button id="evEdit" style="flex:1;padding:9px;border:1px solid rgba(255,255,255,0.08);border-radius:8px;background:transparent;color:rgba(255,255,255,0.4);font-size:14px;cursor:pointer;">编辑</button>' +
-                            '<button id="evDel" style="padding:9px 14px;border:1px solid rgba(255,100,100,0.15);border-radius:8px;background:transparent;color:rgba(255,100,100,0.4);font-size:14px;cursor:pointer;">删除</button>' +
-                            '<button id="evClose" style="flex:1;padding:9px;border:1px solid rgba(255,255,255,0.08);border-radius:8px;background:transparent;color:rgba(255,255,255,0.4);font-size:14px;cursor:pointer;">关闭</button>' +
-                        '</div></div>';
-                    document.body.appendChild(popup);
-                    popup.addEventListener('click', (e) => { if (e.target===popup) popup.remove(); });
-                    popup.querySelector('#evClose')?.addEventListener('click', () => popup.remove());
-                    popup.querySelector('#evEdit')?.addEventListener('click', () => {
-                        const newContent = prompt('编辑事件描述：', ev.content||'');
-                        if (newContent!==null) { ev.content=newContent.trim(); save(); popup.remove(); render(); }
-                    });
-                    popup.querySelector('#evDel')?.addEventListener('click', () => {
-                        if (confirm('删除这条事件？')) { rel.events=rel.events.filter(x=>x.id!==ev.id); save(); popup.remove(); render(); }
-                    });
+                    const action = prompt(this._esc(ev.person)+' ('+ts+')\n'+ev.content+'\n\n输入新内容编辑，输入"删除"删除此事件：', ev.content);
+                    if (action===null) return;
+                    if (action==='删除') { rel.events=rel.events.filter(x=>x.id!==ev.id); }
+                    else if (action.trim()) { ev.content=action.trim(); }
+                    save(); render();
                 });
             });
             
-            // 筛选标签
-            page.querySelectorAll('.rel-filter-tab').forEach(btn => {
-                btn.addEventListener('click', () => { filterPerson = btn.dataset.person||null; render(); });
+            // ====== Canvas关系图（可拖拽节点+弹性）======
+            const canvas = page.querySelector('#relCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const dpr = window.devicePixelRatio || 2;
+            const cw = canvas.clientWidth, ch = canvas.clientHeight;
+            canvas.width = cw * dpr; canvas.height = ch * dpr;
+            ctx.scale(dpr, dpr);
+            
+            // 物理状态
+            const nodes = [];
+            const center = { x: cw/2, y: ch/2 };
+            // 中心节点
+            nodes.push({ id:'_center', x:center.x, y:center.y, vx:0, vy:0, r:14, color:'#f0932b', name:charName.substring(0,4), fixed:true, isCenter:true });
+            people.forEach(p => {
+                const pos = nodePositions[p.id] || { x: center.x, y: center.y };
+                // 缩放到canvas坐标
+                const sx = pos.x / 360 * cw, sy = pos.y / 280 * ch;
+                nodes.push({ id:p.id, x:sx, y:sy, vx:0, vy:0, r:10, color:p.color||'#999', name:p.name, relation:p.relation||'', persona:p.persona||'', fixed:false, data:p });
             });
             
-            // SVG拖拽/缩放（带惯性）
-            const svg = page.querySelector('#relGraph');
-            if (svg) {
-                let vb={x:0,y:0,w:W,h:H}, isPan=false, startPt=null, startVB=null;
-                let vx=0, vy=0, lastPt=null, lastTime=0, animId=null;
+            let dragging = null, dragOffset = {x:0,y:0};
+            let longPressTimer = null;
+            let animRunning = true;
+            
+            const drawFrame = () => {
+                if (!animRunning) return;
+                ctx.clearRect(0, 0, cw, ch);
                 
-                const getP = (e) => { const t=e.touches?e.touches[0]:e; return {x:t.clientX,y:t.clientY}; };
-                const applyVB = () => { svg.setAttribute('viewBox', vb.x+' '+vb.y+' '+vb.w+' '+vb.h); };
-                
-                // 惯性动画
-                const inertia = () => {
-                    if (Math.abs(vx)<0.3 && Math.abs(vy)<0.3) { animId=null; return; }
-                    vb.x += vx; vb.y += vy;
-                    vx *= 0.92; vy *= 0.92; // 阻尼
-                    applyVB();
-                    animId = requestAnimationFrame(inertia);
-                };
-                
-                svg.addEventListener('touchstart', (e) => {
-                    if (e.target.closest('.rel-arrow')) return;
-                    if (animId) { cancelAnimationFrame(animId); animId=null; }
-                    if (e.touches.length===1) {
-                        isPan=true; startPt=getP(e); startVB={...vb};
-                        lastPt=startPt; lastTime=Date.now(); vx=0; vy=0;
+                // 弹性物理：每个非固定节点被弹簧连到中心
+                nodes.forEach(n => {
+                    if (n.fixed || n.isCenter || n === dragging) return;
+                    // 弹簧力（轻微拉向中心）
+                    const dx = center.x - n.x, dy = center.y - n.y;
+                    const dist = Math.sqrt(dx*dx+dy*dy);
+                    const targetDist = 90;
+                    if (dist > 0) {
+                        const force = (dist - targetDist) * 0.002;
+                        n.vx += dx/dist * force;
+                        n.vy += dy/dist * force;
                     }
-                }, {passive:true});
+                    // 阻尼
+                    n.vx *= 0.92; n.vy *= 0.92;
+                    n.x += n.vx; n.y += n.vy;
+                    // 边界
+                    n.x = Math.max(n.r, Math.min(cw-n.r, n.x));
+                    n.y = Math.max(n.r, Math.min(ch-n.r, n.y));
+                });
                 
-                svg.addEventListener('touchmove', (e) => {
-                    if (e.touches.length===2) {
-                        // 双指缩放
-                        const dx=e.touches[0].clientX-e.touches[1].clientX;
-                        const dy=e.touches[0].clientY-e.touches[1].clientY;
-                        const dist=Math.sqrt(dx*dx+dy*dy);
-                        if (!svg._lastDist) svg._lastDist=dist;
-                        if (svg._lastDist>0) {
-                            const scale=svg._lastDist/dist;
-                            const ncx=vb.x+vb.w/2, ncy=vb.y+vb.h/2;
-                            vb.w=Math.max(100,Math.min(800,vb.w*scale));
-                            vb.h=Math.max(70,Math.min(600,vb.h*scale));
-                            vb.x=ncx-vb.w/2; vb.y=ncy-vb.h/2;
-                            applyVB();
+                // 画连线+箭头
+                const centerNode = nodes[0];
+                for (let i = 1; i < nodes.length; i++) {
+                    const n = nodes[i];
+                    ctx.beginPath();
+                    ctx.moveTo(centerNode.x, centerNode.y);
+                    ctx.lineTo(n.x, n.y);
+                    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                    
+                    // 小三角箭头
+                    const mx = (centerNode.x+n.x)/2, my = (centerNode.y+n.y)/2;
+                    const angle = Math.atan2(n.y-centerNode.y, n.x-centerNode.x);
+                    ctx.save();
+                    ctx.translate(mx, my);
+                    ctx.rotate(angle);
+                    ctx.beginPath();
+                    ctx.moveTo(5, 0);
+                    ctx.lineTo(-3, -4);
+                    ctx.lineTo(-3, 4);
+                    ctx.closePath();
+                    ctx.fillStyle = 'rgba(200,100,120,0.6)';
+                    ctx.fill();
+                    ctx.restore();
+                }
+                
+                // 画节点
+                nodes.forEach(n => {
+                    ctx.beginPath();
+                    ctx.arc(n.x, n.y, n.r, 0, Math.PI*2);
+                    ctx.fillStyle = n.color;
+                    ctx.fill();
+                    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                    
+                    // 名字
+                    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+                    ctx.font = (n.name.length>4?'10':'11') + 'px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(n.name.substring(0,6), n.x, n.y + n.r + 14);
+                });
+                
+                requestAnimationFrame(drawFrame);
+            };
+            drawFrame();
+            
+            // 触摸交互
+            const getTouch = (e) => {
+                const t = e.touches[0];
+                const rect = canvas.getBoundingClientRect();
+                return { x: (t.clientX - rect.left), y: (t.clientY - rect.top) };
+            };
+            
+            const hitTest = (pt) => {
+                for (let i = nodes.length-1; i >= 0; i--) {
+                    const n = nodes[i];
+                    const dx = pt.x - n.x, dy = pt.y - n.y;
+                    if (dx*dx + dy*dy < (n.r+8)*(n.r+8)) return n;
+                }
+                return null;
+            };
+            
+            const hitArrow = (pt) => {
+                for (let i = 1; i < nodes.length; i++) {
+                    const n = nodes[i], c = nodes[0];
+                    const mx = (c.x+n.x)/2, my = (c.y+n.y)/2;
+                    const dx = pt.x - mx, dy = pt.y - my;
+                    if (dx*dx+dy*dy < 18*18) return n;
+                }
+                return null;
+            };
+            
+            canvas.addEventListener('touchstart', (e) => {
+                if (e.touches.length !== 1) return;
+                const pt = getTouch(e);
+                const node = hitTest(pt);
+                if (node && !node.isCenter) {
+                    dragging = node;
+                    dragOffset = { x: pt.x - node.x, y: pt.y - node.y };
+                    node.vx = 0; node.vy = 0;
+                    // 长按检测
+                    longPressTimer = setTimeout(() => {
+                        if (dragging === node) {
+                            // 长按：弹出编辑菜单
+                            dragging = null;
+                            const p = node.data;
+                            if (!p) return;
+                            const action = prompt(p.name+'\n关系：'+(p.relation||'无')+'\n人设：'+(p.persona||'无')+'\n\n操作：输入"改名"/"编辑关系"/"编辑人设"/"删除"');
+                            if (!action) return;
+                            if (action==='改名') { const nn=prompt('新名字：',p.name); if(nn?.trim()){p.name=nn.trim();node.name=p.name;save();} }
+                            else if (action==='编辑关系') { const nr=prompt('关系描述：',p.relation||''); if(nr!==null){p.relation=nr.trim();save();} }
+                            else if (action==='编辑人设') { const np=prompt('人设/简介：',p.persona||''); if(np!==null){p.persona=np.trim();save();} }
+                            else if (action==='删除') { if(confirm('删除'+p.name+'？')){rel.people=rel.people.filter(x=>x.id!==p.id);delete nodePositions[p.id];save();render();} }
                         }
-                        svg._lastDist=dist; isPan=false;
-                        return;
-                    }
-                    if (!isPan||!startPt) return;
-                    const pt=getP(e);
-                    const dx2=(startPt.x-pt.x)*(vb.w/svg.clientWidth);
-                    const dy2=(startPt.y-pt.y)*(vb.h/svg.clientHeight);
-                    vb.x=startVB.x+dx2; vb.y=startVB.y+dy2;
-                    applyVB();
-                    // 记录速度
-                    const now=Date.now(), dt=now-lastTime;
-                    if (dt>0) {
-                        vx=(lastPt.x-pt.x)*(vb.w/svg.clientWidth)/dt*16;
-                        vy=(lastPt.y-pt.y)*(vb.h/svg.clientHeight)/dt*16;
-                    }
-                    lastPt=pt; lastTime=now;
-                }, {passive:true});
+                    }, 600);
+                }
+            }, {passive:true});
+            
+            canvas.addEventListener('touchmove', (e) => {
+                if (!dragging) return;
+                if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer=null; }
+                const pt = getTouch(e);
+                dragging.x = pt.x - dragOffset.x;
+                dragging.y = pt.y - dragOffset.y;
+                // 存位置
+                nodePositions[dragging.id] = { x: dragging.x/cw*360, y: dragging.y/ch*280 };
+            }, {passive:true});
+            
+            canvas.addEventListener('touchend', (e) => {
+                if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer=null; }
+                if (dragging) {
+                    // 给点弹性回弹
+                    dragging.vx = (Math.random()-0.5)*2;
+                    dragging.vy = (Math.random()-0.5)*2;
+                    dragging = null;
+                } else {
+                    // 没拖拽 = 点击，检查是否点了箭头
+                    // 用最后一次touchstart的位置
+                }
+            });
+            
+            // 点击箭头显示底部卡片
+            canvas.addEventListener('click', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const pt = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+                const arrowNode = hitArrow(pt);
+                const card = page.querySelector('#relArrowCard');
+                if (!card) return;
                 
-                svg.addEventListener('touchend', (e) => {
-                    isPan=false; startPt=null; svg._lastDist=0;
-                    // 启动惯性
-                    if (Math.abs(vx)>0.5 || Math.abs(vy)>0.5) { animId=requestAnimationFrame(inertia); }
-                });
-            }
+                if (arrowNode && arrowNode.data) {
+                    const p = arrowNode.data;
+                    card.style.display = 'block';
+                    card.innerHTML = '<div style="font-size:14px;color:rgba(240,147,43,0.7);font-weight:600;">'+this._esc(p.name)+' &#8594; '+this._esc(charName)+'</div>' +
+                        '<div style="font-size:14px;color:rgba(255,255,255,0.5);margin-top:6px;line-height:1.6;">'+(this._esc(p.relation)||'<span style="color:rgba(255,255,255,0.15);">暂无关系描述</span>')+
+                        (p.persona ? '<div style="font-size:12px;color:rgba(255,255,255,0.2);margin-top:4px;">人设：'+this._esc(p.persona)+'</div>' : '') + '</div>';
+                    arrowInfo = p;
+                } else {
+                    card.style.display = 'none';
+                    arrowInfo = null;
+                }
+            });
+            
+            // 页面关闭时停止动画
+            const obs = new MutationObserver(() => { if (!document.getElementById('mlRelationsPage')) { animRunning=false; obs.disconnect(); } });
+            obs.observe(document.body, {childList:true});
         };
         
         document.body.appendChild(page);
