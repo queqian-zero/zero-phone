@@ -296,28 +296,36 @@
 
     <!-- 菜单面板（在input-bar内部） -->
     <div class="menu-panel" id="menuPanel" style="display: none;">
-        <div class="menu-row">
-            <button class="menu-item" id="menuVoice" title="语音">
-                <span class="menu-icon">)))&thinsp;</span>
-                <span class="menu-label">语音</span>
-            </button>
-            <button class="menu-item" id="menuRealImage" title="发图片">
-                <span class="menu-icon">&#9634;</span>
-                <span class="menu-label">发图片</span>
-            </button>
-            <button class="menu-item" id="menuFakeImage" title="假图片">
-                <span class="menu-icon">&#9638;</span>
-                <span class="menu-label">假图片</span>
+        <div class="menu-row" style="display:flex;justify-content:space-around;">
+            <button class="menu-item" id="menuResay" title="重说">
+                <span class="menu-icon">&#8635;</span>
+                <span class="menu-label">重说</span>
             </button>
             <button class="menu-item" id="menuEmoji" title="表情包">
                 <span class="menu-icon">&#9786;</span>
                 <span class="menu-label">表情包</span>
             </button>
+            <button class="menu-item" id="menuVoice" title="假语音">
+                <span class="menu-icon">)))&thinsp;</span>
+                <span class="menu-label">假语音</span>
+            </button>
+            <button class="menu-item menu-placeholder" id="menuRealVoice" title="真语音（开发中）">
+                <span class="menu-icon">&#127908;</span>
+                <span class="menu-label">真语音</span>
+            </button>
+            <button class="menu-item" id="menuFakeImage" title="假图片">
+                <span class="menu-icon">&#9638;</span>
+                <span class="menu-label">假图片</span>
+            </button>
         </div>
-        <div class="menu-row">
-            <button class="menu-item" id="menuResay" title="重说">
-                <span class="menu-icon">&#8635;</span>
-                <span class="menu-label">重说</span>
+        <div class="menu-row" style="display:flex;justify-content:space-around;">
+            <button class="menu-item" id="menuRealImage" title="发图片">
+                <span class="menu-icon">&#9634;</span>
+                <span class="menu-label">发图片</span>
+            </button>
+            <button class="menu-item menu-placeholder" id="menuNameCard" title="名片（开发中）">
+                <span class="menu-icon">&#128199;</span>
+                <span class="menu-label">名片</span>
             </button>
             <button class="menu-item menu-placeholder" id="menuFile" title="文件（开发中）">
                 <span class="menu-icon">&#9776;</span>
@@ -330,10 +338,6 @@
             <button class="menu-item menu-placeholder" id="menuWatchTogether" title="一起看（开发中）">
                 <span class="menu-icon">&#9655;</span>
                 <span class="menu-label">一起看</span>
-            </button>
-            <button class="menu-item menu-placeholder" id="menuNameCard" title="名片（开发中）">
-                <span class="menu-icon">&#128199;</span>
-                <span class="menu-label">名片</span>
             </button>
         </div>
         <input type="file" id="menuRealImageInput" accept="image/*" style="display:none;">
