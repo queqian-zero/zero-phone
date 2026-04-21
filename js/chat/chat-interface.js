@@ -7318,6 +7318,9 @@ getIntimacyStatusForAI() {
     desc += `\n  [AI_ADD_RELATION:名字|关系描述] 添加一个你认识的人到关系图（如 小王|公司同事，性格很好）`;
     desc += `\n  [AI_UPDATE_RELATION:名字|新关系描述] 更新某人的关系描述`;
     desc += `\n  [AI_RELATION_EVENT:名字|事件描述] 记录你和某人之间发生的事（如 小王|今天一起吃了午饭）`;
+    desc += `\n  [AI_DELETE_RELATION:名字] 从关系图中移除某人`;
+    desc += `\n  [AI_DELETE_EVENT:关键字] 删除包含该关键字的事件档案`;
+    desc += `\n  [AI_EDIT_EVENT:关键字|新内容] 编辑事件档案内容`;
     desc += `\n  说明：你有自己的社交圈，user不一定认识你的朋友。你可以随时添加你认识的人和发生的事。`;
     
     // 注入AI已有的人际关系
