@@ -9,7 +9,7 @@ class ProfileManager {
     }
 
     init() {
-        this._ensureUserData();
+        if (!this._ensured) { this._ensureUserData(); this._ensured = true; }
         if (!this._bound) { this.bindEvents(); this._bound = true; }
         this.render();
     }
