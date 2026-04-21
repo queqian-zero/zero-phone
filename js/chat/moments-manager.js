@@ -118,14 +118,15 @@ class MomentsManager {
             // ====== 滚动内容 ======
             '<div id="momentsScroll" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;">' +
                 // 16:9 背景图
-                '<div style="position:relative;width:100%;padding-top:56.25%;background:'+(user.bgImage?'url('+this._esc(user.bgImage)+') center/cover':'linear-gradient(135deg,rgba(25,25,35,1),rgba(12,12,18,1))')+';overflow:hidden;">' +
+                '<div id="momentsBanner" style="position:relative;width:100%;padding-top:56.25%;background:'+(user.bgImage?'url('+this._esc(user.bgImage)+') center/cover':'linear-gradient(135deg,rgba(25,25,35,1),rgba(12,12,18,1))')+';overflow:hidden;cursor:pointer;" title="点击更换背景图">' +
+                    '<div style="position:absolute;top:8px;right:8px;font-size:10px;color:rgba(255,255,255,0.2);pointer-events:none;">点击更换</div>' +
                     '<div style="position:absolute;bottom:0;left:0;right:0;padding:14px 16px;background:linear-gradient(transparent,rgba(0,0,0,0.6));display:flex;align-items:flex-end;gap:12px;">' +
-                        '<div style="width:52px;height:52px;border-radius:12px;border:2px solid rgba(255,255,255,0.1);overflow:hidden;flex-shrink:0;background:rgba(255,255,255,0.05);">' +
+                        '<div style="width:68px;height:68px;border-radius:12px;border:2px solid rgba(255,255,255,0.1);overflow:hidden;flex-shrink:0;background:rgba(255,255,255,0.05);">' +
                             (user.avatar?'<img src="'+this._esc(user.avatar)+'" style="width:100%;height:100%;object-fit:cover;">':'<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:22px;color:rgba(255,255,255,0.3);">&#128100;</div>') +
                         '</div>' +
                         '<div style="flex:1;min-width:0;">' +
-                            '<div style="font-size:16px;font-weight:700;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,0.5);">'+this._esc(user.name)+'</div>' +
-                            '<div style="font-size:12px;color:rgba(255,255,255,0.5);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+this._esc(user.signature)+'</div>' +
+                            '<div style="font-size:20px;font-weight:700;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,0.5);">'+this._esc(user.name)+'</div>' +
+                            '<div style="font-size:14px;color:rgba(255,255,255,0.5);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+this._esc(user.signature)+'</div>' +
                         '</div>' +
                     '</div>' +
                 '</div>' +
@@ -138,6 +139,44 @@ class MomentsManager {
         
         page.querySelector('#momentsBack')?.addEventListener('click', () => this.close());
         page.querySelectorAll('.moments-header-btn').forEach(btn => { btn.addEventListener('click', () => this._toast('功能开发中...')); });
+        
+        // 背景图更换
+        page.querySelector('#momentsBanner')?.addEventListener('click', () => {
+            const choice = prompt('更换背景图：\n1. 输入图片URL\n2. 输入"相册"从本地选图\n3. 输入"清除"恢复默认');
+            if (!choice) return;
+            if (choice === '清除') {
+                const s = this._store()?.getUserSettings(); if (s) { s.momentsBgImage = ''; this._store().saveData('zero_phone_user_settings', s); }
+                this.open(); // 重新打开刷新
+            } else if (choice === '相册') {
+                const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*';
+                inp.onchange = (e) => {
+                    const file = e.target.files[0]; if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                        // 压缩
+                        const img = new Image();
+                        img.onload = () => {
+                            const canvas = document.createElement('canvas');
+                            const maxW = 800;
+                            let w = img.width, h = img.height;
+                            if (w > maxW) { h = h * maxW / w; w = maxW; }
+                            canvas.width = w; canvas.height = h;
+                            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                            const compressed = canvas.toDataURL('image/jpeg', 0.7);
+                            const s = this._store()?.getUserSettings(); if (s) { s.momentsBgImage = compressed; this._store().saveData('zero_phone_user_settings', s); }
+                            this.open();
+                        };
+                        img.src = ev.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                };
+                inp.click();
+            } else {
+                // URL
+                const s = this._store()?.getUserSettings(); if (s) { s.momentsBgImage = choice.trim(); this._store().saveData('zero_phone_user_settings', s); }
+                this.open();
+            }
+        });
         
         // 折叠/展开
         page.querySelectorAll('.moment-item').forEach(item => {

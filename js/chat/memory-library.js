@@ -1,6 +1,66 @@
 // ==================== 记忆库（档案室） ====================
 class MemoryLibrary {
     _store() { return window.chatInterface?.storage || window.chatApp?.storage; }
+    
+    // 自定义输入弹窗（替代丑陋的prompt）
+    _zpInput(title, placeholder, defaultVal) {
+        return new Promise(resolve => {
+            const ov = document.createElement('div');
+            ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;';
+            ov.innerHTML = '<div style="width:calc(100% - 48px);max-width:320px;background:#1c1c1c;border-radius:16px;padding:20px;border:1px solid rgba(255,255,255,0.06);">' +
+                '<div style="font-size:16px;font-weight:600;color:rgba(255,255,255,0.8);margin-bottom:12px;">'+this._esc(title)+'</div>' +
+                '<input id="_zpInpVal" type="text" value="'+(defaultVal||'')+'" placeholder="'+(placeholder||'')+'" style="width:100%;box-sizing:border-box;padding:10px 12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:15px;outline:none;">' +
+                '<div style="display:flex;gap:10px;margin-top:16px;">' +
+                    '<button id="_zpInpCancel" style="flex:1;padding:10px;border:1px solid rgba(255,255,255,0.08);border-radius:10px;background:transparent;color:rgba(255,255,255,0.4);font-size:14px;cursor:pointer;">取消</button>' +
+                    '<button id="_zpInpOk" style="flex:1;padding:10px;border:none;border-radius:10px;background:rgba(240,147,43,0.15);color:rgba(240,147,43,0.8);font-size:14px;font-weight:600;cursor:pointer;">确定</button>' +
+                '</div></div>';
+            document.body.appendChild(ov);
+            const inp = ov.querySelector('#_zpInpVal');
+            setTimeout(() => inp?.focus(), 100);
+            ov.querySelector('#_zpInpOk')?.addEventListener('click', () => { ov.remove(); resolve(inp.value); });
+            ov.querySelector('#_zpInpCancel')?.addEventListener('click', () => { ov.remove(); resolve(null); });
+            ov.addEventListener('click', e => { if (e.target === ov) { ov.remove(); resolve(null); } });
+            inp?.addEventListener('keydown', e => { if (e.key === 'Enter') { ov.remove(); resolve(inp.value); } });
+        });
+    }
+    
+    // 自定义菜单弹窗（替代丑陋的prompt选菜单）
+    _zpMenu(title, subtitle, buttons) {
+        return new Promise(resolve => {
+            const ov = document.createElement('div');
+            ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;';
+            let btnsHtml = buttons.map(b => {
+                const danger = b.danger ? 'color:rgba(255,100,100,0.7);border-color:rgba(255,100,100,0.15);' : 'color:rgba(255,255,255,0.6);border-color:rgba(255,255,255,0.08);';
+                return '<button class="_zpMenuBtn" data-val="'+this._esc(b.value)+'" style="width:100%;padding:12px;border:1px solid;border-radius:10px;background:transparent;font-size:14px;cursor:pointer;text-align:left;'+danger+'">'+this._esc(b.label)+'</button>';
+            }).join('');
+            ov.innerHTML = '<div style="width:calc(100% - 48px);max-width:320px;background:#1c1c1c;border-radius:16px;padding:20px;border:1px solid rgba(255,255,255,0.06);">' +
+                '<div style="font-size:16px;font-weight:600;color:rgba(255,255,255,0.8);margin-bottom:4px;">'+this._esc(title)+'</div>' +
+                (subtitle ? '<div style="font-size:13px;color:rgba(255,255,255,0.3);margin-bottom:14px;line-height:1.6;white-space:pre-wrap;">'+this._esc(subtitle)+'</div>' : '<div style="margin-bottom:14px;"></div>') +
+                '<div style="display:flex;flex-direction:column;gap:8px;">'+btnsHtml+'</div>' +
+                '<button class="_zpMenuBtn" data-val="_cancel" style="width:100%;padding:10px;border:none;border-radius:10px;background:transparent;color:rgba(255,255,255,0.2);font-size:13px;cursor:pointer;margin-top:8px;">取消</button>' +
+            '</div>';
+            document.body.appendChild(ov);
+            ov.querySelectorAll('._zpMenuBtn').forEach(btn => { btn.addEventListener('click', () => { ov.remove(); resolve(btn.dataset.val === '_cancel' ? null : btn.dataset.val); }); });
+            ov.addEventListener('click', e => { if (e.target === ov) { ov.remove(); resolve(null); } });
+        });
+    }
+    
+    // 自定义确认弹窗
+    _zpConfirm(title, message) {
+        return new Promise(resolve => {
+            const ov = document.createElement('div');
+            ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;';
+            ov.innerHTML = '<div style="width:calc(100% - 48px);max-width:300px;background:#1c1c1c;border-radius:16px;padding:20px;border:1px solid rgba(255,255,255,0.06);text-align:center;">' +
+                '<div style="font-size:16px;font-weight:600;color:rgba(255,255,255,0.8);margin-bottom:8px;">'+this._esc(title)+'</div>' +
+                '<div style="font-size:14px;color:rgba(255,255,255,0.4);margin-bottom:16px;">'+this._esc(message)+'</div>' +
+                '<div style="display:flex;gap:10px;"><button id="_zpCfNo" style="flex:1;padding:10px;border:1px solid rgba(255,255,255,0.08);border-radius:10px;background:transparent;color:rgba(255,255,255,0.4);font-size:14px;cursor:pointer;">取消</button><button id="_zpCfYes" style="flex:1;padding:10px;border:none;border-radius:10px;background:rgba(255,100,100,0.12);color:rgba(255,100,100,0.7);font-size:14px;font-weight:600;cursor:pointer;">确定</button></div></div>';
+            document.body.appendChild(ov);
+            ov.querySelector('#_zpCfYes')?.addEventListener('click', () => { ov.remove(); resolve(true); });
+            ov.querySelector('#_zpCfNo')?.addEventListener('click', () => { ov.remove(); resolve(false); });
+            ov.addEventListener('click', e => { if (e.target === ov) { ov.remove(); resolve(false); } });
+        });
+    }
+    
     open() {
         document.getElementById('memoryLibPage')?.remove();
         if (!this._store()) { this._toast('存储不可用'); return; }
@@ -1121,33 +1181,34 @@ class MemoryLibrary {
             
             // 绑定事件
             page.querySelector('#relBack')?.addEventListener('click', () => page.remove());
-            page.querySelector('#relAddPerson')?.addEventListener('click', () => {
-                const name = prompt('人物名字：'); if (!name?.trim()) return;
-                const relation = prompt('与'+charName+'的关系描述（可选）：') || '';
-                const persona = prompt('人物简介/人设（可选）：') || '';
+            page.querySelector('#relAddPerson')?.addEventListener('click', async () => {
+                const name = await this._zpInput('添加人物', '输入名字'); if (!name?.trim()) return;
+                const relation = await this._zpInput('关系描述（可选）', '如：同事、朋友、对手...') || '';
+                const persona = await this._zpInput('人设/简介（可选）', '简单描述这个人') || '';
                 if (!rel.people) rel.people = [];
                 const colors = ['#e07070','#70a0e0','#70c070','#e0a050','#b070d0','#d0d060','#60c0c0','#e070b0'];
                 rel.people.push({ id:'rel_'+Date.now(), name:name.trim(), relation:relation.trim(), persona:persona.trim(), color:colors[rel.people.length%colors.length] });
                 save(); render();
             });
-            page.querySelector('#relAddEvent')?.addEventListener('click', () => {
+            page.querySelector('#relAddEvent')?.addEventListener('click', async () => {
                 if (!rel.people?.length) { this._toast('请先添加人物'); return; }
-                const person = prompt('相关人物（'+rel.people.map(p=>p.name).join('/')+')：'); if (!person?.trim()) return;
-                const content = prompt('事件描述：'); if (!content?.trim()) return;
+                const personBtns = rel.people.map(p => ({label:p.name, value:p.name}));
+                const person = await this._zpMenu('选择人物', '', personBtns); if (!person) return;
+                const content = await this._zpInput('事件描述', '发生了什么事？'); if (!content?.trim()) return;
                 if (!rel.events) rel.events = [];
                 rel.events.push({ id:'evt_'+Date.now(), person:person.trim(), date:new Date().toISOString().split('T')[0], content:content.trim(), createdAt:new Date().toISOString() });
                 save(); render();
             });
             page.querySelectorAll('.rel-filter-tab').forEach(btn => { btn.addEventListener('click', () => { filterPerson=btn.dataset.person||null; render(); }); });
             page.querySelectorAll('.rel-event-item').forEach(el => {
-                el.addEventListener('click', () => {
+                el.addEventListener('click', async () => {
                     const ev = (rel.events||[]).find(e => e.id===el.dataset.id); if (!ev) return;
-                    const ts = ev.createdAt ? new Date(ev.createdAt).toLocaleString('zh-CN') : (ev.date||'');
-                    const action = prompt(this._esc(ev.person)+' ('+ts+')\n'+ev.content+'\n\n输入新内容编辑，输入"删除"删除此事件：', ev.content);
-                    if (action===null) return;
-                    if (action==='删除') { rel.events=rel.events.filter(x=>x.id!==ev.id); }
-                    else if (action.trim()) { ev.content=action.trim(); }
-                    save(); render();
+                    const action = await this._zpMenu(ev.person, ev.content, [
+                        {label:'编辑内容', value:'edit'},
+                        {label:'删除此事件', value:'delete', danger:true}
+                    ]);
+                    if (action==='delete') { rel.events=rel.events.filter(x=>x.id!==ev.id); save(); render(); }
+                    else if (action==='edit') { const nc = await this._zpInput('编辑事件', '', ev.content); if(nc!==null&&nc.trim()){ ev.content=nc.trim(); save(); render(); } }
                 });
             });
             
@@ -1283,18 +1344,19 @@ class MemoryLibrary {
                     dragOffset = { x: pt.x - node.x, y: pt.y - node.y };
                     node.vx = 0; node.vy = 0;
                     // 长按检测
-                    longPressTimer = setTimeout(() => {
+                    longPressTimer = setTimeout(async () => {
                         if (dragging === node) {
-                            // 长按：弹出编辑菜单
                             dragging = null;
-                            const p = node.data;
-                            if (!p) return;
-                            const action = prompt(p.name+'\n关系：'+(p.relation||'无')+'\n人设：'+(p.persona||'无')+'\n\n操作：输入"改名"/"编辑关系"/"编辑人设"/"删除"');
-                            if (!action) return;
-                            if (action==='改名') { const nn=prompt('新名字：',p.name); if(nn?.trim()){p.name=nn.trim();node.name=p.name;save();} }
-                            else if (action==='编辑关系') { const nr=prompt('关系描述：',p.relation||''); if(nr!==null){p.relation=nr.trim();save();} }
-                            else if (action==='编辑人设') { const np=prompt('人设/简介：',p.persona||''); if(np!==null){p.persona=np.trim();save();} }
-                            else if (action==='删除') { if(confirm('删除'+p.name+'？')){rel.people=rel.people.filter(x=>x.id!==p.id);delete nodePositions[p.id];save();render();} }
+                            const p = node.data; if (!p) return;
+                            const sub = '关系：'+(p.relation||'无')+'\n人设：'+(p.persona||'无');
+                            const action = await this._zpMenu(p.name, sub, [
+                                {label:'改名', value:'rename'},{label:'编辑关系', value:'editRel'},
+                                {label:'编辑人设', value:'editPersona'},{label:'删除此人', value:'delete', danger:true}
+                            ]);
+                            if (action==='rename') { const nn=await this._zpInput('改名',p.name,p.name); if(nn?.trim()){p.name=nn.trim();node.name=p.name;save();} }
+                            else if (action==='editRel') { const nr=await this._zpInput('编辑关系','关系描述',p.relation||''); if(nr!==null){p.relation=nr.trim();save();} }
+                            else if (action==='editPersona') { const np=await this._zpInput('编辑人设','人物简介',p.persona||''); if(np!==null){p.persona=np.trim();save();} }
+                            else if (action==='delete') { const ok=await this._zpConfirm('删除 '+p.name,'确定移除？'); if(ok){rel.people=rel.people.filter(x=>x.id!==p.id);delete nodePositions[p.id];save();render();} }
                         }
                     }, 600);
                 }

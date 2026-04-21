@@ -13160,6 +13160,9 @@ _stripCommandTags(text) {
         .replace(/\[AI_ADD_RELATION:[^\]]+\]/g, '')
         .replace(/\[AI_RELATION_EVENT:[^\]]+\]/g, '')
         .replace(/\[AI_UPDATE_RELATION:[^\]]+\]/g, '')
+        .replace(/\[AI_DELETE_RELATION:[^\]]+\]/g, '')
+        .replace(/\[AI_DELETE_EVENT:[^\]]+\]/g, '')
+        .replace(/\[AI_EDIT_EVENT:[^\]]+\]/g, '')
         .replace(/\[RECALL:[^\]]+\]/g, '')
         .replace(/\[STATUS_CSS\][\s\S]*?\[\/STATUS_CSS\]/g, '')
         .replace(/\[STATUS_?\s*CSS\][\s\S]*?\[\/?\s*STATUS_?\s*CSS\]/gi, '');
@@ -13457,32 +13460,35 @@ processRelationCommands(text) {
     const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
     let changed = false;
     
-    // [AI_ADD_RELATION:名字|关系描述]
     const addMatch = text.match(/\[AI_ADD_RELATION:([^\]]+)\]/);
     if (addMatch) {
         const parts = addMatch[1].split('|');
-        const name = parts[0]?.trim();
-        const relation = parts[1]?.trim() || '';
+        const name = parts[0]?.trim(); const relation = parts[1]?.trim() || '';
         if (name) {
             if (!rel.people) rel.people = [];
             const existing = rel.people.find(p => p.name === name);
-            if (existing) {
-                if (relation) existing.relation = relation;
-            } else {
-                const colors = ['rgba(200,120,120,0.5)','rgba(120,160,200,0.5)','rgba(160,200,120,0.5)','rgba(200,160,120,0.5)','rgba(160,120,200,0.5)'];
-                rel.people.push({ id:'rel_'+Date.now(), name, relation, color:colors[rel.people.length % colors.length] });
-                this.showCssSystemMessage(`👥 ${friendName} 的人际关系中添加了「${name}」`);
+            if (existing) { if (relation) existing.relation = relation; }
+            else {
+                const colors = ['#e07070','#70a0e0','#70c070','#e0a050','#b070d0','#d0d060','#60c0c0','#e070b0'];
+                rel.people.push({ id:'rel_'+Date.now(), name, relation, persona:'', color:colors[rel.people.length%colors.length] });
+                this.showCssSystemMessage('\u{1f465} '+friendName+' \u7684\u4eba\u9645\u5173\u7cfb\u4e2d\u6dfb\u52a0\u4e86\u300c'+name+'\u300d');
             }
             changed = true;
         }
     }
     
-    // [AI_RELATION_EVENT:名字|事件描述]
+    const delMatch = text.match(/\[AI_DELETE_RELATION:([^\]]+)\]/);
+    if (delMatch) {
+        const name = delMatch[1].trim();
+        const before = (rel.people||[]).length;
+        rel.people = (rel.people||[]).filter(p => p.name !== name);
+        if (rel.people.length < before) { this.showCssSystemMessage('\u{1f465} '+friendName+' \u79fb\u9664\u4e86\u300c'+name+'\u300d'); changed = true; }
+    }
+    
     const evMatch = text.match(/\[AI_RELATION_EVENT:([^\]]+)\]/);
     if (evMatch) {
         const parts = evMatch[1].split('|');
-        const person = parts[0]?.trim();
-        const content = parts.slice(1).join('|').trim();
+        const person = parts[0]?.trim(); const content = parts.slice(1).join('|').trim();
         if (person && content) {
             if (!rel.events) rel.events = [];
             rel.events.push({ id:'evt_'+Date.now(), person, date:new Date().toISOString().split('T')[0], content, createdAt:new Date().toISOString() });
@@ -13490,15 +13496,28 @@ processRelationCommands(text) {
         }
     }
     
-    // [AI_UPDATE_RELATION:名字|新关系描述]
     const upMatch = text.match(/\[AI_UPDATE_RELATION:([^\]]+)\]/);
     if (upMatch) {
         const parts = upMatch[1].split('|');
-        const name = parts[0]?.trim();
-        const newRel = parts[1]?.trim();
-        if (name && newRel) {
-            const p = (rel.people||[]).find(p => p.name === name);
-            if (p) { p.relation = newRel; changed = true; }
+        const name = parts[0]?.trim(); const newRel = parts[1]?.trim();
+        if (name && newRel) { const p = (rel.people||[]).find(p => p.name === name); if (p) { p.relation = newRel; changed = true; } }
+    }
+    
+    const deMatch = text.match(/\[AI_DELETE_EVENT:([^\]]+)\]/);
+    if (deMatch) {
+        const kw = deMatch[1].trim().toLowerCase();
+        const before = (rel.events||[]).length;
+        rel.events = (rel.events||[]).filter(e => !(e.content||'').toLowerCase().includes(kw));
+        if (rel.events.length < before) changed = true;
+    }
+    
+    const eeMatch = text.match(/\[AI_EDIT_EVENT:([^\]]+)\]/);
+    if (eeMatch) {
+        const parts = eeMatch[1].split('|');
+        const kw = parts[0]?.trim().toLowerCase(); const newContent = parts[1]?.trim();
+        if (kw && newContent) {
+            const ev = (rel.events||[]).find(e => (e.content||'').toLowerCase().includes(kw));
+            if (ev) { ev.content = newContent; changed = true; }
         }
     }
     
