@@ -142,40 +142,55 @@ class MomentsManager {
         
         // 背景图更换
         page.querySelector('#momentsBanner')?.addEventListener('click', () => {
-            const choice = prompt('更换背景图：\n1. 输入图片URL\n2. 输入"相册"从本地选图\n3. 输入"清除"恢复默认');
-            if (!choice) return;
-            if (choice === '清除') {
+            document.getElementById('_momentsBgDialog')?.remove();
+            const dlg = document.createElement('div');
+            dlg.id = '_momentsBgDialog';
+            dlg.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;';
+            dlg.innerHTML = '<div style="width:calc(100% - 48px);max-width:320px;background:#1c1c1c;border-radius:16px;padding:20px;border:1px solid rgba(255,255,255,0.06);">' +
+                '<div style="font-size:16px;font-weight:600;color:rgba(255,255,255,0.8);margin-bottom:14px;">更换背景图</div>' +
+                '<input id="_bgUrlInput" type="text" placeholder="输入图片URL" style="width:100%;box-sizing:border-box;padding:10px 12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:14px;outline:none;margin-bottom:10px;">' +
+                '<div style="display:flex;flex-direction:column;gap:8px;">' +
+                    '<button id="_bgFromUrl" style="width:100%;padding:11px;border:1px solid rgba(255,255,255,0.08);border-radius:10px;background:transparent;color:rgba(255,255,255,0.6);font-size:14px;cursor:pointer;">使用URL</button>' +
+                    '<button id="_bgFromAlbum" style="width:100%;padding:11px;border:1px solid rgba(240,147,43,0.2);border-radius:10px;background:rgba(240,147,43,0.06);color:rgba(240,147,43,0.7);font-size:14px;cursor:pointer;">从相册选图</button>' +
+                    '<button id="_bgClear" style="width:100%;padding:11px;border:1px solid rgba(255,100,100,0.15);border-radius:10px;background:transparent;color:rgba(255,100,100,0.5);font-size:14px;cursor:pointer;">恢复默认</button>' +
+                    '<button id="_bgCancel" style="width:100%;padding:10px;border:none;border-radius:10px;background:transparent;color:rgba(255,255,255,0.2);font-size:13px;cursor:pointer;">取消</button>' +
+                '</div></div>';
+            document.body.appendChild(dlg);
+            dlg.addEventListener('click', e => { if (e.target === dlg) dlg.remove(); });
+            dlg.querySelector('#_bgCancel')?.addEventListener('click', () => dlg.remove());
+            dlg.querySelector('#_bgFromUrl')?.addEventListener('click', () => {
+                const url = dlg.querySelector('#_bgUrlInput')?.value?.trim();
+                if (!url) return;
+                const s = this._store()?.getUserSettings(); if (s) { s.momentsBgImage = url; this._store().saveData('zero_phone_user_settings', s); }
+                dlg.remove(); this.open();
+            });
+            dlg.querySelector('#_bgClear')?.addEventListener('click', () => {
                 const s = this._store()?.getUserSettings(); if (s) { s.momentsBgImage = ''; this._store().saveData('zero_phone_user_settings', s); }
-                this.open(); // 重新打开刷新
-            } else if (choice === '相册') {
+                dlg.remove(); this.open();
+            });
+            dlg.querySelector('#_bgFromAlbum')?.addEventListener('click', () => {
                 const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*';
                 inp.onchange = (e) => {
                     const file = e.target.files[0]; if (!file) return;
                     const reader = new FileReader();
                     reader.onload = (ev) => {
-                        // 压缩
                         const img = new Image();
                         img.onload = () => {
                             const canvas = document.createElement('canvas');
-                            const maxW = 800;
-                            let w = img.width, h = img.height;
+                            const maxW = 800; let w = img.width, h = img.height;
                             if (w > maxW) { h = h * maxW / w; w = maxW; }
                             canvas.width = w; canvas.height = h;
                             canvas.getContext('2d').drawImage(img, 0, 0, w, h);
                             const compressed = canvas.toDataURL('image/jpeg', 0.7);
                             const s = this._store()?.getUserSettings(); if (s) { s.momentsBgImage = compressed; this._store().saveData('zero_phone_user_settings', s); }
-                            this.open();
+                            dlg.remove(); this.open();
                         };
                         img.src = ev.target.result;
                     };
                     reader.readAsDataURL(file);
                 };
                 inp.click();
-            } else {
-                // URL
-                const s = this._store()?.getUserSettings(); if (s) { s.momentsBgImage = choice.trim(); this._store().saveData('zero_phone_user_settings', s); }
-                this.open();
-            }
+            });
         });
         
         // 折叠/展开
