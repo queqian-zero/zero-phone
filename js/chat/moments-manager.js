@@ -121,18 +121,7 @@ class MomentsManager {
             // ====== 滚动内容 ======
             '<div id="momentsScroll" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;">' +
                 // 16:9 背景图
-                '<div id="momentsBanner" style="position:relative;width:100%;padding-top:56.25%;background:'+(user.bgImage?'url('+this._esc(user.bgImage)+') center/cover':'linear-gradient(135deg,rgba(25,25,35,1),rgba(12,12,18,1))')+';overflow:hidden;cursor:pointer;" title="点击更换背景图">' +
-                    '<div style="position:absolute;top:8px;right:8px;font-size:10px;color:rgba(255,255,255,0.2);pointer-events:none;">点击更换</div>' +
-                    '<div style="position:absolute;bottom:0;left:0;right:0;padding:14px 16px;background:linear-gradient(transparent,rgba(0,0,0,0.6));display:flex;align-items:flex-end;gap:12px;">' +
-                        '<div style="width:68px;height:68px;border-radius:12px;border:2px solid rgba(255,255,255,0.1);overflow:hidden;flex-shrink:0;background:rgba(255,255,255,0.05);">' +
-                            (user.avatar?'<img src="'+this._esc(user.avatar)+'" style="width:100%;height:100%;object-fit:cover;">':'<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:22px;color:rgba(255,255,255,0.3);">&#128100;</div>') +
-                        '</div>' +
-                        '<div style="flex:1;min-width:0;">' +
-                            '<div style="font-size:20px;font-weight:700;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,0.5);">'+this._esc(user.name)+'</div>' +
-                            '<div style="font-size:14px;color:rgba(255,255,255,0.5);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+this._esc(user.signature)+'</div>' +
-                        '</div>' +
-                    '</div>' +
-                '</div>' +
+                this._renderBanner(user.name, user.avatar, user.signature, user.bgImage, true) +
                 '<div style="padding:12px 16px 6px;font-size:12px;color:rgba(255,255,255,0.12);letter-spacing:1px;">朋友圈动态</div>' +
                 '<div id="momentsTimeline">'+timelineHtml+'</div>' +
             '</div>';
@@ -296,10 +285,7 @@ class MomentsManager {
                 '<div style="width:40px;"></div>' +
             '</div>' +
             '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;">' +
-                '<div style="padding:20px 16px;display:flex;align-items:center;gap:12px;">' +
-                    (avatar?'<img src="'+this._esc(avatar)+'" style="width:52px;height:52px;border-radius:12px;object-fit:cover;">':'<div style="width:52px;height:52px;border-radius:12px;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:22px;color:rgba(255,255,255,0.3);">'+this._esc(name.charAt(0))+'</div>') +
-                    '<div style="font-size:18px;font-weight:600;color:#fff;">'+this._esc(name)+'</div>' +
-                '</div>' +
+                this._renderBanner(name, avatar, '', '', false) +
                 '<div style="padding:0 16px 6px;font-size:12px;color:rgba(255,255,255,0.12);">朋友圈动态</div>' +
                 '<div id="momentsTimeline">'+timelineHtml+'</div>' +
             '</div>';
@@ -367,15 +353,7 @@ class MomentsManager {
             '</div>' +
             '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;">' +
                 // 头部
-                '<div style="position:relative;width:100%;padding-top:40%;background:'+(user.bgImage?'url('+this._esc(user.bgImage)+') center/cover':'linear-gradient(135deg,rgba(25,25,35,1),rgba(12,12,18,1))')+';overflow:hidden;">' +
-                    '<div style="position:absolute;bottom:12px;right:16px;display:flex;align-items:center;gap:10px;">' +
-                        '<div style="font-size:18px;font-weight:700;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,0.5);">'+this._esc(user.name)+'</div>' +
-                        '<div style="width:52px;height:52px;border-radius:12px;border:2px solid rgba(255,255,255,0.1);overflow:hidden;">' +
-                            (user.avatar?'<img src="'+this._esc(user.avatar)+'" style="width:100%;height:100%;object-fit:cover;">':'<div style="width:100%;height:100%;background:rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;font-size:22px;">&#128100;</div>') +
-                        '</div>' +
-                    '</div>' +
-                '</div>' +
-                '<div style="padding:8px 16px 4px;font-size:12px;color:rgba(255,255,255,0.12);">'+this._esc(user.signature)+'</div>' +
+                this._renderBanner(user.name, user.avatar, user.signature, user.bgImage, false) +
                 '<div id="momentsTimeline">'+timelineHtml+'</div>' +
             '</div>';
         
@@ -391,6 +369,22 @@ class MomentsManager {
                 if (this._moments[idx]) this._openDetail(this._moments[idx]);
             });
         });
+    }
+    
+    // 通用Banner渲染（三个入口统一样式）
+    _renderBanner(name, avatar, signature, bgImage, clickable) {
+        return '<div'+(clickable?' id="momentsBanner"':'')+' style="position:relative;width:100%;padding-top:56.25%;background:'+(bgImage?'url('+this._esc(bgImage)+') center/cover':'linear-gradient(135deg,rgba(25,25,35,1),rgba(12,12,18,1))')+';overflow:hidden;'+(clickable?'cursor:pointer;':'')+'"'+(clickable?' title="点击更换背景图"':'')+'>' +
+            (clickable?'<div style="position:absolute;top:8px;right:8px;font-size:10px;color:rgba(255,255,255,0.2);pointer-events:none;">点击更换</div>':'') +
+            '<div style="position:absolute;bottom:0;left:0;right:0;padding:14px 16px;background:linear-gradient(transparent,rgba(0,0,0,0.6));display:flex;align-items:flex-end;gap:12px;">' +
+                '<div style="width:68px;height:68px;border-radius:12px;border:2px solid rgba(255,255,255,0.1);overflow:hidden;flex-shrink:0;background:rgba(255,255,255,0.05);">' +
+                    (avatar?'<img src="'+this._esc(avatar)+'" style="width:100%;height:100%;object-fit:cover;">':'<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:26px;color:rgba(255,255,255,0.3);">&#128100;</div>') +
+                '</div>' +
+                '<div style="flex:1;min-width:0;">' +
+                    '<div style="font-size:20px;font-weight:700;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,0.5);">'+this._esc(name)+'</div>' +
+                    '<div style="font-size:14px;color:rgba(255,255,255,0.5);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+this._esc(signature||'')+'</div>' +
+                '</div>' +
+            '</div>' +
+        '</div>';
     }
     
     // 通用条目渲染
