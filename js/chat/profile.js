@@ -60,7 +60,7 @@ class ProfileManager {
         document.getElementById('profileHeaderCard')?.addEventListener('click', () => this.openDetailPage());
         document.getElementById('profileCodeCopyBtn')?.addEventListener('click', (e) => { e.stopPropagation(); this._copyText(this.storage.getUserSettings().userFriendCode || ''); });
         document.getElementById('profileMenuCollection')?.addEventListener('click', () => this._placeholder('收藏', '⭐'));
-        document.getElementById('profileMenuMoments')?.addEventListener('click', () => this._placeholder('朋友圈', '📷'));
+        document.getElementById('profileMenuMoments')?.addEventListener('click', () => window.momentsManager?.openForSelf?.());
         document.getElementById('profileMenuWallet')?.addEventListener('click', () => this._placeholder('钱包', '💰'));
     }
 

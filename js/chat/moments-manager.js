@@ -265,6 +265,184 @@ class MomentsManager {
     
     close() { this._page?.remove(); this._page = null; }
     
+    // ====== AI的朋友圈（只看某个AI的） ======
+    openForFriend(friendCode) {
+        const store = this._store(); if (!store) return;
+        const friend = store.getAllFriends().find(f => f.code === friendCode);
+        if (!friend) { this._toast('好友不存在'); return; }
+        const intim = store.getIntimacyData(friendCode);
+        const moments = (intim.moments || []).sort((a,b) => new Date(b.createdAt||0) - new Date(a.createdAt||0));
+        const name = friend.nickname || friend.name;
+        const avatar = friend.avatar || '';
+        
+        document.getElementById('momentsPage')?.remove();
+        const page = document.createElement('div');
+        page.id = 'momentsPage';
+        page.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:8000;background:#1a1a1a;display:flex;flex-direction:column;';
+        
+        let timelineHtml = '';
+        if (!moments.length) {
+            timelineHtml = '<div style="text-align:center;padding:60px 20px;color:rgba(255,255,255,0.12);font-size:14px;">TA还没发过朋友圈</div>';
+        } else {
+            moments.forEach((m, i) => {
+                timelineHtml += this._renderMomentItem(m, i, { friendCode, friendName: name, friendAvatar: avatar });
+            });
+        }
+        
+        page.innerHTML =
+            '<div style="height:60px;background:rgba(255,255,255,0.95);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid rgba(0,0,0,0.1);display:flex;align-items:center;padding:0 16px;padding-top:env(safe-area-inset-top);flex-shrink:0;box-shadow:0 2px 10px rgba(0,0,0,0.05);">' +
+                '<button id="momentsBack" style="width:40px;height:40px;border:none;background:rgba(0,0,0,0.05);border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;color:rgba(0,0,0,0.6);">&#8592;</button>' +
+                '<div style="flex:1;text-align:center;font-size:18px;font-weight:600;color:#000;">'+this._esc(name)+' 的朋友圈</div>' +
+                '<div style="width:40px;"></div>' +
+            '</div>' +
+            '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;">' +
+                '<div style="padding:20px 16px;display:flex;align-items:center;gap:12px;">' +
+                    (avatar?'<img src="'+this._esc(avatar)+'" style="width:52px;height:52px;border-radius:12px;object-fit:cover;">':'<div style="width:52px;height:52px;border-radius:12px;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:22px;color:rgba(255,255,255,0.3);">'+this._esc(name.charAt(0))+'</div>') +
+                    '<div style="font-size:18px;font-weight:600;color:#fff;">'+this._esc(name)+'</div>' +
+                '</div>' +
+                '<div style="padding:0 16px 6px;font-size:12px;color:rgba(255,255,255,0.12);">朋友圈动态</div>' +
+                '<div id="momentsTimeline">'+timelineHtml+'</div>' +
+            '</div>';
+        
+        document.body.appendChild(page);
+        this._page = page;
+        this._moments = moments.map(m => ({...m, friendCode, friendName:name, friendAvatar:avatar}));
+        
+        page.querySelector('#momentsBack')?.addEventListener('click', () => this.close());
+        this._bindTimelineEvents(page);
+    }
+    
+    // ====== 我的朋友圈（只看自己的，时间轴） ======
+    openForSelf() {
+        const store = this._store(); if (!store) return;
+        const user = this._getUserInfo();
+        const settings = store.getUserSettings();
+        const moments = (settings.myMoments || []).sort((a,b) => new Date(b.createdAt||0) - new Date(a.createdAt||0));
+        
+        document.getElementById('momentsPage')?.remove();
+        const page = document.createElement('div');
+        page.id = 'momentsPage';
+        page.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:8000;background:#1a1a1a;display:flex;flex-direction:column;';
+        
+        // 按年/月分组（仿微信时间轴）
+        let timelineHtml = '';
+        if (!moments.length) {
+            timelineHtml = '<div style="text-align:center;padding:60px 20px;color:rgba(255,255,255,0.12);font-size:14px;">你还没发过朋友圈</div>';
+        } else {
+            let lastYear = '', lastMonth = '';
+            moments.forEach((m, i) => {
+                const d = new Date(m.createdAt);
+                const yr = d.getFullYear() + '年';
+                const mo = (d.getMonth()+1) + '月';
+                const day = d.getDate() + '日';
+                if (yr !== lastYear) { timelineHtml += '<div style="padding:16px 16px 4px;font-size:16px;font-weight:700;color:rgba(255,255,255,0.6);">'+yr+'</div>'; lastYear = yr; lastMonth = ''; }
+                
+                const dateLabel = day;
+                const preview = (m.content||'').substring(0,60);
+                const hasImg = m.images?.length > 0;
+                
+                timelineHtml += '<div class="moment-item" data-idx="'+i+'" style="display:flex;gap:12px;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.02);cursor:pointer;">';
+                // 日期列
+                timelineHtml += '<div style="min-width:50px;text-align:right;"><div style="font-size:22px;font-weight:700;color:rgba(255,255,255,0.5);">'+d.getDate()+'</div><div style="font-size:11px;color:rgba(255,255,255,0.2);">'+(d.getMonth()+1)+'月</div></div>';
+                // 图片缩略图
+                if (hasImg) {
+                    const img = m.images[0];
+                    if (img.startsWith('fake:')) {
+                        timelineHtml += '<div style="width:70px;height:70px;border-radius:8px;background:rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><div style="font-size:9px;color:rgba(255,255,255,0.2);text-align:center;">&#128444; '+this._esc(img.substring(5).substring(0,10))+'</div></div>';
+                    } else {
+                        timelineHtml += '<div style="width:70px;height:70px;border-radius:8px;overflow:hidden;flex-shrink:0;"><img src="'+this._esc(img)+'" style="width:100%;height:100%;object-fit:cover;"></div>';
+                    }
+                }
+                // 文字
+                timelineHtml += '<div style="flex:1;min-width:0;"><div style="font-size:14px;color:rgba(255,255,255,0.5);line-height:1.6;">'+this._esc(preview)+(m.content?.length>60?'...':'')+'</div></div>';
+                timelineHtml += '</div>';
+            });
+        }
+        
+        page.innerHTML =
+            '<div style="height:60px;background:rgba(255,255,255,0.95);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid rgba(0,0,0,0.1);display:flex;align-items:center;padding:0 16px;padding-top:env(safe-area-inset-top);flex-shrink:0;box-shadow:0 2px 10px rgba(0,0,0,0.05);">' +
+                '<button id="momentsBack" style="width:40px;height:40px;border:none;background:rgba(0,0,0,0.05);border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;color:rgba(0,0,0,0.6);">&#8592;</button>' +
+                '<div style="flex:1;text-align:center;font-size:18px;font-weight:600;color:#000;">我的朋友圈</div>' +
+                '<div style="width:40px;"></div>' +
+            '</div>' +
+            '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;">' +
+                // 头部
+                '<div style="position:relative;width:100%;padding-top:40%;background:'+(user.bgImage?'url('+this._esc(user.bgImage)+') center/cover':'linear-gradient(135deg,rgba(25,25,35,1),rgba(12,12,18,1))')+';overflow:hidden;">' +
+                    '<div style="position:absolute;bottom:12px;right:16px;display:flex;align-items:center;gap:10px;">' +
+                        '<div style="font-size:18px;font-weight:700;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,0.5);">'+this._esc(user.name)+'</div>' +
+                        '<div style="width:52px;height:52px;border-radius:12px;border:2px solid rgba(255,255,255,0.1);overflow:hidden;">' +
+                            (user.avatar?'<img src="'+this._esc(user.avatar)+'" style="width:100%;height:100%;object-fit:cover;">':'<div style="width:100%;height:100%;background:rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;font-size:22px;">&#128100;</div>') +
+                        '</div>' +
+                    '</div>' +
+                '</div>' +
+                '<div style="padding:8px 16px 4px;font-size:12px;color:rgba(255,255,255,0.12);">'+this._esc(user.signature)+'</div>' +
+                '<div id="momentsTimeline">'+timelineHtml+'</div>' +
+            '</div>';
+        
+        document.body.appendChild(page);
+        this._page = page;
+        this._moments = moments.map(m => ({...m, friendCode:'_self', friendName:user.name, friendAvatar:user.avatar, isSelf:true}));
+        
+        page.querySelector('#momentsBack')?.addEventListener('click', () => this.close());
+        // 点击条目→详情
+        page.querySelectorAll('.moment-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const idx = parseInt(item.dataset.idx);
+                if (this._moments[idx]) this._openDetail(this._moments[idx]);
+            });
+        });
+    }
+    
+    // 通用条目渲染
+    _renderMomentItem(m, i, defaults) {
+        const merged = {...defaults, ...m};
+        const time = this._relTime(merged.createdAt);
+        const preview = (merged.content||'').substring(0, 60);
+        const lk = (merged.likes||[]).length, cm = (merged.comments||[]).length;
+        const avatarHtml = merged.friendAvatar
+            ? '<img src="'+this._esc(merged.friendAvatar)+'" style="width:40px;height:40px;border-radius:8px;object-fit:cover;">'
+            : '<div style="width:40px;height:40px;border-radius:8px;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;font-size:16px;">'+this._esc((merged.friendName||'?').charAt(0))+'</div>';
+        
+        let html = '<div class="moment-item" data-idx="'+i+'" style="padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.03);cursor:pointer;">';
+        html += '<div style="display:flex;gap:10px;align-items:flex-start;"><div style="flex-shrink:0;">'+avatarHtml+'</div><div style="flex:1;min-width:0;">';
+        html += '<div style="font-size:15px;font-weight:600;color:rgba(240,147,43,0.7);">'+this._esc(merged.friendName)+'</div>';
+        html += '<div style="font-size:14px;color:rgba(255,255,255,0.5);margin-top:4px;line-height:1.6;">'+this._esc(preview)+(merged.content?.length>60?'...':'')+'</div>';
+        html += '<div style="display:flex;align-items:center;gap:12px;margin-top:8px;font-size:12px;color:rgba(255,255,255,0.2);"><span>'+time+'</span>';
+        if (lk) html += '<span>&#9825; '+lk+'</span>';
+        if (cm) html += '<span>&#128172; '+cm+'</span>';
+        html += '</div></div></div>';
+        // 展开区域
+        html += '<div class="moment-expand" data-idx="'+i+'" style="max-height:0;overflow:hidden;transition:max-height 0.3s ease;padding-left:50px;">';
+        html += '<div style="padding:8px 0 4px;"><div style="display:flex;gap:16px;margin-bottom:10px;">';
+        html += '<button class="moment-fav-btn" data-idx="'+i+'" style="background:none;border:none;color:rgba(255,255,255,0.25);font-size:13px;cursor:pointer;">&#9733; 收藏</button>';
+        html += '<button class="moment-like-btn" data-idx="'+i+'" style="background:none;border:none;color:rgba(255,255,255,0.25);font-size:13px;cursor:pointer;">&#9825; 点赞</button>';
+        html += '<button class="moment-detail-btn" data-idx="'+i+'" style="background:none;border:none;color:rgba(240,147,43,0.5);font-size:13px;cursor:pointer;">查看此条目 &#8250;</button>';
+        html += '</div></div></div></div>';
+        return html;
+    }
+    
+    // 通用事件绑定
+    _bindTimelineEvents(page) {
+        page.querySelectorAll('.moment-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                if (e.target.closest('.moment-fav-btn') || e.target.closest('.moment-like-btn') || e.target.closest('.moment-detail-btn')) return;
+                const idx = item.dataset.idx;
+                const expand = page.querySelector('.moment-expand[data-idx="'+idx+'"]');
+                if (!expand) return;
+                const isOpen = expand.style.maxHeight !== '0px' && expand.style.maxHeight !== '';
+                page.querySelectorAll('.moment-expand').forEach(ex => { ex.style.maxHeight = '0px'; });
+                if (!isOpen) { expand.style.maxHeight = expand.scrollHeight + 'px'; setTimeout(() => { if (expand.style.maxHeight !== '0px') expand.style.maxHeight = expand.scrollHeight + 'px'; }, 350); }
+            });
+        });
+        page.querySelectorAll('.moment-detail-btn').forEach(btn => { btn.addEventListener('click', () => { const idx = parseInt(btn.dataset.idx); if (this._moments[idx]) this._openDetail(this._moments[idx]); }); });
+        page.querySelectorAll('.moment-like-btn').forEach(btn => {
+            btn.addEventListener('click', () => { const m = this._moments[parseInt(btn.dataset.idx)]; if (!m) return; const u = this._getUserInfo(); if (!m.likes) m.likes = []; const ei = m.likes.findIndex(l=>l.name===u.name); if (ei>=0) m.likes.splice(ei,1); else m.likes.push({name:u.name,ts:new Date().toISOString()}); this._saveMoment(m); this._toast(ei>=0?'已取消点赞':'已点赞'); });
+        });
+        page.querySelectorAll('.moment-fav-btn').forEach(btn => {
+            btn.addEventListener('click', () => { const m = this._moments[parseInt(btn.dataset.idx)]; if (!m) return; const u = this._getUserInfo(); if (!m.favorites) m.favorites = []; const ei = m.favorites.findIndex(f=>f.name===u.name); if (ei>=0) m.favorites.splice(ei,1); else m.favorites.push({name:u.name,ts:new Date().toISOString()}); this._saveMoment(m); this._toast(ei>=0?'已取消收藏':'已收藏'); });
+        });
+    }
+    
     // 保存朋友圈数据（根据friendCode找到对应存储位置）
     _saveMoment(moment) {
         const store = this._store(); if (!store) return;

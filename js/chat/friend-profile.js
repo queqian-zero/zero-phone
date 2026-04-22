@@ -591,7 +591,7 @@ class FriendProfileManager {
 
             <!-- 入口 -->
             <div class="fp-entry-row">
-                <button class="fp-entry-btn fp-entry-ghost" onclick="window.chatInterface?.showCssToast?.('📷 朋友圈开发中...')">📷 TA的朋友圈</button>
+                <button class="fp-entry-btn fp-entry-ghost" onclick="window.momentsManager?.openForFriend?.('${code}')">📷 TA的朋友圈</button>
                 <button class="fp-entry-btn fp-entry-ghost" onclick="window.chatInterface?.showCssToast?.('💕 情侣空间开发中...')">💕 情侣空间</button>
             </div>
 
@@ -905,6 +905,62 @@ class FriendProfileManager {
                         ci.showCssSystemMessage(`📝 ${friendName} 修改了好友编码：${oldCode} → ${newCode}（今年剩${2-used}次）`);
                     }
                 }
+            }
+        }
+        
+        // [AI_CHANGE_NICKNAME:新网名] - AI改网名（直接生效）
+        const chgNickMatch = text.match(/\[AI_CHANGE_NICKNAME:([^\]]+)\]/);
+        if (chgNickMatch) {
+            text = text.replace(/\[AI_CHANGE_NICKNAME:[^\]]+\]/g, '');
+            const nn = chgNickMatch[1].trim();
+            if (nn && friend) {
+                friend.nickname = nn;
+                ci.storage.updateFriend(friend.code, { nickname: nn });
+                ci.showCssSystemMessage('✏️ ' + friendName + ' 把网名改成了「' + nn + '」');
+            }
+        }
+        
+        // [AI_CHANGE_REALNAME:新真名] - AI改真名（需要用户审批）
+        const chgRealMatch = text.match(/\[AI_CHANGE_REALNAME:([^\]]+)\]/);
+        if (chgRealMatch) {
+            text = text.replace(/\[AI_CHANGE_REALNAME:[^\]]+\]/g, '');
+            const nr = chgRealMatch[1].trim();
+            if (nr && friend) {
+                const oldName = friend.name || '无';
+                setTimeout(async () => {
+                    const ml = window.memoryLibrary;
+                    const ok = ml
+                        ? await ml._zpConfirm(friendName + ' 想修改真实姓名', '「' + oldName + '」→「' + nr + '」\n\n是否同意？')
+                        : confirm(friendName + ' 想把真实姓名改为「' + nr + '」，同意吗？');
+                    if (ok) {
+                        ci.storage.updateFriend(friend.code, { name: nr });
+                        ci.showCssSystemMessage('✅ 已同意修改真实姓名为「' + nr + '」');
+                    } else {
+                        ci.showCssSystemMessage('❌ 已驳回修改真实姓名的请求');
+                    }
+                }, 500);
+            }
+        }
+        
+        // [AI_CHANGE_PERSONA:新人设] - AI改人设（需要用户审批）
+        const chgPersonaMatch = text.match(/\[AI_CHANGE_PERSONA:([^\]]+)\]/);
+        if (chgPersonaMatch) {
+            text = text.replace(/\[AI_CHANGE_PERSONA:[^\]]+\]/g, '');
+            const np = chgPersonaMatch[1].trim();
+            if (np && friend) {
+                setTimeout(async () => {
+                    const ml = window.memoryLibrary;
+                    const preview = np.length > 200 ? np.substring(0, 200) + '...' : np;
+                    const ok = ml
+                        ? await ml._zpConfirm(friendName + ' 想修改人设', '新内容：\n' + preview + '\n\n是否同意？')
+                        : confirm(friendName + ' 想修改人设，同意吗？\n' + preview);
+                    if (ok) {
+                        ci.storage.updateFriend(friend.code, { persona: np });
+                        ci.showCssSystemMessage('✅ 已同意 ' + friendName + ' 修改人设');
+                    } else {
+                        ci.showCssSystemMessage('❌ 已驳回 ' + friendName + ' 修改人设的请求');
+                    }
+                }, 500);
             }
         }
         

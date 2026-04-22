@@ -7280,6 +7280,9 @@ getIntimacyStatusForAI() {
     desc += `\n  [AI_POKE:新拍一拍文字] 修改你的拍一拍`;
     desc += `\n  [AI_SIGNATURE:新签名] 修改你的个性签名`;
     desc += `\n  [AI_CHANGE_CODE:新编码] 修改你的好友编码（每年3次，3-20位字母数字下划线，不能与他人重复）`;
+    desc += `\n  [AI_CHANGE_NICKNAME:新网名] 修改你的网名（直接生效，不需要审批）`;
+    desc += `\n  [AI_CHANGE_REALNAME:新真名] 申请修改你的真实姓名（需要user审批）`;
+    desc += `\n  [AI_CHANGE_PERSONA:新人设] 申请修改你的人设（需要user审批，可能被驳回）`;
     
     // AI可发送假图片和语音条
     desc += `\n\n【发送多媒体】`;
@@ -7389,17 +7392,20 @@ getIntimacyStatusForAI() {
         } else if (_visMode === 'C') {
             // 跟随记忆检索 — 朋友圈加入搜索池（在记忆检索阶段处理，这里不注入）
         } else if (_visMode === 'E') {
-            // 全量开放 — 所有朋友圈完整展开
+            // 全量开放 — 自己+用户+AI认识的人的朋友圈
             _injectMoments();
-            // E模式额外：也展开所有好友的朋友圈
+            // 也展开AI认识的好友的朋友圈（通过人际关系判断）
+            const _relData = this.storage.getIntimacyData(this.currentFriendCode).relations || {};
+            const _knownNames = (_relData.people || []).map(p => p.name);
             const _allFriends = this.storage.getAllFriends();
             _allFriends.forEach(f => {
-                if (f.code === this.currentFriendCode) return; // 自己的已注入
+                if (f.code === this.currentFriendCode) return;
+                const fName = f.nickname || f.name;
+                if (!_knownNames.includes(fName)) return; // AI不认识的人，跳过
                 const _fIntim = this.storage.getIntimacyData(f.code);
                 const _fMoments = _fIntim.moments || [];
                 if (_fMoments.length > 0) {
-                    const _fName = f.nickname || f.name;
-                    desc += `\n${_fName}的朋友圈（${_fMoments.length}条）：`;
+                    desc += `\n${fName}的朋友圈（${_fMoments.length}条）：`;
                     _fMoments.slice(0,3).forEach(m => { desc += '\n  ' + _fmtM(m); });
                 }
             });
@@ -13251,6 +13257,9 @@ _stripCommandTags(text) {
         .replace(/\[AI_COMMENT_MOMENT:[^\]]+\]/g, '')
         .replace(/\[AI_DELETE_COMMENT:[^\]]+\]/g, '')
         .replace(/\[AI_CHECK_MOMENTS\]/g, '')
+        .replace(/\[AI_CHANGE_NICKNAME:[^\]]+\]/g, '')
+        .replace(/\[AI_CHANGE_REALNAME:[^\]]+\]/g, '')
+        .replace(/\[AI_CHANGE_PERSONA:[^\]]+\]/g, '')
         .replace(/\[RECALL:[^\]]+\]/g, '')
         .replace(/\[STATUS_CSS\][\s\S]*?\[\/STATUS_CSS\]/g, '')
         .replace(/\[STATUS_?\s*CSS\][\s\S]*?\[\/?\s*STATUS_?\s*CSS\]/gi, '');
