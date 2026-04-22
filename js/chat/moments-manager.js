@@ -72,7 +72,13 @@ class MomentsManager {
                 timelineHtml += '<div style="font-size:14px;color:rgba(255,255,255,0.5);margin-top:4px;line-height:1.6;">'+this._esc(preview)+(m.content?.length>60?'...':'')+'</div>';
                 if (m.images?.length) {
                     timelineHtml += '<div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap;">';
-                    m.images.slice(0,3).forEach(img => { timelineHtml += '<div style="width:60px;height:60px;border-radius:6px;background:rgba(255,255,255,0.05);overflow:hidden;"><img src="'+this._esc(img)+'" style="width:100%;height:100%;object-fit:cover;"></div>'; });
+                    m.images.slice(0,3).forEach(img => {
+                    if (img.startsWith('fake:')) {
+                        timelineHtml += '<div style="width:60px;height:60px;border-radius:6px;background:rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;"><div style="font-size:8px;color:rgba(255,255,255,0.2);text-align:center;padding:2px;">\ud83d\uddbc '+this._esc(img.substring(5).substring(0,12))+'</div></div>';
+                    } else {
+                        timelineHtml += '<div style="width:60px;height:60px;border-radius:6px;background:rgba(255,255,255,0.05);overflow:hidden;"><img src="'+this._esc(img)+'" style="width:100%;height:100%;object-fit:cover;"></div>';
+                    }
+                });
                     if (m.images.length>3) timelineHtml += '<div style="width:60px;height:60px;border-radius:6px;background:rgba(255,255,255,0.03);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.2);font-size:12px;">+'+(m.images.length-3)+'</div>';
                     timelineHtml += '</div>';
                 }
@@ -477,7 +483,7 @@ class MomentsManager {
         document.getElementById('momentSettingsPage')?.remove();
         const store = this._store();
         const settings = store?.getUserSettings() || {};
-        const msCfg = settings.momentsConfig || { responseMode: 'B', customCss: '' };
+        const msCfg = settings.momentsConfig || { responseMode: 'B', customCss: '', visibilityMode: 'B' };
         
         const p = document.createElement('div');
         p.id = 'momentSettingsPage';
@@ -505,6 +511,27 @@ class MomentsManager {
                     '<div><div style="font-size:14px;color:rgba(255,255,255,0.6);">C. 刷新时回应</div><div style="font-size:12px;color:rgba(255,255,255,0.25);margin-top:3px;">点"刷新朋友圈"时统一处理。<br>✅ 可控 ⚠️ 需要手动触发</div></div>' +
                 '</label>' +
                 // 自定义CSS
+                '<div style="font-size:14px;font-weight:600;color:rgba(255,255,255,0.6);margin-bottom:8px;">AI看朋友圈的方式</div>' +
+                '<label style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;margin-bottom:8px;cursor:pointer;">' +
+                    '<input type="radio" name="msVisMode" value="A" '+(msCfg.visibilityMode==='A'?'checked':'')+' style="margin-top:3px;">' +
+                    '<div><div style="font-size:14px;color:rgba(255,255,255,0.6);">A. 每轮自动注入</div><div style="font-size:12px;color:rgba(255,255,255,0.25);margin-top:3px;">每次聊天都告诉AI最新朋友圈动态。<br>✅ AI随时知道 ⚠️ 每轮都占token</div></div>' +
+                '</label>' +
+                '<label style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;margin-bottom:8px;cursor:pointer;">' +
+                    '<input type="radio" name="msVisMode" value="B" '+(msCfg.visibilityMode==='B'||!msCfg.visibilityMode?'checked':'')+' style="margin-top:3px;">' +
+                    '<div><div style="font-size:14px;color:rgba(255,255,255,0.6);">B. AI主动查看（默认）</div><div style="font-size:12px;color:rgba(255,255,255,0.25);margin-top:3px;">AI用[AI_CHECK_MOMENTS]指令查看，下一轮才看到。<br>✅ 省token ⚠️ AI不查就看不到</div></div>' +
+                '</label>' +
+                '<label style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;margin-bottom:8px;cursor:pointer;">' +
+                    '<input type="radio" name="msVisMode" value="C" '+(msCfg.visibilityMode==='C'?'checked':'')+' style="margin-top:3px;">' +
+                    '<div><div style="font-size:14px;color:rgba(255,255,255,0.6);">C. 跟随记忆检索</div><div style="font-size:12px;color:rgba(255,255,255,0.25);margin-top:3px;">朋友圈数据加入记忆搜索池，检索记忆时可能搜到。<br>✅ 自然融入 ⚠️ 不一定每次都搜到</div></div>' +
+                '</label>' +
+                '<label style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;margin-bottom:16px;cursor:pointer;">' +
+                    '<input type="radio" name="msVisMode" value="D" '+(msCfg.visibilityMode==='D'?'checked':'')+' style="margin-top:3px;">' +
+                    '<div><div style="font-size:14px;color:rgba(255,255,255,0.6);">D. 不注入</div><div style="font-size:12px;color:rgba(255,255,255,0.25);margin-top:3px;">AI完全看不到朋友圈，只能通过刷新时被通知。<br>✅ 最省token ⚠️ AI不知道朋友圈的存在</div></div>' +
+                '</label>' +
+                '<label style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;margin-bottom:16px;cursor:pointer;">' +
+                    '<input type="radio" name="msVisMode" value="E" '+(msCfg.visibilityMode==='E'?'checked':'')+' style="margin-top:3px;">' +
+                    '<div><div style="font-size:14px;color:rgba(255,255,255,0.6);">E. 全量开放</div><div style="font-size:12px;color:rgba(255,255,255,0.25);margin-top:3px;">把所有朋友圈完整展开给AI看，包含所有评论和互动。<br>✅ 最完整 ⚠️ 朋友圈多时很占token</div></div>' +
+                '</label>' +
                 '<div style="font-size:14px;font-weight:600;color:rgba(255,255,255,0.6);margin-bottom:8px;">自定义CSS美化</div>' +
                 '<div style="font-size:11px;color:rgba(255,255,255,0.15);margin-bottom:8px;">作用于 #momentsPage 容器，仅自己可见。<br>示例类名：.moment-item / .moment-expand / #momentsTimeline / #momentsBanner</div>' +
                 '<textarea id="msCssInput" placeholder="输入自定义CSS..." style="width:100%;box-sizing:border-box;min-height:100px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;color:rgba(255,255,255,0.6);font-size:13px;font-family:monospace;padding:10px;outline:none;resize:vertical;">'+(this._esc(msCfg.customCss||''))+'</textarea>' +
@@ -515,9 +542,10 @@ class MomentsManager {
         p.querySelector('#msBack')?.addEventListener('click', () => p.remove());
         p.querySelector('#msSave')?.addEventListener('click', () => {
             const mode = p.querySelector('input[name="msResMode"]:checked')?.value || 'B';
+            const visMode = p.querySelector('input[name="msVisMode"]:checked')?.value || 'B';
             const css = p.querySelector('#msCssInput')?.value || '';
             const s = store.getUserSettings();
-            s.momentsConfig = { responseMode: mode, customCss: css };
+            s.momentsConfig = { responseMode: mode, visibilityMode: visMode, customCss: css };
             store.saveData('zero_phone_user_settings', s);
             this._toast('设置已保存');
             p.remove();
@@ -662,7 +690,14 @@ class MomentsManager {
         let imagesHtml = '';
         if (moment.images?.length) {
             imagesHtml = '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;">';
-            moment.images.forEach(img => { imagesHtml += '<div style="width:calc(33.3% - 4px);aspect-ratio:1;border-radius:8px;overflow:hidden;background:rgba(255,255,255,0.03);"><img src="'+this._esc(img)+'" style="width:100%;height:100%;object-fit:cover;"></div>'; });
+            moment.images.forEach(img => {
+                if (img.startsWith('fake:')) {
+                    const desc = img.substring(5);
+                    imagesHtml += '<div style="width:calc(33.3% - 4px);aspect-ratio:1;border-radius:8px;background:rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;padding:8px;"><div style="font-size:11px;color:rgba(255,255,255,0.3);text-align:center;line-height:1.4;">\ud83d\uddbc '+this._esc(desc)+'</div></div>';
+                } else {
+                    imagesHtml += '<div style="width:calc(33.3% - 4px);aspect-ratio:1;border-radius:8px;overflow:hidden;background:rgba(255,255,255,0.03);"><img src="'+this._esc(img)+'" style="width:100%;height:100%;object-fit:cover;"></div>';
+                }
+            });
             imagesHtml += '</div>';
         }
         
@@ -697,7 +732,12 @@ class MomentsManager {
                     '<span style="font-size:13px;color:rgba(255,255,255,0.2);padding:4px 0;">&#128172; '+cm+'</span>' +
                     (isMine ? '<button id="mdDelete" style="background:none;border:none;font-size:13px;color:rgba(255,100,100,0.4);cursor:pointer;padding:4px 0;margin-left:auto;">\u5220\u9664</button>' : '') +
                 '</div>' +
-                likesHtml+'<div style="margin-top:8px;"><div style="font-size:13px;color:rgba(255,255,255,0.15);margin-bottom:8px;">\u8bc4\u8bba</div>'+commentsHtml+'</div></div>';
+                likesHtml+'<div style="margin-top:8px;"><div style="font-size:13px;color:rgba(255,255,255,0.15);margin-bottom:8px;">\u8bc4\u8bba</div>'+commentsHtml+'</div></div>' +
+            '<div id="mdCommentBar" style="padding:10px 16px;border-top:1px solid rgba(255,255,255,0.04);display:flex;gap:8px;align-items:center;flex-shrink:0;flex-wrap:wrap;">' +
+                '<div id="mdReplyHint" style="display:none;width:100%;font-size:11px;color:rgba(240,147,43,0.5);padding:2px 0;"></div>' +
+                '<input id="mdCommentInput" type="text" placeholder="\u5199\u8bc4\u8bba..." style="flex:1;padding:10px 14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);border-radius:20px;color:#fff;font-size:14px;outline:none;">' +
+                '<button id="mdCommentSend" style="padding:8px 16px;border:none;border-radius:20px;background:rgba(240,147,43,0.15);color:rgba(240,147,43,0.8);font-size:14px;font-weight:600;cursor:pointer;flex-shrink:0;">\u53d1\u9001</button>' +
+            '</div>';
         
         document.body.appendChild(p);
         p.querySelector('#mdBack')?.addEventListener('click', () => p.remove());
@@ -718,15 +758,45 @@ class MomentsManager {
             const ok = ml ? await ml._zpConfirm('\u5220\u9664\u670b\u53cb\u5708', '\u786e\u5b9a\u5220\u9664\u8fd9\u6761\u670b\u53cb\u5708\uff1f') : confirm('\u5220\u9664\uff1f');
             if (ok) { this._deleteMoment(moment); p.remove(); this.open(); }
         });
+        // Comment reply: click non-own comment to reply
+        let replyTo = null;
         p.querySelectorAll('.detail-comment').forEach(el => {
             el.addEventListener('click', async () => {
                 const cidx = parseInt(el.dataset.cidx);
                 const comment = (moment.comments||[])[cidx];
-                if (!comment || comment.name !== user.name) return;
-                const ml = window.memoryLibrary;
-                const ok = ml ? await ml._zpConfirm('\u5220\u9664\u8bc4\u8bba', '\u5220\u9664\u4f60\u7684\u8bc4\u8bba\uff1f') : confirm('\u5220\u9664\uff1f');
-                if (ok) { moment.comments.splice(cidx, 1); this._saveMoment(moment); p.remove(); this._openDetail(moment); }
+                if (!comment) return;
+                
+                // Own comment: delete
+                if (comment.name === user.name) {
+                    const ml = window.memoryLibrary;
+                    const ok = ml ? await ml._zpConfirm('\u5220\u9664\u8bc4\u8bba', '\u5220\u9664\u4f60\u7684\u8bc4\u8bba\uff1f') : confirm('\u5220\u9664\uff1f');
+                    if (ok) { moment.comments.splice(cidx, 1); this._saveMoment(moment); p.remove(); this._openDetail(moment); }
+                    return;
+                }
+                
+                // Others' comment: reply
+                replyTo = comment.name;
+                const hint = p.querySelector('#mdReplyHint');
+                const inp2 = p.querySelector('#mdCommentInput');
+                if (hint) { hint.style.display = 'block'; hint.textContent = '\u56de\u590d ' + comment.name + '\uff08\u70b9\u6b64\u53d6\u6d88\uff09'; hint.onclick = () => { replyTo = null; hint.style.display = 'none'; }; }
+                if (inp2) { inp2.placeholder = '\u56de\u590d ' + comment.name + '...'; inp2.focus(); }
             });
+        });
+        
+        // Send comment
+        p.querySelector('#mdCommentSend')?.addEventListener('click', () => {
+            const inp = p.querySelector('#mdCommentInput');
+            const text = inp?.value?.trim();
+            if (!text) return;
+            if (!moment.comments) moment.comments = [];
+            const newComment = { id: 'uc_' + Date.now(), name: user.name, content: text, ts: new Date().toISOString() };
+            if (replyTo) newComment.replyTo = replyTo;
+            moment.comments.push(newComment);
+            this._saveMoment(moment);
+            p.remove(); this._openDetail(moment);
+        });
+        p.querySelector('#mdCommentInput')?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') p.querySelector('#mdCommentSend')?.click();
         });
     }
     

@@ -2316,6 +2316,15 @@ ${archiveListText}
             // 手帐
             const journal = intimacyData.journal || { pages: [] };
             (journal.pages||[]).forEach((p,i) => searchPool.push({ id:'journal_'+i, type:'手帐', text:(p.content||'').substring(0,150), ts:p.createdAt||'' }));
+            // 朋友圈（如果可见模式是C=跟随记忆检索）
+            const _msCfg2 = (this.storage.getUserSettings().momentsConfig) || {};
+            if (_msCfg2.visibilityMode === 'C') {
+                const _aiMoms = intimacyData.moments || [];
+                _aiMoms.forEach((m,i) => searchPool.push({ id:'moment_'+i, type:'朋友圈', text:(m.content||'').substring(0,150), ts:m.createdAt||'' }));
+                const _uMoms = (this.storage.getUserSettings().myMoments) || [];
+                const _uName = this.storage.getUserSettings().userNickname || 'user';
+                _uMoms.forEach((m,i) => searchPool.push({ id:'umom_'+i, type:_uName+'的朋友圈', text:(m.content||'').substring(0,150), ts:m.createdAt||'' }));
+            }
             
             const memIndex = `核心记忆${coreMemories.length}条、聊天印象${summaries.length}条、次元剧场${theaterSessions.length}段、碎碎念${(notebook.notes||[]).length}条、日记${(notebook.diary||[]).length}篇、手帐${(journal.pages||[]).length}页`;
             const _fmtMem = (m) => {
@@ -7344,7 +7353,58 @@ getIntimacyStatusForAI() {
     desc += `\n  [AI_UNFAV_MOMENT:好友名|关键字] 取消收藏`;
     desc += `\n  [AI_COMMENT_MOMENT:好友名|关键字|评论内容] 评论某人的朋友圈`;
     desc += `\n  [AI_DELETE_COMMENT:关键字] 删除你自己发的包含该关键字的评论`;
-    desc += `\n  说明：你可以随时发/删朋友圈、点赞评论，就像真人一样。好友名用"user"表示对方。`;
+    desc += `\n  [AI_CHECK_MOMENTS] 查看朋友圈动态（你的+user的，系统会在下一轮告诉你）`;
+    desc += `\n  说明：你可以随时发/删朋友圈、点赞评论，就像真人一样。好友名用"user"表示对方。想看朋友圈动态就用CHECK_MOMENTS。`;
+    
+    // 朋友圈可见模式
+    if (this.currentFriendCode) {
+        const _msCfg = (this.storage.getUserSettings().momentsConfig) || {};
+        const _visMode = _msCfg.visibilityMode || 'B';
+        
+        const _fmtM = (m) => {
+            const t = m.createdAt ? new Date(m.createdAt).toLocaleString('zh-CN',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+            const likes = (m.likes||[]).map(l=>l.name).join(',');
+            const comments = (m.comments||[]).map(c=>(c.replyTo?c.name+'回复'+c.replyTo:c.name)+':'+c.content).join(' / ');
+            return `[${t}] ${(m.content||'').substring(0,150)}${likes?' ♡'+likes:''}${comments?' 💬'+comments:''}`;
+        };
+        
+        const _injectMoments = () => {
+            const _mIntim = this.storage.getIntimacyData(this.currentFriendCode);
+            const _myMoments = _mIntim.moments || [];
+            const _uSettings = this.storage.getUserSettings();
+            const _uMoments = _uSettings.myMoments || [];
+            const _userName = _uSettings.userNickname || _uSettings.userName || 'user';
+            desc += `\n\n【朋友圈动态】`;
+            if (_myMoments.length > 0) { desc += `\n你的朋友圈（${_myMoments.length}条）：`; _myMoments.slice(0,5).forEach(m => { desc += '\n  ' + _fmtM(m); }); }
+            else { desc += `\n你还没发过朋友圈。`; }
+            if (_uMoments.length > 0) { desc += `\n${_userName}的朋友圈（${_uMoments.length}条）：`; _uMoments.slice(0,5).forEach(m => { desc += '\n  ' + _fmtM(m); }); }
+        };
+        
+        if (_visMode === 'A') {
+            // 每轮注入
+            _injectMoments();
+        } else if (_visMode === 'B') {
+            // AI主动查看
+            if (this._pendingMomentsCheck) { this._pendingMomentsCheck = false; _injectMoments(); }
+        } else if (_visMode === 'C') {
+            // 跟随记忆检索 — 朋友圈加入搜索池（在记忆检索阶段处理，这里不注入）
+        } else if (_visMode === 'E') {
+            // 全量开放 — 所有朋友圈完整展开
+            _injectMoments();
+            // E模式额外：也展开所有好友的朋友圈
+            const _allFriends = this.storage.getAllFriends();
+            _allFriends.forEach(f => {
+                if (f.code === this.currentFriendCode) return; // 自己的已注入
+                const _fIntim = this.storage.getIntimacyData(f.code);
+                const _fMoments = _fIntim.moments || [];
+                if (_fMoments.length > 0) {
+                    const _fName = f.nickname || f.name;
+                    desc += `\n${_fName}的朋友圈（${_fMoments.length}条）：`;
+                    _fMoments.slice(0,3).forEach(m => { desc += '\n  ' + _fmtM(m); });
+                }
+            });
+        }
+    }
     
     // 注入AI已写的日记/碎碎念（让AI能看到自己写过的）
     if (this.currentFriendCode) {
@@ -13190,6 +13250,7 @@ _stripCommandTags(text) {
         .replace(/\[AI_UNFAV_MOMENT:[^\]]+\]/g, '')
         .replace(/\[AI_COMMENT_MOMENT:[^\]]+\]/g, '')
         .replace(/\[AI_DELETE_COMMENT:[^\]]+\]/g, '')
+        .replace(/\[AI_CHECK_MOMENTS\]/g, '')
         .replace(/\[RECALL:[^\]]+\]/g, '')
         .replace(/\[STATUS_CSS\][\s\S]*?\[\/STATUS_CSS\]/g, '')
         .replace(/\[STATUS_?\s*CSS\][\s\S]*?\[\/?\s*STATUS_?\s*CSS\]/gi, '');
@@ -13523,15 +13584,15 @@ processMomentCommands(text) {
         }
     }
     
-    // [AI_DELETE_MOMENT:关键字] — AI删除自己的朋友圈
-    const delMomMatch = text.match(/\[AI_DELETE_MOMENT:([^\]]+)\]/);
-    if (delMomMatch) {
+    // [AI_DELETE_MOMENT:关键字] — AI删除自己的朋友圈（所有匹配的）
+    const delMomMatches = [...text.matchAll(/\[AI_DELETE_MOMENT:([^\]]+)\]/g)];
+    for (const delMomMatch of delMomMatches) {
         const kw = delMomMatch[1].trim().toLowerCase();
         const data = this.storage.getIntimacyData(this.currentFriendCode);
         if (data.moments) {
             const before = data.moments.length;
             data.moments = data.moments.filter(m => !(m.content||'').toLowerCase().includes(kw));
-            if (data.moments.length < before) { this.storage.saveIntimacyData(this.currentFriendCode, data); this.showCssSystemMessage(`📷 ${friendName} 删除了一条朋友圈`); }
+            if (data.moments.length < before) { this.storage.saveIntimacyData(this.currentFriendCode, data); this.showCssSystemMessage(`📷 ${friendName} 删除了${before - data.moments.length}条朋友圈`); }
         }
     }
     
@@ -13577,7 +13638,6 @@ processMomentCommands(text) {
     const delComMatch = text.match(/\[AI_DELETE_COMMENT:([^\]]+)\]/);
     if (delComMatch) {
         const kw = delComMatch[1].trim().toLowerCase();
-        // 搜索所有好友的朋友圈里AI的评论
         const friends = this.storage.getAllFriends();
         friends.forEach(f => {
             const d = this.storage.getIntimacyData(f.code);
@@ -13589,12 +13649,16 @@ processMomentCommands(text) {
             });
             if (changed) this.storage.saveIntimacyData(f.code, d);
         });
-        // 也搜用户的朋友圈
         const userSettings = this.storage.getUserSettings();
         (userSettings.myMoments||[]).forEach(m => {
             m.comments = (m.comments||[]).filter(c => !(c.name === friendName && (c.content||'').toLowerCase().includes(kw)));
         });
         this.storage.saveData(this.storage.KEYS.USER, userSettings);
+    }
+    
+    // [AI_CHECK_MOMENTS] — AI想看朋友圈，下一轮注入
+    if (text.includes('[AI_CHECK_MOMENTS]')) {
+        this._pendingMomentsCheck = true;
     }
 }
 
