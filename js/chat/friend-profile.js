@@ -763,6 +763,8 @@ class FriendProfileManager {
     processStatusCommands(text) {
         const ci = window.chatInterface;
         if (!ci?.currentFriendCode) return text;
+        const friend = ci.currentFriend;
+        const friendName = friend?.nickname || friend?.name || 'TA';
         
         // [STATUS:字段:内容] - AI更新自己的状态
         const statusRegex = /\[STATUS:([^:]+):([^\]]+)\]/g;

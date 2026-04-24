@@ -267,7 +267,7 @@ class MomentsManager {
         document.getElementById('momentsPage')?.remove();
         const page = document.createElement('div');
         page.id = 'momentsPage';
-        page.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:8000;background:#1a1a1a;display:flex;flex-direction:column;';
+        page.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9200;background:#1a1a1a;display:flex;flex-direction:column;';
         
         let timelineHtml = '';
         if (!moments.length) {
