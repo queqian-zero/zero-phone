@@ -35,7 +35,7 @@ class ChatApp {
         
         // ===== 好友列表按钮 =====
         document.getElementById('manageGroupBtn').addEventListener('click', () => {
-            this.openGroupManager();
+            try { this.openGroupManager(); } catch(e) { console.error('分组管理错误:', e); alert('分组管理出错: ' + e.message); }
         });
         
         document.getElementById('addFriendBtn').addEventListener('click', () => {
@@ -1302,5 +1302,6 @@ addFriendByCode() {
 }
 }
 // 初始化
+console.log('📦 chat-app.js v20260424 loaded');
 const chatApp = new ChatApp();
 window.chatApp = chatApp;
