@@ -35,7 +35,7 @@ class ChatApp {
         
         // ===== 好友列表按钮 =====
         document.getElementById('manageGroupBtn').addEventListener('click', () => {
-            alert('管理分组功能开发中...');
+            this.openGroupManager();
         });
         
         document.getElementById('addFriendBtn').addEventListener('click', () => {
@@ -135,39 +135,179 @@ if (pageId === 'chatListPage') {
         const container = document.getElementById('friendListContainer');
         const emptyPlaceholder = document.getElementById('friendEmptyPlaceholder');
         
-        // 获取所有好友（过滤掉被拉黑的）
         const allFriends = this.storage.getAllFriends();
         const friends = allFriends.filter(f => !f.blacklisted);
         const blacklistedCount = allFriends.filter(f => f.blacklisted).length;
         
-        // 如果没有好友，显示空状态
         if (friends.length === 0 && blacklistedCount === 0) {
             container.innerHTML = '';
             emptyPlaceholder.style.display = 'flex';
             return;
         }
-        
-        // 隐藏空状态
         emptyPlaceholder.style.display = 'none';
         
-        // 生成好友卡片HTML + 黑名单入口
-        let html = friends.map(friend => this.createFriendCard(friend)).join('');
+        // 获取分组
+        const userSettings = this.storage.getUserSettings();
+        const groups = userSettings.friendGroups || [];
+        const hasGroups = groups.length > 0;
+        
+        let html = '';
+        
+        if (hasGroups) {
+            // 按分组显示
+            const sortedGroups = [...groups].sort((a,b) => (a.order||0) - (b.order||0));
+            // 加一个"未分组"
+            const allGroupIds = groups.map(g => g.id);
+            const ungrouped = friends.filter(f => !f.groupId || !allGroupIds.includes(f.groupId));
+            
+            sortedGroups.forEach(g => {
+                const groupFriends = friends.filter(f => f.groupId === g.id);
+                if (groupFriends.length === 0) return;
+                html += '<div class="friend-group-section">';
+                html += '<div class="friend-group-header" data-gid="'+g.id+'" style="display:flex;align-items:center;gap:8px;padding:10px 16px;cursor:pointer;color:rgba(255,255,255,0.35);font-size:13px;">';
+                html += '<span class="friend-group-arrow" style="font-size:10px;transition:transform 0.2s;">▼</span>';
+                html += '<span>'+this._esc(g.name)+'</span>';
+                html += '<span style="color:rgba(255,255,255,0.15);">'+groupFriends.length+'</span>';
+                html += '</div>';
+                html += '<div class="friend-group-body">';
+                groupFriends.forEach(f => { html += this.createFriendCard(f); });
+                html += '</div></div>';
+            });
+            
+            if (ungrouped.length > 0) {
+                html += '<div class="friend-group-section">';
+                html += '<div class="friend-group-header" data-gid="_ungrouped" style="display:flex;align-items:center;gap:8px;padding:10px 16px;cursor:pointer;color:rgba(255,255,255,0.35);font-size:13px;">';
+                html += '<span class="friend-group-arrow" style="font-size:10px;transition:transform 0.2s;">▼</span>';
+                html += '<span>未分组</span>';
+                html += '<span style="color:rgba(255,255,255,0.15);">'+ungrouped.length+'</span>';
+                html += '</div>';
+                html += '<div class="friend-group-body">';
+                ungrouped.forEach(f => { html += this.createFriendCard(f); });
+                html += '</div></div>';
+            }
+        } else {
+            // 无分组，直接列表
+            html = friends.map(friend => this.createFriendCard(friend)).join('');
+        }
+        
         if (blacklistedCount > 0) {
-            html += `<div class="friend-blacklist-entry" id="friendBlacklistEntry">
-                <span style="color:rgba(255,100,100,0.5);font-size:13px;">🚫 黑名单</span>
-                <span style="color:rgba(255,255,255,0.2);font-size:12px;">${blacklistedCount}人</span>
-                <span style="color:rgba(255,255,255,0.1);font-size:12px;">›</span>
-            </div>`;
+            html += '<div class="friend-blacklist-entry" id="friendBlacklistEntry"><span style="color:rgba(255,100,100,0.5);font-size:13px;">🚫 黑名单</span><span style="color:rgba(255,255,255,0.2);font-size:12px;">'+blacklistedCount+'人</span><span style="color:rgba(255,255,255,0.1);font-size:12px;">›</span></div>';
         }
         container.innerHTML = html;
-        
-        // 绑定事件
         this.bindFriendCardEvents();
         
-        // 黑名单入口点击
+        // 分组折叠/展开
+        container.querySelectorAll('.friend-group-header').forEach(h => {
+            h.addEventListener('click', () => {
+                const body = h.nextElementSibling;
+                const arrow = h.querySelector('.friend-group-arrow');
+                if (body.style.display === 'none') {
+                    body.style.display = '';
+                    if (arrow) arrow.style.transform = '';
+                } else {
+                    body.style.display = 'none';
+                    if (arrow) arrow.style.transform = 'rotate(-90deg)';
+                }
+            });
+        });
+        
         document.getElementById('friendBlacklistEntry')?.addEventListener('click', () => {
             if (window.friendProfile) window.friendProfile.openBlacklistPage();
         });
+    }
+    
+    _esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    
+    // 管理分组页面
+    openGroupManager() {
+        document.getElementById('groupManagerPage')?.remove();
+        const store = this.storage;
+        const userSettings = store.getUserSettings();
+        if (!userSettings.friendGroups) userSettings.friendGroups = [];
+        const groups = userSettings.friendGroups;
+        const friends = store.getAllFriends().filter(f => !f.blacklisted);
+        const save = () => { store.saveData('zero_phone_user_settings', userSettings); };
+        
+        const page = document.createElement('div');
+        page.id = 'groupManagerPage';
+        page.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:8000;background:#111;display:flex;flex-direction:column;';
+        
+        const render = () => {
+            let groupsHtml = '';
+            groups.sort((a,b) => (a.order||0) - (b.order||0)).forEach((g, i) => {
+                const count = friends.filter(f => f.groupId === g.id).length;
+                groupsHtml += '<div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.03);">';
+                groupsHtml += '<div style="flex:1;font-size:15px;color:rgba(255,255,255,0.6);">'+this._esc(g.name)+' <span style="color:rgba(255,255,255,0.15);font-size:12px;">'+count+'人</span></div>';
+                groupsHtml += '<button class="gm-rename" data-gid="'+g.id+'" style="background:none;border:none;color:rgba(255,255,255,0.2);font-size:13px;cursor:pointer;padding:4px 8px;">改名</button>';
+                groupsHtml += '<button class="gm-del" data-gid="'+g.id+'" style="background:none;border:none;color:rgba(255,100,100,0.3);font-size:13px;cursor:pointer;padding:4px 8px;">删除</button>';
+                groupsHtml += '</div>';
+            });
+            if (!groups.length) groupsHtml = '<div style="text-align:center;padding:20px;color:rgba(255,255,255,0.1);font-size:14px;">暂无分组，点上方"+"添加</div>';
+            
+            let friendsHtml = '';
+            friends.forEach(f => {
+                const gName = groups.find(g => g.id === f.groupId)?.name || '未分组';
+                friendsHtml += '<div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid rgba(255,255,255,0.02);cursor:pointer;" class="gm-friend" data-code="'+f.code+'">';
+                friendsHtml += '<div style="font-size:14px;color:rgba(255,255,255,0.5);flex:1;">'+this._esc(f.nickname||f.name)+'</div>';
+                friendsHtml += '<div style="font-size:12px;color:rgba(240,147,43,0.5);padding:3px 10px;border:1px solid rgba(240,147,43,0.15);border-radius:8px;">'+this._esc(gName)+'</div>';
+                friendsHtml += '</div>';
+            });
+            
+            page.innerHTML =
+                '<div style="height:60px;background:rgba(255,255,255,0.95);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid rgba(0,0,0,0.1);display:flex;align-items:center;padding:0 16px;flex-shrink:0;box-shadow:0 2px 10px rgba(0,0,0,0.05);">' +
+                    '<button id="gmBack" style="width:40px;height:40px;border:none;background:rgba(0,0,0,0.05);border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;color:rgba(0,0,0,0.6);">&#8592;</button>' +
+                    '<div style="flex:1;text-align:center;font-size:18px;font-weight:600;color:#000;">管理分组</div>' +
+                    '<button id="gmAdd" style="width:40px;height:40px;border:none;background:rgba(0,0,0,0.05);border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;color:rgba(0,0,0,0.5);">+</button>' +
+                '</div>' +
+                '<div style="flex:1;overflow-y:auto;">' +
+                    '<div style="padding:12px 16px 6px;font-size:12px;color:rgba(255,255,255,0.15);">分组列表</div>' +
+                    groupsHtml +
+                    '<div style="padding:16px 16px 6px;font-size:12px;color:rgba(255,255,255,0.15);">好友归属（点击切换分组）</div>' +
+                    friendsHtml +
+                '</div>';
+            
+            page.querySelector('#gmBack')?.addEventListener('click', () => { page.remove(); this.renderFriendList(); });
+            page.querySelector('#gmAdd')?.addEventListener('click', async () => {
+                const ml = window.memoryLibrary;
+                const name = ml ? await ml._zpInput('新建分组', '输入分组名称') : prompt('分组名称：');
+                if (!name?.trim()) return;
+                groups.push({ id: 'g_' + Date.now(), name: name.trim(), order: groups.length });
+                save(); render();
+            });
+            page.querySelectorAll('.gm-rename').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const g = groups.find(x => x.id === btn.dataset.gid); if (!g) return;
+                    const ml = window.memoryLibrary;
+                    const nn = ml ? await ml._zpInput('重命名分组', '', g.name) : prompt('新名称：', g.name);
+                    if (nn !== null && nn.trim()) { g.name = nn.trim(); save(); render(); }
+                });
+            });
+            page.querySelectorAll('.gm-del').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const g = groups.find(x => x.id === btn.dataset.gid); if (!g) return;
+                    const ml = window.memoryLibrary;
+                    const ok = ml ? await ml._zpConfirm('删除分组', '删除「'+g.name+'」？分组内好友将变为未分组') : confirm('删除？');
+                    if (ok) {
+                        friends.filter(f => f.groupId === g.id).forEach(f => { f.groupId = ''; store.updateFriend(f.code, { groupId: '' }); });
+                        userSettings.friendGroups = groups.filter(x => x.id !== g.id);
+                        save(); render();
+                    }
+                });
+            });
+            page.querySelectorAll('.gm-friend').forEach(el => {
+                el.addEventListener('click', async () => {
+                    const f = friends.find(x => x.code === el.dataset.code); if (!f) return;
+                    const ml = window.memoryLibrary;
+                    const opts = groups.map(g => ({ label: g.name, value: g.id }));
+                    opts.push({ label: '未分组', value: '' });
+                    const pick = ml ? await ml._zpMenu(f.nickname||f.name, '选择分组', opts) : null;
+                    if (pick !== null) { f.groupId = pick; store.updateFriend(f.code, { groupId: pick }); save(); render(); }
+                });
+            });
+        };
+        
+        document.body.appendChild(page);
+        render();
     }
     
     // 创建好友卡片HTML
