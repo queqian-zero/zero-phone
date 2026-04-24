@@ -3712,9 +3712,14 @@ this.applyWallpaper(this.settings.chatWallpaper || 'default');
             console.log('✅ 自定义CSS已从设置恢复');
         }
         
-        // 恢复头像框CSS
+        // 恢复头像框CSS（直接注入，不依赖textarea）
 if (this.settings.avatarFrameCss) {
-    this.applyAvatarFrameCss(false);
+    this.removeAvatarFrameCss();
+    const style = document.createElement('style');
+    style.id = 'customAvatarFrameCssTag';
+    style.textContent = this.settings.avatarFrameCss;
+    document.head.appendChild(style);
+    console.log('✅ 头像框CSS已恢复');
 }
 
 // 更新徽章面板
@@ -9686,6 +9691,56 @@ makeSliderHandler('afScaleSliderUser',   'afScaleValueUser',   'userAvatarFrameS
             if (textarea) textarea.value = css;
             this.applyAvatarFrameCss(true);
         });
+    });
+    
+    // 自定义存档系统
+    const renderArchives = () => {
+        const container = document.getElementById('afCustomArchives');
+        if (!container) return;
+        const archives = this.settings.avatarFrameArchives || [];
+        container.innerHTML = '';
+        archives.forEach((ar, i) => {
+            const btn = document.createElement('button');
+            btn.style.cssText = 'padding:5px 10px;border:1px solid rgba(255,255,255,0.15);border-radius:8px;background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.6);font-size:11px;cursor:pointer;position:relative;';
+            btn.textContent = ar.name;
+            btn.addEventListener('click', () => {
+                const textarea = document.getElementById('afCustomCss');
+                if (textarea) textarea.value = ar.css;
+                this.applyAvatarFrameCss(true);
+            });
+            // 长按删除
+            let longPress = null;
+            btn.addEventListener('touchstart', () => { longPress = setTimeout(async () => {
+                const ml = window.memoryLibrary;
+                const ok = ml ? await ml._zpConfirm('删除存档', '删除「' + ar.name + '」？') : confirm('删除「' + ar.name + '」？');
+                if (ok) { archives.splice(i, 1); this.settings.avatarFrameArchives = archives; this.saveSettings(); renderArchives(); }
+            }, 600); }, {passive:true});
+            btn.addEventListener('touchend', () => { if (longPress) clearTimeout(longPress); });
+            btn.addEventListener('touchmove', () => { if (longPress) clearTimeout(longPress); });
+            container.appendChild(btn);
+        });
+        if (archives.length > 0) {
+            const hint = document.createElement('div');
+            hint.style.cssText = 'width:100%;font-size:10px;color:rgba(255,255,255,0.1);margin-top:2px;';
+            hint.textContent = '长按存档可删除';
+            container.appendChild(hint);
+        }
+    };
+    renderArchives();
+    
+    // 保存当前为存档
+    document.getElementById('afSaveArchive')?.addEventListener('click', async () => {
+        const textarea = document.getElementById('afCustomCss');
+        const css = textarea?.value?.trim();
+        if (!css) { this.showCssToast('请先输入头像框CSS'); return; }
+        const ml = window.memoryLibrary;
+        const name = ml ? await ml._zpInput('保存存档', '输入存档名称') : prompt('存档名称：');
+        if (!name?.trim()) return;
+        if (!this.settings.avatarFrameArchives) this.settings.avatarFrameArchives = [];
+        this.settings.avatarFrameArchives.push({ name: name.trim(), css });
+        this.saveSettings();
+        renderArchives();
+        this.showCssToast('已保存存档「' + name.trim() + '」');
     });
 }
 

@@ -415,7 +415,18 @@ class MomentsManager {
         html += '<button class="moment-fav-btn" data-idx="'+i+'" style="background:none;border:none;color:rgba(255,255,255,0.25);font-size:13px;cursor:pointer;">&#9733; 收藏</button>';
         html += '<button class="moment-like-btn" data-idx="'+i+'" style="background:none;border:none;color:rgba(255,255,255,0.25);font-size:13px;cursor:pointer;">&#9825; 点赞</button>';
         html += '<button class="moment-detail-btn" data-idx="'+i+'" style="background:none;border:none;color:rgba(240,147,43,0.5);font-size:13px;cursor:pointer;">查看此条目 &#8250;</button>';
-        html += '</div></div></div>';
+        html += '</div>';
+        // 评论预览（可滚动）
+        const comments = merged.comments || [];
+        if (comments.length > 0) {
+            html += '<div style="max-height:120px;overflow-y:auto;background:rgba(255,255,255,0.02);border-radius:8px;padding:8px 10px;">';
+            comments.forEach(c => {
+                const rp = c.replyTo ? '<span style="color:rgba(255,255,255,0.2);">回复 '+this._esc(c.replyTo)+'</span> ' : '';
+                html += '<div style="font-size:13px;color:rgba(255,255,255,0.4);padding:3px 0;line-height:1.5;"><span style="color:rgba(240,147,43,0.6);font-weight:600;">'+this._esc(c.name)+'</span> '+rp+this._esc(c.content)+'</div>';
+            });
+            html += '</div>';
+        } else { html += '<div style="font-size:12px;color:rgba(255,255,255,0.1);padding:4px 0;">暂无评论</div>'; }
+        html += '</div></div>';
         html += '</div>'; // close wrapper
         return html;
     }
@@ -794,7 +805,9 @@ class MomentsManager {
             let endpoint, apiKey, model;
             const msCfg = (this._store()?.getUserSettings()?.momentsConfig) || {};
             
-            if (useNpcApi && msCfg.npcEndpoint && msCfg.npcApiKey) {
+            if (useNpcApi) {
+                // NPC必须有专用API，没有就不调
+                if (!msCfg.npcEndpoint || !msCfg.npcApiKey) { console.warn('NPC API未配置，跳过'); return null; }
                 endpoint = msCfg.npcEndpoint; apiKey = msCfg.npcApiKey; model = msCfg.npcModel || 'gpt-4o-mini';
             } else {
                 const config = new APIManager().getCurrentConfig();
@@ -932,7 +945,7 @@ class MomentsManager {
         document.getElementById('momentDetailPage')?.remove();
         const p = document.createElement('div');
         p.id = 'momentDetailPage';
-        p.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:8500;background:#1a1a1a;display:flex;flex-direction:column;';
+        p.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9500;background:#1a1a1a;display:flex;flex-direction:column;';
         
         const user = this._getUserInfo();
         const isMine = moment.isSelf || moment.friendCode === '_self';
@@ -1062,5 +1075,43 @@ class MomentsManager {
         const dy = Math.floor(h/24); if (dy<30) return dy+'天前';
         return new Date(ts).toLocaleDateString('zh-CN');
     }
+    // NPC后台活动定时器
+    startNpcBackgroundActivity() {
+        if (this._npcTimer) return; // 已启动
+        const check = async () => {
+            const store = this._store(); if (!store) return;
+            const msCfg = (store.getUserSettings()?.momentsConfig) || {};
+            if (!msCfg.npcEnabled || !msCfg.npcEndpoint || !msCfg.npcApiKey) return;
+            
+            const friends = store.getAllFriends();
+            for (const f of friends) {
+                const data = store.getIntimacyData(f.code);
+                const moments = data.moments || [];
+                if (moments.length === 0) continue;
+                
+                // 检查最新朋友圈是否已被NPC处理过
+                const latest = moments[0];
+                if (latest._npcProcessed) continue;
+                
+                // 触发NPC活动
+                await this._triggerNpcActivity(f.code);
+                latest._npcProcessed = true;
+                store.saveIntimacyData(f.code, data);
+            }
+        };
+        // 首次延迟5秒，之后每30分钟检查一次
+        setTimeout(() => check(), 5000);
+        this._npcTimer = setInterval(() => check(), 30 * 60 * 1000);
+        console.log('✅ NPC后台活动已启动（每30分钟）');
+    }
+    
+    stopNpcBackgroundActivity() {
+        if (this._npcTimer) { clearInterval(this._npcTimer); this._npcTimer = null; }
+    }
 }
-document.addEventListener('DOMContentLoaded', () => { setTimeout(() => { window.momentsManager = new MomentsManager(); console.log('✅ MomentsManager 已就绪'); }, 600); });
+document.addEventListener('DOMContentLoaded', () => { setTimeout(() => {
+    window.momentsManager = new MomentsManager();
+    console.log('✅ MomentsManager 已就绪');
+    // 启动NPC后台活动
+    window.momentsManager.startNpcBackgroundActivity();
+}, 600); });
