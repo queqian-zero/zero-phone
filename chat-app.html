@@ -1431,21 +1431,23 @@
             <!-- 统一预览区 -->
             <div class="bubble-preview-section">
                 <div class="bubble-preview-label">预览效果：</div>
-                <div id="afPreviewBox" style="background:rgba(0,0,0,0.15);border-radius:12px;padding:12px;margin-bottom:4px;">
-                    <div class="message message-ai" id="afPreviewMsgAI" style="display:flex;gap:10px;align-items:flex-start;">
-                        <div class="message-avatar" id="afPreviewAvatarAI" style="width:40px;height:40px;flex-shrink:0;">
+                <div id="afPreviewBox" style="background:rgba(0,0,0,0.15);border-radius:12px;padding:12px;margin-bottom:4px;overflow:hidden;">
+                    <!-- AI消息预览 -->
+                    <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:8px;">
+                        <div class="message-avatar" id="afPreviewAvatarAI" style="width:40px;height:40px;flex-shrink:0;position:relative;border-radius:50%;overflow:hidden;">
                             <img id="afPreviewImgAI" src="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">
                         </div>
-                        <div class="message-bubble" style="border-radius:12px;padding:10px 14px;max-width:200px;">
+                        <div class="message-bubble" style="background:rgba(255,255,255,0.08);border-radius:12px;padding:10px 14px;max-width:60%;">
                             <div class="message-text" style="font-size:14px;line-height:1.5;">你好！今天天气真不错。</div>
                         </div>
                     </div>
-                    <div class="message message-user" id="afPreviewMsgUser" style="display:flex;gap:10px;align-items:flex-start;justify-content:flex-end;margin-top:8px;">
-                        <div class="message-bubble" style="border-radius:12px;padding:10px 14px;max-width:200px;">
-                            <div class="message-text" style="font-size:14px;line-height:1.5;">是啊，适合出去玩！</div>
-                        </div>
-                        <div class="message-avatar" id="afPreviewAvatarUser" style="width:40px;height:40px;flex-shrink:0;">
+                    <!-- 用户消息预览 -->
+                    <div style="display:flex;gap:10px;align-items:flex-start;flex-direction:row-reverse;">
+                        <div class="message-avatar" id="afPreviewAvatarUser" style="width:40px;height:40px;flex-shrink:0;position:relative;border-radius:50%;overflow:hidden;">
                             <img id="afPreviewImgUser" src="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">
+                        </div>
+                        <div class="message-bubble" style="background:rgba(240,147,43,0.15);border-radius:12px;padding:10px 14px;max-width:60%;">
+                            <div class="message-text" style="font-size:14px;line-height:1.5;">是啊，适合出去玩！</div>
                         </div>
                     </div>
                 </div>
