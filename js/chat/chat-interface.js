@@ -1480,6 +1480,7 @@ class ChatInterface {
     // 清理自定义CSS和头像框（防止泄漏到下一个聊天）
     this.removeCustomCss();
     this.removeAvatarFrameCss();
+    document.getElementById('avatarAdjustStyleTag')?.remove();
     
     this.currentFriendCode = null;
     this.currentFriend = null;
@@ -3677,6 +3678,7 @@ if (exportDataBtn) {
             timeAwareness: true, chatWallpaper: 'default', bubbleStyle: 'default',
             avatarShape: 'circle', avatarBorderRadius: 50,
             avatarFrameType: 'none', avatarFrameSrc: '', avatarFrameOffsetX: 0, avatarFrameOffsetY: 0, avatarFrameScale: 100, avatarFrameCss: '',
+            avatarSize: 100, avatarOffsetX: 0, avatarOffsetY: 0,
             userAvatarFrameType: 'none', userAvatarFrameSrc: '', userAvatarFrameOffsetX: 0, userAvatarFrameOffsetY: 0, userAvatarFrameScale: 100,
             flameEnabled: true, flameStartDate: '', flameExtinguishDays: 3, flameLastChatDate: '',
             flameCustomIcon: '', flameCustomIconType: 'emoji', flameCustomDeadIcon: '', flameCustomDeadIconType: 'emoji',
@@ -3721,6 +3723,9 @@ if (this.settings.avatarFrameCss) {
     document.head.appendChild(style);
     console.log('✅ 头像框CSS已恢复');
 }
+
+// 恢复头像调整（圆角/大小/位置）
+this._injectAvatarStyleTag();
 
 // 更新徽章面板
 this.updateBadgePanel();
@@ -9356,21 +9361,24 @@ closeAvatarFrameModal() {
 }
 
 syncAvatarFrameUI() {
-    // 形状按钮
-    document.querySelectorAll('.af-shape-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.getAttribute('data-shape') === (this.settings.avatarShape || 'circle'));
-    });
+    // 圆角滑块
     const slider = document.getElementById('afRadiusSlider');
     const sliderVal = document.getElementById('afRadiusValue');
     if (slider) slider.value = this.settings.avatarBorderRadius ?? 50;
     if (sliderVal) sliderVal.textContent = this.settings.avatarBorderRadius ?? 50;
+    
+    // 头像大小/位置滑块
+    const setSliderVal = (sliderId, valId, val) => {
+        const el = document.getElementById(sliderId);
+        const vel = document.getElementById(valId);
+        if (el) el.value = val;
+        if (vel) vel.textContent = val;
+    };
+    setSliderVal('afAvatarSizeSlider', 'afAvatarSizeValue', this.settings.avatarSize || 100);
+    setSliderVal('afAvatarXSlider', 'afAvatarXValue', this.settings.avatarOffsetX || 0);
+    setSliderVal('afAvatarYSlider', 'afAvatarYValue', this.settings.avatarOffsetY || 0);
 
-    // 内置框选中
-    document.querySelectorAll('.af-builtin-item').forEach(item => {
-        item.classList.toggle('active', item.getAttribute('data-frame') === (this.settings.avatarFrameType || 'none'));
-    });
-
-    // AI位置滑块
+    // 头像框位置滑块
     const setSlider = (id, valId, val) => {
         const el = document.getElementById(id);
         const vel = document.getElementById(valId);
@@ -9384,7 +9392,6 @@ syncAvatarFrameUI() {
     if (scAI) scAI.value = this.settings.avatarFrameScale || 100;
     if (scAIv) scAIv.textContent = this.settings.avatarFrameScale || 100;
 
-    // User位置滑块
     setSlider('afOffsetXSliderUser', 'afOffsetXValueUser', this.settings.userAvatarFrameOffsetX);
     setSlider('afOffsetYSliderUser', 'afOffsetYValueUser', this.settings.userAvatarFrameOffsetY);
     const scUser = document.getElementById('afScaleSliderUser');
@@ -9392,12 +9399,12 @@ syncAvatarFrameUI() {
     if (scUser) scUser.value = this.settings.userAvatarFrameScale || 100;
     if (scUserv) scUserv.textContent = this.settings.userAvatarFrameScale || 100;
 
-    // 位置区域显示（任一有自定义图片就显示）
+    // 位置区域显示
     const posSection = document.getElementById('afPositionSection');
     const hasCustom = this.settings.avatarFrameType === 'custom' || this.settings.userAvatarFrameType === 'custom';
     if (posSection) posSection.style.display = hasCustom ? 'block' : 'none';
 
-    // 移除按钮显示
+    // 移除按钮
     const clearAI = document.getElementById('afClearFrameAI');
     const clearUser = document.getElementById('afClearFrameUser');
     if (clearAI) clearAI.style.display = this.settings.avatarFrameSrc ? 'block' : 'none';
@@ -9409,63 +9416,50 @@ syncAvatarFrameUI() {
 }
 
 updateAvatarPreview() {
-    this._updateSinglePreview(
-        'AI',
-        this.settings.avatarFrameType,
-        this.settings.avatarFrameSrc,
-        this.settings.avatarFrameOffsetX,
-        this.settings.avatarFrameOffsetY,
-        this.settings.avatarFrameScale
-    );
-    this._updateSinglePreview(
-        'User',
-        this.settings.userAvatarFrameType,
-        this.settings.userAvatarFrameSrc,
-        this.settings.userAvatarFrameOffsetX,
-        this.settings.userAvatarFrameOffsetY,
-        this.settings.userAvatarFrameScale
-    );
+    const r = this.settings.avatarBorderRadius ?? 50;
+    const size = this.settings.avatarSize || 100;
+    const ox = this.settings.avatarOffsetX || 0;
+    const oy = this.settings.avatarOffsetY || 0;
+    
+    // 更新预览区头像样式
+    ['AI', 'User'].forEach(suffix => {
+        const img = document.getElementById('afPreviewImg' + suffix);
+        const container = document.getElementById('afPreviewAvatar' + suffix);
+        if (img) {
+            img.style.borderRadius = r + '%';
+            img.style.transform = 'scale(' + (size/100) + ') translate(' + ox + 'px,' + oy + 'px)';
+        }
+        if (container) {
+            container.style.borderRadius = r + '%';
+            container.style.overflow = 'hidden';
+        }
+    });
 }
 
-_updateSinglePreview(suffix, frameType, frameSrc, ox, oy, scale) {
+// 滑块实时预览
+_applyAvatarSliders() {
+    this.updateAvatarPreview();
+    // 也实时更新聊天界面的头像
+    this._injectAvatarStyleTag();
+}
+
+// 注入头像调整样式到页面
+_injectAvatarStyleTag() {
     const r = this.settings.avatarBorderRadius ?? 50;
-    const avatarEl = document.getElementById(`afPreviewAvatar${suffix}`);
-    const frameImg = document.getElementById(`afPreviewFrameImg${suffix}`);
-    if (!avatarEl) return;
-
-    // 内置框统一用AI侧的选择，自定义上传各用各的
-const builtinType = this.settings.avatarFrameType || 'none';
-const t = (frameType === 'custom') ? 'custom' : builtinType;
-
-    const previewFrameMap = {
-        'glow-white':  '0 0 16px 5px rgba(255,255,255,0.7)',
-        'glow-red':    '0 0 16px 5px rgba(220,0,0,0.8)',
-        'border-gold': '0 0 0 4px gold, 0 0 12px rgba(255,215,0,0.5)',
-    };
-
-    if (t !== 'none' && t !== 'custom') {
-        avatarEl.style.boxShadow = previewFrameMap[t] || '';
-        avatarEl.style.outline   = (t === 'pixel') ? '3px solid rgba(255,255,255,0.9)' : '';
-        avatarEl.style.borderRadius = (t === 'pixel') ? '0' : `${r}%`;
-        avatarEl.style.animation = (t === 'border-rainbow') ? 'rainbowBorder 3s linear infinite' : '';
-    } else {
-        avatarEl.style.boxShadow    = '';
-        avatarEl.style.outline      = '';
-        avatarEl.style.borderRadius = `${r}%`;
-        avatarEl.style.animation    = '';
-    }
-
-    if (frameImg) {
-        if (t === 'custom' && frameSrc) {
-            frameImg.src = frameSrc;
-            frameImg.style.display = 'block';
-            const sc = (scale || 100) / 100;
-            frameImg.style.transform = `translate(${ox||0}px,${oy||0}px) scale(${sc})`;
-        } else {
-            frameImg.style.display = 'none';
-            frameImg.src = '';
-        }
-    }
+    const size = this.settings.avatarSize || 100;
+    const ox = this.settings.avatarOffsetX || 0;
+    const oy = this.settings.avatarOffsetY || 0;
+    
+    let old = document.getElementById('avatarAdjustStyleTag');
+    if (old) old.remove();
+    
+    const css = `.message-avatar { border-radius: ${r}% !important; overflow: hidden; }
+.message-avatar img, .message-avatar .avatar-placeholder { border-radius: ${r}% !important; transform: scale(${size/100}) translate(${ox}px, ${oy}px); }`;
+    
+    const style = document.createElement('style');
+    style.id = 'avatarAdjustStyleTag';
+    style.textContent = css;
+    document.head.appendChild(style);
 }
 
 bindAvatarFrameEvents() {
@@ -9478,59 +9472,46 @@ bindAvatarFrameEvents() {
     if (overlay) overlay.addEventListener('click', () => this.closeAvatarFrameModal());
 
     // 形状按钮
-    document.querySelectorAll('.af-shape-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const shape = btn.getAttribute('data-shape');
-            this.settings.avatarShape = shape;
-            // 圆形默认50，方形默认0
-            if (shape === 'circle') {
-                this.settings.avatarBorderRadius = 50;
-            } else {
-                this.settings.avatarBorderRadius = 0;
-            }
-            const slider = document.getElementById('afRadiusSlider');
-            const valEl = document.getElementById('afRadiusValue');
-            if (slider) slider.value = this.settings.avatarBorderRadius;
-            if (valEl) valEl.textContent = this.settings.avatarBorderRadius;
-            document.querySelectorAll('.af-shape-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            this.updateAvatarPreview();
-            this.saveSettings();
-            this.renderMessages();
+    // 圆角滑块（已在上方绑定）
+    
+    // 头像大小滑块
+    const sizeSlider = document.getElementById('afAvatarSizeSlider');
+    if (sizeSlider) {
+        sizeSlider.value = this.settings.avatarSize || 100;
+        document.getElementById('afAvatarSizeValue').textContent = this.settings.avatarSize || 100;
+        sizeSlider.addEventListener('input', (e) => {
+            this.settings.avatarSize = parseInt(e.target.value);
+            document.getElementById('afAvatarSizeValue').textContent = this.settings.avatarSize;
+            this._applyAvatarSliders();
         });
-    });
-
-    // 圆角滑块
-    const radiusSlider = document.getElementById('afRadiusSlider');
-    if (radiusSlider) {
-        radiusSlider.addEventListener('input', (e) => {
-            const v = parseInt(e.target.value);
-            this.settings.avatarBorderRadius = v;
-            const valEl = document.getElementById('afRadiusValue');
-            if (valEl) valEl.textContent = v;
-            this.updateAvatarPreview();
-        });
-        radiusSlider.addEventListener('change', () => {
-            this.saveSettings();
-            this.renderMessages();
-        });
+        sizeSlider.addEventListener('change', () => { this.saveSettings(); this.renderMessages(); });
     }
-
-    // 内置框选择
-    document.querySelectorAll('.af-builtin-item').forEach(item => {
-        item.addEventListener('click', () => {
-            const frame = item.getAttribute('data-frame');
-            this.settings.avatarFrameType = frame;
-            this.settings.avatarFrameSrc = '';
-            document.querySelectorAll('.af-builtin-item').forEach(i => i.classList.remove('active'));
-            item.classList.add('active');
-            const posSection = document.getElementById('afPositionSection');
-            if (posSection) posSection.style.display = 'none';
-            this.updateAvatarPreview();
-            this.saveSettings();
-            this.renderMessages();
+    
+    // 头像X轴偏移滑块
+    const xSlider = document.getElementById('afAvatarXSlider');
+    if (xSlider) {
+        xSlider.value = this.settings.avatarOffsetX || 0;
+        document.getElementById('afAvatarXValue').textContent = this.settings.avatarOffsetX || 0;
+        xSlider.addEventListener('input', (e) => {
+            this.settings.avatarOffsetX = parseInt(e.target.value);
+            document.getElementById('afAvatarXValue').textContent = this.settings.avatarOffsetX;
+            this._applyAvatarSliders();
         });
-    });
+        xSlider.addEventListener('change', () => { this.saveSettings(); this.renderMessages(); });
+    }
+    
+    // 头像Y轴偏移滑块
+    const ySlider = document.getElementById('afAvatarYSlider');
+    if (ySlider) {
+        ySlider.value = this.settings.avatarOffsetY || 0;
+        document.getElementById('afAvatarYValue').textContent = this.settings.avatarOffsetY || 0;
+        ySlider.addEventListener('input', (e) => {
+            this.settings.avatarOffsetY = parseInt(e.target.value);
+            document.getElementById('afAvatarYValue').textContent = this.settings.avatarOffsetY;
+            this._applyAvatarSliders();
+        });
+        ySlider.addEventListener('change', () => { this.saveSettings(); this.renderMessages(); });
+    }
 
     // 上传AI头像框
 const makeUploadHandler = (btnId, inputId, frameTypeKey, frameSrcKey) => {
