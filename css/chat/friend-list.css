@@ -8,6 +8,11 @@
     padding: 0;
 }
 
+/* 有分组时减少容器gap */
+#friendListContainer:has(.friend-group-section) {
+    gap: 0;
+}
+
 /* 好友卡片 */
 .friend-item {
     background: rgba(255, 255, 255, 0.05);
@@ -118,3 +123,52 @@
 .friend-blacklist-entry { display:flex;align-items:center;gap:8px;padding:14px 16px;margin-top:8px;background:rgba(255,60,60,0.03);border-radius:10px;border:1px solid rgba(255,60,60,0.06);cursor:pointer;transition:background 0.12s;justify-content:center; }
 .friend-blacklist-entry:active { background:rgba(255,60,60,0.08); }
 
+
+/* ==================== 好友分组 ==================== */
+
+/* 分组区块 */
+.friend-group-section {
+    margin-bottom: 4px;
+}
+
+/* 分组头（可折叠） */
+.friend-group-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    cursor: pointer;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 15px;
+    font-weight: 600;
+}
+
+/* 分组箭头 */
+.friend-group-arrow {
+    font-size: 10px;
+    transition: transform 0.2s;
+    color: rgba(255, 255, 255, 0.2);
+}
+
+/* 分组内的好友卡片 - 更紧凑 */
+.friend-group-body .friend-item {
+    border-radius: 10px;
+    padding: 10px 14px;
+    gap: 10px;
+    margin: 0 8px 6px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.friend-group-body .friend-avatar {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+}
+
+.friend-group-body .friend-name {
+    font-size: 15px;
+}
+
+.friend-group-body .friend-signature {
+    font-size: 12px;
+}
