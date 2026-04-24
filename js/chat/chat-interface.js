@@ -9674,24 +9674,18 @@ makeSliderHandler('afScaleSliderUser',   'afScaleValueUser',   'userAvatarFrameS
         });
     }
     
-    // 头像框预设
-    const presets = {
-        gold_glow: `.message-ai .message-avatar { box-shadow: 0 0 12px 4px rgba(255,200,50,0.5); border-radius: 50%; }\n.message-ai .message-avatar img { border: 2px solid rgba(255,200,50,0.4); border-radius: 50%; }`,
-        rainbow: `.message-ai .message-avatar { border: 3px solid transparent; border-radius: 50%; background: linear-gradient(#111,#111) padding-box, linear-gradient(135deg,#ff0000,#ff8800,#ffff00,#00ff00,#0088ff,#8800ff) border-box; }\n.message-ai .message-avatar img { border-radius: 50%; }`,
-        heart: `.message-ai .message-avatar { box-shadow: 0 0 15px 5px rgba(255,100,150,0.35); border-radius: 50%; border: 2px solid rgba(255,100,150,0.3); }\n.message-ai .message-avatar img { border-radius: 50%; }`,
-        ice: `.message-ai .message-avatar { box-shadow: 0 0 12px 4px rgba(100,200,255,0.4), inset 0 0 6px rgba(100,200,255,0.2); border-radius: 50%; border: 2px solid rgba(100,200,255,0.25); }\n.message-ai .message-avatar img { border-radius: 50%; }`,
-        fire: `.message-ai .message-avatar { box-shadow: 0 0 10px 3px rgba(255,80,20,0.5), 0 0 20px 6px rgba(255,150,50,0.2); border-radius: 50%; border: 2px solid rgba(255,100,30,0.4); }\n.message-ai .message-avatar img { border-radius: 50%; }`,
-        pixel: `.message-ai .message-avatar { border: 3px solid rgba(100,255,100,0.5); border-radius: 4px; image-rendering: pixelated; box-shadow: 2px 2px 0 rgba(100,255,100,0.3); }\n.message-ai .message-avatar img { border-radius: 2px; }`
-    };
-    document.querySelectorAll('.af-preset-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const key = btn.dataset.preset;
-            const css = presets[key] || '';
-            const textarea = document.getElementById('afCustomCss');
-            if (textarea) textarea.value = css;
-            this.applyAvatarFrameCss(true);
-        });
-    });
+    // 头像框预设（内置已移除，只保留自定义存档）
+    
+    // 加载预览头像
+    if (window.chatInterface) {
+        const ci = window.chatInterface;
+        const aiAvatar = ci.currentFriend?.avatar || '';
+        const userAvatar = ci.storage?.getUserSettings()?.userAvatar || '';
+        const aiPreviewImg = document.getElementById('afPreviewImgAI');
+        const userPreviewImg = document.getElementById('afPreviewImgUser');
+        if (aiPreviewImg) aiPreviewImg.src = aiAvatar || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 44"><rect fill="%23333" width="44" height="44" rx="22"/><text x="22" y="28" text-anchor="middle" fill="%23888" font-size="16">AI</text></svg>';
+        if (userPreviewImg) userPreviewImg.src = userAvatar || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 44"><rect fill="%23444" width="44" height="44" rx="22"/><text x="22" y="28" text-anchor="middle" fill="%23999" font-size="14">我</text></svg>';
+    }
     
     // 自定义存档系统
     const renderArchives = () => {
