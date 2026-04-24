@@ -9486,6 +9486,17 @@ bindAvatarFrameEvents() {
     // 关闭按钮和遮罩层由 openChatStyleModal 统一处理
 
     // 圆角滑块
+    const radiusSlider = document.getElementById('afRadiusSlider');
+    if (radiusSlider) {
+        radiusSlider.addEventListener('input', (e) => {
+            const v = parseInt(e.target.value);
+            this.settings.avatarBorderRadius = v;
+            const valEl = document.getElementById('afRadiusValue');
+            if (valEl) valEl.textContent = v;
+            this._applyAvatarSliders();
+        });
+        radiusSlider.addEventListener('change', () => { this.saveSettings(); this.renderMessages(); });
+    }
     
     // 头像大小滑块
     const sizeSlider = document.getElementById('afAvatarSizeSlider');
