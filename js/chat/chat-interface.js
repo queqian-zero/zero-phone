@@ -3479,21 +3479,16 @@ div.innerHTML = `
             });
         }
         
-                // 头像框按钮
-        const avatarFrameBtn = document.getElementById('settingAvatarFrame');
-        if (avatarFrameBtn) {
-        avatarFrameBtn.addEventListener('click', () => {
-        this.openAvatarFrameModal();
-           });
-        }
-        
-                // 聊天气泡美化按钮
-        const bubbleBtn = document.getElementById('settingBubbleStyle');
-        if (bubbleBtn) {
-            bubbleBtn.addEventListener('click', () => {
-                this.openBubbleModal();
+        // 聊天样式按钮（合并头像框+气泡）
+        const chatStyleBtn = document.getElementById('settingChatStyle');
+        if (chatStyleBtn) {
+            chatStyleBtn.addEventListener('click', () => {
+                this.openChatStyleModal();
             });
         }
+        // 旧按钮兼容
+        document.getElementById('settingAvatarFrame')?.addEventListener('click', () => this.openChatStyleModal());
+        document.getElementById('settingBubbleStyle')?.addEventListener('click', () => this.openChatStyleModal());
 
         
         const settingsDoneBtn = document.getElementById('settingsDoneBtn');
@@ -5942,16 +5937,53 @@ compressAndApplyWallpaper(imageData) {
 
     // ==================== 气泡美化功能方法 ====================
 
+    // 打开统一聊天样式弹窗
+    openChatStyleModal() {
+        console.log('🎨 打开聊天样式弹窗');
+        const modal = document.getElementById('chatStyleModal');
+        if (!modal) return;
+        
+        // 先初始化两边的内容
+        this.openBubbleModal();
+        this.openAvatarFrameModal();
+        
+        // 统一关闭绑定（只绑一次）
+        if (!modal._closeBound) {
+            modal._closeBound = true;
+            const closeModal = () => { modal.style.display = 'none'; };
+            document.getElementById('chatStyleClose')?.addEventListener('click', closeModal);
+            document.getElementById('chatStyleOverlay')?.addEventListener('click', closeModal);
+        }
+        
+        // 折叠栏交互
+        const avatarToggle = document.getElementById('csAvatarToggle');
+        const bubbleToggle = document.getElementById('csBubbleToggle');
+        const avatarBody = document.getElementById('csAvatarBody');
+        const bubbleBody = document.getElementById('csBubbleBody');
+        
+        if (avatarToggle && !avatarToggle._bound) {
+            avatarToggle._bound = true;
+            avatarToggle.addEventListener('click', () => {
+                const isOpen = avatarBody.style.maxHeight !== '0px';
+                avatarBody.style.maxHeight = isOpen ? '0px' : '2000px';
+                avatarToggle.querySelector('.cs-collapse-arrow').textContent = isOpen ? '▶' : '▼';
+            });
+        }
+        if (bubbleToggle && !bubbleToggle._bound) {
+            bubbleToggle._bound = true;
+            bubbleToggle.addEventListener('click', () => {
+                const isOpen = bubbleBody.style.maxHeight !== '0px';
+                bubbleBody.style.maxHeight = isOpen ? '0px' : '2000px';
+                bubbleToggle.querySelector('.cs-collapse-arrow').textContent = isOpen ? '▶' : '▼';
+            });
+        }
+    }
+
     // 打开气泡美化弹窗
     openBubbleModal() {
-        console.log('💬 打开气泡美化弹窗');
-
-        const modal = document.getElementById('bubbleModal');
-        if (!modal) {
-            console.error('❌ 找不到气泡弹窗元素');
-            return;
-        }
-
+        console.log('💬 初始化气泡美化');
+        const modal = document.getElementById('chatStyleModal');
+        if (!modal) return;
         modal.style.display = 'flex';
 
         // 更新预览区域的气泡样式
@@ -5984,7 +6016,7 @@ compressAndApplyWallpaper(imageData) {
     closeBubbleModal() {
         console.log('💬 关闭气泡美化弹窗');
 
-        const modal = document.getElementById('bubbleModal');
+        const modal = document.getElementById('chatStyleModal');
         if (modal) {
             modal.style.display = 'none';
         }
@@ -5994,21 +6026,7 @@ compressAndApplyWallpaper(imageData) {
     bindBubbleEvents() {
         console.log('🔗 绑定气泡弹窗事件');
 
-        // 关闭按钮
-        const closeBtn = document.getElementById('bubbleClose');
-        if (closeBtn) {
-            closeBtn.addEventListener('click', () => {
-                this.closeBubbleModal();
-            });
-        }
-
-        // 遮罩层点击关闭
-        const overlay = document.getElementById('bubbleOverlay');
-        if (overlay) {
-            overlay.addEventListener('click', () => {
-                this.closeBubbleModal();
-            });
-        }
+        // 关闭按钮和遮罩层由 openChatStyleModal 统一处理
 
         // 样式选项点击事件
         const styleItems = document.querySelectorAll('.bubble-style-item');
@@ -9339,7 +9357,7 @@ getAvatarFrameHTML(msgType) {
 
 openAvatarFrameModal() {
     console.log('🖼️ 打开头像框弹窗');
-    const modal = document.getElementById('avatarFrameModal');
+    const modal = document.getElementById('chatStyleModal');
     if (!modal) return;
     modal.style.display = 'flex';
 
@@ -9356,7 +9374,7 @@ openAvatarFrameModal() {
 }
 
 closeAvatarFrameModal() {
-    const modal = document.getElementById('avatarFrameModal');
+    const modal = document.getElementById('chatStyleModal');
     if (modal) modal.style.display = 'none';
 }
 
@@ -9465,14 +9483,9 @@ _injectAvatarStyleTag() {
 bindAvatarFrameEvents() {
     console.log('🔗 绑定头像框弹窗事件');
 
-    // 关闭
-    const closeBtn = document.getElementById('avatarFrameClose');
-    const overlay = document.getElementById('avatarFrameOverlay');
-    if (closeBtn) closeBtn.addEventListener('click', () => this.closeAvatarFrameModal());
-    if (overlay) overlay.addEventListener('click', () => this.closeAvatarFrameModal());
+    // 关闭按钮和遮罩层由 openChatStyleModal 统一处理
 
-    // 形状按钮
-    // 圆角滑块（已在上方绑定）
+    // 圆角滑块
     
     // 头像大小滑块
     const sizeSlider = document.getElementById('afAvatarSizeSlider');
