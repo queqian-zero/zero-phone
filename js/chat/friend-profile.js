@@ -551,6 +551,10 @@ class FriendProfileManager {
                     <div class="fp-row-label">网名</div>
                     <div class="fp-row-value">${this._esc(friend.name)}</div>
                 </div>
+                <div class="fp-info-row" id="fpRealNameRow">
+                    <div class="fp-row-label">真实姓名</div>
+                    <div class="fp-row-value">${this._esc(friend.realName || '未设置')}</div>
+                </div>
                 <div class="fp-row">
                     <div class="fp-row-label">实际姓名</div>
                     <div class="fp-row-value">${this._esc(friend.realName) || '未公开'}</div>
@@ -910,32 +914,38 @@ class FriendProfileManager {
             }
         }
         
-        // [AI_CHANGE_NICKNAME:新网名] - AI改网名（直接生效）
+        // [AI_CHANGE_NICKNAME:新网名] - AI改网名（直接生效，改friend.name）
         const chgNickMatch = text.match(/\[AI_CHANGE_NICKNAME:([^\]]+)\]/);
         if (chgNickMatch) {
             text = text.replace(/\[AI_CHANGE_NICKNAME:[^\]]+\]/g, '');
             const nn = chgNickMatch[1].trim();
             if (nn && friend) {
-                friend.nickname = nn;
-                ci.storage.updateFriend(friend.code, { nickname: nn });
-                ci.showCssSystemMessage('✏️ ' + friendName + ' 把网名改成了「' + nn + '」');
+                const oldName = friend.name || '';
+                friend.name = nn;
+                ci.storage.updateFriend(friend.code, { name: nn });
+                if (!friend.nickname) {
+                    const nameEl = document.querySelector('#chatFriendName span');
+                    if (nameEl) nameEl.textContent = nn;
+                }
+                ci.showCssSystemMessage('✏️ ' + (oldName||'TA') + ' 把网名改成了「' + nn + '」');
             }
         }
         
-        // [AI_CHANGE_REALNAME:新真名] - AI改真名（需要用户审批）
+        // [AI_CHANGE_REALNAME:新真名] - AI改真实姓名（需要用户审批，改friend.realName）
         const chgRealMatch = text.match(/\[AI_CHANGE_REALNAME:([^\]]+)\]/);
         if (chgRealMatch) {
             text = text.replace(/\[AI_CHANGE_REALNAME:[^\]]+\]/g, '');
             const nr = chgRealMatch[1].trim();
             if (nr && friend) {
-                const oldName = friend.name || '无';
+                const oldReal = friend.realName || '未设置';
                 setTimeout(async () => {
                     const ml = window.memoryLibrary;
                     const ok = ml
-                        ? await ml._zpConfirm(friendName + ' 想修改真实姓名', '「' + oldName + '」→「' + nr + '」\n\n是否同意？')
+                        ? await ml._zpConfirm(friendName + ' 想修改真实姓名', '「' + oldReal + '」→「' + nr + '」\n\n是否同意？')
                         : confirm(friendName + ' 想把真实姓名改为「' + nr + '」，同意吗？');
                     if (ok) {
-                        ci.storage.updateFriend(friend.code, { name: nr });
+                        friend.realName = nr;
+                        ci.storage.updateFriend(friend.code, { realName: nr });
                         ci.showCssSystemMessage('✅ 已同意修改真实姓名为「' + nr + '」');
                     } else {
                         ci.showCssSystemMessage('❌ 已驳回修改真实姓名的请求');
@@ -1036,6 +1046,31 @@ class FriendProfileManager {
                     const msg = { type: 'ai', text: '', timestamp: new Date().toISOString(), _stickerUrl: src, _stickerName: found.name };
                     ci.addMessage(msg);
                     ci.storage.addMessage(ci.currentFriendCode, msg);
+                }
+            }
+        }
+        
+        // [AI_SET_MOMENT_BG:搜索词] - AI设置自己的朋友圈背景图
+        const bgMatch = text.match(/\[AI_SET_MOMENT_BG:([^\]]+)\]/);
+        if (bgMatch) {
+            const search = bgMatch[1].trim();
+            text = text.replace(/\[AI_SET_MOMENT_BG:[^\]]+\]/g, '');
+            if (ci && ci.currentFriendCode) {
+                let bgSrc = '';
+                // 先从图库搜索
+                if (window.base64Library) {
+                    const ld = window.base64Library._getData();
+                    const allItems = [...(ld.avatars?.items||[]), ...(ld.webImages?.items||[])];
+                    const found = allItems.find(i => i.name === search) || allItems.find(i => (i.name||'').includes(search) || (i.desc||'').includes(search));
+                    if (found) bgSrc = found.data || found.url || '';
+                }
+                // 如果没找到，当作URL
+                if (!bgSrc && (search.startsWith('http') || search.startsWith('data:'))) bgSrc = search;
+                if (bgSrc) {
+                    const data = ci.storage.getIntimacyData(ci.currentFriendCode);
+                    data.momentsBgImage = bgSrc;
+                    ci.storage.saveIntimacyData(ci.currentFriendCode, data);
+                    ci.showCssSystemMessage('🖼 ' + friendName + ' 更换了朋友圈背景图');
                 }
             }
         }

@@ -285,7 +285,7 @@ class MomentsManager {
                 '<div style="width:40px;"></div>' +
             '</div>' +
             '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;">' +
-                this._renderBanner(name, avatar, '', '', false) +
+                this._renderBanner(name, avatar, '', intim.momentsBgImage || '', false) +
                 '<div style="padding:0 16px 6px;font-size:12px;color:rgba(255,255,255,0.12);">朋友圈动态</div>' +
                 '<div id="momentsTimeline">'+timelineHtml+'</div>' +
             '</div>';
@@ -397,21 +397,26 @@ class MomentsManager {
             ? '<img src="'+this._esc(merged.friendAvatar)+'" style="width:40px;height:40px;border-radius:8px;object-fit:cover;">'
             : '<div style="width:40px;height:40px;border-radius:8px;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;font-size:16px;">'+this._esc((merged.friendName||'?').charAt(0))+'</div>';
         
-        let html = '<div class="moment-item" data-idx="'+i+'" style="padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.03);cursor:pointer;">';
-        html += '<div style="display:flex;gap:10px;align-items:flex-start;"><div style="flex-shrink:0;">'+avatarHtml+'</div><div style="flex:1;min-width:0;">';
+        let html = '<div class="moment-wrapper">';
+        // 条目（可点击折叠/展开）
+        html += '<div class="moment-item" data-idx="'+i+'" style="padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.03);cursor:pointer;">';
+        html += '<div style="display:flex;gap:10px;align-items:flex-start;">';
+        html += '<div style="flex-shrink:0;">'+avatarHtml+'</div>';
+        html += '<div style="flex:1;min-width:0;">';
         html += '<div style="font-size:15px;font-weight:600;color:rgba(240,147,43,0.7);">'+this._esc(merged.friendName)+'</div>';
         html += '<div style="font-size:14px;color:rgba(255,255,255,0.5);margin-top:4px;line-height:1.6;">'+this._esc(preview)+(merged.content?.length>60?'...':'')+'</div>';
         html += '<div style="display:flex;align-items:center;gap:12px;margin-top:8px;font-size:12px;color:rgba(255,255,255,0.2);"><span>'+time+'</span>';
         if (lk) html += '<span>&#9825; '+lk+'</span>';
         if (cm) html += '<span>&#128172; '+cm+'</span>';
-        html += '</div></div></div>';
-        // 展开区域
+        html += '</div></div></div></div>';
+        // 展开区域（兄弟节点）
         html += '<div class="moment-expand" data-idx="'+i+'" style="max-height:0;overflow:hidden;transition:max-height 0.3s ease;padding-left:50px;">';
         html += '<div style="padding:8px 0 4px;"><div style="display:flex;gap:16px;margin-bottom:10px;">';
         html += '<button class="moment-fav-btn" data-idx="'+i+'" style="background:none;border:none;color:rgba(255,255,255,0.25);font-size:13px;cursor:pointer;">&#9733; 收藏</button>';
         html += '<button class="moment-like-btn" data-idx="'+i+'" style="background:none;border:none;color:rgba(255,255,255,0.25);font-size:13px;cursor:pointer;">&#9825; 点赞</button>';
         html += '<button class="moment-detail-btn" data-idx="'+i+'" style="background:none;border:none;color:rgba(240,147,43,0.5);font-size:13px;cursor:pointer;">查看此条目 &#8250;</button>';
-        html += '</div></div></div></div>';
+        html += '</div></div></div>';
+        html += '</div>'; // close wrapper
         return html;
     }
     
@@ -707,6 +712,16 @@ class MomentsManager {
                 '<div style="font-size:14px;font-weight:600;color:rgba(255,255,255,0.6);margin-bottom:8px;">自定义CSS美化</div>' +
                 '<div style="font-size:11px;color:rgba(255,255,255,0.15);margin-bottom:8px;">作用于 #momentsPage 容器，仅自己可见。<br>示例类名：.moment-item / .moment-expand / #momentsTimeline / #momentsBanner</div>' +
                 '<textarea id="msCssInput" placeholder="输入自定义CSS..." style="width:100%;box-sizing:border-box;min-height:100px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;color:rgba(255,255,255,0.6);font-size:13px;font-family:monospace;padding:10px;outline:none;resize:vertical;">'+(this._esc(msCfg.customCss||''))+'</textarea>' +
+                // NPC API设置
+                '<div style="font-size:14px;font-weight:600;color:rgba(255,255,255,0.6);margin-top:16px;margin-bottom:8px;">NPC活动设置</div>' +
+                '<label style="display:flex;align-items:center;gap:10px;padding:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;margin-bottom:8px;cursor:pointer;">' +
+                    '<input type="checkbox" id="msNpcEnabled" '+(msCfg.npcEnabled?'checked':'')+' style="width:18px;height:18px;">' +
+                    '<div><div style="font-size:14px;color:rgba(255,255,255,0.6);">启用NPC活动</div><div style="font-size:12px;color:rgba(255,255,255,0.25);margin-top:3px;">NPC会在刷新朋友圈时评论/点赞AI的朋友圈</div></div>' +
+                '</label>' +
+                '<div style="font-size:12px;color:rgba(255,255,255,0.2);margin-bottom:6px;">NPC专用API（可选，留空则用主API）</div>' +
+                '<input id="msNpcEndpoint" placeholder="API Endpoint" value="'+(this._esc(msCfg.npcEndpoint||''))+'" style="width:100%;box-sizing:border-box;padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:rgba(255,255,255,0.6);font-size:13px;outline:none;margin-bottom:6px;">' +
+                '<input id="msNpcApiKey" placeholder="API Key" value="'+(this._esc(msCfg.npcApiKey||''))+'" style="width:100%;box-sizing:border-box;padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:rgba(255,255,255,0.6);font-size:13px;outline:none;margin-bottom:6px;">' +
+                '<input id="msNpcModel" placeholder="Model（如 gpt-4o-mini）" value="'+(this._esc(msCfg.npcModel||''))+'" style="width:100%;box-sizing:border-box;padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:rgba(255,255,255,0.6);font-size:13px;outline:none;margin-bottom:12px;">' +
                 '<button id="msSave" style="width:100%;margin-top:16px;padding:12px;border:none;border-radius:10px;background:rgba(240,147,43,0.12);color:rgba(240,147,43,0.8);font-size:15px;font-weight:600;cursor:pointer;">保存设置</button>' +
             '</div>';
         
@@ -716,8 +731,12 @@ class MomentsManager {
             const mode = p.querySelector('input[name="msResMode"]:checked')?.value || 'B';
             const visMode = p.querySelector('input[name="msVisMode"]:checked')?.value || 'B';
             const css = p.querySelector('#msCssInput')?.value || '';
+            const npcEnabled = p.querySelector('#msNpcEnabled')?.checked || false;
+            const npcEndpoint = p.querySelector('#msNpcEndpoint')?.value?.trim() || '';
+            const npcApiKey = p.querySelector('#msNpcApiKey')?.value?.trim() || '';
+            const npcModel = p.querySelector('#msNpcModel')?.value?.trim() || '';
             const s = store.getUserSettings();
-            s.momentsConfig = { responseMode: mode, visibilityMode: visMode, customCss: css };
+            s.momentsConfig = { responseMode: mode, visibilityMode: visMode, customCss: css, npcEnabled, npcEndpoint, npcApiKey, npcModel };
             store.saveData('zero_phone_user_settings', s);
             this._toast('设置已保存');
             p.remove();
@@ -751,6 +770,11 @@ class MomentsManager {
                 for (const code of targetCodes) {
                     await this._generateAIMoment(code);
                 }
+                // NPC活动：让NPC评论AI的朋友圈
+                const msCfg = (store.getUserSettings()?.momentsConfig) || {};
+                if (msCfg.npcEnabled) {
+                    for (const code of targetCodes) { await this._triggerNpcActivity(code); }
+                }
                 this._toast('刷新完成');
                 this.open();
             } else {
@@ -765,15 +789,24 @@ class MomentsManager {
     }
     
     // 简单API调用（用于朋友圈功能）
-    async _simpleAICall(systemPrompt, userMessage) {
+    async _simpleAICall(systemPrompt, userMessage, useNpcApi) {
         try {
-            const config = new APIManager().getCurrentConfig();
-            if (!config?.apiKey || !config?.endpoint) { console.warn('API未配置'); return null; }
-            const url = config.endpoint.replace(/\/$/, '') + '/v1/chat/completions';
+            let endpoint, apiKey, model;
+            const msCfg = (this._store()?.getUserSettings()?.momentsConfig) || {};
+            
+            if (useNpcApi && msCfg.npcEndpoint && msCfg.npcApiKey) {
+                endpoint = msCfg.npcEndpoint; apiKey = msCfg.npcApiKey; model = msCfg.npcModel || 'gpt-4o-mini';
+            } else {
+                const config = new APIManager().getCurrentConfig();
+                if (!config?.apiKey || !config?.endpoint) return null;
+                endpoint = config.endpoint; apiKey = config.apiKey; model = config.model || 'gpt-4';
+            }
+            
+            const url = endpoint.replace(/\/$/, '') + '/v1/chat/completions';
             const res = await fetch(url, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + config.apiKey },
-                body: JSON.stringify({ model: config.model || 'gpt-4', messages: [
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+                body: JSON.stringify({ model, messages: [
                     ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
                     { role: 'user', content: userMessage }
                 ], max_tokens: 500, temperature: 0.9 })
@@ -807,6 +840,55 @@ class MomentsManager {
             });
             store.saveIntimacyData(friendCode, data);
         } catch(e) { console.error('AI发朋友圈失败:', e); }
+    }
+    
+    // NPC活动：让NPC评论/点赞AI的朋友圈
+    async _triggerNpcActivity(friendCode) {
+        const store = this._store(); if (!store) return;
+        const data = store.getIntimacyData(friendCode);
+        const moments = data.moments || [];
+        if (moments.length === 0) return;
+        
+        const relData = data.relations || {};
+        const npcs = relData.people || [];
+        if (npcs.length === 0) return;
+        
+        const friend = store.getAllFriends().find(f => f.code === friendCode);
+        const charName = friend?.nickname || friend?.name || 'TA';
+        const latestMoment = moments[0]; // 最新一条
+        
+        // 每个NPC有概率反应
+        for (const npc of npcs) {
+            try {
+                const persona = npc.persona || '';
+                const relation = npc.relation || '';
+                const prompt = '你是' + npc.name + '。' + (persona ? '你的简介：' + persona.substring(0,150) + '。' : '') + 
+                    '你和' + charName + '的关系：' + (relation || '认识') + '。\n\n' +
+                    charName + '发了一条朋友圈：\n"' + latestMoment.content + '"\n\n' +
+                    '请决定（根据你的性格和关系）：\n1. 点赞：只回复"点赞"\n2. 评论：回复简短评论内容（一句话）\n3. 忽略：只回复"忽略"\n只回复操作内容。';
+                
+                const response = await this._simpleAICall('', prompt, true); // 用NPC API
+                if (!response || response.includes('忽略')) continue;
+                
+                if (response === '点赞' || response.includes('点赞')) {
+                    if (!latestMoment.likes) latestMoment.likes = [];
+                    if (!latestMoment.likes.find(l => l.name === npc.name)) {
+                        latestMoment.likes.push({ name: npc.name, ts: new Date().toISOString() });
+                    }
+                } else {
+                    if (!latestMoment.comments) latestMoment.comments = [];
+                    latestMoment.comments.push({
+                        id: 'npc_' + Date.now() + '_' + Math.random().toString(36).substr(2,4),
+                        name: npc.name,
+                        content: response.replace(/^评论[：:]\s*/, '').replace(/^[""]|[""]$/g, '').trim(),
+                        ts: new Date().toISOString()
+                    });
+                }
+            } catch(e) { console.error('NPC活动失败:', npc.name, e); }
+        }
+        
+        // 保存
+        store.saveIntimacyData(friendCode, data);
     }
     
     // 让AI评论我的朋友圈（调API）

@@ -7356,6 +7356,7 @@ getIntimacyStatusForAI() {
     desc += `\n  [AI_UNFAV_MOMENT:好友名|关键字] 取消收藏`;
     desc += `\n  [AI_COMMENT_MOMENT:好友名|关键字|评论内容] 评论某人的朋友圈`;
     desc += `\n  [AI_DELETE_COMMENT:关键字] 删除你自己发的包含该关键字的评论`;
+    desc += `\n  [AI_SET_MOMENT_BG:图片名或URL] 设置你的朋友圈背景图（从图库搜或用URL）`;
     desc += `\n  [AI_CHECK_MOMENTS] 查看朋友圈动态（你的+user的，系统会在下一轮告诉你）`;
     desc += `\n  说明：你可以随时发/删朋友圈、点赞评论，就像真人一样。好友名用"user"表示对方。想看朋友圈动态就用CHECK_MOMENTS。`;
     
@@ -13279,6 +13280,7 @@ _stripCommandTags(text) {
         .replace(/\[AI_CHANGE_NICKNAME:[^\]]+\]/g, '')
         .replace(/\[AI_CHANGE_REALNAME:[^\]]+\]/g, '')
         .replace(/\[AI_CHANGE_PERSONA:[^\]]+\]/g, '')
+        .replace(/\[AI_SET_MOMENT_BG:[^\]]+\]/g, '')
         .replace(/\[RECALL:[^\]]+\]/g, '')
         .replace(/\[STATUS_CSS\][\s\S]*?\[\/STATUS_CSS\]/g, '')
         .replace(/\[STATUS_?\s*CSS\][\s\S]*?\[\/?\s*STATUS_?\s*CSS\]/gi, '');
