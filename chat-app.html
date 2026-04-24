@@ -1758,14 +1758,20 @@
   mix-blend-mode: screen;
 }</pre>
                 </div>
-                <div class="af-label" style="margin-top:8px;">预设头像框样式：</div>
+                <div class="af-label" style="margin-top:8px;">头像框存档：</div>
                 <div id="afPresets" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
+                    <!-- 内置 -->
                     <button class="af-preset-btn" data-preset="gold_glow" style="padding:5px 10px;border:1px solid rgba(255,200,50,0.3);border-radius:8px;background:rgba(255,200,50,0.05);color:rgba(255,200,50,0.7);font-size:11px;cursor:pointer;">金色发光</button>
                     <button class="af-preset-btn" data-preset="rainbow" style="padding:5px 10px;border:1px solid rgba(200,100,255,0.3);border-radius:8px;background:rgba(200,100,255,0.05);color:rgba(200,100,255,0.7);font-size:11px;cursor:pointer;">彩虹边框</button>
                     <button class="af-preset-btn" data-preset="heart" style="padding:5px 10px;border:1px solid rgba(255,100,120,0.3);border-radius:8px;background:rgba(255,100,120,0.05);color:rgba(255,100,120,0.7);font-size:11px;cursor:pointer;">心形粉光</button>
                     <button class="af-preset-btn" data-preset="ice" style="padding:5px 10px;border:1px solid rgba(100,200,255,0.3);border-radius:8px;background:rgba(100,200,255,0.05);color:rgba(100,200,255,0.7);font-size:11px;cursor:pointer;">冰蓝光晕</button>
                     <button class="af-preset-btn" data-preset="fire" style="padding:5px 10px;border:1px solid rgba(255,120,50,0.3);border-radius:8px;background:rgba(255,120,50,0.05);color:rgba(255,120,50,0.7);font-size:11px;cursor:pointer;">火焰边框</button>
                     <button class="af-preset-btn" data-preset="pixel" style="padding:5px 10px;border:1px solid rgba(100,255,100,0.3);border-radius:8px;background:rgba(100,255,100,0.05);color:rgba(100,255,100,0.7);font-size:11px;cursor:pointer;">像素风</button>
+                </div>
+                <!-- 自定义存档 -->
+                <div id="afCustomArchives" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;"></div>
+                <div style="display:flex;gap:6px;margin-bottom:8px;">
+                    <button id="afSaveArchive" style="padding:5px 12px;border:1px solid rgba(240,147,43,0.3);border-radius:8px;background:rgba(240,147,43,0.05);color:rgba(240,147,43,0.7);font-size:11px;cursor:pointer;">💾 保存当前为存档</button>
                 </div>
                 <textarea id="afCustomCss" class="af-css-input"
                     placeholder="在这里输入自定义CSS…&#10;例如：&#10;.message-avatar { box-shadow: 0 0 8px 2px gold; }&#10;.avatar-frame-img { opacity: 0.8; }"
