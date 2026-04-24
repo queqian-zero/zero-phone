@@ -164,10 +164,10 @@ if (pageId === 'chatListPage') {
                 const groupFriends = friends.filter(f => f.groupId === g.id);
                 if (groupFriends.length === 0) return;
                 html += '<div class="friend-group-section">';
-                html += '<div class="friend-group-header" data-gid="'+g.id+'" style="display:flex;align-items:center;gap:8px;padding:10px 16px;cursor:pointer;color:rgba(255,255,255,0.35);font-size:13px;">';
-                html += '<span class="friend-group-arrow" style="font-size:10px;transition:transform 0.2s;">▼</span>';
+                html += '<div class="friend-group-header" data-gid="'+g.id+'">';
+                html += '<span class="friend-group-arrow">▼</span>';
                 html += '<span>'+this._esc(g.name)+'</span>';
-                html += '<span style="color:rgba(255,255,255,0.15);">'+groupFriends.length+'</span>';
+                html += '<span style="color:rgba(255,255,255,0.15);font-size:12px;">'+groupFriends.length+'</span>';
                 html += '</div>';
                 html += '<div class="friend-group-body">';
                 groupFriends.forEach(f => { html += this.createFriendCard(f); });
@@ -176,10 +176,10 @@ if (pageId === 'chatListPage') {
             
             if (ungrouped.length > 0) {
                 html += '<div class="friend-group-section">';
-                html += '<div class="friend-group-header" data-gid="_ungrouped" style="display:flex;align-items:center;gap:8px;padding:10px 16px;cursor:pointer;color:rgba(255,255,255,0.35);font-size:13px;">';
-                html += '<span class="friend-group-arrow" style="font-size:10px;transition:transform 0.2s;">▼</span>';
+                html += '<div class="friend-group-header" data-gid="_ungrouped">';
+                html += '<span class="friend-group-arrow">▼</span>';
                 html += '<span>未分组</span>';
-                html += '<span style="color:rgba(255,255,255,0.15);">'+ungrouped.length+'</span>';
+                html += '<span style="color:rgba(255,255,255,0.15);font-size:12px;">'+ungrouped.length+'</span>';
                 html += '</div>';
                 html += '<div class="friend-group-body">';
                 ungrouped.forEach(f => { html += this.createFriendCard(f); });
@@ -247,9 +247,11 @@ if (pageId === 'chatListPage') {
             let friendsHtml = '';
             friends.forEach(f => {
                 const gName = groups.find(g => g.id === f.groupId)?.name || '未分组';
-                friendsHtml += '<div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid rgba(255,255,255,0.02);cursor:pointer;" class="gm-friend" data-code="'+f.code+'">';
-                friendsHtml += '<div style="font-size:14px;color:rgba(255,255,255,0.5);flex:1;">'+this._esc(f.nickname||f.name)+'</div>';
-                friendsHtml += '<div style="font-size:12px;color:rgba(240,147,43,0.5);padding:3px 10px;border:1px solid rgba(240,147,43,0.15);border-radius:8px;">'+this._esc(gName)+'</div>';
+                friendsHtml += '<div style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid rgba(255,255,255,0.02);cursor:pointer;" class="gm-friend" data-code="'+f.code+'">';
+                const av = f.avatar ? '<img src="'+this._esc(f.avatar)+'" style="width:32px;height:32px;border-radius:50%;object-fit:cover;">' : '<div style="width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:14px;color:rgba(255,255,255,0.3);">'+this._esc((f.nickname||f.name||'?').charAt(0))+'</div>';
+                friendsHtml += av;
+                friendsHtml += '<div style="font-size:15px;color:rgba(255,255,255,0.5);flex:1;">'+this._esc(f.nickname||f.name)+'</div>';
+                friendsHtml += '<div style="font-size:12px;color:rgba(240,147,43,0.5);padding:4px 10px;border:1px solid rgba(240,147,43,0.15);border-radius:8px;">'+this._esc(gName)+'</div>';
                 friendsHtml += '</div>';
             });
             
@@ -260,9 +262,9 @@ if (pageId === 'chatListPage') {
                     '<button id="gmAdd" style="width:40px;height:40px;border:none;background:rgba(0,0,0,0.05);border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;color:rgba(0,0,0,0.5);">+</button>' +
                 '</div>' +
                 '<div style="flex:1;overflow-y:auto;">' +
-                    '<div style="padding:12px 16px 6px;font-size:12px;color:rgba(255,255,255,0.15);">分组列表</div>' +
+                    '<div style="padding:14px 16px 8px;font-size:14px;color:rgba(255,255,255,0.2);font-weight:600;">分组列表</div>' +
                     groupsHtml +
-                    '<div style="padding:16px 16px 6px;font-size:12px;color:rgba(255,255,255,0.15);">好友归属（点击切换分组）</div>' +
+                    '<div style="padding:18px 16px 8px;font-size:14px;color:rgba(255,255,255,0.2);font-weight:600;">好友归属（点击切换分组）</div>' +
                     friendsHtml +
                 '</div>';
             
