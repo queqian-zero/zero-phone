@@ -1051,7 +1051,7 @@ class ChatInterface {
             const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/mp4';
             mediaRecorder = new MediaRecorder(mediaStream, { mimeType, audioBitsPerSecond: 128000 });
             mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
-            mediaRecorder.start(100);
+            mediaRecorder.start(); // 不分片，录完一整块
             
             // Web Audio API 分析
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -1105,15 +1105,33 @@ class ChatInterface {
             
             const analysis = { avgVolume: avgVol.toFixed(3), peakVolume: peakVol.toFixed(3), volumeLevel, noiseLevel, duration };
             
-            mediaRecorder.onstop = () => {
+            mediaRecorder.onstop = async () => {
                 const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
-                const reader = new FileReader();
-                reader.onload = () => {
-                    const audioData = reader.result;
-                    this._sendRealVoiceMessage(audioData, transcript, duration, analysis);
-                    ov.remove();
-                };
-                reader.readAsDataURL(blob);
+                
+                // 转换为 WAV 格式（最通用，Gemini/OpenAI 都能识别）
+                try {
+                    const decodeCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    const arrayBuf = await blob.arrayBuffer();
+                    const audioBuf = await decodeCtx.decodeAudioData(arrayBuf);
+                    const wavBlob = this._audioBufferToWav(audioBuf);
+                    decodeCtx.close();
+                    
+                    const wavReader = new FileReader();
+                    wavReader.onload = () => {
+                        this._sendRealVoiceMessage(wavReader.result, transcript, duration, analysis);
+                        ov.remove();
+                    };
+                    wavReader.readAsDataURL(wavBlob);
+                } catch (e) {
+                    console.warn('WAV转换失败，使用原始格式:', e);
+                    // 降级：直接用原始webm
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        this._sendRealVoiceMessage(reader.result, transcript, duration, analysis);
+                        ov.remove();
+                    };
+                    reader.readAsDataURL(blob);
+                }
                 
                 // 释放资源
                 mediaStream.getTracks().forEach(t => t.stop());
@@ -1202,6 +1220,57 @@ class ChatInterface {
             </div>
             <div class="voice-text-area" style="display:none;font-size:13px;line-height:1.5;margin-top:6px;padding-top:6px;border-top:1px solid rgba(100,200,255,0.1);color:rgba(100,200,255,0.5);"></div>
         </div>`;
+    }
+    
+    // AudioBuffer → WAV Blob（16-bit PCM, 单声道）
+    _audioBufferToWav(buffer) {
+        const numChannels = 1;
+        const sampleRate = buffer.sampleRate;
+        const format = 1; // PCM
+        const bitDepth = 16;
+        
+        // 取第一个声道，如果是立体声则混合
+        let samples;
+        if (buffer.numberOfChannels === 1) {
+            samples = buffer.getChannelData(0);
+        } else {
+            const ch0 = buffer.getChannelData(0);
+            const ch1 = buffer.getChannelData(1);
+            samples = new Float32Array(ch0.length);
+            for (let i = 0; i < ch0.length; i++) samples[i] = (ch0[i] + ch1[i]) / 2;
+        }
+        
+        const dataLength = samples.length * (bitDepth / 8);
+        const headerLength = 44;
+        const totalLength = headerLength + dataLength;
+        const arrayBuffer = new ArrayBuffer(totalLength);
+        const view = new DataView(arrayBuffer);
+        
+        // WAV header
+        const writeStr = (offset, str) => { for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i)); };
+        writeStr(0, 'RIFF');
+        view.setUint32(4, totalLength - 8, true);
+        writeStr(8, 'WAVE');
+        writeStr(12, 'fmt ');
+        view.setUint32(16, 16, true); // subchunk size
+        view.setUint16(20, format, true);
+        view.setUint16(22, numChannels, true);
+        view.setUint32(24, sampleRate, true);
+        view.setUint32(28, sampleRate * numChannels * (bitDepth / 8), true);
+        view.setUint16(32, numChannels * (bitDepth / 8), true);
+        view.setUint16(34, bitDepth, true);
+        writeStr(36, 'data');
+        view.setUint32(40, dataLength, true);
+        
+        // PCM data（float32 → int16）
+        let offset = 44;
+        for (let i = 0; i < samples.length; i++) {
+            const s = Math.max(-1, Math.min(1, samples[i]));
+            view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+            offset += 2;
+        }
+        
+        return new Blob([arrayBuffer], { type: 'audio/wav' });
     }
     
     // ==================== 假发图片 ====================
