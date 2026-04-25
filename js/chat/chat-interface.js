@@ -974,7 +974,7 @@ class ChatInterface {
                 <div id="rvRecBtn" style="width:72px;height:72px;border-radius:50%;background:rgba(100,200,255,0.15);border:2px solid rgba(100,200,255,0.4);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;cursor:pointer;transition:all 0.2s;">
                     <div id="rvRecIcon" style="width:24px;height:24px;border-radius:50%;background:rgba(100,200,255,0.8);transition:all 0.2s;"></div>
                 </div>
-                <div id="rvTranscript" style="font-size:12px;color:rgba(255,255,255,0.3);max-width:280px;min-height:20px;margin-bottom:12px;"></div>
+                <div style="font-size:11px;color:rgba(255,255,255,0.2);margin-bottom:12px;">录完后可点"转文字"用AI识别</div>
                 <button id="rvCancel" style="padding:8px 24px;border:none;border-radius:8px;background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.4);font-size:13px;cursor:pointer;">取消</button>
             </div>
         `;
@@ -989,8 +989,6 @@ class ChatInterface {
         let startTime = 0;
         let timerInterval = null;
         let volumeSamples = [];
-        let recognition = null;
-        let transcript = '';
         
         const updateTimer = () => {
             const elapsed = Math.floor((Date.now() - startTime) / 1000);
@@ -1060,36 +1058,12 @@ class ChatInterface {
             analyser.fftSize = 256;
             source.connect(analyser);
             updateVolume();
-            
-            // 语音识别
-            try {
-                const SpeechRecog = window.SpeechRecognition || window.webkitSpeechRecognition;
-                if (SpeechRecog) {
-                    recognition = new SpeechRecog();
-                    recognition.lang = 'zh-CN';
-                    recognition.continuous = true;
-                    recognition.interimResults = true;
-                    recognition.onresult = (e) => {
-                        let interim = '', final = '';
-                        for (let i = 0; i < e.results.length; i++) {
-                            if (e.results[i].isFinal) final += e.results[i][0].transcript;
-                            else interim += e.results[i][0].transcript;
-                        }
-                        transcript = final || interim;
-                        const el = document.getElementById('rvTranscript');
-                        if (el) el.textContent = transcript || '（正在识别...）';
-                    };
-                    recognition.onerror = (e) => { console.warn('语音识别错误:', e.error, e.message); };
-                    recognition.start();
-                }
-            } catch(e) { console.warn('语音识别不可用:', e); }
         };
         
         const stopRecording = () => {
             if (!recording) return;
             recording = false;
             clearInterval(timerInterval);
-            if (recognition) try { recognition.stop(); } catch(e) {}
             
             const duration = Math.round((Date.now() - startTime) / 1000);
             
@@ -1118,7 +1092,7 @@ class ChatInterface {
                     
                     const wavReader = new FileReader();
                     wavReader.onload = () => {
-                        this._sendRealVoiceMessage(wavReader.result, transcript, duration, analysis);
+                        this._sendRealVoiceMessage(wavReader.result, '', duration, analysis);
                         ov.remove();
                     };
                     wavReader.readAsDataURL(wavBlob);
@@ -1127,7 +1101,7 @@ class ChatInterface {
                     // 降级：直接用原始webm
                     const reader = new FileReader();
                     reader.onload = () => {
-                        this._sendRealVoiceMessage(reader.result, transcript, duration, analysis);
+                        this._sendRealVoiceMessage(reader.result, '', duration, analysis);
                         ov.remove();
                     };
                     reader.readAsDataURL(blob);
@@ -1150,7 +1124,6 @@ class ChatInterface {
             if (recording) {
                 recording = false;
                 clearInterval(timerInterval);
-                if (recognition) try { recognition.stop(); } catch(e) {}
                 if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
                 if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
                 if (audioCtx) audioCtx.close();
@@ -1220,6 +1193,72 @@ class ChatInterface {
             </div>
             <div class="voice-text-area" style="display:none;font-size:13px;line-height:1.5;margin-top:6px;padding-top:6px;border-top:1px solid rgba(100,200,255,0.1);color:rgba(100,200,255,0.5);"></div>
         </div>`;
+    }
+    
+    // 调用AI API进行语音转文字
+    async _callSTTApi(config, base64Audio, mimeType) {
+        const { provider, endpoint, apiKey, model } = config;
+        const prompt = '请将以下音频中的语音内容转写为文字。只输出转写的文字内容，不要加任何说明、标点修正或格式。如果听不清就输出你能听到的部分。';
+        
+        let requestBody, url;
+        
+        if (provider === 'google') {
+            url = `${endpoint.replace(/\/$/, '')}/${model}:generateContent`;
+            requestBody = {
+                contents: [{
+                    role: 'user',
+                    parts: [
+                        { text: prompt },
+                        { inline_data: { mime_type: mimeType, data: base64Audio } }
+                    ]
+                }],
+                generationConfig: { temperature: 0, maxOutputTokens: 500 }
+            };
+        } else {
+            // OpenAI 兼容格式
+            url = `${endpoint.replace(/\/$/, '')}/v1/chat/completions`;
+            requestBody = {
+                model,
+                messages: [{
+                    role: 'user',
+                    content: [
+                        { type: 'text', text: prompt },
+                        { type: 'input_audio', input_audio: { data: base64Audio, format: mimeType.includes('wav') ? 'wav' : 'mp3' } }
+                    ]
+                }],
+                max_tokens: 500,
+                temperature: 0
+            };
+        }
+        
+        const headers = { 'Content-Type': 'application/json' };
+        if (provider === 'anthropic') {
+            headers['x-api-key'] = apiKey;
+            headers['anthropic-version'] = '2023-06-01';
+        } else {
+            headers['Authorization'] = `Bearer ${apiKey}`;
+        }
+        
+        console.log('🎤 调用AI语音转文字...');
+        const resp = await fetch(url, { method: 'POST', headers, body: JSON.stringify(requestBody) });
+        
+        if (!resp.ok) {
+            const errText = await resp.text();
+            throw new Error(`API ${resp.status}: ${errText.substring(0, 100)}`);
+        }
+        
+        const data = await resp.json();
+        
+        // 解析结果
+        let text = '';
+        if (provider === 'google') {
+            text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        } else {
+            text = data?.choices?.[0]?.message?.content || '';
+        }
+        
+        console.log('✅ 语音转文字结果:', text);
+        return text.trim();
     }
     
     // AudioBuffer → WAV Blob（16-bit PCM, 单声道）
@@ -3469,18 +3508,57 @@ div.innerHTML = `
                 }
             });
             
-            // 转文字按钮
-            realVoiceBar.querySelector('.rv-stt-btn')?.addEventListener('click', (e) => {
+            // 转文字按钮（优先用AI已返回的转写，否则调API）
+            realVoiceBar.querySelector('.rv-stt-btn')?.addEventListener('click', async (e) => {
                 e.stopPropagation();
                 const textArea = realVoiceBar.querySelector('.voice-text-area');
                 if (!textArea) return;
                 const btn = e.target;
-                if (textArea.style.display === 'none') {
-                    textArea.style.display = 'block';
-                    textArea.textContent = message._voiceText || '（未识别到文字）';
+                
+                // 已经有转写结果，切换显示/隐藏
+                const hasTranscript = message._voiceText && message._voiceText !== '（语音未识别到文字）' && message._voiceText !== '（user发送了一段语音）';
+                if (hasTranscript || textArea.dataset.done === '1') {
+                    if (textArea.style.display === 'none') {
+                        textArea.style.display = 'block';
+                        textArea.textContent = message._voiceText;
+                        btn.textContent = '转文字 ▲';
+                    } else {
+                        textArea.style.display = 'none';
+                        btn.textContent = '转文字 ▼';
+                    }
+                    return;
+                }
+                
+                // 调AI转写
+                btn.textContent = '识别中...';
+                textArea.style.display = 'block';
+                textArea.textContent = '正在用AI识别语音...';
+                
+                try {
+                    const audioData = message._voiceAudioData;
+                    if (!audioData) throw new Error('无音频数据');
+                    
+                    const base64Part = audioData.split(',')[1];
+                    const mimeMatch = audioData.match(/data:([^;]+);/);
+                    const mimeType = mimeMatch ? mimeMatch[1] : 'audio/wav';
+                    
+                    const config = this.apiManager.getCurrentConfig();
+                    const sttResult = await this._callSTTApi(config, base64Part, mimeType);
+                    
+                    textArea.textContent = sttResult || '（未识别到文字）';
+                    message._voiceText = sttResult || '（未识别到文字）';
+                    textArea.dataset.done = '1';
                     btn.textContent = '转文字 ▲';
-                } else {
-                    textArea.style.display = 'none';
+                    
+                    // 更新存储
+                    const chat = this.storage.getChatByFriendCode(this.currentFriendCode);
+                    if (chat?.messages) {
+                        const stored = chat.messages.find(m => m.timestamp === message.timestamp && m._realVoice);
+                        if (stored) { stored._voiceText = message._voiceText; stored.text = sttResult || stored.text; this.storage.setMessages(this.currentFriendCode, chat.messages); }
+                    }
+                } catch (err) {
+                    console.error('语音转文字失败:', err);
+                    textArea.textContent = '转写失败：' + (err.message || '未知错误');
                     btn.textContent = '转文字 ▼';
                 }
             });
@@ -7878,6 +7956,9 @@ getIntimacyStatusForAI() {
     desc += `\n  你可以根据user的语气、声调、停顿、背景音来感受user的情绪和状态`;
     desc += `\n  像真人一样自然地回应，不要说"我听到了你的语音"这种机器人的话`;
     desc += `\n  如果听不清某个词，可以自然地问，就像打电话一样`;
+    desc += `\n  当user发了语音消息时，请在你的回复最开头加上 [VOICE_TEXT:你听到的完整内容] 标签`;
+    desc += `\n  例如user语音说了"今天好冷啊"，你回复：[VOICE_TEXT:今天好冷啊]是挺冷的，多穿点`;
+    desc += `\n  如果完全听不清就写 [VOICE_TEXT:（听不清）]`;
     
     // AI记事本
     desc += `\n\n【记事本（写日记/碎碎念）】`;
@@ -14287,6 +14368,36 @@ _extractQuoteData(msg) {
     return q;
 }
 
+// 处理AI返回的语音转写
+_processVoiceText(text) {
+    const match = text.match(/\[VOICE_TEXT:([^\]]*)\]/);
+    if (!match) return;
+    
+    const transcript = match[1].trim();
+    if (!transcript) return;
+    
+    // 找最近的真语音消息并更新转写
+    for (let i = this.messages.length - 1; i >= 0; i--) {
+        const m = this.messages[i];
+        if (m.type === 'user' && m._realVoice) {
+            m._voiceText = transcript;
+            m.text = transcript;
+            
+            // 同步存储
+            const chat = this.storage.getChatByFriendCode(this.currentFriendCode);
+            if (chat?.messages) {
+                const stored = chat.messages.find(s => s.timestamp === m.timestamp && s._realVoice);
+                if (stored) { stored._voiceText = transcript; stored.text = transcript; this.storage.setMessages(this.currentFriendCode, chat.messages); }
+            }
+            
+            // 刷新界面上的语音条
+            this.renderMessages();
+            console.log('🎤 AI转写语音:', transcript);
+            break;
+        }
+    }
+}
+
 // 处理AI的撤回指令
 processRecallQuoteCommands(text) {
     if (!this.currentFriendCode) return;
@@ -14385,6 +14496,7 @@ _stripCommandTags(text) {
         .replace(/\[AI_RECALL(?::[^\]]*)?\]/g, '')
         .replace(/\[AI_QUOTE:[^\]]+\]/g, '')
         .replace(/\[AI_NO_REPLY\]/g, '')
+        .replace(/\[VOICE_TEXT:[^\]]*\]/g, '')
         .replace(/\[STATUS_CSS\][\s\S]*?\[\/STATUS_CSS\]/g, '')
         .replace(/\[STATUS_?\s*CSS\][\s\S]*?\[\/?\s*STATUS_?\s*CSS\]/gi, '');
 }
@@ -14398,6 +14510,7 @@ _executeSegmentCommands(rawSeg) {
     this.processCapsuleCommands(rawSeg);
     this.processNotebookCommands(rawSeg);
     this.processRecallQuoteCommands(rawSeg);
+    this._processVoiceText(rawSeg);
     this.processStateCommands(rawSeg);
     this.processRelationCommands(rawSeg);
     this.processMomentCommands(rawSeg);
