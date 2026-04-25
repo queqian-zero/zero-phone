@@ -1019,10 +1019,10 @@ class ChatInterface {
             try {
                 mediaStream = await navigator.mediaDevices.getUserMedia({ 
                     audio: {
-                        echoCancellation: false,     // 关掉回声消除（可能误杀人声）
-                        noiseSuppression: false,     // 关掉噪音抑制（可能压掉说话声）
-                        autoGainControl: true,       // 保留自动增益（放大小声说话）
-                        sampleRate: { ideal: 48000 },
+                        echoCancellation: false,
+                        noiseSuppression: false,
+                        autoGainControl: true,
+                        sampleRate: { ideal: 16000 },
                         channelCount: 1
                     }
                 });
@@ -1079,33 +1079,15 @@ class ChatInterface {
             
             const analysis = { avgVolume: avgVol.toFixed(3), peakVolume: peakVol.toFixed(3), volumeLevel, noiseLevel, duration };
             
-            mediaRecorder.onstop = async () => {
+            mediaRecorder.onstop = () => {
                 const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
-                
-                // 转换为 WAV 格式（最通用，Gemini/OpenAI 都能识别）
-                try {
-                    const decodeCtx = new (window.AudioContext || window.webkitAudioContext)();
-                    const arrayBuf = await blob.arrayBuffer();
-                    const audioBuf = await decodeCtx.decodeAudioData(arrayBuf);
-                    const wavBlob = this._audioBufferToWav(audioBuf);
-                    decodeCtx.close();
-                    
-                    const wavReader = new FileReader();
-                    wavReader.onload = () => {
-                        this._sendRealVoiceMessage(wavReader.result, '', duration, analysis);
-                        ov.remove();
-                    };
-                    wavReader.readAsDataURL(wavBlob);
-                } catch (e) {
-                    console.warn('WAV转换失败，使用原始格式:', e);
-                    // 降级：直接用原始webm
-                    const reader = new FileReader();
-                    reader.onload = () => {
-                        this._sendRealVoiceMessage(reader.result, '', duration, analysis);
-                        ov.remove();
-                    };
-                    reader.readAsDataURL(blob);
-                }
+                const reader = new FileReader();
+                reader.onload = () => {
+                    console.log('🎤 录音完成，格式:', mediaRecorder.mimeType, '大小:', Math.round(blob.size/1024) + 'KB');
+                    this._sendRealVoiceMessage(reader.result, '', duration, analysis);
+                    ov.remove();
+                };
+                reader.readAsDataURL(blob);
                 
                 // 释放资源
                 mediaStream.getTracks().forEach(t => t.stop());
@@ -1134,6 +1116,10 @@ class ChatInterface {
     
     // 发送真语音消息
     _sendRealVoiceMessage(audioData, transcriptText, duration, analysis) {
+        // 调试信息：显示音频大小和格式
+        this.showCssSystemMessage('🎤 音频大小: ' + Math.round(audioData.length / 1024) + 'KB, 格式: ' + audioData.substring(0, 30));
+        console.log('🎤 音频数据:', '大小=' + Math.round(audioData.length / 1024) + 'KB', '格式=' + audioData.substring(0, 30));
+        
         const finalText = transcriptText || '（user发送了一段语音）';
         const displayText = transcriptText || '（语音未识别到文字）';
         
@@ -1244,7 +1230,9 @@ class ChatInterface {
         
         if (!resp.ok) {
             const errText = await resp.text();
-            throw new Error(`API ${resp.status}: ${errText.substring(0, 100)}`);
+            const errMsg = `API ${resp.status}: ${errText.substring(0, 200)}`;
+            this.showCssSystemMessage('❌ 语音转文字失败: ' + errMsg);
+            throw new Error(errMsg);
         }
         
         const data = await resp.json();
@@ -2940,6 +2928,11 @@ ${archiveListText}
                     audioAttachment = { data: base64Part, mimeType };
                     break;
                 }
+            }
+            
+            if (audioAttachment) {
+                console.log('🎤 音频附件:', 'mimeType=' + audioAttachment.mimeType, '大小=' + Math.round(audioAttachment.data.length / 1024) + 'KB');
+                this.showCssSystemMessage('🎤 正在把语音发给AI（' + Math.round(audioAttachment.data.length / 1024) + 'KB）...');
             }
             
             const result = await this.apiManager.callAI(messagesWithTimestamps, systemPrompt, { avatarImages, audioAttachment });
