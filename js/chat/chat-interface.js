@@ -13511,7 +13511,9 @@ _openDebugLog() {
                 return `<div class="dl-entry" style="padding:3px 6px;border-bottom:1px solid rgba(255,255,255,0.02);color:${colorMap[e.level] || colorMap.log};word-break:break-all;${isLong ? 'max-height:3.6em;overflow:hidden;cursor:pointer;position:relative;' : ''}"><span style="color:rgba(255,255,255,0.15);margin-right:6px;">${e.time}</span>${iconMap[e.level] || ''}${escaped}${isLong ? '<span style="position:absolute;right:4px;bottom:0;background:linear-gradient(90deg,transparent,#0a0806 30%);padding-left:20px;font-size:9px;color:rgba(240,147,43,0.4);"> ▼展开</span>' : ''}</div>`;
             }).join('');
         
-        list.scrollTop = list.scrollHeight;
+        // 只在用户没有往上翻的时候自动滚到底
+        const isAtBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 60;
+        if (isAtBottom) list.scrollTop = list.scrollHeight;
     };
     
     renderLogs();
