@@ -556,10 +556,6 @@ class FriendProfileManager {
                     <div class="fp-row-value">${this._esc(friend.realName || '未设置')}</div>
                 </div>
                 <div class="fp-row">
-                    <div class="fp-row-label">实际姓名</div>
-                    <div class="fp-row-value">${this._esc(friend.realName) || '未公开'}</div>
-                </div>
-                <div class="fp-row">
                     <div class="fp-row-label">拍一拍</div>
                     <div class="fp-row-value">${this._esc(friend.poke) || '拍了拍你'}</div>
                 </div>
