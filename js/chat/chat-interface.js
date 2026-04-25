@@ -3617,7 +3617,7 @@ div.innerHTML = `
                 textArea.textContent = '正在用AI识别语音...';
                 
                 try {
-                    const audioData = message._voiceAudioData;
+                    const audioData = message._voiceWavData || message._voiceAudioData;
                     if (!audioData) throw new Error('无音频数据');
                     
                     const base64Part = audioData.split(',')[1];
