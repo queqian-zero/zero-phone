@@ -1079,17 +1079,40 @@ class ChatInterface {
             
             const analysis = { avgVolume: avgVol.toFixed(3), peakVolume: peakVol.toFixed(3), volumeLevel, noiseLevel, duration };
             
-            mediaRecorder.onstop = () => {
+            mediaRecorder.onstop = async () => {
                 const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
-                const reader = new FileReader();
-                reader.onload = () => {
-                    console.log('🎤 录音完成，格式:', mediaRecorder.mimeType, '大小:', Math.round(blob.size/1024) + 'KB');
-                    this._sendRealVoiceMessage(reader.result, '', duration, analysis);
-                    ov.remove();
-                };
-                reader.readAsDataURL(blob);
+                console.log('🎤 原始录音:', mediaRecorder.mimeType, Math.round(blob.size/1024) + 'KB');
                 
-                // 释放资源
+                // webm/opus → WAV 转换（Gemini只支持WAV/MP3/OGG/FLAC/AAC）
+                try {
+                    const decodeCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+                    const arrayBuf = await blob.arrayBuffer();
+                    console.log('🎤 ArrayBuffer大小:', arrayBuf.byteLength);
+                    
+                    const audioBuf = await decodeCtx.decodeAudioData(arrayBuf);
+                    console.log('🎤 解码成功: 采样率=' + audioBuf.sampleRate + ' 时长=' + audioBuf.duration.toFixed(1) + 's 声道=' + audioBuf.numberOfChannels);
+                    
+                    const wavBlob = this._audioBufferToWav(audioBuf);
+                    console.log('🎤 WAV转换完成:', Math.round(wavBlob.size/1024) + 'KB');
+                    decodeCtx.close();
+                    
+                    const wavReader = new FileReader();
+                    wavReader.onload = () => {
+                        this._sendRealVoiceMessage(wavReader.result, '', duration, analysis);
+                        ov.remove();
+                    };
+                    wavReader.readAsDataURL(wavBlob);
+                } catch (e) {
+                    console.error('❌ WAV转换失败:', e);
+                    this.showCssSystemMessage('⚠️ WAV转换失败: ' + e.message + '，用原始格式发送');
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        this._sendRealVoiceMessage(reader.result, '', duration, analysis);
+                        ov.remove();
+                    };
+                    reader.readAsDataURL(blob);
+                }
+                
                 mediaStream.getTracks().forEach(t => t.stop());
                 if (audioCtx) audioCtx.close();
             };
