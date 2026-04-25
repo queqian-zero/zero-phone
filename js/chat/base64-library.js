@@ -379,6 +379,23 @@ class Base64Library {
         return new Promise((resolve) => {
             const reader = new FileReader();
             reader.onload = (ev) => {
+                const rawDataUrl = ev.target.result;
+                
+                // GIF文件：跳过canvas转换，保留动画
+                if (file.type === 'image/gif') {
+                    resolve({
+                        id: 'img_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+                        name: name || '未命名',
+                        desc: desc || '',
+                        data: rawDataUrl,
+                        categoryId: categoryId || 'default',
+                        createdAt: new Date().toISOString(),
+                        _isGif: true
+                    });
+                    return;
+                }
+                
+                // 非GIF：通过canvas压缩
                 const img = new Image();
                 img.onload = () => {
                     const maxSize = this._activeTab === 'stickers' ? 200 : 400;
@@ -397,7 +414,7 @@ class Base64Library {
                     });
                 };
                 img.onerror = () => resolve(null);
-                img.src = ev.target.result;
+                img.src = rawDataUrl;
             };
             reader.onerror = () => resolve(null);
             reader.readAsDataURL(file);

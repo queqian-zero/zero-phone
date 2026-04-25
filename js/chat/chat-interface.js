@@ -13,6 +13,11 @@ class ChatInterface {
         this.eventsBound = false;
         this.originalFriendName = null;
         
+        // 日志系统
+        this._logBuffer = [];
+        this._logMaxEntries = 500;
+        this._initLogCapture();
+        
         // 设置相关
         this.settings = {
             aiRecognizeImage: true,
@@ -2394,6 +2399,7 @@ ${archiveListText}
             if (searchPool.length > 0) {
                 if (memMode === 'A') {
                     // ===== 模式A：AI自主检索（两次调用）=====
+                    this.showCssSystemMessage('🔍 AI正在检索记忆...');
                     const prePrompt = `你是${this.currentFriend?.nickname||'TA'}。用户刚说了一句话，你需要决定：要不要回忆一些往事？\n你的记忆库有：${memIndex}\n用户说的：「${messagesWithTimestamps.slice(-1)[0]?.text||''}」\n如果你想回忆，回复：RECALL:关键词1 关键词2（用空格分隔）\n如果不需要回忆，回复：NO_RECALL\n只回复这一行，不要说别的。`;
                     try {
                         const preResult = await this.apiManager.callAI([{type:'user',text:'记忆检索判断'}], prePrompt);
@@ -2415,6 +2421,7 @@ ${archiveListText}
                     // 检查上一轮AI是否请求了回忆
                     const pendingRecall = this._pendingRecallKeywords;
                     if (pendingRecall) {
+                        this.showCssSystemMessage('🔍 正在翻阅记忆...');
                         const found = _searchMemory(pendingRecall);
                         if (found.length > 0) {
                             systemPrompt += `\n你上次说想回忆的事，找到了（注意日期）：`;
@@ -2593,6 +2600,30 @@ ${archiveListText}
             
             // ====== 思维链 ======
             const thinkingText = result.thinking || '';
+            
+            // ====== AI选择不回复 ======
+            if (aiText.includes('[AI_NO_REPLY]')) {
+                const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
+                // 仍然执行指令（AI可能在不回复的同时设状态、写日记等）
+                this._executeSegmentCommands(aiText);
+                aiText = aiText.replace(/\[AI_NO_REPLY\]/g, '');
+                const cleanCheck = this._stripCommandTags(aiText).trim();
+                // 如果除了指令还有文字，存为隐藏消息（AI的内心OS，不显示在界面上）
+                if (cleanCheck) {
+                    this.storage.addMessage(this.currentFriendCode, { type: 'ai', text: cleanCheck, timestamp: new Date().toISOString(), _hidden: true, thinking: thinkingText || undefined });
+                }
+                this.hideTypingIndicator();
+                this.showCssSystemMessage(`${friendName} 选择了不回复`);
+                this._isSendingAI = false;
+                
+                // 统计等收尾
+                if (result.tokens) {
+                    const apiDuration = Date.now() - apiStartTime;
+                    this.updateTokenRoundInfo(result.tokens, apiDuration);
+                }
+                await this._runAutoSummaryIfNeeded();
+                return;
+            }
             
             // ====== 按 [MSG_SPLIT] 拆成原始分段（保留指令标签）======
             const hasSplitTag = aiText.includes('[MSG_SPLIT]');
@@ -3599,6 +3630,11 @@ div.innerHTML = `
                 this.closeChatSettings();
             });
         }
+        
+        // 运行日志按钮
+        document.getElementById('settingDebugLog')?.addEventListener('click', () => {
+            this._openDebugLog();
+        });
         
         const aiRecognizeSwitch = document.getElementById('settingAiRecognizeImage');
         if (aiRecognizeSwitch) {
@@ -7433,6 +7469,12 @@ getIntimacyStatusForAI() {
     desc += `\n  - user撤回消息时系统会通知你原文和心里话（如果有的话），你可以选择提或不提`;
     desc += `\n  - 引用的关键词要能唯一匹配到那条消息（用消息中比较独特的几个字）`;
     desc += `\n  - 你可以不写心里话，直接用 [AI_RECALL] 就行`;
+    
+    // AI选择不回复
+    desc += `\n\n【选择不回复】`;
+    desc += `\n  [AI_NO_REPLY] 选择不回复user的消息（系统会提示"XX选择了不回复"）`;
+    desc += `\n  说明：如果你觉得这条消息不需要回复、或者你生气了不想理ta、或者你在忙，都可以用这个`;
+    desc += `\n  你仍然可以在同一条回复里使用其他指令（比如不回复但偷偷写日记/更新状态）`;
     
     // AI记事本
     desc += `\n\n【记事本（写日记/碎碎念）】`;
@@ -13366,6 +13408,117 @@ setCapsuleBg(bgImage) {
     document.getElementById('capsuleCustomizePanel').style.display = 'none';
 }
 
+// ==================== 日志系统 ====================
+
+_initLogCapture() {
+    const self = this;
+    const MAX = this._logMaxEntries;
+    const buf = this._logBuffer;
+    
+    const _origLog = console.log.bind(console);
+    const _origWarn = console.warn.bind(console);
+    const _origError = console.error.bind(console);
+    
+    const push = (level, args) => {
+        const entry = {
+            time: new Date().toLocaleTimeString('zh-CN', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+            level,
+            text: Array.from(args).map(a => {
+                if (typeof a === 'string') return a;
+                try { return JSON.stringify(a, null, 0)?.substring(0, 200); } catch { return String(a); }
+            }).join(' ')
+        };
+        buf.push(entry);
+        if (buf.length > MAX) buf.shift();
+    };
+    
+    console.log = function(...args) { push('log', args); _origLog(...args); };
+    console.warn = function(...args) { push('warn', args); _origWarn(...args); };
+    console.error = function(...args) { push('error', args); _origError(...args); };
+    
+    // 捕获未处理错误
+    window.addEventListener('error', e => {
+        push('error', [`[未捕获] ${e.message} (${e.filename}:${e.lineno})`]);
+    });
+    window.addEventListener('unhandledrejection', e => {
+        push('error', [`[Promise拒绝] ${e.reason}`]);
+    });
+}
+
+_openDebugLog() {
+    document.getElementById('debugLogPanel')?.remove();
+    
+    const panel = document.createElement('div');
+    panel.id = 'debugLogPanel';
+    panel.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;background:#0a0806;display:flex;flex-direction:column;';
+    
+    panel.innerHTML = `
+        <div style="display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid rgba(255,220,150,0.06);flex-shrink:0;">
+            <button id="debugLogBack" style="background:none;border:none;color:rgba(255,220,170,0.5);font-size:20px;cursor:pointer;padding:4px 8px;">←</button>
+            <div style="flex:1;text-align:center;font-size:14px;color:rgba(255,220,170,0.6);">🐞 运行日志</div>
+            <div style="display:flex;gap:6px;">
+                <button class="dl-filter-btn" data-filter="all" style="padding:3px 8px;border:1px solid rgba(255,220,150,0.15);border-radius:6px;background:rgba(240,147,43,0.15);color:rgba(240,147,43,0.7);font-size:10px;cursor:pointer;">全部</button>
+                <button class="dl-filter-btn" data-filter="error" style="padding:3px 8px;border:1px solid rgba(255,100,100,0.15);border-radius:6px;background:transparent;color:rgba(255,100,100,0.5);font-size:10px;cursor:pointer;">错误</button>
+                <button class="dl-filter-btn" data-filter="warn" style="padding:3px 8px;border:1px solid rgba(255,200,50,0.15);border-radius:6px;background:transparent;color:rgba(255,200,50,0.5);font-size:10px;cursor:pointer;">警告</button>
+                <button class="dl-filter-btn" data-filter="api" style="padding:3px 8px;border:1px solid rgba(100,200,255,0.15);border-radius:6px;background:transparent;color:rgba(100,200,255,0.5);font-size:10px;cursor:pointer;">API</button>
+            </div>
+        </div>
+        <div id="debugLogList" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:8px;font-family:monospace;font-size:11px;line-height:1.6;"></div>
+        <div style="padding:8px 16px;border-top:1px solid rgba(255,255,255,0.04);display:flex;gap:8px;flex-shrink:0;">
+            <button id="debugLogClear" style="flex:1;padding:8px;border:none;border-radius:8px;background:rgba(255,60,60,0.08);color:rgba(255,100,100,0.5);font-size:12px;cursor:pointer;">清空日志</button>
+            <button id="debugLogCopy" style="flex:1;padding:8px;border:none;border-radius:8px;background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.35);font-size:12px;cursor:pointer;">复制全部</button>
+        </div>
+    `;
+    
+    document.body.appendChild(panel);
+    
+    let currentFilter = 'all';
+    
+    const renderLogs = () => {
+        const list = document.getElementById('debugLogList');
+        if (!list) return;
+        const colorMap = { log: 'rgba(255,255,255,0.4)', warn: 'rgba(255,200,50,0.7)', error: 'rgba(255,80,80,0.8)' };
+        const iconMap = { log: '', warn: '⚠️ ', error: '❌ ' };
+        
+        const filtered = this._logBuffer.filter(e => {
+            if (currentFilter === 'all') return true;
+            if (currentFilter === 'error') return e.level === 'error';
+            if (currentFilter === 'warn') return e.level === 'warn';
+            if (currentFilter === 'api') return e.text.includes('API') || e.text.includes('api') || e.text.includes('调用') || e.text.includes('fetch') || e.text.includes('token') || e.text.includes('Token');
+            return true;
+        });
+        
+        list.innerHTML = filtered.length === 0 
+            ? '<div style="text-align:center;padding:40px;color:rgba(255,255,255,0.15);">暂无日志</div>'
+            : filtered.map(e => 
+                `<div style="padding:3px 6px;border-bottom:1px solid rgba(255,255,255,0.02);color:${colorMap[e.level] || colorMap.log};word-break:break-all;"><span style="color:rgba(255,255,255,0.15);margin-right:6px;">${e.time}</span>${iconMap[e.level] || ''}${this.escapeHtml(e.text)}</div>`
+            ).join('');
+        
+        list.scrollTop = list.scrollHeight;
+    };
+    
+    renderLogs();
+    
+    // 自动刷新
+    const refreshTimer = setInterval(renderLogs, 2000);
+    
+    panel.querySelector('#debugLogBack').addEventListener('click', () => { clearInterval(refreshTimer); panel.remove(); });
+    panel.querySelector('#debugLogClear').addEventListener('click', () => { this._logBuffer.length = 0; renderLogs(); });
+    panel.querySelector('#debugLogCopy').addEventListener('click', () => {
+        const text = this._logBuffer.map(e => `[${e.time}][${e.level}] ${e.text}`).join('\n');
+        navigator.clipboard?.writeText(text).then(() => this.showCssToast('已复制到剪贴板'));
+    });
+    
+    panel.querySelectorAll('.dl-filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            currentFilter = btn.dataset.filter;
+            panel.querySelectorAll('.dl-filter-btn').forEach(b => { b.style.background = 'transparent'; });
+            btn.style.background = 'rgba(240,147,43,0.15)';
+            renderLogs();
+        });
+    });
+}
+
 // ==================== 撤回 & 引用系统 ====================
 
 // 渲染引用块（支持语音条/图片/假图/表情包/HTML/纯文字）
@@ -13781,6 +13934,7 @@ _stripCommandTags(text) {
         .replace(/\[RECALL:[^\]]+\]/g, '')
         .replace(/\[AI_RECALL(?::[^\]]*)?\]/g, '')
         .replace(/\[AI_QUOTE:[^\]]+\]/g, '')
+        .replace(/\[AI_NO_REPLY\]/g, '')
         .replace(/\[STATUS_CSS\][\s\S]*?\[\/STATUS_CSS\]/g, '')
         .replace(/\[STATUS_?\s*CSS\][\s\S]*?\[\/?\s*STATUS_?\s*CSS\]/gi, '');
 }
@@ -14189,6 +14343,8 @@ processMomentCommands(text) {
     // [AI_CHECK_MOMENTS] — AI想看朋友圈，下一轮注入
     if (text.includes('[AI_CHECK_MOMENTS]')) {
         this._pendingMomentsCheck = true;
+        const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
+        this.showCssSystemMessage(`📱 ${friendName} 去看朋友圈了，下一轮会告诉TA最新动态`);
     }
 }
 
