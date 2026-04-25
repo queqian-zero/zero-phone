@@ -403,8 +403,8 @@ class APIManager {
                             contents[i].parts.push({
                                 inline_data: { mime_type: audioAttachment.mimeType, data: audioAttachment.data }
                             });
-                            // 添加提示让AI知道有音频
                             contents[i].parts[0].text += '\n（以上附带了user的真实语音录音，请仔细听取语气和情绪）';
+                            console.log('🎤 音频附件格式: inline_data (Google原生), mimeType=' + audioAttachment.mimeType);
                             break;
                         }
                     }
@@ -481,15 +481,16 @@ class APIManager {
                     content: msg.content
                 })));
                 
-                // 音频附件：转为multipart content格式附加到最后一条user消息
+                // 音频附件：用 image_url + data URL 格式（中转站会根据mime_type自动识别音频）
                 if (audioAttachment) {
                     for (let i = allMessages.length - 1; i >= 0; i--) {
                         if (allMessages[i].role === 'user') {
                             const textContent = typeof allMessages[i].content === 'string' ? allMessages[i].content : '';
                             allMessages[i].content = [
                                 { type: 'text', text: textContent + '\n（以上附带了user的真实语音录音，请仔细听取语气和情绪）' },
-                                { type: 'input_audio', input_audio: { data: audioAttachment.data, format: audioAttachment.mimeType.includes('mp4') ? 'mp4' : 'wav' } }
+                                { type: 'image_url', image_url: { url: `data:${audioAttachment.mimeType};base64,${audioAttachment.data}` } }
                             ];
+                            console.log('🎤 音频附件格式: image_url, mimeType=' + audioAttachment.mimeType + ', 数据前20字符=' + audioAttachment.data.substring(0, 20));
                             break;
                         }
                     }

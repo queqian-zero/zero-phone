@@ -1268,15 +1268,19 @@ class ChatInterface {
                 generationConfig: { temperature: 0, maxOutputTokens: 500 }
             };
         } else {
-            // OpenAI 兼容格式
-            url = `${endpoint.replace(/\/$/, '')}/v1/chat/completions`;
+            // OpenAI 兼容格式（中转站用 image_url + data URL 传音频）
+            let baseUrl = endpoint.replace(/\/$/, '');
+            if (!baseUrl.includes('/chat/completions')) {
+                baseUrl = baseUrl.replace(/\/v1\/?$/, '') + '/v1/chat/completions';
+            }
+            url = baseUrl;
             requestBody = {
                 model,
                 messages: [{
                     role: 'user',
                     content: [
                         { type: 'text', text: prompt },
-                        { type: 'input_audio', input_audio: { data: base64Audio, format: mimeType.includes('wav') ? 'wav' : 'mp3' } }
+                        { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Audio}` } }
                     ]
                 }],
                 max_tokens: 500,
