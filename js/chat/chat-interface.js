@@ -2033,8 +2033,8 @@ class ChatInterface {
         
         try {
             const maxMessages = this.settings.contextMessages || 20;
-            // 过滤掉系统消息（CSS操作提示等），只发user和ai消息给API
-            const recentMessages = this.messages.filter(m => m.type !== 'system').slice(-maxMessages);
+            // 过滤掉系统消息（CSS操作提示等），但保留撤回通知
+            const recentMessages = this.messages.filter(m => m.type !== 'system' || m._recallData).slice(-maxMessages);
             
             console.log('📜 准备发送的消息历史:', recentMessages.length, '条');
 
@@ -2052,6 +2052,15 @@ class ChatInterface {
                              : msg._quote._fakeImage ? `[假图片:${msg._quote._fakeImage}]`
                              : (msg._quote.text || '').substring(0, 40);
                     prefix += `[引用${qs}的消息：${qt}] `;
+                }
+                // 撤回通知 → 转为AI可读文本
+                if (msg.type === 'system' && msg._recallData) {
+                    const rd = msg._recallData;
+                    const who = rd.recaller === 'user' ? 'user' : '你';
+                    const origText = rd.originalMsg?.text || rd.originalMsg?._fakeImage || rd.originalMsg?._voiceText || '[多媒体消息]';
+                    let recallText = `[${who}撤回了一条消息，原内容：「${origText.substring(0, 80)}」]`;
+                    if (rd.innerThought) recallText += `[${who}撤回时心里想的：「${rd.innerThought}」]`;
+                    return { type: 'user', text: prefix + recallText, timestamp: msg.timestamp };
                 }
                 return {
                     type: msg.type,
@@ -2934,6 +2943,7 @@ setTimeout(async () => {
     createMessageElement(message) {
         const div = document.createElement('div');
         div.className = `message message-${message.type}`;
+        div.dataset.ts = message.timestamp || '';
         
         const time = this.formatTimeAdvanced(new Date(message.timestamp));
         
@@ -3003,6 +3013,24 @@ div.innerHTML = `
                 // PC 右键
                 bubble.addEventListener('contextmenu', e => { e.preventDefault(); this._showMsgActionMenu(message, msgIdx, bubble); });
             }
+        }
+        
+        // 引用块点击 → 滚动到原消息
+        const quoteBlock = div.querySelector('.msg-quote-block');
+        if (quoteBlock) {
+            quoteBlock.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const ts = quoteBlock.dataset.quoteTs;
+                if (!ts) return;
+                const target = document.querySelector(`.message[data-ts="${CSS.escape(ts)}"]`);
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    // 高亮闪烁
+                    target.style.transition = 'background 0.3s';
+                    target.style.background = 'rgba(240,147,43,0.12)';
+                    setTimeout(() => { target.style.background = ''; }, 1500);
+                }
+            });
         }
         
         const avatarEl = div.querySelector('.message-avatar');
@@ -13614,18 +13642,18 @@ _setQuoteMessage(msg) {
     
     const bar = document.createElement('div');
     bar.id = 'quotePreviewBar';
-    bar.style.cssText = 'display:flex;align-items:center;padding:8px 12px;background:rgba(30,27,22,0.95);border-top:1px solid rgba(255,220,150,0.06);gap:8px;';
+    bar.style.cssText = 'display:flex;align-items:center;padding:6px 0 8px 0;margin-bottom:6px;gap:8px;border-bottom:1px solid rgba(255,255,255,0.04);';
     bar.innerHTML = `
         <div style="flex:1;min-width:0;border-left:2px solid rgba(240,147,43,0.4);padding-left:8px;">
-            <div style="font-size:10px;color:rgba(240,147,43,0.5);">${this.escapeHtml(senderLabel)}</div>
+            <div style="font-size:10px;color:rgba(240,147,43,0.5);">回复 ${this.escapeHtml(senderLabel)}</div>
             <div style="font-size:11px;color:rgba(255,255,255,0.35);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${this.escapeHtml(preview)}</div>
         </div>
         <div id="quotePreviewClose" style="width:24px;height:24px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(255,255,255,0.25);font-size:16px;flex-shrink:0;">✕</div>
     `;
     
-    // 插入到输入栏上方
+    // 插入到 inputBar 内部最前面
     const inputBar = document.getElementById('inputBar');
-    if (inputBar) inputBar.parentNode.insertBefore(bar, inputBar);
+    if (inputBar) inputBar.insertBefore(bar, inputBar.firstChild);
     
     bar.querySelector('#quotePreviewClose').addEventListener('click', () => this._clearQuoteMessage());
     
