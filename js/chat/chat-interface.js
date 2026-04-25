@@ -837,6 +837,7 @@ class ChatInterface {
         
         // 作为正常user消息（右对齐+头像+时间），用_voice标记
         const msg = { type: 'user', text: `[语音消息] ${text}`, timestamp: ts, _voice: true, _voiceText: text, _voiceDuration: duration, _voiceBarWidth: barWidth };
+        if (this._quotingMessage) { msg._quote = this._extractQuoteData(this._quotingMessage); this._clearQuoteMessage(); }
         this.addMessage(msg);
         this.storage.addMessage(this.currentFriendCode, msg);
         this.scrollToBottom();
@@ -883,8 +884,11 @@ class ChatInterface {
                 
                 // 作为正常用户消息显示（右对齐+头像+时间）
                 const msg = { type: 'user', text: '', timestamp: new Date().toISOString(), _imageUrl: dataUrl, _imageOnly: true };
+                if (this._quotingMessage) { msg._quote = this._extractQuoteData(this._quotingMessage); this._clearQuoteMessage(); }
                 this.addMessage(msg);
-                this.storage.addMessage(this.currentFriendCode, { type: 'user', text: '[用户发送了图片]', timestamp: msg.timestamp, _imageUrl: dataUrl, _imageOnly: true });
+                const imgStoreMsg = { type: 'user', text: '[用户发送了图片]', timestamp: msg.timestamp, _imageUrl: dataUrl, _imageOnly: true };
+                if (msg._quote) imgStoreMsg._quote = msg._quote;
+                this.storage.addMessage(this.currentFriendCode, imgStoreMsg);
                 this.scrollToBottom();
                 
                 // 存储图片数据，下次用户主动触发AI时附带
@@ -937,8 +941,11 @@ class ChatInterface {
         if (!desc) return;
         
         const msg = { type: 'user', text: '', timestamp: new Date().toISOString(), _fakeImage: desc };
+        if (this._quotingMessage) { msg._quote = this._extractQuoteData(this._quotingMessage); this._clearQuoteMessage(); }
         this.addMessage(msg);
-        this.storage.addMessage(this.currentFriendCode, { type: 'user', text: `[用户发送了假图片：${desc}]`, timestamp: msg.timestamp, _fakeImage: desc });
+        const storeMsg = { type: 'user', text: `[用户发送了假图片：${desc}]`, timestamp: msg.timestamp, _fakeImage: desc };
+        if (msg._quote) storeMsg._quote = msg._quote;
+        this.storage.addMessage(this.currentFriendCode, storeMsg);
         this.scrollToBottom();
     }
     
@@ -1053,10 +1060,13 @@ class ChatInterface {
         
         // 用 _stickerUrl + _stickerName 渲染（比普通图片小+带名字）
         const msg = { type: 'user', text: `[用户发送了表情包「${name}」]`, timestamp: new Date().toISOString(), _stickerUrl: src, _stickerName: name };
+        if (this._quotingMessage) { msg._quote = this._extractQuoteData(this._quotingMessage); this._clearQuoteMessage(); }
         this.addMessage(msg);
         
         // 存储
-        this.storage.addMessage(this.currentFriendCode, { type: 'user', text: `[用户发送了表情包「${name}」]`, timestamp: msg.timestamp, _stickerUrl: src, _stickerName: name });
+        const stkStoreMsg = { type: 'user', text: `[用户发送了表情包「${name}」]`, timestamp: msg.timestamp, _stickerUrl: src, _stickerName: name };
+        if (msg._quote) stkStoreMsg._quote = msg._quote;
+        this.storage.addMessage(this.currentFriendCode, stkStoreMsg);
         
         // AI识图：data:开头的可以附带图片，URL的只告诉名字
         const aiRecog = this.currentFriend?.enableAvatarRecognition !== false;
@@ -1245,6 +1255,9 @@ class ChatInterface {
         // 清理上一个好友的自定义CSS
         this.removeCustomCss();
         this.removeAvatarFrameCss();
+        
+        // 清除引用状态
+        this._clearQuoteMessage();
         
         // 重置Token面板
         this._resetTokenPanel();
@@ -1928,18 +1941,29 @@ class ChatInterface {
         // ====== 需求3+4：处理用户发的CSS应用命令 ======
         text = this.processAICssCommands(text); // 复用同一个处理函数
         
-        this.addMessage({
+        // 引用数据
+        const quoteData = this._quotingMessage ? this._extractQuoteData(this._quotingMessage) : null;
+        
+        const userMsg = {
             type: 'user',
             text: text,
             timestamp: new Date().toISOString()
-        });
+        };
+        if (quoteData) userMsg._quote = quoteData;
+        
+        this.addMessage(userMsg);
         
         console.log('💾 保存消息到存储');
-        this.storage.addMessage(this.currentFriendCode, {
+        const storeUserMsg = {
             type: 'user',
             text: text,
             timestamp: new Date().toISOString()
-        });
+        };
+        if (quoteData) storeUserMsg._quote = quoteData;
+        this.storage.addMessage(this.currentFriendCode, storeUserMsg);
+        
+        // 清除引用状态
+        this._clearQuoteMessage();
         
         if (inputField) {
             inputField.value = '';
@@ -2018,9 +2042,20 @@ class ChatInterface {
             const messagesWithTimestamps = recentMessages.map(msg => {
                 const msgTime = new Date(msg.timestamp);
                 const timeStr = this.formatFullDateTime(msgTime);
+                let prefix = `[${timeStr}] `;
+                // 如果消息带引用，在前面加上引用信息
+                if (msg._quote) {
+                    const qs = msg._quote.senderType === 'user' ? 'user' : '你';
+                    const qt = msg._quote._voice ? '[语音消息]' 
+                             : msg._quote._imageUrl ? '[图片]' 
+                             : msg._quote._stickerUrl ? '[表情包]'
+                             : msg._quote._fakeImage ? `[假图片:${msg._quote._fakeImage}]`
+                             : (msg._quote.text || '').substring(0, 40);
+                    prefix += `[引用${qs}的消息：${qt}] `;
+                }
                 return {
                     type: msg.type,
-                    text: `[${timeStr}] ${msg.text}`,
+                    text: prefix + msg.text,
                     timestamp: msg.timestamp
                 };
             });
@@ -2597,10 +2632,23 @@ ${archiveListText}
                     await new Promise(r => setTimeout(r, 800 + Math.floor(Math.random() * 700)));
                 }
                 
-                // 2. 渲染气泡
+                // 2. 渲染气泡（先检查是否有引用指令）
                 const offset = i * (2000 + Math.floor(Math.random() * 4000));
                 const partTs = new Date(nowMs + offset).toISOString();
                 const msg = { type: 'ai', text: cleanText, timestamp: partTs, _sequential: i > 0, _animate: true };
+                
+                // 提取 [AI_QUOTE:关键词] → 找到被引用消息 → 附加 _quote
+                const aiQuoteMatch = rawSeg.match(/\[AI_QUOTE:([^\]]+)\]/);
+                if (aiQuoteMatch) {
+                    const kw = aiQuoteMatch[1].trim();
+                    for (let qi = this.messages.length - 1; qi >= 0; qi--) {
+                        const qm = this.messages[qi];
+                        if (qm.type !== 'user' && qm.type !== 'ai') continue;
+                        const qt = qm.text || qm._fakeImage || qm._voiceText || '';
+                        if (qt.includes(kw)) { msg._quote = this._extractQuoteData(qm); break; }
+                    }
+                }
+                
                 this.addMessage(msg);
                 
                 // 滚动到底部让用户看到新气泡
@@ -2608,6 +2656,7 @@ ${archiveListText}
                 
                 // 3. 存储（thinking只存第一条）
                 const storeMsg = { type: 'ai', text: cleanText, timestamp: partTs };
+                if (msg._quote) storeMsg._quote = msg._quote;
                 if (i === 0 && thinkingText) storeMsg.thinking = thinkingText;
                 if (i > 0) storeMsg._sequential = true;
                 if (hasSplitTag) storeMsg._hasSplitTag = true;
@@ -2802,7 +2851,13 @@ setTimeout(async () => {
         if (message.type === 'system') {
             const div = document.createElement('div');
             div.className = 'system-message css-system-message';
-            div.innerHTML = `<span>${this.escapeHtml(text)}</span>`;
+            if (message._recallData) {
+                div.style.cursor = 'pointer';
+                div.innerHTML = `<span>${this.escapeHtml(text)} <span style="opacity:0.4;font-size:10px;">点击查看</span></span>`;
+                div.addEventListener('click', () => this._showRecalledContent(message._recallData));
+            } else {
+                div.innerHTML = `<span>${this.escapeHtml(text)}</span>`;
+            }
             return [div];
         }
         
@@ -2915,6 +2970,7 @@ div.innerHTML = `
             
             <div class="message-content">
                 <div class="message-bubble">
+                    ${message._quote ? this._renderQuoteBlock(message._quote) : ''}
                     ${message._imageUrl ? `<div style="max-width:180px;cursor:pointer;" class="msg-image-thumb"><img src="${message._imageUrl}" style="width:100%;border-radius:8px;display:block;" onerror="this.parentElement.innerHTML='[图片加载失败]'"></div>` : ''}
                     ${message._stickerUrl ? `<div class="msg-sticker" style="max-width:120px;">
                         <img src="${message._stickerUrl}" style="width:100%;border-radius:8px;display:block;" onerror="this.style.display='none'">
@@ -2930,6 +2986,24 @@ div.innerHTML = `
                 <div class="message-time">${time}</div>
             </div>
         `;
+        
+        // ====== 长按菜单（撤回/引用）======
+        {
+            const msgIdx = this.messages.indexOf(message);
+            const bubble = div.querySelector('.message-bubble');
+            let lpTimer = null, startX = 0, startY = 0, moved = false;
+            const onStart = (cx, cy) => { startX = cx; startY = cy; moved = false; lpTimer = setTimeout(() => { if (!moved) this._showMsgActionMenu(message, msgIdx, bubble); }, 500); };
+            const onMove = (cx, cy) => { if (Math.abs(cx - startX) > 10 || Math.abs(cy - startY) > 10) { moved = true; if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; } } };
+            const onEnd = () => { if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; } };
+            if (bubble) {
+                bubble.addEventListener('touchstart', e => { const t = e.touches[0]; onStart(t.clientX, t.clientY); }, { passive: true });
+                bubble.addEventListener('touchmove', e => { const t = e.touches[0]; onMove(t.clientX, t.clientY); }, { passive: true });
+                bubble.addEventListener('touchend', onEnd);
+                bubble.addEventListener('touchcancel', onEnd);
+                // PC 右键
+                bubble.addEventListener('contextmenu', e => { e.preventDefault(); this._showMsgActionMenu(message, msgIdx, bubble); });
+            }
+        }
         
         const avatarEl = div.querySelector('.message-avatar');
         if (avatarEl) {
@@ -7320,6 +7394,17 @@ getIntimacyStatusForAI() {
     desc += `\n  [AI_SEND_LIB_IMAGE:图片名字] 从Base64图库中找到该图发给user（user能看到图片）`;
     desc += `\n  [AI_CHANGE_AVATAR:图片名字] 把Base64图库中的某张图设为你自己的头像`;
     desc += `\n  [AI_CHANGE_AVATAR_FROM_CHAT] 把user最近发给你的图片设为你自己的头像`;
+    
+    // AI撤回和引用
+    desc += `\n\n【撤回和引用消息】`;
+    desc += `\n  [AI_RECALL] 撤回你发的上一条消息（系统会显示"XX撤回了一条消息"）`;
+    desc += `\n  [AI_RECALL:心里话] 撤回上一条消息，并附带撤回时心里想的（user点击撤回通知可以看到你撤回的内容和心里话）`;
+    desc += `\n  [AI_QUOTE:原文中的关键词] 引用某条聊天消息来回复（系统会在你的消息气泡里显示被引用的内容）`;
+    desc += `\n  说明：`;
+    desc += `\n  - 你和user都知道对方能看到撤回的消息和心里话`;
+    desc += `\n  - user撤回消息时系统会通知你原文和心里话（如果有的话），你可以选择提或不提`;
+    desc += `\n  - 引用的关键词要能唯一匹配到那条消息（用消息中比较独特的几个字）`;
+    desc += `\n  - 你可以不写心里话，直接用 [AI_RECALL] 就行`;
     
     // AI记事本
     desc += `\n\n【记事本（写日记/碎碎念）】`;
@@ -13253,6 +13338,336 @@ setCapsuleBg(bgImage) {
     document.getElementById('capsuleCustomizePanel').style.display = 'none';
 }
 
+// ==================== 撤回 & 引用系统 ====================
+
+// 渲染引用块（支持语音条/图片/假图/表情包/HTML/纯文字）
+_renderQuoteBlock(q) {
+    if (!q) return '';
+    const senderLabel = q.senderType === 'user' ? '你' : (q.senderName || 'TA');
+    let contentHtml = '';
+    
+    if (q._voice) {
+        const dur = q._voiceDuration || 3;
+        const w = Math.min(60, 20 + dur);
+        contentHtml = `<div style="display:flex;align-items:center;gap:4px;"><span style="font-size:10px;">🎤</span><div style="width:${w}px;height:14px;background:rgba(255,255,255,0.06);border-radius:7px;"></div><span style="font-size:9px;opacity:0.4;">${dur}"</span></div>`;
+    } else if (q._imageUrl) {
+        contentHtml = `<img src="${q._imageUrl}" style="max-width:50px;max-height:50px;border-radius:4px;display:block;" onerror="this.outerHTML='[图片]'">`;
+    } else if (q._stickerUrl) {
+        contentHtml = `<img src="${q._stickerUrl}" style="max-width:40px;max-height:40px;border-radius:4px;display:block;" onerror="this.outerHTML='[表情]'">`;
+    } else if (q._fakeImage) {
+        contentHtml = `<div style="display:inline-block;padding:4px 8px;border:1px dashed rgba(128,128,128,0.2);border-radius:6px;font-size:10px;opacity:0.5;">[图片] ${this.escapeHtml((q._fakeImage || '').substring(0, 20))}</div>`;
+    } else if (q.text) {
+        // 检查是否有 RENDER_HTML
+        let displayText = q.text;
+        if (displayText.includes('[RENDER_HTML]')) {
+            const htmlMatch = displayText.match(/\[RENDER_HTML\]([\s\S]*?)\[\/RENDER_HTML\]/);
+            if (htmlMatch) {
+                // 引用HTML内容：用iframe缩略渲染
+                const htmlContent = htmlMatch[1].trim();
+                const encoded = btoa(unescape(encodeURIComponent(
+                    `<html><head><style>body{margin:0;padding:4px;background:transparent;color:rgba(255,255,255,0.5);font-size:10px;overflow:hidden;transform:scale(0.8);transform-origin:top left;}</style></head><body>${htmlContent}</body></html>`
+                )));
+                contentHtml = `<iframe src="data:text/html;base64,${encoded}" style="width:160px;height:60px;border:none;border-radius:4px;pointer-events:none;opacity:0.6;" sandbox="allow-same-origin"></iframe>`;
+            } else {
+                displayText = displayText.replace(/\[RENDER_HTML\][\s\S]*?\[\/RENDER_HTML\]/g, '[卡片]');
+                contentHtml = `<div style="font-size:11px;opacity:0.6;max-height:36px;overflow:hidden;line-height:1.4;word-break:break-all;">${this.escapeHtml(displayText.substring(0, 60))}</div>`;
+            }
+        } else {
+            contentHtml = `<div style="font-size:11px;opacity:0.6;max-height:36px;overflow:hidden;line-height:1.4;word-break:break-all;">${this.escapeHtml(displayText.substring(0, 60))}</div>`;
+        }
+    }
+    
+    return `<div class="msg-quote-block" style="border-left:2px solid rgba(240,147,43,0.35);padding:4px 8px;margin-bottom:6px;background:rgba(255,255,255,0.03);border-radius:0 6px 6px 0;cursor:pointer;" data-quote-ts="${this.escapeHtml(q.timestamp || '')}">
+        <div style="font-size:10px;color:rgba(240,147,43,0.5);margin-bottom:2px;">${this.escapeHtml(senderLabel)}</div>
+        ${contentHtml}
+    </div>`;
+}
+
+// 长按操作菜单（撤回/引用）
+_showMsgActionMenu(msg, idx, bubbleEl) {
+    // 移除已有菜单
+    document.getElementById('msgActionMenu')?.remove();
+    
+    if (msg.type !== 'user' && msg.type !== 'ai') return; // 系统消息不弹菜单
+    
+    const menu = document.createElement('div');
+    menu.id = 'msgActionMenu';
+    menu.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;';
+    
+    // 计算菜单位置（气泡上方居中）
+    const rect = bubbleEl.getBoundingClientRect();
+    const menuX = Math.max(10, Math.min(window.innerWidth - 160, rect.left + rect.width / 2 - 75));
+    const menuY = Math.max(10, rect.top - 50);
+    
+    const isOwn = msg.type === 'user';
+    
+    menu.innerHTML = `
+        <div style="position:fixed;top:0;left:0;right:0;bottom:0;" id="msgMenuOverlay"></div>
+        <div style="position:fixed;left:${menuX}px;top:${menuY}px;background:rgba(50,46,40,0.97);border-radius:10px;display:flex;gap:0;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.5);border:1px solid rgba(255,220,150,0.08);">
+            <div class="msg-menu-btn" data-action="quote" style="padding:10px 18px;cursor:pointer;font-size:12px;color:rgba(255,255,255,0.7);text-align:center;transition:background 0.15s;">
+                <div style="font-size:16px;margin-bottom:2px;">💬</div>引用
+            </div>
+            ${isOwn ? `<div class="msg-menu-btn" data-action="recall" style="padding:10px 18px;cursor:pointer;font-size:12px;color:rgba(255,255,255,0.7);text-align:center;border-left:1px solid rgba(255,255,255,0.06);transition:background 0.15s;">
+                <div style="font-size:16px;margin-bottom:2px;">↩️</div>撤回
+            </div>` : ''}
+        </div>
+    `;
+    
+    document.body.appendChild(menu);
+    
+    // 点击遮罩关闭
+    menu.querySelector('#msgMenuOverlay').addEventListener('click', () => menu.remove());
+    
+    // 按钮点击
+    menu.querySelectorAll('.msg-menu-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const action = btn.dataset.action;
+            menu.remove();
+            if (action === 'recall') this._recallMessage(idx);
+            else if (action === 'quote') this._setQuoteMessage(msg);
+        });
+        // 按下反馈
+        btn.addEventListener('touchstart', () => { btn.style.background = 'rgba(255,255,255,0.08)'; }, { passive: true });
+        btn.addEventListener('touchend', () => { btn.style.background = ''; });
+    });
+}
+
+// 用户撤回消息
+async _recallMessage(idx) {
+    const msg = this.messages[idx];
+    if (!msg || msg.type !== 'user') return;
+    
+    // 弹窗填心里话（可选）
+    let innerThought = '';
+    try {
+        innerThought = window.zpPrompt
+            ? await window.zpPrompt('撤回消息', '撤回时心里在想什么？（可留空）', '', '写点什么...')
+            : prompt('撤回时心里想什么？（可留空）') || '';
+    } catch(e) { return; } // 用户取消
+    if (innerThought === null) return; // 取消
+    
+    // 保存原始消息数据
+    const recallData = {
+        originalMsg: { ...msg },
+        innerThought: innerThought || '',
+        recaller: 'user',
+        recallTime: new Date().toISOString()
+    };
+    
+    // 替换为系统消息
+    const sysMsg = {
+        type: 'system',
+        text: '你撤回了一条消息',
+        timestamp: new Date().toISOString(),
+        _recallData: recallData
+    };
+    
+    // 更新内存
+    this.messages[idx] = sysMsg;
+    
+    // 更新存储
+    const chat = this.storage.getChatByFriendCode(this.currentFriendCode);
+    if (chat && chat.messages && chat.messages[idx]) {
+        chat.messages[idx] = sysMsg;
+        this.storage.setMessages(this.currentFriendCode, chat.messages);
+    }
+    
+    // 通知AI（存入pending通知）
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    if (!data._pendingNotifications) data._pendingNotifications = [];
+    let notice = `[系统通知] user撤回了一条消息，原内容：「${msg.text || '[多媒体消息]'}」`;
+    if (innerThought) notice += `\nuser撤回时心里想的：「${innerThought}」`;
+    notice += `\n（你知道user能看到你撤回的消息和心里想的，user也知道你能看到ta撤回的消息和心里想的。你可以选择提或不提。）`;
+    data._pendingNotifications.push(notice);
+    this.storage.saveIntimacyData(this.currentFriendCode, data);
+    
+    // 重新渲染
+    this.renderMessages();
+    this.scrollToBottom();
+}
+
+// AI撤回消息（由指令触发）
+_aiRecallMessage(innerThought) {
+    // 找最后一条AI消息
+    let lastAiIdx = -1;
+    for (let i = this.messages.length - 1; i >= 0; i--) {
+        if (this.messages[i].type === 'ai') { lastAiIdx = i; break; }
+    }
+    if (lastAiIdx < 0) return;
+    
+    const msg = this.messages[lastAiIdx];
+    const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
+    
+    const recallData = {
+        originalMsg: { ...msg },
+        innerThought: innerThought || '',
+        recaller: 'ai',
+        recallerName: friendName,
+        recallTime: new Date().toISOString()
+    };
+    
+    const sysMsg = {
+        type: 'system',
+        text: `${friendName} 撤回了一条消息`,
+        timestamp: new Date().toISOString(),
+        _recallData: recallData
+    };
+    
+    this.messages[lastAiIdx] = sysMsg;
+    
+    const chat = this.storage.getChatByFriendCode(this.currentFriendCode);
+    if (chat && chat.messages) {
+        // 在存储中找到对应的AI消息（按时间戳匹配）
+        for (let i = chat.messages.length - 1; i >= 0; i--) {
+            if (chat.messages[i].type === 'ai' && chat.messages[i].timestamp === msg.timestamp) {
+                chat.messages[i] = sysMsg;
+                break;
+            }
+        }
+        this.storage.setMessages(this.currentFriendCode, chat.messages);
+    }
+    
+    this.renderMessages();
+    this.scrollToBottom();
+    this.showCssSystemMessage(`↩️ ${friendName} 撤回了一条消息`);
+}
+
+// 显示撤回内容弹窗
+_showRecalledContent(data) {
+    if (!data) return;
+    const orig = data.originalMsg || {};
+    const recaller = data.recaller === 'user' ? '你' : (data.recallerName || 'TA');
+    
+    // 构建原始内容展示
+    let contentHtml = '';
+    if (orig._voice) {
+        contentHtml = `<div style="padding:10px;background:rgba(255,255,255,0.03);border-radius:8px;">🎤 语音消息：${this.escapeHtml(orig._voiceText || orig.text || '')}</div>`;
+    } else if (orig._imageUrl) {
+        contentHtml = `<div style="text-align:center;"><img src="${orig._imageUrl}" style="max-width:200px;max-height:200px;border-radius:8px;"></div>`;
+    } else if (orig._stickerUrl) {
+        contentHtml = `<div style="text-align:center;"><img src="${orig._stickerUrl}" style="max-width:120px;border-radius:8px;"></div>`;
+    } else if (orig._fakeImage) {
+        contentHtml = `<div style="padding:10px;background:rgba(255,255,255,0.03);border-radius:8px;border:1px dashed rgba(128,128,128,0.15);">[假图片] ${this.escapeHtml(orig._fakeImage)}</div>`;
+    } else if (orig.text) {
+        let displayText = orig.text;
+        if (displayText.includes('[RENDER_HTML]')) {
+            const htmlMatch = displayText.match(/\[RENDER_HTML\]([\s\S]*?)\[\/RENDER_HTML\]/);
+            if (htmlMatch) {
+                contentHtml = `<div style="padding:10px;background:rgba(255,255,255,0.03);border-radius:8px;">${htmlMatch[1]}</div>`;
+            } else {
+                contentHtml = `<div style="padding:10px;line-height:1.6;word-break:break-all;">${this.escapeHtml(displayText)}</div>`;
+            }
+        } else {
+            contentHtml = `<div style="padding:10px;line-height:1.6;word-break:break-all;">${this.renderMessageContent(displayText)}</div>`;
+        }
+    }
+    
+    // 心里话
+    let thoughtHtml = '';
+    if (data.innerThought) {
+        thoughtHtml = `<div style="margin-top:12px;padding:10px;background:rgba(240,147,43,0.06);border-radius:8px;border-left:2px solid rgba(240,147,43,0.3);">
+            <div style="font-size:11px;color:rgba(240,147,43,0.5);margin-bottom:4px;">💭 ${recaller}撤回时心里想的：</div>
+            <div style="font-size:13px;color:rgba(255,255,255,0.6);line-height:1.5;">${this.escapeHtml(data.innerThought)}</div>
+        </div>`;
+    }
+    
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;padding:20px;';
+    overlay.innerHTML = `<div style="background:#1a1816;border-radius:14px;max-width:340px;width:100%;max-height:70vh;overflow-y:auto;border:1px solid rgba(255,220,150,0.06);">
+        <div style="padding:16px;border-bottom:1px solid rgba(255,255,255,0.04);">
+            <div style="font-size:14px;color:rgba(255,255,255,0.7);font-weight:500;">${recaller}撤回的消息</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.2);margin-top:4px;">${data.recallTime ? new Date(data.recallTime).toLocaleString('zh-CN') : ''}</div>
+        </div>
+        <div style="padding:16px;">
+            ${contentHtml}
+            ${thoughtHtml}
+        </div>
+        <div style="padding:12px 16px;text-align:center;border-top:1px solid rgba(255,255,255,0.04);">
+            <button id="recallViewClose" style="padding:8px 32px;border:none;border-radius:8px;background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);font-size:13px;cursor:pointer;">知道了</button>
+        </div>
+    </div>`;
+    
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+    overlay.querySelector('#recallViewClose').addEventListener('click', () => overlay.remove());
+}
+
+// 设置引用消息（显示预览条）
+_setQuoteMessage(msg) {
+    this._quotingMessage = msg;
+    
+    // 移除旧的预览条
+    document.getElementById('quotePreviewBar')?.remove();
+    
+    const senderLabel = msg.type === 'user' ? '你' : (this.currentFriend?.nickname || this.currentFriend?.name || 'TA');
+    
+    // 构建预览文字
+    let preview = '';
+    if (msg._voice) preview = '🎤 语音消息';
+    else if (msg._imageUrl) preview = '🖼 图片';
+    else if (msg._stickerUrl) preview = `😊 ${msg._stickerName || '表情包'}`;
+    else if (msg._fakeImage) preview = `[图片] ${(msg._fakeImage || '').substring(0, 15)}`;
+    else if (msg.text) {
+        let t = msg.text.replace(/\[RENDER_HTML\][\s\S]*?\[\/RENDER_HTML\]/g, '[卡片]');
+        preview = t.substring(0, 30);
+    }
+    
+    const bar = document.createElement('div');
+    bar.id = 'quotePreviewBar';
+    bar.style.cssText = 'display:flex;align-items:center;padding:8px 12px;background:rgba(30,27,22,0.95);border-top:1px solid rgba(255,220,150,0.06);gap:8px;';
+    bar.innerHTML = `
+        <div style="flex:1;min-width:0;border-left:2px solid rgba(240,147,43,0.4);padding-left:8px;">
+            <div style="font-size:10px;color:rgba(240,147,43,0.5);">${this.escapeHtml(senderLabel)}</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.35);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${this.escapeHtml(preview)}</div>
+        </div>
+        <div id="quotePreviewClose" style="width:24px;height:24px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(255,255,255,0.25);font-size:16px;flex-shrink:0;">✕</div>
+    `;
+    
+    // 插入到输入栏上方
+    const inputBar = document.getElementById('inputBar');
+    if (inputBar) inputBar.parentNode.insertBefore(bar, inputBar);
+    
+    bar.querySelector('#quotePreviewClose').addEventListener('click', () => this._clearQuoteMessage());
+    
+    // 聚焦输入框
+    const inputField = document.getElementById('inputFieldInline') || document.getElementById('inputField');
+    if (inputField) inputField.focus();
+}
+
+// 清除引用
+_clearQuoteMessage() {
+    this._quotingMessage = null;
+    document.getElementById('quotePreviewBar')?.remove();
+}
+
+// 从消息对象提取引用数据（只保留渲染需要的字段）
+_extractQuoteData(msg) {
+    const senderName = msg.type === 'ai' ? (this.currentFriend?.nickname || this.currentFriend?.name || 'TA') : '你';
+    const q = {
+        senderType: msg.type,
+        senderName: senderName,
+        timestamp: msg.timestamp
+    };
+    if (msg._voice) { q._voice = true; q._voiceDuration = msg._voiceDuration; q._voiceText = msg._voiceText; }
+    if (msg._imageUrl) q._imageUrl = msg._imageUrl;
+    if (msg._stickerUrl) { q._stickerUrl = msg._stickerUrl; q._stickerName = msg._stickerName; }
+    if (msg._fakeImage) q._fakeImage = msg._fakeImage;
+    if (msg.text) q.text = msg.text;
+    return q;
+}
+
+// 处理AI的撤回指令
+processRecallQuoteCommands(text) {
+    if (!this.currentFriendCode) return;
+    
+    // [AI_RECALL] 或 [AI_RECALL:心里话]
+    const recallMatch = text.match(/\[AI_RECALL(?::([^\]]*))?\]/);
+    if (recallMatch) {
+        const thought = recallMatch[1] || '';
+        this._aiRecallMessage(thought);
+    }
+}
+
 // 纯清除指令标签，不执行任何操作
 _stripCommandTags(text) {
     return text
@@ -13336,6 +13751,8 @@ _stripCommandTags(text) {
         .replace(/\[AI_CHANGE_PERSONA:[^\]]+\]/g, '')
         .replace(/\[AI_SET_MOMENT_BG:[^\]]+\]/g, '')
         .replace(/\[RECALL:[^\]]+\]/g, '')
+        .replace(/\[AI_RECALL(?::[^\]]*)?\]/g, '')
+        .replace(/\[AI_QUOTE:[^\]]+\]/g, '')
         .replace(/\[STATUS_CSS\][\s\S]*?\[\/STATUS_CSS\]/g, '')
         .replace(/\[STATUS_?\s*CSS\][\s\S]*?\[\/?\s*STATUS_?\s*CSS\]/gi, '');
 }
@@ -13348,6 +13765,7 @@ _executeSegmentCommands(rawSeg) {
     this.processExchangeCommands(rawSeg);
     this.processCapsuleCommands(rawSeg);
     this.processNotebookCommands(rawSeg);
+    this.processRecallQuoteCommands(rawSeg);
     this.processStateCommands(rawSeg);
     this.processRelationCommands(rawSeg);
     this.processMomentCommands(rawSeg);
