@@ -882,3 +882,41 @@ body.bubble-line .avatar-placeholder {
 .message-avatar.af-frame-pixel img {
     border-radius: 0 !important;
 }
+
+/* ==================== 引用块 ==================== */
+
+.msg-quote-block {
+    border-left: 2px solid rgba(240,147,43,0.35);
+    padding: 4px 8px;
+    margin-bottom: 6px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 0 6px 6px 0;
+    cursor: pointer;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.message-user .msg-quote-block {
+    border-left-color: rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.06);
+}
+
+/* ==================== 撤回系统消息可点击 ==================== */
+
+.css-system-message[style*="cursor"] {
+    transition: opacity 0.15s;
+}
+.css-system-message[style*="cursor"]:active {
+    opacity: 0.6;
+}
+
+/* ==================== 引用预览条 ==================== */
+
+#quotePreviewBar {
+    animation: quoteSlideIn 0.2s ease;
+}
+
+@keyframes quoteSlideIn {
+    from { transform: translateY(100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
