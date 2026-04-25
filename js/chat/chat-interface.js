@@ -1053,6 +1053,7 @@ class ChatInterface {
             
             // Web Audio API 分析 + PCM 捕获
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            await audioCtx.resume(); // 移动浏览器必须resume否则全静音
             const source = audioCtx.createMediaStreamSource(mediaStream);
             analyser = audioCtx.createAnalyser();
             analyser.fftSize = 256;
@@ -1061,17 +1062,29 @@ class ChatInterface {
             // 用 ScriptProcessorNode 直接捕获原始 PCM 数据（给AI用）
             const pcmBuffers = [];
             const scriptNode = audioCtx.createScriptProcessor(4096, 1, 1);
+            let maxSample = 0;
             scriptNode.onaudioprocess = (e) => {
                 if (recording) {
-                    pcmBuffers.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+                    const data = new Float32Array(e.inputBuffer.getChannelData(0));
+                    // 追踪最大振幅
+                    for (let i = 0; i < data.length; i++) {
+                        const abs = Math.abs(data[i]);
+                        if (abs > maxSample) maxSample = abs;
+                    }
+                    pcmBuffers.push(data);
                 }
             };
             source.connect(scriptNode);
-            scriptNode.connect(audioCtx.destination); // 必须连接才能工作
+            // 静音输出（必须连接destination才能工作，但不播放出来）
+            const silentGain = audioCtx.createGain();
+            silentGain.gain.value = 0;
+            scriptNode.connect(silentGain);
+            silentGain.connect(audioCtx.destination);
             
             // 存到闭包给 stopRecording 用
             this._pcmBuffers = pcmBuffers;
             this._pcmSampleRate = audioCtx.sampleRate;
+            this._pcmMaxSample = () => maxSample;
             
             updateVolume();
         };
@@ -1103,7 +1116,9 @@ class ChatInterface {
                 // PCM → WAV（用于发给AI）
                 const pcmBufs = this._pcmBuffers || [];
                 const sampleRate = this._pcmSampleRate || 44100;
-                console.log('🎤 PCM捕获: ' + pcmBufs.length + '块, 采样率=' + sampleRate);
+                const peakAmplitude = this._pcmMaxSample ? this._pcmMaxSample() : 0;
+                console.log('🎤 PCM捕获: ' + pcmBufs.length + '块, 采样率=' + sampleRate + ', 峰值振幅=' + peakAmplitude.toFixed(4));
+                this.showCssSystemMessage('🎤 PCM: ' + pcmBufs.length + '块, 峰值=' + peakAmplitude.toFixed(4) + (peakAmplitude < 0.01 ? ' ⚠️全静音！' : ' ✅有声音'));
                 
                 let wavDataUrl = '';
                 if (pcmBufs.length > 0) {
