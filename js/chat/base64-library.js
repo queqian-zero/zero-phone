@@ -289,7 +289,7 @@ class Base64Library {
         ov.id = 'b64UploadOverlay';
         ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9000;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,0.5);';
 
-        const tabLabel = { avatars: '头像', webImages: '网图', stickers: '表情包' }[this._activeTab];
+        const tabLabel = { avatars: '头像', webImages: '网图', stickers: '表情包', transparent: '透明底图' }[this._activeTab];
 
         ov.innerHTML = `<div style="width:100%;background:#1a1a1a;border-radius:16px 16px 0 0;padding:20px 16px calc(16px + env(safe-area-inset-bottom));max-height:80vh;overflow-y:auto;animation:profileSlideUp 0.25s ease-out;">
             <div style="font-size:16px;font-weight:600;color:#fff;text-align:center;margin-bottom:14px;">上传${tabLabel}</div>
@@ -386,7 +386,7 @@ class Base64Library {
                     const s = Math.min(1, maxSize / Math.max(img.width, img.height));
                     c.width = img.width * s; c.height = img.height * s;
                     c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-                    const dataUrl = c.toDataURL('image/jpeg', 0.8);
+                    const dataUrl = this._activeTab === 'transparent' ? c.toDataURL('image/png') : c.toDataURL('image/jpeg', 0.8);
                     resolve({
                         id: 'img_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
                         name: name || '未命名',

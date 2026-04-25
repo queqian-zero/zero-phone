@@ -4235,7 +4235,7 @@ if (coreMemoryBtn) {
         const rangeStartInput = document.getElementById('manualRangeStart');
         const rangeEndInput = document.getElementById('manualRangeEnd');
         if (rangeStartInput && unsummarizedCount > 0) rangeStartInput.value = summarizedCount + 1;
-        if (rangeEndInput) rangeEndInput.value = this.messages.length;
+        if (rangeEndInput) rangeEndInput.value = realMessages.length;
         
         // 绑定弹窗事件
         if (!this.manualSummaryEventsBound) {
@@ -4295,25 +4295,26 @@ if (coreMemoryBtn) {
         
         // 获取选中的范围类型
         const rangeType = document.querySelector('input[name="summaryRange"]:checked').value;
+        const realMessages = this.messages.filter(m => m.type === 'user' || m.type === 'ai');
         
         let startIndex, endIndex;
         
         if (rangeType === 'recent') {
-            // 最近N条
+            // 最近N条（user+ai消息）
             const count = parseInt(document.getElementById('manualRecentCount').value);
-            if (count <= 0 || count > this.messages.length) {
+            if (count <= 0 || count > realMessages.length) {
                 alert('请输入有效的消息条数');
                 return;
             }
-            endIndex = this.messages.length;
+            endIndex = realMessages.length;
             startIndex = Math.max(0, endIndex - count);
             
         } else if (rangeType === 'range') {
-            // 从第X条到第Y条
+            // 从第X条到第Y条（user+ai消息的楼层号）
             startIndex = parseInt(document.getElementById('manualRangeStart').value) - 1;
             endIndex = parseInt(document.getElementById('manualRangeEnd').value);
             
-            if (startIndex < 0 || endIndex > this.messages.length || startIndex >= endIndex) {
+            if (startIndex < 0 || endIndex > realMessages.length || startIndex >= endIndex) {
                 alert('请输入有效的消息范围');
                 return;
             }
@@ -4321,8 +4322,8 @@ if (coreMemoryBtn) {
         } else if (rangeType === 'unsummarized') {
             // 所有未总结的消息
             const summaries = this.storage.getChatSummaries(this.currentFriendCode);
-            startIndex = summaries.reduce((sum, s) => sum + s.messageCount, 0);
-            endIndex = this.messages.length;
+            startIndex = summaries.reduce((sum, s) => sum + (s.messageCount || 0), 0);
+            endIndex = realMessages.length;
             
             if (startIndex >= endIndex) {
                 alert('没有未总结的消息');
@@ -4839,15 +4840,14 @@ handleEditSummaryConfirm() {
         const interval = this.settings.summaryInterval || 20;
         const summaries = this.storage.getChatSummaries(this.currentFriendCode);
         const summarizedCount = summaries.reduce((sum, s) => sum + (s.messageCount || 0), 0);
-        // 只算user和ai消息，排除系统消息
-        const realCount = this.messages.filter(m => m.type === 'user' || m.type === 'ai').length;
-        const unsummarizedCount = Math.max(0, realCount - summarizedCount);
+        const realMessages = this.messages.filter(m => m.type === 'user' || m.type === 'ai');
+        const unsummarizedCount = Math.max(0, realMessages.length - summarizedCount);
         
-        console.log(`📊 消息统计: 总${realCount}条(含系统${this.messages.length-realCount}条), 已总结${summarizedCount}条, 未总结${unsummarizedCount}条`);
+        console.log(`📊 消息统计: 总${realMessages.length}条(含系统${this.messages.length-realMessages.length}条), 已总结${summarizedCount}条, 未总结${unsummarizedCount}条`);
         
         if (unsummarizedCount >= interval) {
             console.log('🎯 达到自动总结条件，开始生成总结...');
-            this.generateAutoSummary(summarizedCount, this.messages.length);
+            this.generateAutoSummary(summarizedCount, realMessages.length);
         }
     }
     
@@ -4857,26 +4857,27 @@ handleEditSummaryConfirm() {
         const interval = this.settings.summaryInterval || 20;
         const summaries = this.storage.getChatSummaries(this.currentFriendCode);
         const summarizedCount = summaries.reduce((sum, s) => sum + (s.messageCount || 0), 0);
-        const realCount = this.messages.filter(m => m.type === 'user' || m.type === 'ai').length;
-        const unsummarizedCount = Math.max(0, realCount - summarizedCount);
+        const realMessages = this.messages.filter(m => m.type === 'user' || m.type === 'ai');
+        const unsummarizedCount = Math.max(0, realMessages.length - summarizedCount);
         
         if (unsummarizedCount >= interval) {
             console.log('🎯 达到自动总结条件，开始生成总结...');
-            await this.generateAutoSummary(summarizedCount, this.messages.length);
+            await this.generateAutoSummary(summarizedCount, realMessages.length);
         }
     }
     
-    // 生成自动总结
+    // 生成自动总结（startIndex/endIndex 是 user+ai 消息数组的下标）
     async generateAutoSummary(startIndex, endIndex) {
-        console.log(`📝 生成自动总结: 从第${startIndex + 1}条到第${endIndex}条`);
+        console.log(`📝 生成自动总结: 从第${startIndex + 1}条到第${endIndex}条（user+ai消息）`);
         
         if (!this.currentFriendCode || !this.currentFriend) {
             console.warn('⚠️ 总结时好友信息不可用，跳过');
             return;
         }
         
-        // 获取需要总结的消息（排除系统消息）
-        const messagesToSummarize = this.messages.slice(startIndex, endIndex).filter(m => m.type === 'user' || m.type === 'ai');
+        // 先过滤出所有 user+ai 消息，再按下标切片
+        const allRealMessages = this.messages.filter(m => m.type === 'user' || m.type === 'ai');
+        const messagesToSummarize = allRealMessages.slice(startIndex, endIndex);
         
         if (messagesToSummarize.length === 0) {
             console.warn('⚠️ 没有需要总结的消息');
@@ -12835,14 +12836,13 @@ addCapComment(parentType, parentId) {
     if (!item) return;
     if (!item.comments) item.comments = [];
     item.comments.push({ from: 'user', text, date: new Date().toISOString() });
-    this.storage.saveIntimacyData(this.currentFriendCode, data);
-    
-    input.value = '';
-    this.refreshCapsulePage();
     
     if (!data._pendingNotifications) data._pendingNotifications = [];
     data._pendingNotifications.push(`user在岁月胶囊的${parentType==='reports'?'报告':parentType==='milestones'?'里程碑':'回忆录'}里写了评语：「${text}」`);
     this.storage.saveIntimacyData(this.currentFriendCode, data);
+    
+    input.value = '';
+    this.refreshCapsulePage();
 }
 
 // ===== 关系报告 =====
@@ -13111,7 +13111,7 @@ processCapsuleCommands(text) {
         if (pType && pId && cText) {
             const data = this._getCapData();
             const list = data.capsule[pType] || [];
-            const item = list.find(i => i.id === pId) || list.find(i => i.title?.includes(pId) || pId.includes(i.title));
+            const item = list.find(i => i.id === pId) || list.find(i => i.title === pId) || list.find(i => i.title?.includes(pId));
             if (item) {
                 if (!item.comments) item.comments = [];
                 item.comments.push({ from: 'ai', text: cText, date: new Date().toISOString() });

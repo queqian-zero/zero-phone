@@ -513,7 +513,7 @@ class FriendProfileManager {
         
         // 统计
         const chat = storage.getChatByFriendCode(code);
-        const totalMsgs = chat?.messages?.length || 0;
+        const totalMsgs = chat?.messages?.filter(m => m.type === 'user' || m.type === 'ai')?.length || 0;
         
         // 来源
         const source = friend.source || '通过编码添加';
@@ -551,7 +551,7 @@ class FriendProfileManager {
                     <div class="fp-row-label">网名</div>
                     <div class="fp-row-value">${this._esc(friend.name)}</div>
                 </div>
-                <div class="fp-info-row" id="fpRealNameRow">
+                <div class="fp-row" id="fpRealNameRow">
                     <div class="fp-row-label">真实姓名</div>
                     <div class="fp-row-value">${this._esc(friend.realName || '未设置')}</div>
                 </div>

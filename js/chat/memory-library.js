@@ -359,23 +359,19 @@ class MemoryLibrary {
             content.innerHTML = diaryHtml;
         }
         
-        // 点击碎碎念 — 只读查看
+        // 点击碎碎念 — 打开编辑/查看面板
         content.querySelectorAll('.nb-note-card').forEach(card => {
             card.addEventListener('click', () => {
-                // 点击展开/收起全文
-                const textEl = card.querySelector('.nb-note-text');
-                if (textEl) {
-                    const isExpanded = textEl.style.maxHeight !== '80px';
-                    textEl.style.maxHeight = isExpanded ? '80px' : 'none';
-                    textEl.style.overflow = isExpanded ? 'hidden' : 'visible';
-                }
+                const id = card.dataset.id;
+                const item = (data.notebook.notes || []).find(n => n.id === id);
+                if (item) this._editNote(friendCode, name, item, page);
             });
         });
         content.querySelectorAll('.nb-diary-card').forEach(card => {
             card.addEventListener('click', () => {
                 const id = card.dataset.id;
                 const item = (data.notebook.diary || []).find(d => d.id === id);
-                if (item) this._viewDiaryFull(item, name);
+                if (item) this._viewDiaryFull(item, name, friendCode, page);
             });
             // 加载自定义字体
             const textEl = card.querySelector('[data-font]');
@@ -601,7 +597,7 @@ class MemoryLibrary {
     }
 
     // 全屏日记查看器（手账风格）
-    _viewDiaryFull(diary, charName) {
+    _viewDiaryFull(diary, charName, friendCode, parentPage) {
         document.getElementById('diaryFullView')?.remove();
         const page = document.createElement('div');
         page.id = 'diaryFullView';
@@ -610,6 +606,7 @@ class MemoryLibrary {
         page.innerHTML = '<div style="display:flex;align-items:center;padding:12px 16px;flex-shrink:0;border-bottom:1px solid rgba(255,220,150,0.06);">' +
             '<button id="dfvBack" style="background:none;border:none;color:rgba(255,220,170,0.5);font-size:20px;cursor:pointer;padding:4px 8px;">&#8592;</button>' +
             '<div style="flex:1;text-align:center;font-size:14px;color:rgba(255,220,170,0.4);">' + this._esc(charName) + ' 的日记</div>' +
+            (friendCode ? '<button id="dfvEdit" style="padding:4px 10px;border:none;border-radius:6px;background:rgba(240,147,43,0.1);color:rgba(240,147,43,0.6);font-size:12px;cursor:pointer;">编辑</button><button id="dfvDelete" style="margin-left:6px;padding:4px 10px;border:none;border-radius:6px;background:rgba(255,60,60,0.06);color:rgba(255,100,100,0.4);font-size:12px;cursor:pointer;">删除</button>' : '') +
         '</div>' +
         '<div id="dfvContent" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;"></div>';
         
@@ -658,6 +655,26 @@ class MemoryLibrary {
         if (fontEl) this._loadFont(fontEl.dataset.font, fontEl);
         
         page.querySelector('#dfvBack')?.addEventListener('click', () => page.remove());
+        
+        // 编辑按钮
+        page.querySelector('#dfvEdit')?.addEventListener('click', () => {
+            page.remove();
+            this._editDiary(friendCode, charName, diary, parentPage);
+        });
+        
+        // 删除按钮
+        page.querySelector('#dfvDelete')?.addEventListener('click', async () => {
+            const ok = await this._zpConfirm('删除日记', '确定删除这篇日记？');
+            if (!ok) return;
+            const data = this._store().getIntimacyData(friendCode);
+            if (data.notebook?.diary) {
+                data.notebook.diary = data.notebook.diary.filter(d => d.id !== diary.id);
+                this._store().saveIntimacyData(friendCode, data);
+            }
+            page.remove();
+            if (parentPage) this._refreshNotebook(parentPage, friendCode, charName);
+            this._toast('日记已删除');
+        });
     }
 
     // ==================== 剧场归档 ====================
@@ -1120,8 +1137,9 @@ class MemoryLibrary {
         
         let filterPerson = null;
         let arrowInfo = null; // 当前显示的箭头卡片
-        // 节点位置存储
-        const nodePositions = {};
+        // 节点位置存储（从持久化数据加载）
+        const nodePositions = rel.nodePositions || {};
+        const savePositions = () => { rel.nodePositions = nodePositions; save(); };
         
         const render = () => {
             const people = rel.people || [];
@@ -1379,6 +1397,8 @@ class MemoryLibrary {
                     dragging.vx = (Math.random()-0.5)*2;
                     dragging.vy = (Math.random()-0.5)*2;
                     dragging = null;
+                    // 持久化节点位置
+                    savePositions();
                 } else {
                     // 没拖拽 = 点击，检查是否点了箭头
                     // 用最后一次touchstart的位置
