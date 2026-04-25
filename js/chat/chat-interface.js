@@ -1019,7 +1019,15 @@ class ChatInterface {
         
         const startRecording = async () => {
             try {
-                mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaStream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: {
+                        echoCancellation: false,     // 关掉回声消除（可能误杀人声）
+                        noiseSuppression: false,     // 关掉噪音抑制（可能压掉说话声）
+                        autoGainControl: true,       // 保留自动增益（放大小声说话）
+                        sampleRate: { ideal: 48000 },
+                        channelCount: 1
+                    }
+                });
             } catch (e) {
                 this.showCssSystemMessage('❌ 无法访问麦克风，请检查权限');
                 ov.remove();
@@ -1039,9 +1047,9 @@ class ChatInterface {
             
             timerInterval = setInterval(updateTimer, 1000);
             
-            // MediaRecorder
+            // MediaRecorder（高码率保证音质）
             const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/mp4';
-            mediaRecorder = new MediaRecorder(mediaStream, { mimeType });
+            mediaRecorder = new MediaRecorder(mediaStream, { mimeType, audioBitsPerSecond: 128000 });
             mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
             mediaRecorder.start(100);
             
@@ -1071,7 +1079,7 @@ class ChatInterface {
                         const el = document.getElementById('rvTranscript');
                         if (el) el.textContent = transcript || '（正在识别...）';
                     };
-                    recognition.onerror = () => {};
+                    recognition.onerror = (e) => { console.warn('语音识别错误:', e.error, e.message); };
                     recognition.start();
                 }
             } catch(e) { console.warn('语音识别不可用:', e); }
@@ -1135,14 +1143,15 @@ class ChatInterface {
     
     // 发送真语音消息
     _sendRealVoiceMessage(audioData, transcriptText, duration, analysis) {
-        const finalText = transcriptText || '（语音未识别到文字）';
+        const finalText = transcriptText || '（user发送了一段语音）';
+        const displayText = transcriptText || '（语音未识别到文字）';
         
         const msg = {
             type: 'user',
             text: finalText,
             timestamp: new Date().toISOString(),
             _realVoice: true,
-            _voiceText: finalText,
+            _voiceText: displayText,
             _voiceDuration: duration,
             _voiceAudioData: audioData,
             _voiceAnalysis: analysis
@@ -1156,7 +1165,7 @@ class ChatInterface {
             text: finalText,
             timestamp: msg.timestamp,
             _realVoice: true,
-            _voiceText: finalText,
+            _voiceText: displayText,
             _voiceDuration: duration,
             _voiceAudioData: audioData,
             _voiceAnalysis: analysis,
