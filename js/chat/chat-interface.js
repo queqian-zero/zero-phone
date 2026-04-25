@@ -1045,18 +1045,34 @@ class ChatInterface {
             
             timerInterval = setInterval(updateTimer, 1000);
             
-            // MediaRecorder（高码率保证音质）
+            // MediaRecorder（保留webm用于播放）
             const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/mp4';
             mediaRecorder = new MediaRecorder(mediaStream, { mimeType, audioBitsPerSecond: 128000 });
             mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
             mediaRecorder.start(); // 不分片，录完一整块
             
-            // Web Audio API 分析
+            // Web Audio API 分析 + PCM 捕获
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             const source = audioCtx.createMediaStreamSource(mediaStream);
             analyser = audioCtx.createAnalyser();
             analyser.fftSize = 256;
             source.connect(analyser);
+            
+            // 用 ScriptProcessorNode 直接捕获原始 PCM 数据（给AI用）
+            const pcmBuffers = [];
+            const scriptNode = audioCtx.createScriptProcessor(4096, 1, 1);
+            scriptNode.onaudioprocess = (e) => {
+                if (recording) {
+                    pcmBuffers.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+                }
+            };
+            source.connect(scriptNode);
+            scriptNode.connect(audioCtx.destination); // 必须连接才能工作
+            
+            // 存到闭包给 stopRecording 用
+            this._pcmBuffers = pcmBuffers;
+            this._pcmSampleRate = audioCtx.sampleRate;
+            
             updateVolume();
         };
         
@@ -1079,38 +1095,49 @@ class ChatInterface {
             
             const analysis = { avgVolume: avgVol.toFixed(3), peakVolume: peakVol.toFixed(3), volumeLevel, noiseLevel, duration };
             
-            mediaRecorder.onstop = async () => {
-                const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
-                console.log('🎤 原始录音:', mediaRecorder.mimeType, Math.round(blob.size/1024) + 'KB');
+            mediaRecorder.onstop = () => {
+                // webm blob 用于播放
+                const webmBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
+                const webmReader = new FileReader();
                 
-                // webm/opus → WAV 转换（Gemini只支持WAV/MP3/OGG/FLAC/AAC）
-                try {
-                    const decodeCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
-                    const arrayBuf = await blob.arrayBuffer();
-                    console.log('🎤 ArrayBuffer大小:', arrayBuf.byteLength);
+                // PCM → WAV（用于发给AI）
+                const pcmBufs = this._pcmBuffers || [];
+                const sampleRate = this._pcmSampleRate || 44100;
+                console.log('🎤 PCM捕获: ' + pcmBufs.length + '块, 采样率=' + sampleRate);
+                
+                let wavDataUrl = '';
+                if (pcmBufs.length > 0) {
+                    // 合并所有 PCM 块
+                    const totalLen = pcmBufs.reduce((s, b) => s + b.length, 0);
+                    const merged = new Float32Array(totalLen);
+                    let offset = 0;
+                    for (const buf of pcmBufs) { merged.set(buf, offset); offset += buf.length; }
                     
-                    const audioBuf = await decodeCtx.decodeAudioData(arrayBuf);
-                    console.log('🎤 解码成功: 采样率=' + audioBuf.sampleRate + ' 时长=' + audioBuf.duration.toFixed(1) + 's 声道=' + audioBuf.numberOfChannels);
+                    // 直接编码为 WAV
+                    const wavBlob = this._float32ToWav(merged, sampleRate);
+                    console.log('🎤 WAV编码完成:', Math.round(wavBlob.size/1024) + 'KB');
                     
-                    const wavBlob = this._audioBufferToWav(audioBuf);
-                    console.log('🎤 WAV转换完成:', Math.round(wavBlob.size/1024) + 'KB');
-                    decodeCtx.close();
-                    
+                    // 同步转 dataURL
                     const wavReader = new FileReader();
                     wavReader.onload = () => {
-                        this._sendRealVoiceMessage(wavReader.result, '', duration, analysis);
-                        ov.remove();
+                        wavDataUrl = wavReader.result;
+                        console.log('🎤 WAV dataURL:', wavDataUrl.substring(0, 40));
+                        
+                        // 再读 webm（用于播放）
+                        webmReader.onload = () => {
+                            this._sendRealVoiceMessage(webmReader.result, '', duration, analysis, wavDataUrl);
+                            ov.remove();
+                        };
+                        webmReader.readAsDataURL(webmBlob);
                     };
                     wavReader.readAsDataURL(wavBlob);
-                } catch (e) {
-                    console.error('❌ WAV转换失败:', e);
-                    this.showCssSystemMessage('⚠️ WAV转换失败: ' + e.message + '，用原始格式发送');
-                    const reader = new FileReader();
-                    reader.onload = () => {
-                        this._sendRealVoiceMessage(reader.result, '', duration, analysis);
+                } else {
+                    this.showCssSystemMessage('⚠️ PCM捕获失败，使用原始格式');
+                    webmReader.onload = () => {
+                        this._sendRealVoiceMessage(webmReader.result, '', duration, analysis, '');
                         ov.remove();
                     };
-                    reader.readAsDataURL(blob);
+                    webmReader.readAsDataURL(webmBlob);
                 }
                 
                 mediaStream.getTracks().forEach(t => t.stop());
@@ -1138,10 +1165,10 @@ class ChatInterface {
     }
     
     // 发送真语音消息
-    _sendRealVoiceMessage(audioData, transcriptText, duration, analysis) {
-        // 调试信息：显示音频大小和格式
-        this.showCssSystemMessage('🎤 音频大小: ' + Math.round(audioData.length / 1024) + 'KB, 格式: ' + audioData.substring(0, 30));
-        console.log('🎤 音频数据:', '大小=' + Math.round(audioData.length / 1024) + 'KB', '格式=' + audioData.substring(0, 30));
+    _sendRealVoiceMessage(audioData, transcriptText, duration, analysis, wavDataForAI) {
+        // 调试信息
+        const aiAudio = wavDataForAI || audioData;
+        this.showCssSystemMessage('🎤 播放用: ' + Math.round(audioData.length / 1024) + 'KB ' + audioData.substring(5, 25) + ' | AI用: ' + Math.round(aiAudio.length / 1024) + 'KB ' + aiAudio.substring(5, 25));
         
         const finalText = transcriptText || '（user发送了一段语音）';
         const displayText = transcriptText || '（语音未识别到文字）';
@@ -1154,12 +1181,13 @@ class ChatInterface {
             _voiceText: displayText,
             _voiceDuration: duration,
             _voiceAudioData: audioData,
+            _voiceWavData: wavDataForAI || '',
             _voiceAnalysis: analysis
         };
         if (this._quotingMessage) { msg._quote = this._extractQuoteData(this._quotingMessage); this._clearQuoteMessage(); }
         this.addMessage(msg);
         
-        // 存储（音频数据可能很大，但保留以便回放）
+        // 存储
         this.storage.addMessage(this.currentFriendCode, {
             type: 'user',
             text: finalText,
@@ -1168,6 +1196,7 @@ class ChatInterface {
             _voiceText: displayText,
             _voiceDuration: duration,
             _voiceAudioData: audioData,
+            _voiceWavData: wavDataForAI || '',
             _voiceAnalysis: analysis,
             _quote: msg._quote
         });
@@ -1270,6 +1299,39 @@ class ChatInterface {
         
         console.log('✅ 语音转文字结果:', text);
         return text.trim();
+    }
+    
+    // Float32Array + sampleRate → WAV Blob（直接编码，不经过AudioContext解码）
+    _float32ToWav(samples, sampleRate) {
+        const bitDepth = 16;
+        const numChannels = 1;
+        const dataLength = samples.length * 2; // 16-bit = 2 bytes per sample
+        const buffer = new ArrayBuffer(44 + dataLength);
+        const view = new DataView(buffer);
+        
+        const writeStr = (off, str) => { for (let i = 0; i < str.length; i++) view.setUint8(off + i, str.charCodeAt(i)); };
+        writeStr(0, 'RIFF');
+        view.setUint32(4, 36 + dataLength, true);
+        writeStr(8, 'WAVE');
+        writeStr(12, 'fmt ');
+        view.setUint32(16, 16, true);
+        view.setUint16(20, 1, true); // PCM
+        view.setUint16(22, numChannels, true);
+        view.setUint32(24, sampleRate, true);
+        view.setUint32(28, sampleRate * numChannels * 2, true);
+        view.setUint16(32, numChannels * 2, true);
+        view.setUint16(34, bitDepth, true);
+        writeStr(36, 'data');
+        view.setUint32(40, dataLength, true);
+        
+        let offset = 44;
+        for (let i = 0; i < samples.length; i++) {
+            const s = Math.max(-1, Math.min(1, samples[i]));
+            view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+            offset += 2;
+        }
+        
+        return new Blob([buffer], { type: 'audio/wav' });
     }
     
     // AudioBuffer → WAV Blob（16-bit PCM, 单声道）
@@ -2944,11 +3006,15 @@ ${archiveListText}
             let audioAttachment = null;
             for (let i = this.messages.length - 1; i >= Math.max(0, this.messages.length - 3); i--) {
                 const m = this.messages[i];
-                if (m.type === 'user' && m._realVoice && m._voiceAudioData) {
-                    const base64Part = m._voiceAudioData.split(',')[1];
-                    const mimeMatch = m._voiceAudioData.match(/data:([^;]+);/);
-                    const mimeType = mimeMatch ? mimeMatch[1] : 'audio/webm';
-                    audioAttachment = { data: base64Part, mimeType };
+                if (m.type === 'user' && m._realVoice) {
+                    // 优先用WAV（AI兼容），降级用原始格式
+                    const audioSrc = m._voiceWavData || m._voiceAudioData;
+                    if (audioSrc) {
+                        const base64Part = audioSrc.split(',')[1];
+                        const mimeMatch = audioSrc.match(/data:([^;]+);/);
+                        const mimeType = mimeMatch ? mimeMatch[1] : 'audio/wav';
+                        audioAttachment = { data: base64Part, mimeType };
+                    }
                     break;
                 }
             }
