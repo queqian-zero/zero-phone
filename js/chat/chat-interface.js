@@ -1108,46 +1108,69 @@ class ChatInterface {
             
             const analysis = { avgVolume: avgVol.toFixed(3), peakVolume: peakVol.toFixed(3), volumeLevel, noiseLevel, duration };
             
-            mediaRecorder.onstop = () => {
-                // webm blob 用于播放
+            mediaRecorder.onstop = async () => {
                 const webmBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
-                const webmReader = new FileReader();
+                console.log('🎤 原始录音:', mediaRecorder.mimeType, Math.round(webmBlob.size/1024) + 'KB');
                 
-                // PCM → WAV（用于发给AI）
+                // === 方案A：decodeAudioData 解码 webm → WAV（音质最好）===
+                try {
+                    this.showCssSystemMessage('🔄 转换音频中...');
+                    const decodeCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    const arrayBuf = await webmBlob.arrayBuffer();
+                    const audioBuf = await decodeCtx.decodeAudioData(arrayBuf);
+                    console.log('🎤 ✅ decodeAudioData成功! 采样率=' + audioBuf.sampleRate + ' 时长=' + audioBuf.duration.toFixed(2) + 's');
+                    this.showCssSystemMessage('✅ 方案A成功: 时长' + audioBuf.duration.toFixed(1) + 's');
+                    
+                    const wavBlob = this._float32ToWav(audioBuf.getChannelData(0), audioBuf.sampleRate);
+                    decodeCtx.close();
+                    
+                    const wavReader = new FileReader();
+                    const webmReader = new FileReader();
+                    wavReader.onload = () => {
+                        webmReader.onload = () => {
+                            this._sendRealVoiceMessage(webmReader.result, '', duration, analysis, wavReader.result);
+                            ov.remove();
+                        };
+                        webmReader.readAsDataURL(webmBlob);
+                    };
+                    wavReader.readAsDataURL(wavBlob);
+                    
+                    mediaStream.getTracks().forEach(t => t.stop());
+                    if (audioCtx) audioCtx.close();
+                    return;
+                } catch (e) {
+                    console.warn('🎤 ❌ 方案A失败:', e.message);
+                    this.showCssSystemMessage('⚠️ 方案A失败: ' + e.message + '，尝试方案B');
+                }
+                
+                // === 方案B：ScriptProcessorNode PCM → WAV（备用）===
                 const pcmBufs = this._pcmBuffers || [];
-                const sampleRate = this._pcmSampleRate || 44100;
+                const sampleRate = this._pcmSampleRate || 48000;
                 const peakAmplitude = this._pcmMaxSample ? this._pcmMaxSample() : 0;
-                console.log('🎤 PCM捕获: ' + pcmBufs.length + '块, 采样率=' + sampleRate + ', 峰值振幅=' + peakAmplitude.toFixed(4));
-                this.showCssSystemMessage('🎤 PCM: ' + pcmBufs.length + '块, 峰值=' + peakAmplitude.toFixed(4) + (peakAmplitude < 0.01 ? ' ⚠️全静音！' : ' ✅有声音'));
+                console.log('🎤 方案B PCM: ' + pcmBufs.length + '块, 峰值=' + peakAmplitude.toFixed(4));
                 
-                let wavDataUrl = '';
-                if (pcmBufs.length > 0) {
-                    // 合并所有 PCM 块
+                if (pcmBufs.length > 0 && peakAmplitude > 0.01) {
                     const totalLen = pcmBufs.reduce((s, b) => s + b.length, 0);
                     const merged = new Float32Array(totalLen);
-                    let offset = 0;
-                    for (const buf of pcmBufs) { merged.set(buf, offset); offset += buf.length; }
-                    
-                    // 直接编码为 WAV
+                    let off = 0;
+                    for (const buf of pcmBufs) { merged.set(buf, off); off += buf.length; }
                     const wavBlob = this._float32ToWav(merged, sampleRate);
-                    console.log('🎤 WAV编码完成:', Math.round(wavBlob.size/1024) + 'KB');
+                    this.showCssSystemMessage('✅ 方案B: WAV ' + Math.round(wavBlob.size/1024) + 'KB');
                     
-                    // 同步转 dataURL
                     const wavReader = new FileReader();
+                    const webmReader = new FileReader();
                     wavReader.onload = () => {
-                        wavDataUrl = wavReader.result;
-                        console.log('🎤 WAV dataURL:', wavDataUrl.substring(0, 40));
-                        
-                        // 再读 webm（用于播放）
                         webmReader.onload = () => {
-                            this._sendRealVoiceMessage(webmReader.result, '', duration, analysis, wavDataUrl);
+                            this._sendRealVoiceMessage(webmReader.result, '', duration, analysis, wavReader.result);
                             ov.remove();
                         };
                         webmReader.readAsDataURL(webmBlob);
                     };
                     wavReader.readAsDataURL(wavBlob);
                 } else {
-                    this.showCssSystemMessage('⚠️ PCM捕获失败，使用原始格式');
+                    // === 方案C：直接发 webm 兜底 ===
+                    this.showCssSystemMessage('⚠️ 全部失败，用原始webm');
+                    const webmReader = new FileReader();
                     webmReader.onload = () => {
                         this._sendRealVoiceMessage(webmReader.result, '', duration, analysis, '');
                         ov.remove();
