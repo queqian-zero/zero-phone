@@ -310,9 +310,11 @@ class ProfileManager {
             <div class="profile-avatar-options">
                 <div class="profile-avatar-option" id="pAvatarFileBtn">📷 从相册</div>
                 <div class="profile-avatar-option" id="pAvatarUrlBtn">🔗 粘贴链接</div>
+                <div class="profile-avatar-option" id="pAvatarLibBtn">🖼 从图库</div>
             </div>
             <input type="file" id="pAvatarFileInput" accept="image/*" style="display:none;">
             <input type="text" class="profile-edit-input" id="pAvatarUrlInput" placeholder="粘贴图片URL..." style="display:none;">
+            <div id="pAvatarLibPanel" style="display:none;max-height:200px;overflow-y:auto;margin:8px 0;"></div>
             <button class="profile-edit-btn profile-edit-btn-primary" id="pAvatarSave">保存</button>
             ${s.userAvatar ? '<button class="profile-edit-btn profile-edit-btn-secondary" id="pAvatarRemove">移除头像</button>' : ''}
             <button class="profile-edit-btn profile-edit-btn-secondary" id="pAvatarCancel">取消</button>
@@ -325,8 +327,52 @@ class ProfileManager {
             r.onload = (ev) => { const img = new Image(); img.onload = () => { const c = document.createElement('canvas'); const sc = Math.min(1,400/Math.max(img.width,img.height)); c.width=img.width*sc;c.height=img.height*sc; c.getContext('2d').drawImage(img,0,0,c.width,c.height); pending=c.toDataURL('image/jpeg',0.8); this._showPrev(pending); }; img.src=ev.target.result; };
             r.readAsDataURL(f);
         });
-        ov.querySelector('#pAvatarUrlBtn').addEventListener('click', () => { const el = ov.querySelector('#pAvatarUrlInput'); el.style.display = el.style.display === 'none' ? 'block' : 'none'; });
+        ov.querySelector('#pAvatarUrlBtn').addEventListener('click', () => { const el = ov.querySelector('#pAvatarUrlInput'); el.style.display = el.style.display === 'none' ? 'block' : 'none'; document.getElementById('pAvatarLibPanel').style.display = 'none'; });
         ov.querySelector('#pAvatarUrlInput').addEventListener('change', (e) => { const url = e.target.value.trim(); if (url) { pending = url; this._showPrev(url); } });
+        
+        // 从图库选择
+        ov.querySelector('#pAvatarLibBtn').addEventListener('click', () => {
+            const libPanel = document.getElementById('pAvatarLibPanel');
+            ov.querySelector('#pAvatarUrlInput').style.display = 'none';
+            if (libPanel.style.display !== 'none') { libPanel.style.display = 'none'; return; }
+            
+            // 读取base64库数据
+            const libData = this.storage.getUserSettings()?.base64Library || {};
+            const tabs = ['avatars', 'webImages', 'transparent'];
+            const tabLabels = { avatars: '头像库', webImages: '网图库', transparent: '透明底图' };
+            let allImages = [];
+            tabs.forEach(tab => {
+                const items = libData[tab]?.items || [];
+                items.forEach(item => {
+                    if (item.data) allImages.push({ src: item.data, name: item.name || '', tab: tabLabels[tab] || tab });
+                });
+            });
+            
+            if (allImages.length === 0) {
+                libPanel.innerHTML = '<div style="text-align:center;padding:20px;color:rgba(255,255,255,0.2);font-size:12px;">图库里还没有图片</div>';
+            } else {
+                libPanel.innerHTML = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:4px;">' +
+                    allImages.map((img, i) => `<div class="avatar-lib-item" data-idx="${i}" style="aspect-ratio:1;border-radius:8px;overflow:hidden;cursor:pointer;border:2px solid transparent;transition:border 0.15s;">
+                        <img src="${img.src}" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.parentElement.style.display='none'">
+                    </div>`).join('') + '</div>';
+                
+                libPanel.querySelectorAll('.avatar-lib-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        const idx = parseInt(item.dataset.idx);
+                        const img = allImages[idx];
+                        if (img) {
+                            pending = img.src;
+                            this._showPrev(pending);
+                            // 高亮选中
+                            libPanel.querySelectorAll('.avatar-lib-item').forEach(el => el.style.borderColor = 'transparent');
+                            item.style.borderColor = 'rgba(240,147,43,0.6)';
+                        }
+                    });
+                });
+            }
+            libPanel.style.display = 'block';
+        });
+        
         ov.querySelector('#pAvatarSave').addEventListener('click', () => { if (pending) this.storage.updateUserSettings({ userAvatar: pending }); this._removeOverlay(); this._refreshDetail(); this.render(); this._toast('头像已更新'); });
         ov.querySelector('#pAvatarRemove')?.addEventListener('click', () => { this.storage.updateUserSettings({ userAvatar: '' }); this._removeOverlay(); this._refreshDetail(); this.render(); this._toast('头像已移除'); });
         ov.querySelector('#pAvatarCancel').addEventListener('click', () => this._removeOverlay());

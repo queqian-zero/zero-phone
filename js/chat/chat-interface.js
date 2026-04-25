@@ -16,6 +16,13 @@ class ChatInterface {
         // 日志系统
         this._logBuffer = [];
         this._logMaxEntries = 500;
+        this._logStorageKey = 'zero_phone_debug_logs';
+        // 从存储恢复日志
+        try {
+            const saved = localStorage.getItem(this._logStorageKey);
+            if (saved) this._logBuffer = JSON.parse(saved);
+        } catch(e) {}
+        this._logSaveTimer = null;
         this._initLogCapture();
         
         // 设置相关
@@ -760,6 +767,12 @@ class ChatInterface {
             this._sendFakeVoice();
         });
         
+        // 真语音
+        document.getElementById('menuRealVoice')?.addEventListener('click', () => {
+            this.closeMenu();
+            this._openRealVoiceRecorder();
+        });
+        
         // 真发图
         document.getElementById('menuRealImage')?.addEventListener('click', () => {
             this.closeMenu();
@@ -934,6 +947,248 @@ class ChatInterface {
                 <span class="voice-duration" style="font-size:11px;opacity:0.35;flex-shrink:0;">${duration}''</span>
             </div>
             <div class="voice-text-area" style="display:none;font-size:13px;line-height:1.5;margin-top:6px;padding-top:6px;border-top:1px solid rgba(128,128,128,0.12);"></div>
+        </div>`;
+    }
+    
+    // ==================== 真语音录制系统 ====================
+    
+    _openRealVoiceRecorder() {
+        // 检查浏览器支持
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            this.showCssSystemMessage('❌ 当前浏览器不支持录音功能');
+            return;
+        }
+        
+        document.getElementById('realVoiceOverlay')?.remove();
+        
+        const ov = document.createElement('div');
+        ov.id = 'realVoiceOverlay';
+        ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;background:rgba(0,0,0,0.7);display:flex;flex-direction:column;align-items:center;justify-content:center;';
+        ov.innerHTML = `
+            <div style="text-align:center;">
+                <div id="rvStatus" style="font-size:14px;color:rgba(255,255,255,0.6);margin-bottom:16px;">点击开始录音</div>
+                <div id="rvTimer" style="font-size:28px;color:rgba(100,200,255,0.8);font-family:monospace;margin-bottom:20px;">0:00</div>
+                <div id="rvVolumeMeter" style="width:120px;height:6px;background:rgba(255,255,255,0.08);border-radius:3px;margin:0 auto 20px;">
+                    <div id="rvVolumeBar" style="width:0%;height:100%;background:rgba(100,200,255,0.6);border-radius:3px;transition:width 0.1s;"></div>
+                </div>
+                <div id="rvRecBtn" style="width:72px;height:72px;border-radius:50%;background:rgba(100,200,255,0.15);border:2px solid rgba(100,200,255,0.4);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;cursor:pointer;transition:all 0.2s;">
+                    <div id="rvRecIcon" style="width:24px;height:24px;border-radius:50%;background:rgba(100,200,255,0.8);transition:all 0.2s;"></div>
+                </div>
+                <div id="rvTranscript" style="font-size:12px;color:rgba(255,255,255,0.3);max-width:280px;min-height:20px;margin-bottom:12px;"></div>
+                <button id="rvCancel" style="padding:8px 24px;border:none;border-radius:8px;background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.4);font-size:13px;cursor:pointer;">取消</button>
+            </div>
+        `;
+        document.body.appendChild(ov);
+        
+        let recording = false;
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let audioCtx = null;
+        let analyser = null;
+        let mediaStream = null;
+        let startTime = 0;
+        let timerInterval = null;
+        let volumeSamples = [];
+        let recognition = null;
+        let transcript = '';
+        
+        const updateTimer = () => {
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            const m = Math.floor(elapsed / 60);
+            const s = elapsed % 60;
+            const el = document.getElementById('rvTimer');
+            if (el) el.textContent = `${m}:${s.toString().padStart(2, '0')}`;
+        };
+        
+        const updateVolume = () => {
+            if (!analyser || !recording) return;
+            const data = new Uint8Array(analyser.fftSize);
+            analyser.getByteTimeDomainData(data);
+            let sum = 0;
+            for (let i = 0; i < data.length; i++) {
+                const v = (data[i] - 128) / 128;
+                sum += v * v;
+            }
+            const rms = Math.sqrt(sum / data.length);
+            const pct = Math.min(100, rms * 300);
+            volumeSamples.push(rms);
+            const bar = document.getElementById('rvVolumeBar');
+            if (bar) bar.style.width = pct + '%';
+            if (recording) requestAnimationFrame(updateVolume);
+        };
+        
+        const startRecording = async () => {
+            try {
+                mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            } catch (e) {
+                this.showCssSystemMessage('❌ 无法访问麦克风，请检查权限');
+                ov.remove();
+                return;
+            }
+            
+            recording = true;
+            audioChunks = [];
+            volumeSamples = [];
+            startTime = Date.now();
+            
+            // UI更新
+            document.getElementById('rvStatus').textContent = '录音中...';
+            document.getElementById('rvStatus').style.color = 'rgba(100,200,255,0.8)';
+            const icon = document.getElementById('rvRecIcon');
+            if (icon) { icon.style.borderRadius = '4px'; icon.style.background = 'rgba(255,80,80,0.8)'; }
+            
+            timerInterval = setInterval(updateTimer, 1000);
+            
+            // MediaRecorder
+            const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/mp4';
+            mediaRecorder = new MediaRecorder(mediaStream, { mimeType });
+            mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+            mediaRecorder.start(100);
+            
+            // Web Audio API 分析
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const source = audioCtx.createMediaStreamSource(mediaStream);
+            analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 256;
+            source.connect(analyser);
+            updateVolume();
+            
+            // 语音识别
+            try {
+                const SpeechRecog = window.SpeechRecognition || window.webkitSpeechRecognition;
+                if (SpeechRecog) {
+                    recognition = new SpeechRecog();
+                    recognition.lang = 'zh-CN';
+                    recognition.continuous = true;
+                    recognition.interimResults = true;
+                    recognition.onresult = (e) => {
+                        let interim = '', final = '';
+                        for (let i = 0; i < e.results.length; i++) {
+                            if (e.results[i].isFinal) final += e.results[i][0].transcript;
+                            else interim += e.results[i][0].transcript;
+                        }
+                        transcript = final || interim;
+                        const el = document.getElementById('rvTranscript');
+                        if (el) el.textContent = transcript || '（正在识别...）';
+                    };
+                    recognition.onerror = () => {};
+                    recognition.start();
+                }
+            } catch(e) { console.warn('语音识别不可用:', e); }
+        };
+        
+        const stopRecording = () => {
+            if (!recording) return;
+            recording = false;
+            clearInterval(timerInterval);
+            if (recognition) try { recognition.stop(); } catch(e) {}
+            
+            const duration = Math.round((Date.now() - startTime) / 1000);
+            
+            // 分析音频特征
+            const avgVol = volumeSamples.length > 0 ? volumeSamples.reduce((a, b) => a + b, 0) / volumeSamples.length : 0;
+            const peakVol = volumeSamples.length > 0 ? Math.max(...volumeSamples) : 0;
+            // 估算环境噪音（取最安静的10%采样）
+            const sorted = [...volumeSamples].sort((a, b) => a - b);
+            const noiseFloor = sorted.length > 10 ? sorted.slice(0, Math.floor(sorted.length * 0.1)).reduce((a, b) => a + b, 0) / Math.floor(sorted.length * 0.1) : 0;
+            
+            const volumeLevel = avgVol > 0.15 ? '大声' : avgVol > 0.05 ? '正常' : '轻声';
+            const noiseLevel = noiseFloor > 0.08 ? '嘈杂' : noiseFloor > 0.03 ? '有背景音' : '安静';
+            
+            const analysis = { avgVolume: avgVol.toFixed(3), peakVolume: peakVol.toFixed(3), volumeLevel, noiseLevel, duration };
+            
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const audioData = reader.result;
+                    this._sendRealVoiceMessage(audioData, transcript, duration, analysis);
+                    ov.remove();
+                };
+                reader.readAsDataURL(blob);
+                
+                // 释放资源
+                mediaStream.getTracks().forEach(t => t.stop());
+                if (audioCtx) audioCtx.close();
+            };
+            mediaRecorder.stop();
+        };
+        
+        // 按钮交互
+        document.getElementById('rvRecBtn').addEventListener('click', () => {
+            if (!recording) startRecording();
+            else stopRecording();
+        });
+        
+        document.getElementById('rvCancel').addEventListener('click', () => {
+            if (recording) {
+                recording = false;
+                clearInterval(timerInterval);
+                if (recognition) try { recognition.stop(); } catch(e) {}
+                if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+                if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+                if (audioCtx) audioCtx.close();
+            }
+            ov.remove();
+        });
+    }
+    
+    // 发送真语音消息
+    _sendRealVoiceMessage(audioData, transcriptText, duration, analysis) {
+        const finalText = transcriptText || '（语音未识别到文字）';
+        
+        const msg = {
+            type: 'user',
+            text: `[真实语音] ${finalText}`,
+            timestamp: new Date().toISOString(),
+            _realVoice: true,
+            _voiceText: finalText,
+            _voiceDuration: duration,
+            _voiceAudioData: audioData,
+            _voiceAnalysis: analysis
+        };
+        if (this._quotingMessage) { msg._quote = this._extractQuoteData(this._quotingMessage); this._clearQuoteMessage(); }
+        this.addMessage(msg);
+        
+        // 存储（音频数据可能很大，但保留以便回放）
+        this.storage.addMessage(this.currentFriendCode, {
+            type: 'user',
+            text: `[真实语音消息，时长${duration}秒，音量：${analysis.volumeLevel}，环境：${analysis.noiseLevel}] 转写内容：${finalText}`,
+            timestamp: msg.timestamp,
+            _realVoice: true,
+            _voiceText: finalText,
+            _voiceDuration: duration,
+            _voiceAudioData: audioData,
+            _voiceAnalysis: analysis,
+            _quote: msg._quote
+        });
+        
+        this.scrollToBottom();
+    }
+    
+    // 渲染真语音条
+    _renderRealVoiceBubble(message) {
+        const duration = message._voiceDuration || 1;
+        const barWidth = Math.min(75, 25 + duration * 1.5);
+        const analysis = message._voiceAnalysis || {};
+        
+        // 生成波形（基于实际音量数据风格，用随机但偏大的波形）
+        const waves = Array.from({ length: Math.min(24, Math.max(8, duration * 3)) }, () =>
+            `<div style="width:2px;height:${4+Math.floor(Math.random()*14)}px;background:rgba(100,200,255,0.6);border-radius:1px;"></div>`
+        ).join('');
+        
+        const analysisBadge = analysis.volumeLevel ? 
+            `<div style="font-size:9px;color:rgba(100,200,255,0.3);margin-top:2px;">${analysis.volumeLevel} · ${analysis.noiseLevel}</div>` : '';
+        
+        return `<div class="real-voice-bar-wrap" style="display:flex;flex-direction:column;cursor:pointer;min-width:${barWidth}%;padding:2px 0;">
+            <div style="display:flex;align-items:center;gap:6px;">
+                <span class="rv-play-icon" style="font-size:14px;flex-shrink:0;color:rgba(100,200,255,0.7);">&#9654;</span>
+                <div style="flex:1;display:flex;align-items:center;gap:1px;height:18px;">${waves}</div>
+                <span style="font-size:11px;color:rgba(100,200,255,0.35);flex-shrink:0;">${duration}''</span>
+                <span style="font-size:8px;padding:1px 4px;border-radius:3px;background:rgba(100,200,255,0.1);color:rgba(100,200,255,0.45);">真</span>
+            </div>
+            ${analysisBadge}
+            <div class="voice-text-area" style="display:none;font-size:13px;line-height:1.5;margin-top:6px;padding-top:6px;border-top:1px solid rgba(100,200,255,0.1);color:rgba(100,200,255,0.5);"></div>
         </div>`;
     }
     
@@ -2051,7 +2306,8 @@ class ChatInterface {
                 // 如果消息带引用，在前面加上引用信息
                 if (msg._quote) {
                     const qs = msg._quote.senderType === 'user' ? 'user' : '你';
-                    const qt = msg._quote._voice ? '[语音消息]' 
+                    const qt = msg._quote._realVoice ? '[真语音消息]'
+                             : msg._quote._voice ? '[语音消息]' 
                              : msg._quote._imageUrl ? '[图片]' 
                              : msg._quote._stickerUrl ? '[表情包]'
                              : msg._quote._fakeImage ? `[假图片:${msg._quote._fakeImage}]`
@@ -3017,12 +3273,13 @@ div.innerHTML = `
                         <img src="${message._stickerUrl}" style="width:100%;border-radius:8px;display:block;" onerror="this.style.display='none'">
                         <div style="font-size:10px;opacity:0.35;text-align:center;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${this.escapeHtml(message._stickerName || '')}</div>
                     </div>` : ''}
-                    ${message._voice ? this._renderVoiceBubble(message) : ''}
+                    ${message._realVoice ? this._renderRealVoiceBubble(message) : ''}
+                    ${message._voice && !message._realVoice ? this._renderVoiceBubble(message) : ''}
                     ${message._fakeImage ? `<div class="fake-image-card" style="position:relative;background:rgba(128,128,128,0.06);border:1px dashed rgba(128,128,128,0.15);border-radius:10px;min-width:140px;min-height:80px;max-width:200px;overflow:hidden;cursor:pointer;">
                         <div class="fake-image-desc" style="padding:14px;font-size:12px;opacity:0.5;text-align:center;line-height:1.5;">${this.escapeHtml(message._fakeImage)}</div>
                         <div class="fake-image-cover" style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(60,60,60,0.85);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;font-size:12px;color:rgba(255,255,255,0.35);letter-spacing:1px;transition:opacity 0.25s ease,visibility 0.25s ease;">[图片]</div>
                     </div>` : ''}
-                    ${message.text && !message._imageOnly && !message._voice && !message._fakeImage && !message._stickerUrl ? `<div class="message-text">${this.renderMessageContent(message.text)}</div>` : ''}
+                    ${message.text && !message._imageOnly && !message._voice && !message._realVoice && !message._fakeImage && !message._stickerUrl ? `<div class="message-text">${this.renderMessageContent(message.text)}</div>` : ''}
                 </div>
                 <div class="message-time">${time}</div>
             </div>
@@ -3088,6 +3345,35 @@ div.innerHTML = `
         const voiceBar = div.querySelector('.voice-bar-wrap');
         if (voiceBar && message._voiceText) {
             voiceBar.addEventListener('click', () => this._toggleVoiceText(voiceBar, message._voiceText));
+        }
+        
+        // 真语音条点击（播放音频 + 显示转文字）
+        const realVoiceBar = div.querySelector('.real-voice-bar-wrap');
+        if (realVoiceBar) {
+            realVoiceBar.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const audioData = message._voiceAudioData;
+                const playIcon = realVoiceBar.querySelector('.rv-play-icon');
+                
+                // 如果正在播放，停止
+                if (this._currentAudio && !this._currentAudio.paused) {
+                    this._currentAudio.pause();
+                    this._currentAudio = null;
+                    if (playIcon) playIcon.innerHTML = '&#9654;';
+                    return;
+                }
+                
+                // 播放音频
+                if (audioData && audioData.startsWith('data:')) {
+                    this._currentAudio = new Audio(audioData);
+                    if (playIcon) playIcon.innerHTML = '&#9646;&#9646;';
+                    this._currentAudio.play().catch(() => {});
+                    this._currentAudio.onended = () => { if (playIcon) playIcon.innerHTML = '&#9654;'; };
+                }
+                
+                // 同时切换转文字
+                this._toggleVoiceText(realVoiceBar, message._voiceText);
+            });
         }
         
         // 假图片点击（切换覆盖层，带动画）
@@ -13445,6 +13731,13 @@ _initLogCapture() {
         };
         buf.push(entry);
         if (buf.length > MAX) buf.shift();
+        // 防抖存储（3秒内只写一次）
+        if (!self._logSaveTimer) {
+            self._logSaveTimer = setTimeout(() => {
+                try { localStorage.setItem(self._logStorageKey, JSON.stringify(buf)); } catch(e) {}
+                self._logSaveTimer = null;
+            }, 3000);
+        }
     };
     
     console.log = function(...args) { push('log', args); _origLog(...args); };
@@ -13535,7 +13828,7 @@ _openDebugLog() {
     const refreshTimer = setInterval(renderLogs, 2000);
     
     panel.querySelector('#debugLogBack').addEventListener('click', () => { clearInterval(refreshTimer); panel.remove(); });
-    panel.querySelector('#debugLogClear').addEventListener('click', () => { this._logBuffer.length = 0; renderLogs(); });
+    panel.querySelector('#debugLogClear').addEventListener('click', () => { this._logBuffer.length = 0; try { localStorage.removeItem(this._logStorageKey); } catch(e) {} renderLogs(); });
     panel.querySelector('#debugLogCopy').addEventListener('click', () => {
         const text = this._logBuffer.map(e => `[${e.time}][${e.level}] ${e.text}`).join('\n');
         navigator.clipboard?.writeText(text).then(() => this.showCssToast('已复制到剪贴板'));
@@ -13559,7 +13852,11 @@ _renderQuoteBlock(q) {
     const senderLabel = q.senderType === 'user' ? '你' : (q.senderName || 'TA');
     let contentHtml = '';
     
-    if (q._voice) {
+    if (q._realVoice) {
+        const dur = q._voiceDuration || 3;
+        const w = Math.min(60, 20 + dur);
+        contentHtml = `<div style="display:flex;align-items:center;gap:4px;"><span style="font-size:10px;">🎙</span><div style="width:${w}px;height:14px;background:rgba(100,200,255,0.08);border-radius:7px;"></div><span style="font-size:9px;color:rgba(100,200,255,0.4);">${dur}" 真</span></div>`;
+    } else if (q._voice) {
         const dur = q._voiceDuration || 3;
         const w = Math.min(60, 20 + dur);
         contentHtml = `<div style="display:flex;align-items:center;gap:4px;"><span style="font-size:10px;">🎤</span><div style="width:${w}px;height:14px;background:rgba(255,255,255,0.06);border-radius:7px;"></div><span style="font-size:9px;opacity:0.4;">${dur}"</span></div>`;
@@ -13753,7 +14050,9 @@ _showRecalledContent(data) {
     
     // 构建原始内容展示
     let contentHtml = '';
-    if (orig._voice) {
+    if (orig._realVoice) {
+        contentHtml = `<div style="padding:10px;background:rgba(100,200,255,0.05);border-radius:8px;">🎙 真语音消息（${orig._voiceDuration || '?'}秒，${orig._voiceAnalysis?.volumeLevel || ''}，环境${orig._voiceAnalysis?.noiseLevel || ''}）：${this.escapeHtml(orig._voiceText || orig.text || '')}</div>`;
+    } else if (orig._voice) {
         contentHtml = `<div style="padding:10px;background:rgba(255,255,255,0.03);border-radius:8px;">🎤 语音消息：${this.escapeHtml(orig._voiceText || orig.text || '')}</div>`;
     } else if (orig._imageUrl) {
         contentHtml = `<div style="text-align:center;"><img src="${orig._imageUrl}" style="max-width:200px;max-height:200px;border-radius:8px;"></div>`;
@@ -13816,7 +14115,8 @@ _setQuoteMessage(msg) {
     
     // 构建预览文字
     let preview = '';
-    if (msg._voice) preview = '🎤 语音消息';
+    if (msg._realVoice) preview = '🎙 真语音消息';
+    else if (msg._voice) preview = '🎤 语音消息';
     else if (msg._imageUrl) preview = '🖼 图片';
     else if (msg._stickerUrl) preview = `😊 ${msg._stickerName || '表情包'}`;
     else if (msg._fakeImage) preview = `[图片] ${(msg._fakeImage || '').substring(0, 15)}`;
@@ -13861,7 +14161,8 @@ _extractQuoteData(msg) {
         senderName: senderName,
         timestamp: msg.timestamp
     };
-    if (msg._voice) { q._voice = true; q._voiceDuration = msg._voiceDuration; q._voiceText = msg._voiceText; }
+    if (msg._realVoice) { q._realVoice = true; q._voiceDuration = msg._voiceDuration; q._voiceText = msg._voiceText; }
+    if (msg._voice && !msg._realVoice) { q._voice = true; q._voiceDuration = msg._voiceDuration; q._voiceText = msg._voiceText; }
     if (msg._imageUrl) q._imageUrl = msg._imageUrl;
     if (msg._stickerUrl) { q._stickerUrl = msg._stickerUrl; q._stickerName = msg._stickerName; }
     if (msg._fakeImage) q._fakeImage = msg._fakeImage;
