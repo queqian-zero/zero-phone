@@ -13419,13 +13419,28 @@ _initLogCapture() {
     const _origWarn = console.warn.bind(console);
     const _origError = console.error.bind(console);
     
+    // 缩略base64和超长字符串
+    const _shorten = (s) => {
+        if (typeof s !== 'string') return s;
+        // base64 data URL → 缩略
+        s = s.replace(/data:([^;]+);base64,[A-Za-z0-9+/=]{80,}/g, (m, type) => {
+            const len = m.length - m.indexOf(',') - 1;
+            return `data:${type};base64,[...${(len/1024).toFixed(1)}KB...]`;
+        });
+        // 超长连续非空白字符（可能是其他编码/hash）
+        s = s.replace(/[^\s]{300,}/g, m => m.substring(0, 40) + `...[${m.length}字符]`);
+        // 整体截断
+        if (s.length > 500) s = s.substring(0, 500) + `...[截断，共${s.length}字符]`;
+        return s;
+    };
+    
     const push = (level, args) => {
         const entry = {
             time: new Date().toLocaleTimeString('zh-CN', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }),
             level,
             text: Array.from(args).map(a => {
-                if (typeof a === 'string') return a;
-                try { return JSON.stringify(a, null, 0)?.substring(0, 200); } catch { return String(a); }
+                if (typeof a === 'string') return _shorten(a);
+                try { return _shorten(JSON.stringify(a, null, 0)?.substring(0, 500) || ''); } catch { return String(a); }
             }).join(' ')
         };
         buf.push(entry);
@@ -13490,14 +13505,29 @@ _openDebugLog() {
         
         list.innerHTML = filtered.length === 0 
             ? '<div style="text-align:center;padding:40px;color:rgba(255,255,255,0.15);">暂无日志</div>'
-            : filtered.map(e => 
-                `<div style="padding:3px 6px;border-bottom:1px solid rgba(255,255,255,0.02);color:${colorMap[e.level] || colorMap.log};word-break:break-all;"><span style="color:rgba(255,255,255,0.15);margin-right:6px;">${e.time}</span>${iconMap[e.level] || ''}${this.escapeHtml(e.text)}</div>`
-            ).join('');
+            : filtered.map(e => {
+                const escaped = this.escapeHtml(e.text);
+                const isLong = e.text.length > 150;
+                return `<div class="dl-entry" style="padding:3px 6px;border-bottom:1px solid rgba(255,255,255,0.02);color:${colorMap[e.level] || colorMap.log};word-break:break-all;${isLong ? 'max-height:3.6em;overflow:hidden;cursor:pointer;position:relative;' : ''}"><span style="color:rgba(255,255,255,0.15);margin-right:6px;">${e.time}</span>${iconMap[e.level] || ''}${escaped}${isLong ? '<span style="position:absolute;right:4px;bottom:0;background:linear-gradient(90deg,transparent,#0a0806 30%);padding-left:20px;font-size:9px;color:rgba(240,147,43,0.4);"> ▼展开</span>' : ''}</div>`;
+            }).join('');
         
         list.scrollTop = list.scrollHeight;
     };
     
     renderLogs();
+    
+    // 点击展开/折叠长条目
+    document.getElementById('debugLogList')?.addEventListener('click', e => {
+        const entry = e.target.closest('.dl-entry');
+        if (!entry || !entry.style.maxHeight) return;
+        if (entry.style.maxHeight === 'none') {
+            entry.style.maxHeight = '3.6em';
+            entry.style.overflow = 'hidden';
+        } else {
+            entry.style.maxHeight = 'none';
+            entry.style.overflow = 'visible';
+        }
+    });
     
     // 自动刷新
     const refreshTimer = setInterval(renderLogs, 2000);
