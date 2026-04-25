@@ -329,7 +329,7 @@ class APIManager {
     // 构建请求体
     buildRequestBody(config, messages, systemPrompt, options = {}) {
         const { provider, model, maxTokens, temperature } = config;
-        const { avatarImages } = options;
+        const { avatarImages, audioAttachment } = options;
 
         // ── 需求5：格式化消息时间戳（只供AI看，不显示给用户）──
         const fmtTime = (iso) => {
@@ -395,6 +395,21 @@ class APIManager {
                         parts: [{ text: msg.content }]
                     }))
                 ];
+                
+                // 音频附件：附加到最后一条user消息
+                if (audioAttachment) {
+                    for (let i = contents.length - 1; i >= 0; i--) {
+                        if (contents[i].role === 'user') {
+                            contents[i].parts.push({
+                                inline_data: { mime_type: audioAttachment.mimeType, data: audioAttachment.data }
+                            });
+                            // 添加提示让AI知道有音频
+                            contents[i].parts[0].text += '\n（以上附带了user的真实语音录音，请仔细听取语气和情绪）';
+                            break;
+                        }
+                    }
+                }
+                
                 return {
                     contents,
                     systemInstruction: systemPrompt ? { parts: [{ text: systemPrompt }] } : undefined,
@@ -432,6 +447,19 @@ class APIManager {
                     }
                 }
 
+                // Anthropic不支持音频，降级为文本描述
+                if (audioAttachment) {
+                    for (let i = merged.length - 1; i >= 0; i--) {
+                        if (merged[i].role === 'user') {
+                            const note = '\n（注：这是一条真实语音消息，但当前API不支持音频输入。请根据文字内容回应。）';
+                            if (typeof merged[i].content === 'string') {
+                                merged[i].content += note;
+                            }
+                            break;
+                        }
+                    }
+                }
+
                 return {
                     model,
                     max_tokens: maxTokens,
@@ -452,6 +480,21 @@ class APIManager {
                     role: msg.role,
                     content: msg.content
                 })));
+                
+                // 音频附件：转为multipart content格式附加到最后一条user消息
+                if (audioAttachment) {
+                    for (let i = allMessages.length - 1; i >= 0; i--) {
+                        if (allMessages[i].role === 'user') {
+                            const textContent = typeof allMessages[i].content === 'string' ? allMessages[i].content : '';
+                            allMessages[i].content = [
+                                { type: 'text', text: textContent + '\n（以上附带了user的真实语音录音，请仔细听取语气和情绪）' },
+                                { type: 'input_audio', input_audio: { data: audioAttachment.data, format: audioAttachment.mimeType.includes('mp4') ? 'mp4' : 'wav' } }
+                            ];
+                            break;
+                        }
+                    }
+                }
+                
                 return {
                     model,
                     messages: allMessages,

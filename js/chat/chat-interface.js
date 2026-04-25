@@ -1139,7 +1139,7 @@ class ChatInterface {
         
         const msg = {
             type: 'user',
-            text: `[真实语音] ${finalText}`,
+            text: finalText,
             timestamp: new Date().toISOString(),
             _realVoice: true,
             _voiceText: finalText,
@@ -1153,7 +1153,7 @@ class ChatInterface {
         // 存储（音频数据可能很大，但保留以便回放）
         this.storage.addMessage(this.currentFriendCode, {
             type: 'user',
-            text: `[真实语音消息，时长${duration}秒，音量：${analysis.volumeLevel}，环境：${analysis.noiseLevel}] 转写内容：${finalText}`,
+            text: finalText,
             timestamp: msg.timestamp,
             _realVoice: true,
             _voiceText: finalText,
@@ -1187,7 +1187,10 @@ class ChatInterface {
                 <span style="font-size:11px;color:rgba(100,200,255,0.35);flex-shrink:0;">${duration}''</span>
                 <span style="font-size:8px;padding:1px 4px;border-radius:3px;background:rgba(100,200,255,0.1);color:rgba(100,200,255,0.45);">真</span>
             </div>
-            ${analysisBadge}
+            <div style="display:flex;align-items:center;gap:8px;margin-top:3px;">
+                ${analysisBadge}
+                <span class="rv-stt-btn" style="font-size:9px;color:rgba(100,200,255,0.35);cursor:pointer;margin-left:auto;">转文字 ▼</span>
+            </div>
             <div class="voice-text-area" style="display:none;font-size:13px;line-height:1.5;margin-top:6px;padding-top:6px;border-top:1px solid rgba(100,200,255,0.1);color:rgba(100,200,255,0.5);"></div>
         </div>`;
     }
@@ -2314,6 +2317,10 @@ class ChatInterface {
                              : (msg._quote.text || '').substring(0, 40);
                     prefix += `[引用${qs}的消息：${qt}] `;
                 }
+                // 真语音标注（有音频附件时AI能直接听到，这里只做标注）
+                if (msg._realVoice) {
+                    prefix += `[语音消息🎙] `;
+                }
                 // 撤回通知 → 转为AI可读文本
                 if (msg.type === 'system' && msg._recallData) {
                     const rd = msg._recallData;
@@ -2804,8 +2811,21 @@ ${archiveListText}
             // 计时开始
             const apiStartTime = Date.now();
             
-            // ====== 调用API（传入头像图片）======
-            const result = await this.apiManager.callAI(messagesWithTimestamps, systemPrompt, { avatarImages });
+            // ====== 调用API（传入头像图片 + 音频附件）======
+            // 检查最近的用户消息是否有真语音音频
+            let audioAttachment = null;
+            for (let i = this.messages.length - 1; i >= Math.max(0, this.messages.length - 3); i--) {
+                const m = this.messages[i];
+                if (m.type === 'user' && m._realVoice && m._voiceAudioData) {
+                    const base64Part = m._voiceAudioData.split(',')[1];
+                    const mimeMatch = m._voiceAudioData.match(/data:([^;]+);/);
+                    const mimeType = mimeMatch ? mimeMatch[1] : 'audio/webm';
+                    audioAttachment = { data: base64Part, mimeType };
+                    break;
+                }
+            }
+            
+            const result = await this.apiManager.callAI(messagesWithTimestamps, systemPrompt, { avatarImages, audioAttachment });
             
             this.hideTypingIndicator();
             
@@ -3347,15 +3367,15 @@ div.innerHTML = `
             voiceBar.addEventListener('click', () => this._toggleVoiceText(voiceBar, message._voiceText));
         }
         
-        // 真语音条点击（播放音频 + 显示转文字）
+        // 真语音条交互
         const realVoiceBar = div.querySelector('.real-voice-bar-wrap');
         if (realVoiceBar) {
-            realVoiceBar.addEventListener('click', (e) => {
+            // 播放/暂停音频（点击波形区域）
+            realVoiceBar.querySelector('.rv-play-icon')?.parentElement?.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const audioData = message._voiceAudioData;
                 const playIcon = realVoiceBar.querySelector('.rv-play-icon');
                 
-                // 如果正在播放，停止
                 if (this._currentAudio && !this._currentAudio.paused) {
                     this._currentAudio.pause();
                     this._currentAudio = null;
@@ -3363,16 +3383,28 @@ div.innerHTML = `
                     return;
                 }
                 
-                // 播放音频
                 if (audioData && audioData.startsWith('data:')) {
                     this._currentAudio = new Audio(audioData);
                     if (playIcon) playIcon.innerHTML = '&#9646;&#9646;';
                     this._currentAudio.play().catch(() => {});
                     this._currentAudio.onended = () => { if (playIcon) playIcon.innerHTML = '&#9654;'; };
                 }
-                
-                // 同时切换转文字
-                this._toggleVoiceText(realVoiceBar, message._voiceText);
+            });
+            
+            // 转文字按钮
+            realVoiceBar.querySelector('.rv-stt-btn')?.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const textArea = realVoiceBar.querySelector('.voice-text-area');
+                if (!textArea) return;
+                const btn = e.target;
+                if (textArea.style.display === 'none') {
+                    textArea.style.display = 'block';
+                    textArea.textContent = message._voiceText || '（未识别到文字）';
+                    btn.textContent = '转文字 ▲';
+                } else {
+                    textArea.style.display = 'none';
+                    btn.textContent = '转文字 ▼';
+                }
             });
         }
         
@@ -7761,6 +7793,13 @@ getIntimacyStatusForAI() {
     desc += `\n  [AI_NO_REPLY] 选择不回复user的消息（系统会提示"XX选择了不回复"）`;
     desc += `\n  说明：如果你觉得这条消息不需要回复、或者你生气了不想理ta、或者你在忙，都可以用这个`;
     desc += `\n  你仍然可以在同一条回复里使用其他指令（比如不回复但偷偷写日记/更新状态）`;
+    
+    // 语音消息说明
+    desc += `\n\n【语音消息】`;
+    desc += `\n  user有时会发真实语音消息（消息里会附带音频），你能直接听到user的声音`;
+    desc += `\n  你可以根据user的语气、声调、停顿、背景音来感受user的情绪和状态`;
+    desc += `\n  像真人一样自然地回应，不要说"我听到了你的语音"这种机器人的话`;
+    desc += `\n  如果听不清某个词，可以自然地问，就像打电话一样`;
     
     // AI记事本
     desc += `\n\n【记事本（写日记/碎碎念）】`;
