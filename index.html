@@ -219,36 +219,56 @@
                     </div>
 
                     <!-- 桌面第3页 -->
-                    <div class="desktop-page page-3">
-                        <!-- 纪念日组件容器 -->
-                        <div class="memorial-container">
-                            <!-- 纪念日卡片 -->
-                            <div class="memorial-card">
-                                <div class="memorial-header">
-                                    <div class="memorial-avatar">👤</div>
-                                    <div class="memorial-relation">与TA共度</div>
-                                </div>
-                                <div class="memorial-days">
-                                    <span class="days-number">878</span>
-                                    <span class="days-unit">天</span>
-                                </div>
-                                <div class="memorial-date">始于 2023年1月1日</div>
-                            </div>
+                    <!-- ============ 桌面第3页 · v3 · 替换原有 .page-3 内容 ============ -->
 
-                            <!-- 可以添加更多纪念日卡片 -->
-                            <div class="memorial-card">
-                                <div class="memorial-header">
-                                    <div class="memorial-avatar">💕</div>
-                                    <div class="memorial-relation">在一起</div>
-                                </div>
-                                <div class="memorial-days">
-                                    <span class="days-number">365</span>
-                                    <span class="days-unit">天</span>
-                                </div>
-                                <div class="memorial-date">始于 2024年1月1日</div>
-                            </div>
-                        </div>
-                    </div>
+<div class="desktop-page page-3">
+
+    <!-- 顶部文案分割线（随机刷新） -->
+    <div class="p3-quote-divider">
+        <span class="p3-quote-text">跨越次元遇见你</span>
+    </div>
+
+    <!-- 长条主卡片（可换背景图+随机文案） -->
+    <div class="p3-main-card">
+        <div class="p3-main-card-bg"></div>
+        <div class="p3-main-card-overlay"></div>
+        <div class="p3-main-card-content">
+            <div class="p3-main-card-quote">今天也是想你的一天</div>
+            <div class="p3-main-card-sub">TAP TO EXPLORE</div>
+        </div>
+    </div>
+
+    <!-- 双卡片行 -->
+    <div class="p3-cards-row">
+        <!-- 左：日历卡片 -->
+        <div class="p3-square-card p3-calendar-card">
+            <div class="p3-cal-header">
+                <span class="p3-cal-month">4月</span>
+                <span class="p3-cal-year">2026</span>
+            </div>
+            <div class="p3-cal-day">26</div>
+            <div class="p3-cal-weekday">星期六</div>
+            <div class="p3-cal-dot"></div>
+        </div>
+
+        <!-- 右：纪念日卡片 -->
+        <div class="p3-square-card p3-memorial-card">
+            <div class="p3-mem-label"><span class="p3-mem-icon">💕</span>纪念日</div>
+            <div class="p3-mem-days-wrap">
+                <span class="p3-mem-days-number">365</span>
+                <span class="p3-mem-days-unit">DAYS</span>
+            </div>
+            <div class="p3-mem-name">在一起</div>
+            <div class="p3-mem-date">始于 2025-01-01</div>
+        </div>
+    </div>
+
+    <!-- 底部淡分割线 -->
+    <div class="p3-bottom-divider"></div>
+
+    <!-- 下方留空，以后放APP -->
+
+</div>
 
                 </div>
 
@@ -292,6 +312,7 @@
     <script src="js/language-toggle.js"></script>
     <script src="js/text-editor.js"></script>  <!-- ← 这行很重要！ -->
         <script src="js/image-editor.js"></script>  <!-- ← 加这行 -->
+        <script src="js/page3.js"></script>
     <script src="js/main.js"></script>
 
 </body>
