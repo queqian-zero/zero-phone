@@ -6,7 +6,7 @@
     overflow: hidden;
     height: 100%;
     padding: var(--spacing-md);
-    padding-top: 110px;  /* 跟page2一样留顶部空白 */
+    padding-top: 175px;  /* 跟page2一样留顶部空白 */
     gap: 0;
     justify-content: flex-start;
 }
