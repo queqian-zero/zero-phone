@@ -1,0 +1,271 @@
+/* 字卡区 - Word Card Zone */
+
+.wordcard-overlay {
+    position: fixed; inset: 0;
+    z-index: 3300;
+    background: rgba(245,245,247,0.98);
+    backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px);
+    display: flex; flex-direction: column;
+    opacity: 0; transform: translateY(100%);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    pointer-events: none;
+}
+.wordcard-overlay.active {
+    opacity: 1; transform: translateY(0);
+    pointer-events: auto;
+}
+
+/* 顶栏 */
+.wc-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px;
+    flex-shrink: 0;
+}
+.wc-back {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: rgba(0,0,0,0.04); border: none;
+    font-size: 16px; color: var(--color-text-secondary, #666);
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.wc-back:active { transform: scale(0.9); }
+.wc-title {
+    font-size: 17px; font-weight: 600;
+    color: var(--color-text-primary, #1d1d1f);
+    letter-spacing: 0.5px;
+}
+.wc-manage-btn {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: rgba(0,0,0,0.04); border: none;
+    font-size: 14px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+}
+.wc-manage-btn:active { transform: scale(0.9); }
+
+/* 分类标签 */
+.wc-tabs {
+    display: flex; gap: 0;
+    padding: 0 20px;
+    flex-shrink: 0;
+}
+.wc-tab {
+    flex: 1; padding: 10px;
+    background: none; border: none;
+    font-size: 13px; font-weight: 500;
+    color: var(--color-text-secondary, #999);
+    cursor: pointer; position: relative;
+    transition: color 0.2s;
+    border-bottom: 2px solid transparent;
+}
+.wc-tab.active {
+    color: var(--color-text-primary, #1d1d1f);
+    border-bottom-color: var(--color-text-primary, #1d1d1f);
+}
+
+/* ==================== 卡片展示区 ==================== */
+.wc-card-area {
+    flex: 1;
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+    overflow: hidden;
+}
+
+.wc-card {
+    width: 100%; max-width: 320px;
+    min-height: 380px;
+    border-radius: 24px;
+    position: relative; overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.15s;
+
+    background: white;
+    box-shadow:
+        0 8px 40px rgba(0,0,0,0.08),
+        0 0 0 1px rgba(0,0,0,0.04);
+}
+.wc-card:active { transform: scale(0.97); }
+
+/* 卡片背景图层 */
+.wc-card-bg {
+    position: absolute; inset: 0;
+    background-size: cover; background-position: center;
+    z-index: 0;
+}
+.wc-card-bg-overlay {
+    position: absolute; inset: 0;
+    background: linear-gradient(
+        180deg,
+        rgba(255,255,255,0.7) 0%,
+        rgba(255,255,255,0.85) 40%,
+        rgba(255,255,255,0.95) 100%
+    );
+    z-index: 1;
+}
+
+/* 卡片内容 */
+.wc-card-body {
+    position: relative; z-index: 2;
+    height: 100%; min-height: 380px;
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
+    padding: 40px 30px;
+    text-align: center;
+}
+
+.wc-card-deco-top {
+    font-size: 20px; opacity: 0.3;
+    margin-bottom: 24px;
+    letter-spacing: 8px;
+}
+
+.wc-card-text {
+    font-size: 20px;
+    font-weight: 300;
+    color: var(--color-text-primary, #1d1d1f);
+    line-height: 2;
+    letter-spacing: 1.5px;
+    word-break: break-all;
+}
+
+.wc-card-deco-bottom {
+    font-size: 20px; opacity: 0.3;
+    margin-top: 24px;
+    letter-spacing: 8px;
+}
+
+.wc-card-hint {
+    position: absolute; bottom: 20px;
+    font-size: 10px;
+    color: var(--color-text-secondary, #999);
+    opacity: 0.4;
+    letter-spacing: 2px;
+}
+
+/* 翻牌动画 */
+.wc-card.flipping {
+    animation: wcFlip 0.4s ease;
+}
+@keyframes wcFlip {
+    0% { transform: scale(1) rotateY(0); opacity: 1; }
+    40% { transform: scale(0.9) rotateY(90deg); opacity: 0.5; }
+    60% { transform: scale(0.9) rotateY(90deg); opacity: 0.5; }
+    100% { transform: scale(1) rotateY(0); opacity: 1; }
+}
+
+/* 底部操作栏 */
+.wc-bottom-bar {
+    display: flex; justify-content: center; gap: 16px;
+    padding: 16px 20px 24px;
+    flex-shrink: 0;
+}
+.wc-action-btn {
+    width: 48px; height: 48px; border-radius: 50%;
+    background: white; border: 1px solid rgba(0,0,0,0.06);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    font-size: 18px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+}
+.wc-action-btn:active { transform: scale(0.9); box-shadow: none; }
+.wc-action-btn.primary {
+    background: var(--color-text-primary, #1d1d1f);
+    color: white; border: none;
+    width: 56px; height: 56px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+
+/* ==================== 管理页 ==================== */
+.wc-manage-overlay {
+    position: fixed; inset: 0;
+    z-index: 3400;
+    background: rgba(0,0,0,0.4);
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.2s;
+}
+.wc-manage-overlay.active { opacity: 1; pointer-events: auto; }
+
+.wc-manage-panel {
+    background: rgba(255,255,255,0.97);
+    border-radius: 20px;
+    width: 100%; max-width: 360px;
+    max-height: 75vh;
+    display: flex; flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+    animation: p3PanelIn 0.3s ease-out;
+    overflow: hidden;
+}
+
+.wc-manage-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 18px 20px;
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+    flex-shrink: 0;
+}
+.wc-manage-title { font-size: 16px; font-weight: 600; color: var(--color-text-primary, #1d1d1f); }
+.wc-manage-close {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: rgba(0,0,0,0.05); border: none;
+    font-size: 12px; color: var(--color-text-secondary, #666);
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.wc-manage-close:active { transform: scale(0.88); }
+
+.wc-manage-body {
+    flex: 1; overflow-y: auto;
+    padding: 16px 20px 24px;
+    -webkit-overflow-scrolling: touch;
+}
+
+.wc-manage-count {
+    font-size: 11px; color: var(--color-text-secondary, #999);
+    margin-bottom: 12px; letter-spacing: 0.5px;
+}
+
+.wc-manage-list {
+    border: 1px solid rgba(0,0,0,0.06);
+    border-radius: 12px; overflow: hidden;
+    margin-bottom: 14px;
+}
+.wc-manage-item {
+    display: flex; align-items: center;
+    padding: 11px 14px;
+    border-bottom: 1px solid rgba(0,0,0,0.04);
+    font-size: 13px; color: var(--color-text-primary, #1d1d1f);
+}
+.wc-manage-item:last-child { border-bottom: none; }
+.wc-manage-item-text {
+    flex: 1; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap;
+}
+.wc-manage-item-del {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: none; border: none; color: rgba(0,0,0,0.18);
+    font-size: 11px; cursor: pointer; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+}
+.wc-manage-item-del:active { color: #d44; }
+
+.wc-manage-add-row {
+    display: flex; gap: 8px;
+}
+.wc-manage-input {
+    flex: 1; padding: 10px 14px;
+    background: rgba(0,0,0,0.03);
+    border: 1px solid rgba(0,0,0,0.08);
+    border-radius: 12px;
+    font-size: 14px; color: var(--color-text-primary, #1d1d1f);
+    outline: none;
+}
+.wc-manage-input:focus { border-color: rgba(0,0,0,0.2); }
+.wc-manage-add-btn {
+    padding: 10px 16px;
+    background: rgba(0,0,0,0.04);
+    border: 1px solid rgba(0,0,0,0.08);
+    border-radius: 12px;
+    font-size: 13px; font-weight: 500;
+    color: var(--color-text-primary, #1d1d1f);
+    cursor: pointer;
+}
+.wc-manage-add-btn:active { transform: scale(0.96); }
