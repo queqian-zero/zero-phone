@@ -767,10 +767,22 @@ class ChatInterface {
             this._sendFakeVoice();
         });
         
-        // 真语音
+        // 真语音（暂未开放）
         document.getElementById('menuRealVoice')?.addEventListener('click', () => {
             this.closeMenu();
-            this._openRealVoiceRecorder();
+            this.showCssSystemMessage('🎙 真语音功能开发中，敬请期待');
+        });
+        
+        // 语音通话
+        document.getElementById('menuVoiceCall')?.addEventListener('click', () => {
+            this.closeMenu();
+            this._openVoiceVideoPage('voice');
+        });
+        
+        // 视频通话
+        document.getElementById('menuVideoCall')?.addEventListener('click', () => {
+            this.closeMenu();
+            this._openVoiceVideoPage('video');
         });
         
         // 真发图
@@ -950,491 +962,79 @@ class ChatInterface {
         </div>`;
     }
     
-    // ==================== 真语音录制系统 ====================
     
-    _openRealVoiceRecorder() {
-        // 检查浏览器支持
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            this.showCssSystemMessage('❌ 当前浏览器不支持录音功能');
-            return;
-        }
+    // ==================== 语音与视频 ====================
+    
+    _openVoiceVideoPage(defaultTab) {
+        document.getElementById('voiceVideoPage')?.remove();
         
-        document.getElementById('realVoiceOverlay')?.remove();
+        const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
+        const friendAvatar = this.currentFriend?.avatar || '';
+        const avatarHtml = friendAvatar 
+            ? `<img src="${friendAvatar}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;">`
+            : `<div style="width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;font-size:28px;color:rgba(255,255,255,0.3);">${this.escapeHtml((friendName || '?')[0])}</div>`;
         
-        const ov = document.createElement('div');
-        ov.id = 'realVoiceOverlay';
-        ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;background:rgba(0,0,0,0.7);display:flex;flex-direction:column;align-items:center;justify-content:center;';
-        ov.innerHTML = `
-            <div style="text-align:center;">
-                <div id="rvStatus" style="font-size:14px;color:rgba(255,255,255,0.6);margin-bottom:16px;">点击开始录音</div>
-                <div id="rvTimer" style="font-size:28px;color:rgba(100,200,255,0.8);font-family:monospace;margin-bottom:20px;">0:00</div>
-                <div id="rvVolumeMeter" style="width:120px;height:6px;background:rgba(255,255,255,0.08);border-radius:3px;margin:0 auto 20px;">
-                    <div id="rvVolumeBar" style="width:0%;height:100%;background:rgba(100,200,255,0.6);border-radius:3px;transition:width 0.1s;"></div>
+        const page = document.createElement('div');
+        page.id = 'voiceVideoPage';
+        page.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9500;background:#0a0806;display:flex;flex-direction:column;';
+        
+        page.innerHTML = `
+            <div style="display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid rgba(255,220,150,0.06);flex-shrink:0;">
+                <button id="vvBack" style="background:none;border:none;color:rgba(255,220,170,0.5);font-size:20px;cursor:pointer;padding:4px 8px;">←</button>
+                <div style="flex:1;text-align:center;font-size:15px;color:rgba(255,220,170,0.7);">语音与视频</div>
+                <div style="width:32px;"></div>
+            </div>
+            
+            <!-- 头部信息 -->
+            <div style="text-align:center;padding:30px 20px 20px;">
+                ${avatarHtml}
+                <div style="margin-top:12px;font-size:16px;color:rgba(255,255,255,0.7);">${this.escapeHtml(friendName)}</div>
+            </div>
+            
+            <!-- Tab切换 -->
+            <div style="display:flex;margin:0 20px;border-bottom:1px solid rgba(255,255,255,0.06);">
+                <div class="vv-tab ${defaultTab === 'voice' ? 'vv-tab-active' : ''}" data-tab="voice" style="flex:1;text-align:center;padding:12px;font-size:14px;color:rgba(255,255,255,${defaultTab === 'voice' ? '0.7' : '0.3'});cursor:pointer;border-bottom:2px solid ${defaultTab === 'voice' ? 'rgba(240,147,43,0.6)' : 'transparent'};transition:all 0.2s;">📞 语音</div>
+                <div class="vv-tab ${defaultTab === 'video' ? 'vv-tab-active' : ''}" data-tab="video" style="flex:1;text-align:center;padding:12px;font-size:14px;color:rgba(255,255,255,${defaultTab === 'video' ? '0.7' : '0.3'});cursor:pointer;border-bottom:2px solid ${defaultTab === 'video' ? 'rgba(240,147,43,0.6)' : 'transparent'};transition:all 0.2s;">📹 视频</div>
+            </div>
+            
+            <!-- 内容区 -->
+            <div id="vvContent" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:20px;">
+                <div id="vvVoicePanel" style="display:${defaultTab === 'voice' ? 'block' : 'none'};">
+                    <div style="text-align:center;padding:40px 20px;color:rgba(255,255,255,0.15);">
+                        <div style="font-size:48px;margin-bottom:16px;">📞</div>
+                        <div style="font-size:14px;margin-bottom:8px;">语音通话模块</div>
+                        <div style="font-size:12px;opacity:0.6;">功能开发中，敬请期待</div>
+                    </div>
                 </div>
-                <div id="rvRecBtn" style="width:72px;height:72px;border-radius:50%;background:rgba(100,200,255,0.15);border:2px solid rgba(100,200,255,0.4);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;cursor:pointer;transition:all 0.2s;">
-                    <div id="rvRecIcon" style="width:24px;height:24px;border-radius:50%;background:rgba(100,200,255,0.8);transition:all 0.2s;"></div>
+                <div id="vvVideoPanel" style="display:${defaultTab === 'video' ? 'block' : 'none'};">
+                    <div style="text-align:center;padding:40px 20px;color:rgba(255,255,255,0.15);">
+                        <div style="font-size:48px;margin-bottom:16px;">📹</div>
+                        <div style="font-size:14px;margin-bottom:8px;">视频通话模块</div>
+                        <div style="font-size:12px;opacity:0.6;">功能开发中，敬请期待</div>
+                    </div>
                 </div>
-                <div style="font-size:11px;color:rgba(255,255,255,0.2);margin-bottom:12px;">录完后可点"转文字"用AI识别</div>
-                <button id="rvCancel" style="padding:8px 24px;border:none;border-radius:8px;background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.4);font-size:13px;cursor:pointer;">取消</button>
             </div>
         `;
-        document.body.appendChild(ov);
         
-        let recording = false;
-        let mediaRecorder = null;
-        let audioChunks = [];
-        let audioCtx = null;
-        let analyser = null;
-        let mediaStream = null;
-        let startTime = 0;
-        let timerInterval = null;
-        let volumeSamples = [];
+        document.body.appendChild(page);
         
-        const updateTimer = () => {
-            const elapsed = Math.floor((Date.now() - startTime) / 1000);
-            const m = Math.floor(elapsed / 60);
-            const s = elapsed % 60;
-            const el = document.getElementById('rvTimer');
-            if (el) el.textContent = `${m}:${s.toString().padStart(2, '0')}`;
-        };
+        // 返回
+        page.querySelector('#vvBack').addEventListener('click', () => page.remove());
         
-        const updateVolume = () => {
-            if (!analyser || !recording) return;
-            const data = new Uint8Array(analyser.fftSize);
-            analyser.getByteTimeDomainData(data);
-            let sum = 0;
-            for (let i = 0; i < data.length; i++) {
-                const v = (data[i] - 128) / 128;
-                sum += v * v;
-            }
-            const rms = Math.sqrt(sum / data.length);
-            const pct = Math.min(100, rms * 300);
-            volumeSamples.push(rms);
-            const bar = document.getElementById('rvVolumeBar');
-            if (bar) bar.style.width = pct + '%';
-            if (recording) requestAnimationFrame(updateVolume);
-        };
-        
-        const startRecording = async () => {
-            try {
-                mediaStream = await navigator.mediaDevices.getUserMedia({ 
-                    audio: {
-                        echoCancellation: false,
-                        noiseSuppression: false,
-                        autoGainControl: true,
-                        sampleRate: { ideal: 16000 },
-                        channelCount: 1
-                    }
+        // Tab切换
+        page.querySelectorAll('.vv-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const t = tab.dataset.tab;
+                page.querySelectorAll('.vv-tab').forEach(el => {
+                    el.style.color = 'rgba(255,255,255,0.3)';
+                    el.style.borderBottomColor = 'transparent';
                 });
-            } catch (e) {
-                this.showCssSystemMessage('❌ 无法访问麦克风，请检查权限');
-                ov.remove();
-                return;
-            }
-            
-            recording = true;
-            audioChunks = [];
-            volumeSamples = [];
-            startTime = Date.now();
-            
-            // UI更新
-            document.getElementById('rvStatus').textContent = '录音中...';
-            document.getElementById('rvStatus').style.color = 'rgba(100,200,255,0.8)';
-            const icon = document.getElementById('rvRecIcon');
-            if (icon) { icon.style.borderRadius = '4px'; icon.style.background = 'rgba(255,80,80,0.8)'; }
-            
-            timerInterval = setInterval(updateTimer, 1000);
-            
-            // MediaRecorder（保留webm用于播放）
-            const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/mp4';
-            mediaRecorder = new MediaRecorder(mediaStream, { mimeType, audioBitsPerSecond: 128000 });
-            mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
-            mediaRecorder.start(); // 不分片，录完一整块
-            
-            // Web Audio API 分析 + PCM 捕获
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            await audioCtx.resume(); // 移动浏览器必须resume否则全静音
-            const source = audioCtx.createMediaStreamSource(mediaStream);
-            analyser = audioCtx.createAnalyser();
-            analyser.fftSize = 256;
-            source.connect(analyser);
-            
-            // 用 ScriptProcessorNode 直接捕获原始 PCM 数据（给AI用）
-            const pcmBuffers = [];
-            const scriptNode = audioCtx.createScriptProcessor(4096, 1, 1);
-            let maxSample = 0;
-            scriptNode.onaudioprocess = (e) => {
-                if (recording) {
-                    const data = new Float32Array(e.inputBuffer.getChannelData(0));
-                    // 追踪最大振幅
-                    for (let i = 0; i < data.length; i++) {
-                        const abs = Math.abs(data[i]);
-                        if (abs > maxSample) maxSample = abs;
-                    }
-                    pcmBuffers.push(data);
-                }
-            };
-            source.connect(scriptNode);
-            // 静音输出（必须连接destination才能工作，但不播放出来）
-            const silentGain = audioCtx.createGain();
-            silentGain.gain.value = 0;
-            scriptNode.connect(silentGain);
-            silentGain.connect(audioCtx.destination);
-            
-            // 存到闭包给 stopRecording 用
-            this._pcmBuffers = pcmBuffers;
-            this._pcmSampleRate = audioCtx.sampleRate;
-            this._pcmMaxSample = () => maxSample;
-            
-            updateVolume();
-        };
-        
-        const stopRecording = () => {
-            if (!recording) return;
-            recording = false;
-            clearInterval(timerInterval);
-            
-            const duration = Math.round((Date.now() - startTime) / 1000);
-            
-            // 分析音频特征
-            const avgVol = volumeSamples.length > 0 ? volumeSamples.reduce((a, b) => a + b, 0) / volumeSamples.length : 0;
-            const peakVol = volumeSamples.length > 0 ? Math.max(...volumeSamples) : 0;
-            // 估算环境噪音（取最安静的10%采样）
-            const sorted = [...volumeSamples].sort((a, b) => a - b);
-            const noiseFloor = sorted.length > 10 ? sorted.slice(0, Math.floor(sorted.length * 0.1)).reduce((a, b) => a + b, 0) / Math.floor(sorted.length * 0.1) : 0;
-            
-            const volumeLevel = avgVol > 0.15 ? '大声' : avgVol > 0.05 ? '正常' : '轻声';
-            const noiseLevel = noiseFloor > 0.08 ? '嘈杂' : noiseFloor > 0.03 ? '有背景音' : '安静';
-            
-            const analysis = { avgVolume: avgVol.toFixed(3), peakVolume: peakVol.toFixed(3), volumeLevel, noiseLevel, duration };
-            
-            mediaRecorder.onstop = async () => {
-                const webmBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
-                console.log('🎤 原始录音:', mediaRecorder.mimeType, Math.round(webmBlob.size/1024) + 'KB');
-                
-                // === 方案A：decodeAudioData 解码 webm → WAV（音质最好）===
-                try {
-                    this.showCssSystemMessage('🔄 转换音频中...');
-                    const decodeCtx = new (window.AudioContext || window.webkitAudioContext)();
-                    const arrayBuf = await webmBlob.arrayBuffer();
-                    const audioBuf = await decodeCtx.decodeAudioData(arrayBuf);
-                    console.log('🎤 ✅ decodeAudioData成功! 采样率=' + audioBuf.sampleRate + ' 时长=' + audioBuf.duration.toFixed(2) + 's');
-                    this.showCssSystemMessage('✅ 方案A成功: 时长' + audioBuf.duration.toFixed(1) + 's');
-                    
-                    const wavBlob = this._float32ToWav(audioBuf.getChannelData(0), audioBuf.sampleRate);
-                    decodeCtx.close();
-                    
-                    const wavReader = new FileReader();
-                    const webmReader = new FileReader();
-                    wavReader.onload = () => {
-                        webmReader.onload = () => {
-                            this._sendRealVoiceMessage(webmReader.result, '', duration, analysis, wavReader.result);
-                            ov.remove();
-                        };
-                        webmReader.readAsDataURL(webmBlob);
-                    };
-                    wavReader.readAsDataURL(wavBlob);
-                    
-                    mediaStream.getTracks().forEach(t => t.stop());
-                    if (audioCtx) audioCtx.close();
-                    return;
-                } catch (e) {
-                    console.warn('🎤 ❌ 方案A失败:', e.message);
-                    this.showCssSystemMessage('⚠️ 方案A失败: ' + e.message + '，尝试方案B');
-                }
-                
-                // === 方案B：ScriptProcessorNode PCM → WAV（备用）===
-                const pcmBufs = this._pcmBuffers || [];
-                const sampleRate = this._pcmSampleRate || 48000;
-                const peakAmplitude = this._pcmMaxSample ? this._pcmMaxSample() : 0;
-                console.log('🎤 方案B PCM: ' + pcmBufs.length + '块, 峰值=' + peakAmplitude.toFixed(4));
-                
-                if (pcmBufs.length > 0 && peakAmplitude > 0.01) {
-                    const totalLen = pcmBufs.reduce((s, b) => s + b.length, 0);
-                    const merged = new Float32Array(totalLen);
-                    let off = 0;
-                    for (const buf of pcmBufs) { merged.set(buf, off); off += buf.length; }
-                    const wavBlob = this._float32ToWav(merged, sampleRate);
-                    this.showCssSystemMessage('✅ 方案B: WAV ' + Math.round(wavBlob.size/1024) + 'KB');
-                    
-                    const wavReader = new FileReader();
-                    const webmReader = new FileReader();
-                    wavReader.onload = () => {
-                        webmReader.onload = () => {
-                            this._sendRealVoiceMessage(webmReader.result, '', duration, analysis, wavReader.result);
-                            ov.remove();
-                        };
-                        webmReader.readAsDataURL(webmBlob);
-                    };
-                    wavReader.readAsDataURL(wavBlob);
-                } else {
-                    // === 方案C：直接发 webm 兜底 ===
-                    this.showCssSystemMessage('⚠️ 全部失败，用原始webm');
-                    const webmReader = new FileReader();
-                    webmReader.onload = () => {
-                        this._sendRealVoiceMessage(webmReader.result, '', duration, analysis, '');
-                        ov.remove();
-                    };
-                    webmReader.readAsDataURL(webmBlob);
-                }
-                
-                mediaStream.getTracks().forEach(t => t.stop());
-                if (audioCtx) audioCtx.close();
-            };
-            mediaRecorder.stop();
-        };
-        
-        // 按钮交互
-        document.getElementById('rvRecBtn').addEventListener('click', () => {
-            if (!recording) startRecording();
-            else stopRecording();
+                tab.style.color = 'rgba(255,255,255,0.7)';
+                tab.style.borderBottomColor = 'rgba(240,147,43,0.6)';
+                document.getElementById('vvVoicePanel').style.display = t === 'voice' ? 'block' : 'none';
+                document.getElementById('vvVideoPanel').style.display = t === 'video' ? 'block' : 'none';
+            });
         });
-        
-        document.getElementById('rvCancel').addEventListener('click', () => {
-            if (recording) {
-                recording = false;
-                clearInterval(timerInterval);
-                if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
-                if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
-                if (audioCtx) audioCtx.close();
-            }
-            ov.remove();
-        });
-    }
-    
-    // 发送真语音消息
-    _sendRealVoiceMessage(audioData, transcriptText, duration, analysis, wavDataForAI) {
-        // 调试信息
-        const aiAudio = wavDataForAI || audioData;
-        this.showCssSystemMessage('🎤 播放用: ' + Math.round(audioData.length / 1024) + 'KB ' + audioData.substring(5, 25) + ' | AI用: ' + Math.round(aiAudio.length / 1024) + 'KB ' + aiAudio.substring(5, 25));
-        
-        const finalText = transcriptText || '（user发送了一段语音）';
-        const displayText = transcriptText || '（语音未识别到文字）';
-        
-        const msg = {
-            type: 'user',
-            text: finalText,
-            timestamp: new Date().toISOString(),
-            _realVoice: true,
-            _voiceText: displayText,
-            _voiceDuration: duration,
-            _voiceAudioData: audioData,
-            _voiceWavData: wavDataForAI || '',
-            _voiceAnalysis: analysis
-        };
-        if (this._quotingMessage) { msg._quote = this._extractQuoteData(this._quotingMessage); this._clearQuoteMessage(); }
-        this.addMessage(msg);
-        
-        // 存储
-        this.storage.addMessage(this.currentFriendCode, {
-            type: 'user',
-            text: finalText,
-            timestamp: msg.timestamp,
-            _realVoice: true,
-            _voiceText: displayText,
-            _voiceDuration: duration,
-            _voiceAudioData: audioData,
-            _voiceWavData: wavDataForAI || '',
-            _voiceAnalysis: analysis,
-            _quote: msg._quote
-        });
-        
-        this.scrollToBottom();
-    }
-    
-    // 渲染真语音条
-    _renderRealVoiceBubble(message) {
-        const duration = message._voiceDuration || 1;
-        const barWidth = Math.min(75, 25 + duration * 1.5);
-        const analysis = message._voiceAnalysis || {};
-        
-        // 生成波形（基于实际音量数据风格，用随机但偏大的波形）
-        const waves = Array.from({ length: Math.min(24, Math.max(8, duration * 3)) }, () =>
-            `<div style="width:2px;height:${4+Math.floor(Math.random()*14)}px;background:rgba(100,200,255,0.6);border-radius:1px;"></div>`
-        ).join('');
-        
-        const analysisBadge = analysis.volumeLevel ? 
-            `<div style="font-size:9px;color:rgba(100,200,255,0.3);margin-top:2px;">${analysis.volumeLevel} · ${analysis.noiseLevel}</div>` : '';
-        
-        return `<div class="real-voice-bar-wrap" style="display:flex;flex-direction:column;cursor:pointer;min-width:${barWidth}%;padding:2px 0;">
-            <div style="display:flex;align-items:center;gap:6px;">
-                <span class="rv-play-icon" style="font-size:14px;flex-shrink:0;color:rgba(100,200,255,0.7);">&#9654;</span>
-                <div style="flex:1;display:flex;align-items:center;gap:1px;height:18px;">${waves}</div>
-                <span style="font-size:11px;color:rgba(100,200,255,0.35);flex-shrink:0;">${duration}''</span>
-                <span style="font-size:8px;padding:1px 4px;border-radius:3px;background:rgba(100,200,255,0.1);color:rgba(100,200,255,0.45);">真</span>
-            </div>
-            <div style="display:flex;align-items:center;gap:8px;margin-top:3px;">
-                ${analysisBadge}
-                <span class="rv-stt-btn" style="font-size:9px;color:rgba(100,200,255,0.35);cursor:pointer;margin-left:auto;">转文字 ▼</span>
-            </div>
-            <div class="voice-text-area" style="display:none;font-size:13px;line-height:1.5;margin-top:6px;padding-top:6px;border-top:1px solid rgba(100,200,255,0.1);color:rgba(100,200,255,0.5);"></div>
-        </div>`;
-    }
-    
-    // 调用AI API进行语音转文字
-    async _callSTTApi(config, base64Audio, mimeType) {
-        const { provider, endpoint, apiKey, model } = config;
-        const audioFormat = this.settings.audioFormat || 'image_url';
-        const prompt = '请将以下音频中的语音内容转写为文字。只输出转写的文字内容，不要加任何说明、标点修正或格式。如果听不清就输出你能听到的部分。';
-        
-        let requestBody, url;
-        
-        if (provider === 'google') {
-            url = `${endpoint.replace(/\/$/, '')}/${model}:generateContent`;
-            requestBody = {
-                contents: [{
-                    role: 'user',
-                    parts: [
-                        { text: prompt },
-                        { inline_data: { mime_type: mimeType, data: base64Audio } }
-                    ]
-                }],
-                generationConfig: { temperature: 0, maxOutputTokens: 500 }
-            };
-        } else {
-            let baseUrl = endpoint.replace(/\/$/, '');
-            if (!baseUrl.includes('/chat/completions')) {
-                baseUrl = baseUrl.replace(/\/v1\/?$/, '') + '/v1/chat/completions';
-            }
-            url = baseUrl;
-            
-            // 根据格式设置构建音频部分
-            let audioPart;
-            if (audioFormat === 'inline_data') {
-                audioPart = { inline_data: { mime_type: mimeType, data: base64Audio } };
-            } else if (audioFormat === 'input_audio') {
-                audioPart = { type: 'input_audio', input_audio: { data: base64Audio, format: mimeType.includes('wav') ? 'wav' : 'mp3' } };
-            } else {
-                audioPart = { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Audio}` } };
-            }
-            
-            requestBody = {
-                model,
-                messages: [{
-                    role: 'user',
-                    content: [ { type: 'text', text: prompt }, audioPart ]
-                }],
-                max_tokens: 500,
-                temperature: 0
-            };
-        }
-        
-        console.log('🎤 STT格式: ' + audioFormat + ', provider=' + provider);
-        
-        const headers = { 'Content-Type': 'application/json' };
-        if (provider === 'anthropic') {
-            headers['x-api-key'] = apiKey;
-            headers['anthropic-version'] = '2023-06-01';
-        } else {
-            headers['Authorization'] = `Bearer ${apiKey}`;
-        }
-        
-        console.log('🎤 调用AI语音转文字...');
-        const resp = await fetch(url, { method: 'POST', headers, body: JSON.stringify(requestBody) });
-        
-        if (!resp.ok) {
-            const errText = await resp.text();
-            const errMsg = `API ${resp.status}: ${errText.substring(0, 200)}`;
-            this.showCssSystemMessage('❌ 语音转文字失败: ' + errMsg);
-            throw new Error(errMsg);
-        }
-        
-        const data = await resp.json();
-        
-        // 解析结果
-        let text = '';
-        if (provider === 'google') {
-            text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        } else {
-            text = data?.choices?.[0]?.message?.content || '';
-        }
-        
-        console.log('✅ 语音转文字结果:', text);
-        return text.trim();
-    }
-    
-    // Float32Array + sampleRate → WAV Blob（直接编码，不经过AudioContext解码）
-    _float32ToWav(samples, sampleRate) {
-        const bitDepth = 16;
-        const numChannels = 1;
-        const dataLength = samples.length * 2; // 16-bit = 2 bytes per sample
-        const buffer = new ArrayBuffer(44 + dataLength);
-        const view = new DataView(buffer);
-        
-        const writeStr = (off, str) => { for (let i = 0; i < str.length; i++) view.setUint8(off + i, str.charCodeAt(i)); };
-        writeStr(0, 'RIFF');
-        view.setUint32(4, 36 + dataLength, true);
-        writeStr(8, 'WAVE');
-        writeStr(12, 'fmt ');
-        view.setUint32(16, 16, true);
-        view.setUint16(20, 1, true); // PCM
-        view.setUint16(22, numChannels, true);
-        view.setUint32(24, sampleRate, true);
-        view.setUint32(28, sampleRate * numChannels * 2, true);
-        view.setUint16(32, numChannels * 2, true);
-        view.setUint16(34, bitDepth, true);
-        writeStr(36, 'data');
-        view.setUint32(40, dataLength, true);
-        
-        let offset = 44;
-        for (let i = 0; i < samples.length; i++) {
-            const s = Math.max(-1, Math.min(1, samples[i]));
-            view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
-            offset += 2;
-        }
-        
-        return new Blob([buffer], { type: 'audio/wav' });
-    }
-    
-    // AudioBuffer → WAV Blob（16-bit PCM, 单声道）
-    _audioBufferToWav(buffer) {
-        const numChannels = 1;
-        const sampleRate = buffer.sampleRate;
-        const format = 1; // PCM
-        const bitDepth = 16;
-        
-        // 取第一个声道，如果是立体声则混合
-        let samples;
-        if (buffer.numberOfChannels === 1) {
-            samples = buffer.getChannelData(0);
-        } else {
-            const ch0 = buffer.getChannelData(0);
-            const ch1 = buffer.getChannelData(1);
-            samples = new Float32Array(ch0.length);
-            for (let i = 0; i < ch0.length; i++) samples[i] = (ch0[i] + ch1[i]) / 2;
-        }
-        
-        const dataLength = samples.length * (bitDepth / 8);
-        const headerLength = 44;
-        const totalLength = headerLength + dataLength;
-        const arrayBuffer = new ArrayBuffer(totalLength);
-        const view = new DataView(arrayBuffer);
-        
-        // WAV header
-        const writeStr = (offset, str) => { for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i)); };
-        writeStr(0, 'RIFF');
-        view.setUint32(4, totalLength - 8, true);
-        writeStr(8, 'WAVE');
-        writeStr(12, 'fmt ');
-        view.setUint32(16, 16, true); // subchunk size
-        view.setUint16(20, format, true);
-        view.setUint16(22, numChannels, true);
-        view.setUint32(24, sampleRate, true);
-        view.setUint32(28, sampleRate * numChannels * (bitDepth / 8), true);
-        view.setUint16(32, numChannels * (bitDepth / 8), true);
-        view.setUint16(34, bitDepth, true);
-        writeStr(36, 'data');
-        view.setUint32(40, dataLength, true);
-        
-        // PCM data（float32 → int16）
-        let offset = 44;
-        for (let i = 0; i < samples.length; i++) {
-            const s = Math.max(-1, Math.min(1, samples[i]));
-            view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
-            offset += 2;
-        }
-        
-        return new Blob([arrayBuffer], { type: 'audio/wav' });
     }
     
     // ==================== 假发图片 ====================
@@ -2551,17 +2151,12 @@ class ChatInterface {
                 // 如果消息带引用，在前面加上引用信息
                 if (msg._quote) {
                     const qs = msg._quote.senderType === 'user' ? 'user' : '你';
-                    const qt = msg._quote._realVoice ? '[真语音消息]'
-                             : msg._quote._voice ? '[语音消息]' 
+                    const qt = msg._quote._voice ? '[语音消息]' 
                              : msg._quote._imageUrl ? '[图片]' 
                              : msg._quote._stickerUrl ? '[表情包]'
                              : msg._quote._fakeImage ? `[假图片:${msg._quote._fakeImage}]`
                              : (msg._quote.text || '').substring(0, 40);
                     prefix += `[引用${qs}的消息：${qt}] `;
-                }
-                // 真语音标注（有音频附件时AI能直接听到，这里只做标注）
-                if (msg._realVoice) {
-                    prefix += `[语音消息🎙] `;
                 }
                 // 撤回通知 → 转为AI可读文本
                 if (msg.type === 'system' && msg._recallData) {
@@ -3053,30 +2648,7 @@ ${archiveListText}
             // 计时开始
             const apiStartTime = Date.now();
             
-            // ====== 调用API（传入头像图片 + 音频附件）======
-            // 检查最近的用户消息是否有真语音音频
-            let audioAttachment = null;
-            for (let i = this.messages.length - 1; i >= Math.max(0, this.messages.length - 3); i--) {
-                const m = this.messages[i];
-                if (m.type === 'user' && m._realVoice) {
-                    // 优先用WAV（AI兼容），降级用原始格式
-                    const audioSrc = m._voiceWavData || m._voiceAudioData;
-                    if (audioSrc) {
-                        const base64Part = audioSrc.split(',')[1];
-                        const mimeMatch = audioSrc.match(/data:([^;]+);/);
-                        const mimeType = mimeMatch ? mimeMatch[1] : 'audio/wav';
-                        audioAttachment = { data: base64Part, mimeType };
-                    }
-                    break;
-                }
-            }
-            
-            if (audioAttachment) {
-                console.log('🎤 音频附件:', 'mimeType=' + audioAttachment.mimeType, '大小=' + Math.round(audioAttachment.data.length / 1024) + 'KB');
-                this.showCssSystemMessage('🎤 正在把语音发给AI（' + Math.round(audioAttachment.data.length / 1024) + 'KB）...');
-            }
-            
-            const result = await this.apiManager.callAI(messagesWithTimestamps, systemPrompt, { avatarImages, audioAttachment, audioFormat: this.settings.audioFormat || 'image_url' });
+            const result = await this.apiManager.callAI(messagesWithTimestamps, systemPrompt, { avatarImages });
             
             this.hideTypingIndicator();
             
@@ -3544,13 +3116,12 @@ div.innerHTML = `
                         <img src="${message._stickerUrl}" style="width:100%;border-radius:8px;display:block;" onerror="this.style.display='none'">
                         <div style="font-size:10px;opacity:0.35;text-align:center;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${this.escapeHtml(message._stickerName || '')}</div>
                     </div>` : ''}
-                    ${message._realVoice ? this._renderRealVoiceBubble(message) : ''}
-                    ${message._voice && !message._realVoice ? this._renderVoiceBubble(message) : ''}
+                    ${message._voice ? this._renderVoiceBubble(message) : ''}
                     ${message._fakeImage ? `<div class="fake-image-card" style="position:relative;background:rgba(128,128,128,0.06);border:1px dashed rgba(128,128,128,0.15);border-radius:10px;min-width:140px;min-height:80px;max-width:200px;overflow:hidden;cursor:pointer;">
                         <div class="fake-image-desc" style="padding:14px;font-size:12px;opacity:0.5;text-align:center;line-height:1.5;">${this.escapeHtml(message._fakeImage)}</div>
                         <div class="fake-image-cover" style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(60,60,60,0.85);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;font-size:12px;color:rgba(255,255,255,0.35);letter-spacing:1px;transition:opacity 0.25s ease,visibility 0.25s ease;">[图片]</div>
                     </div>` : ''}
-                    ${message.text && !message._imageOnly && !message._voice && !message._realVoice && !message._fakeImage && !message._stickerUrl ? `<div class="message-text">${this.renderMessageContent(message.text)}</div>` : ''}
+                    ${message.text && !message._imageOnly && !message._voice && !message._fakeImage && !message._stickerUrl ? `<div class="message-text">${this.renderMessageContent(message.text)}</div>` : ''}
                 </div>
                 <div class="message-time">${time}</div>
             </div>
@@ -3616,86 +3187,6 @@ div.innerHTML = `
         const voiceBar = div.querySelector('.voice-bar-wrap');
         if (voiceBar && message._voiceText) {
             voiceBar.addEventListener('click', () => this._toggleVoiceText(voiceBar, message._voiceText));
-        }
-        
-        // 真语音条交互
-        const realVoiceBar = div.querySelector('.real-voice-bar-wrap');
-        if (realVoiceBar) {
-            // 播放/暂停音频（点击波形区域）
-            realVoiceBar.querySelector('.rv-play-icon')?.parentElement?.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const audioData = message._voiceAudioData;
-                const playIcon = realVoiceBar.querySelector('.rv-play-icon');
-                
-                if (this._currentAudio && !this._currentAudio.paused) {
-                    this._currentAudio.pause();
-                    this._currentAudio = null;
-                    if (playIcon) playIcon.innerHTML = '&#9654;';
-                    return;
-                }
-                
-                if (audioData && audioData.startsWith('data:')) {
-                    this._currentAudio = new Audio(audioData);
-                    if (playIcon) playIcon.innerHTML = '&#9646;&#9646;';
-                    this._currentAudio.play().catch(() => {});
-                    this._currentAudio.onended = () => { if (playIcon) playIcon.innerHTML = '&#9654;'; };
-                }
-            });
-            
-            // 转文字按钮（优先用AI已返回的转写，否则调API）
-            realVoiceBar.querySelector('.rv-stt-btn')?.addEventListener('click', async (e) => {
-                e.stopPropagation();
-                const textArea = realVoiceBar.querySelector('.voice-text-area');
-                if (!textArea) return;
-                const btn = e.target;
-                
-                // 已经有转写结果，切换显示/隐藏
-                const hasTranscript = message._voiceText && message._voiceText !== '（语音未识别到文字）' && message._voiceText !== '（user发送了一段语音）';
-                if (hasTranscript || textArea.dataset.done === '1') {
-                    if (textArea.style.display === 'none') {
-                        textArea.style.display = 'block';
-                        textArea.textContent = message._voiceText;
-                        btn.textContent = '转文字 ▲';
-                    } else {
-                        textArea.style.display = 'none';
-                        btn.textContent = '转文字 ▼';
-                    }
-                    return;
-                }
-                
-                // 调AI转写
-                btn.textContent = '识别中...';
-                textArea.style.display = 'block';
-                textArea.textContent = '正在用AI识别语音...';
-                
-                try {
-                    const audioData = message._voiceWavData || message._voiceAudioData;
-                    if (!audioData) throw new Error('无音频数据');
-                    
-                    const base64Part = audioData.split(',')[1];
-                    const mimeMatch = audioData.match(/data:([^;]+);/);
-                    const mimeType = mimeMatch ? mimeMatch[1] : 'audio/wav';
-                    
-                    const config = this.apiManager.getCurrentConfig();
-                    const sttResult = await this._callSTTApi(config, base64Part, mimeType);
-                    
-                    textArea.textContent = sttResult || '（未识别到文字）';
-                    message._voiceText = sttResult || '（未识别到文字）';
-                    textArea.dataset.done = '1';
-                    btn.textContent = '转文字 ▲';
-                    
-                    // 更新存储
-                    const chat = this.storage.getChatByFriendCode(this.currentFriendCode);
-                    if (chat?.messages) {
-                        const stored = chat.messages.find(m => m.timestamp === message.timestamp && m._realVoice);
-                        if (stored) { stored._voiceText = message._voiceText; stored.text = sttResult || stored.text; this.storage.setMessages(this.currentFriendCode, chat.messages); }
-                    }
-                } catch (err) {
-                    console.error('语音转文字失败:', err);
-                    textArea.textContent = '转写失败：' + (err.message || '未知错误');
-                    btn.textContent = '转文字 ▼';
-                }
-            });
         }
         
         // 假图片点击（切换覆盖层，带动画）
@@ -4243,17 +3734,6 @@ div.innerHTML = `
         document.getElementById('settingDebugLog')?.addEventListener('click', () => {
             this._openDebugLog();
         });
-        
-        // 语音传输格式
-        const audioFormatSelect = document.getElementById('settingAudioFormat');
-        if (audioFormatSelect) {
-            audioFormatSelect.value = this.settings.audioFormat || 'image_url';
-            audioFormatSelect.addEventListener('change', (e) => {
-                this.settings.audioFormat = e.target.value;
-                this.saveSettings();
-                this.showCssSystemMessage('🎤 语音格式已切换为: ' + e.target.value);
-            });
-        }
         
         const aiRecognizeSwitch = document.getElementById('settingAiRecognizeImage');
         if (aiRecognizeSwitch) {
@@ -8094,16 +7574,6 @@ getIntimacyStatusForAI() {
     desc += `\n  [AI_NO_REPLY] 选择不回复user的消息（系统会提示"XX选择了不回复"）`;
     desc += `\n  说明：如果你觉得这条消息不需要回复、或者你生气了不想理ta、或者你在忙，都可以用这个`;
     desc += `\n  你仍然可以在同一条回复里使用其他指令（比如不回复但偷偷写日记/更新状态）`;
-    
-    // 语音消息说明
-    desc += `\n\n【语音消息】`;
-    desc += `\n  user有时会发真实语音消息（消息里会附带音频），你能直接听到user的声音`;
-    desc += `\n  你可以根据user的语气、声调、停顿、背景音来感受user的情绪和状态`;
-    desc += `\n  像真人一样自然地回应，不要说"我听到了你的语音"这种机器人的话`;
-    desc += `\n  如果听不清某个词，可以自然地问，就像打电话一样`;
-    desc += `\n  当user发了语音消息时，请在你的回复最开头加上 [VOICE_TEXT:你听到的完整内容] 标签`;
-    desc += `\n  例如user语音说了"今天好冷啊"，你回复：[VOICE_TEXT:今天好冷啊]是挺冷的，多穿点`;
-    desc += `\n  如果完全听不清就写 [VOICE_TEXT:（听不清）]`;
     
     // AI记事本
     desc += `\n\n【记事本（写日记/碎碎念）】`;
@@ -14195,11 +13665,7 @@ _renderQuoteBlock(q) {
     const senderLabel = q.senderType === 'user' ? '你' : (q.senderName || 'TA');
     let contentHtml = '';
     
-    if (q._realVoice) {
-        const dur = q._voiceDuration || 3;
-        const w = Math.min(60, 20 + dur);
-        contentHtml = `<div style="display:flex;align-items:center;gap:4px;"><span style="font-size:10px;">🎙</span><div style="width:${w}px;height:14px;background:rgba(100,200,255,0.08);border-radius:7px;"></div><span style="font-size:9px;color:rgba(100,200,255,0.4);">${dur}" 真</span></div>`;
-    } else if (q._voice) {
+    if (q._voice) {
         const dur = q._voiceDuration || 3;
         const w = Math.min(60, 20 + dur);
         contentHtml = `<div style="display:flex;align-items:center;gap:4px;"><span style="font-size:10px;">🎤</span><div style="width:${w}px;height:14px;background:rgba(255,255,255,0.06);border-radius:7px;"></div><span style="font-size:9px;opacity:0.4;">${dur}"</span></div>`;
@@ -14393,9 +13859,7 @@ _showRecalledContent(data) {
     
     // 构建原始内容展示
     let contentHtml = '';
-    if (orig._realVoice) {
-        contentHtml = `<div style="padding:10px;background:rgba(100,200,255,0.05);border-radius:8px;">🎙 真语音消息（${orig._voiceDuration || '?'}秒，${orig._voiceAnalysis?.volumeLevel || ''}，环境${orig._voiceAnalysis?.noiseLevel || ''}）：${this.escapeHtml(orig._voiceText || orig.text || '')}</div>`;
-    } else if (orig._voice) {
+    if (orig._voice) {
         contentHtml = `<div style="padding:10px;background:rgba(255,255,255,0.03);border-radius:8px;">🎤 语音消息：${this.escapeHtml(orig._voiceText || orig.text || '')}</div>`;
     } else if (orig._imageUrl) {
         contentHtml = `<div style="text-align:center;"><img src="${orig._imageUrl}" style="max-width:200px;max-height:200px;border-radius:8px;"></div>`;
@@ -14458,8 +13922,7 @@ _setQuoteMessage(msg) {
     
     // 构建预览文字
     let preview = '';
-    if (msg._realVoice) preview = '🎙 真语音消息';
-    else if (msg._voice) preview = '🎤 语音消息';
+    if (msg._voice) preview = '🎤 语音消息';
     else if (msg._imageUrl) preview = '🖼 图片';
     else if (msg._stickerUrl) preview = `😊 ${msg._stickerName || '表情包'}`;
     else if (msg._fakeImage) preview = `[图片] ${(msg._fakeImage || '').substring(0, 15)}`;
@@ -14504,43 +13967,12 @@ _extractQuoteData(msg) {
         senderName: senderName,
         timestamp: msg.timestamp
     };
-    if (msg._realVoice) { q._realVoice = true; q._voiceDuration = msg._voiceDuration; q._voiceText = msg._voiceText; }
-    if (msg._voice && !msg._realVoice) { q._voice = true; q._voiceDuration = msg._voiceDuration; q._voiceText = msg._voiceText; }
+    if (msg._voice) { q._voice = true; q._voiceDuration = msg._voiceDuration; q._voiceText = msg._voiceText; }
     if (msg._imageUrl) q._imageUrl = msg._imageUrl;
     if (msg._stickerUrl) { q._stickerUrl = msg._stickerUrl; q._stickerName = msg._stickerName; }
     if (msg._fakeImage) q._fakeImage = msg._fakeImage;
     if (msg.text) q.text = msg.text;
     return q;
-}
-
-// 处理AI返回的语音转写
-_processVoiceText(text) {
-    const match = text.match(/\[VOICE_TEXT:([^\]]*)\]/);
-    if (!match) return;
-    
-    const transcript = match[1].trim();
-    if (!transcript) return;
-    
-    // 找最近的真语音消息并更新转写
-    for (let i = this.messages.length - 1; i >= 0; i--) {
-        const m = this.messages[i];
-        if (m.type === 'user' && m._realVoice) {
-            m._voiceText = transcript;
-            m.text = transcript;
-            
-            // 同步存储
-            const chat = this.storage.getChatByFriendCode(this.currentFriendCode);
-            if (chat?.messages) {
-                const stored = chat.messages.find(s => s.timestamp === m.timestamp && s._realVoice);
-                if (stored) { stored._voiceText = transcript; stored.text = transcript; this.storage.setMessages(this.currentFriendCode, chat.messages); }
-            }
-            
-            // 刷新界面上的语音条
-            this.renderMessages();
-            console.log('🎤 AI转写语音:', transcript);
-            break;
-        }
-    }
 }
 
 // 处理AI的撤回指令
@@ -14641,7 +14073,6 @@ _stripCommandTags(text) {
         .replace(/\[AI_RECALL(?::[^\]]*)?\]/g, '')
         .replace(/\[AI_QUOTE:[^\]]+\]/g, '')
         .replace(/\[AI_NO_REPLY\]/g, '')
-        .replace(/\[VOICE_TEXT:[^\]]*\]/g, '')
         .replace(/\[STATUS_CSS\][\s\S]*?\[\/STATUS_CSS\]/g, '')
         .replace(/\[STATUS_?\s*CSS\][\s\S]*?\[\/?\s*STATUS_?\s*CSS\]/gi, '');
 }
@@ -14655,7 +14086,6 @@ _executeSegmentCommands(rawSeg) {
     this.processCapsuleCommands(rawSeg);
     this.processNotebookCommands(rawSeg);
     this.processRecallQuoteCommands(rawSeg);
-    this._processVoiceText(rawSeg);
     this.processStateCommands(rawSeg);
     this.processRelationCommands(rawSeg);
     this.processMomentCommands(rawSeg);

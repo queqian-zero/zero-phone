@@ -329,7 +329,7 @@ class APIManager {
     // 构建请求体
     buildRequestBody(config, messages, systemPrompt, options = {}) {
         const { provider, model, maxTokens, temperature } = config;
-        const { avatarImages, audioAttachment, audioFormat } = options;
+        const { avatarImages } = options;
 
         // ── 需求5：格式化消息时间戳（只供AI看，不显示给用户）──
         const fmtTime = (iso) => {
@@ -396,20 +396,6 @@ class APIManager {
                     }))
                 ];
                 
-                // 音频附件：附加到最后一条user消息
-                if (audioAttachment) {
-                    for (let i = contents.length - 1; i >= 0; i--) {
-                        if (contents[i].role === 'user') {
-                            contents[i].parts.push({
-                                inline_data: { mime_type: audioAttachment.mimeType, data: audioAttachment.data }
-                            });
-                            contents[i].parts[0].text += '\n（以上附带了user的真实语音录音，请仔细听取语气和情绪）';
-                            console.log('🎤 音频附件格式: inline_data (Google原生), mimeType=' + audioAttachment.mimeType);
-                            break;
-                        }
-                    }
-                }
-                
                 return {
                     contents,
                     systemInstruction: systemPrompt ? { parts: [{ text: systemPrompt }] } : undefined,
@@ -447,19 +433,6 @@ class APIManager {
                     }
                 }
 
-                // Anthropic不支持音频，降级为文本描述
-                if (audioAttachment) {
-                    for (let i = merged.length - 1; i >= 0; i--) {
-                        if (merged[i].role === 'user') {
-                            const note = '\n（注：这是一条真实语音消息，但当前API不支持音频输入。请根据文字内容回应。）';
-                            if (typeof merged[i].content === 'string') {
-                                merged[i].content += note;
-                            }
-                            break;
-                        }
-                    }
-                }
-
                 return {
                     model,
                     max_tokens: maxTokens,
@@ -480,30 +453,6 @@ class APIManager {
                     role: msg.role,
                     content: msg.content
                 })));
-                
-                // 音频附件：根据 audioFormat 设置选择格式
-                if (audioAttachment) {
-                    const fmt = audioFormat || 'image_url';
-                    for (let i = allMessages.length - 1; i >= 0; i--) {
-                        if (allMessages[i].role === 'user') {
-                            const textContent = typeof allMessages[i].content === 'string' ? allMessages[i].content : '';
-                            const textPart = { type: 'text', text: textContent + '\n（以上附带了user的真实语音录音，请仔细听取语气和情绪）' };
-                            
-                            if (fmt === 'inline_data') {
-                                // Gemini 原生格式（直连或部分中转站）
-                                allMessages[i].content = [ textPart, { inline_data: { mime_type: audioAttachment.mimeType, data: audioAttachment.data } } ];
-                            } else if (fmt === 'input_audio') {
-                                // OpenAI 原生格式（GPT-4o直连）
-                                allMessages[i].content = [ textPart, { type: 'input_audio', input_audio: { data: audioAttachment.data, format: audioAttachment.mimeType.includes('wav') ? 'wav' : 'mp3' } } ];
-                            } else {
-                                // image_url 格式（通用中转站）
-                                allMessages[i].content = [ textPart, { type: 'image_url', image_url: { url: `data:${audioAttachment.mimeType};base64,${audioAttachment.data}` } } ];
-                            }
-                            console.log('🎤 音频格式: ' + fmt + ', mimeType=' + audioAttachment.mimeType);
-                            break;
-                        }
-                    }
-                }
                 
                 return {
                     model,
