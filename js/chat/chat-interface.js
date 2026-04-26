@@ -773,18 +773,6 @@ class ChatInterface {
             this.showCssSystemMessage('🎙 真语音功能开发中，敬请期待');
         });
         
-        // 语音通话
-        document.getElementById('menuVoiceCall')?.addEventListener('click', () => {
-            this.closeMenu();
-            this._openVoiceVideoPage('voice');
-        });
-        
-        // 视频通话
-        document.getElementById('menuVideoCall')?.addEventListener('click', () => {
-            this.closeMenu();
-            this._openVoiceVideoPage('video');
-        });
-        
         // 真发图
         document.getElementById('menuRealImage')?.addEventListener('click', () => {
             this.closeMenu();
@@ -3733,6 +3721,11 @@ div.innerHTML = `
         // 运行日志按钮
         document.getElementById('settingDebugLog')?.addEventListener('click', () => {
             this._openDebugLog();
+        });
+        
+        // 语音与视频设置
+        document.getElementById('settingVoiceVideo')?.addEventListener('click', () => {
+            this._openVoiceVideoPage('voice');
         });
         
         const aiRecognizeSwitch = document.getElementById('settingAiRecognizeImage');
