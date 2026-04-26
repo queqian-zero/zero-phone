@@ -349,7 +349,7 @@
         const ITEM_H = 36;
         const VISIBLE = 5;
         container.style.height = (ITEM_H * VISIBLE) + 'px';
-        container.style.overflow = 'hidden';
+        container.style.overflowY = 'scroll';
         container.style.position = 'relative';
 
         // 高亮条
