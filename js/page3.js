@@ -342,81 +342,85 @@
     }
 
     function buildWheel(overlay, id, items, selected) {
-        const container = overlay.querySelector('#' + id);
-        if (!container) return;
-        container.innerHTML = '';
+        const wrapper = overlay.querySelector('#' + id);
+        if (!wrapper) return;
+        wrapper.innerHTML = '';
 
         const ITEM_H = 36;
         const VISIBLE = 5;
-        container.style.height = (ITEM_H * VISIBLE) + 'px';
-        container.style.overflowY = 'scroll';
-        container.style.position = 'relative';
+        wrapper.style.height = (ITEM_H * VISIBLE) + 'px';
+        wrapper.style.position = 'relative';
+        wrapper.style.overflow = 'hidden';
 
-        // 高亮条
-        const highlight = document.createElement('div');
-        highlight.className = 'p3-wheel-highlight';
-        highlight.style.cssText = 'position:absolute;top:'+(ITEM_H*2)+'px;left:0;right:0;height:'+ITEM_H+'px;border-top:1px solid rgba(0,0,0,0.1);border-bottom:1px solid rgba(0,0,0,0.1);pointer-events:none;z-index:1;';
-        container.appendChild(highlight);
+        var highlight = document.createElement('div');
+        highlight.style.cssText = 'position:absolute;top:'+(ITEM_H*2)+'px;left:0;right:0;height:'+ITEM_H+'px;border-top:1px solid rgba(0,0,0,0.1);border-bottom:1px solid rgba(0,0,0,0.1);pointer-events:none;z-index:2;background:rgba(0,0,0,0.02);border-radius:6px;';
+        wrapper.appendChild(highlight);
 
-        // 滚动区
-        const scroll = document.createElement('div');
-        scroll.className = 'p3-wheel-scroll';
-        scroll.style.cssText = 'padding-top:'+(ITEM_H*2)+'px;padding-bottom:'+(ITEM_H*2)+'px;';
+        var scroll = document.createElement('div');
+        scroll.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;overflow-y:scroll;-webkit-overflow-scrolling:touch;';
 
-        items.forEach(val => {
-            const item = document.createElement('div');
+        var sty = document.createElement('style');
+        sty.textContent = '.p3-wheel > div:nth-child(2)::-webkit-scrollbar{display:none}';
+        wrapper.appendChild(sty);
+
+        var padTop = document.createElement('div');
+        padTop.style.height = (ITEM_H * 2) + 'px';
+        scroll.appendChild(padTop);
+
+        items.forEach(function(val) {
+            var item = document.createElement('div');
             item.className = 'p3-wheel-item';
-            item.style.cssText = 'height:'+ITEM_H+'px;line-height:'+ITEM_H+'px;text-align:center;font-size:16px;color:var(--color-text-primary);transition:opacity 0.15s;';
+            item.style.cssText = 'height:'+ITEM_H+'px;line-height:'+ITEM_H+'px;text-align:center;font-size:16px;color:var(--color-text-primary);transition:opacity 0.1s,transform 0.1s;';
             item.textContent = val;
             item.dataset.value = val;
             scroll.appendChild(item);
         });
 
-        container.appendChild(scroll);
+        var padBot = document.createElement('div');
+        padBot.style.height = (ITEM_H * 2) + 'px';
+        scroll.appendChild(padBot);
 
-        // 设置初始位置
-        const idx = items.indexOf(selected);
-        if (idx >= 0) container.scrollTop = idx * ITEM_H;
+        wrapper.appendChild(scroll);
 
-        // 滚动对齐
-        let scrollTimeout;
-        container.addEventListener('scroll', () => {
+        var idx = items.indexOf(selected);
+        if (idx >= 0) scroll.scrollTop = idx * ITEM_H;
+
+        var scrollTimeout;
+        scroll.addEventListener('scroll', function() {
             clearTimeout(scrollTimeout);
-            scrollTimeout = setTimeout(() => {
-                const nearest = Math.round(container.scrollTop / ITEM_H);
-                container.scrollTo({ top: nearest * ITEM_H, behavior: 'smooth' });
-                // 更新透明度
-                updateWheelOpacity(container, ITEM_H);
+            updateWheelOpacity(scroll, ITEM_H);
+            scrollTimeout = setTimeout(function() {
+                var nearest = Math.round(scroll.scrollTop / ITEM_H);
+                scroll.scrollTo({ top: nearest * ITEM_H, behavior: 'smooth' });
             }, 80);
         });
 
-        // 初始透明度
-        setTimeout(() => updateWheelOpacity(container, ITEM_H), 50);
+        setTimeout(function() { updateWheelOpacity(scroll, ITEM_H); }, 50);
+        wrapper._scrollEl = scroll;
     }
 
-    function updateWheelOpacity(container, itemH) {
-        const center = container.scrollTop + itemH * 2;
-        const items = container.querySelectorAll('.p3-wheel-item');
-        items.forEach((item, i) => {
-            const itemCenter = i * itemH + itemH / 2;
-            const dist = Math.abs(center - itemCenter);
-            const opacity = Math.max(0.25, 1 - dist / (itemH * 2.5));
-            const scale = Math.max(0.85, 1 - dist / (itemH * 8));
+    function updateWheelOpacity(scrollEl, itemH) {
+        var centerY = scrollEl.scrollTop + itemH * 2 + itemH / 2;
+        var items = scrollEl.querySelectorAll('.p3-wheel-item');
+        items.forEach(function(item, i) {
+            var itemCenterY = (itemH * 2) + i * itemH + itemH / 2;
+            var dist = Math.abs(centerY - itemCenterY);
+            var opacity = Math.max(0.2, 1 - dist / (itemH * 2.5));
+            var scale = Math.max(0.8, 1 - dist / (itemH * 8));
             item.style.opacity = opacity;
             item.style.transform = 'scale('+scale+')';
         });
     }
 
     function getWheelValue(overlay, id) {
-        const container = overlay.querySelector('#' + id);
-        if (!container) return 1;
-        const ITEM_H = 36;
-        const idx = Math.round(container.scrollTop / ITEM_H);
-        const items = container.querySelectorAll('.p3-wheel-item');
+        var wrapper = overlay.querySelector('#' + id);
+        if (!wrapper || !wrapper._scrollEl) return 1;
+        var ITEM_H = 36;
+        var idx = Math.round(wrapper._scrollEl.scrollTop / ITEM_H);
+        var items = wrapper._scrollEl.querySelectorAll('.p3-wheel-item');
         return items[idx] ? parseInt(items[idx].dataset.value) : 1;
     }
 
-    // ==================== 绑定卡片事件 ====================
     function bindCardEvents() {
         const mc = document.querySelector('.p3-main-card');
         if (mc) mc.addEventListener('click', () => showP3Modal('卡片选项', [
