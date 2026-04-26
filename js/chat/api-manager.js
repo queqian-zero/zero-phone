@@ -329,7 +329,7 @@ class APIManager {
     // 构建请求体
     buildRequestBody(config, messages, systemPrompt, options = {}) {
         const { provider, model, maxTokens, temperature } = config;
-        const { avatarImages, audioAttachment } = options;
+        const { avatarImages, audioAttachment, audioFormat } = options;
 
         // ── 需求5：格式化消息时间戳（只供AI看，不显示给用户）──
         const fmtTime = (iso) => {
@@ -481,16 +481,25 @@ class APIManager {
                     content: msg.content
                 })));
                 
-                // 音频附件：用 image_url + data URL 格式（中转站会根据mime_type自动识别音频）
+                // 音频附件：根据 audioFormat 设置选择格式
                 if (audioAttachment) {
+                    const fmt = audioFormat || 'image_url';
                     for (let i = allMessages.length - 1; i >= 0; i--) {
                         if (allMessages[i].role === 'user') {
                             const textContent = typeof allMessages[i].content === 'string' ? allMessages[i].content : '';
-                            allMessages[i].content = [
-                                { type: 'text', text: textContent + '\n（以上附带了user的真实语音录音，请仔细听取语气和情绪）' },
-                                { type: 'image_url', image_url: { url: `data:${audioAttachment.mimeType};base64,${audioAttachment.data}` } }
-                            ];
-                            console.log('🎤 音频附件格式: image_url, mimeType=' + audioAttachment.mimeType + ', 数据前20字符=' + audioAttachment.data.substring(0, 20));
+                            const textPart = { type: 'text', text: textContent + '\n（以上附带了user的真实语音录音，请仔细听取语气和情绪）' };
+                            
+                            if (fmt === 'inline_data') {
+                                // Gemini 原生格式（直连或部分中转站）
+                                allMessages[i].content = [ textPart, { inline_data: { mime_type: audioAttachment.mimeType, data: audioAttachment.data } } ];
+                            } else if (fmt === 'input_audio') {
+                                // OpenAI 原生格式（GPT-4o直连）
+                                allMessages[i].content = [ textPart, { type: 'input_audio', input_audio: { data: audioAttachment.data, format: audioAttachment.mimeType.includes('wav') ? 'wav' : 'mp3' } } ];
+                            } else {
+                                // image_url 格式（通用中转站）
+                                allMessages[i].content = [ textPart, { type: 'image_url', image_url: { url: `data:${audioAttachment.mimeType};base64,${audioAttachment.data}` } } ];
+                            }
+                            console.log('🎤 音频格式: ' + fmt + ', mimeType=' + audioAttachment.mimeType);
                             break;
                         }
                     }

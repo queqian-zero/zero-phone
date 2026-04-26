@@ -1274,6 +1274,7 @@ class ChatInterface {
     // 调用AI API进行语音转文字
     async _callSTTApi(config, base64Audio, mimeType) {
         const { provider, endpoint, apiKey, model } = config;
+        const audioFormat = this.settings.audioFormat || 'image_url';
         const prompt = '请将以下音频中的语音内容转写为文字。只输出转写的文字内容，不要加任何说明、标点修正或格式。如果听不清就输出你能听到的部分。';
         
         let requestBody, url;
@@ -1291,25 +1292,34 @@ class ChatInterface {
                 generationConfig: { temperature: 0, maxOutputTokens: 500 }
             };
         } else {
-            // OpenAI 兼容格式（中转站用 image_url + data URL 传音频）
             let baseUrl = endpoint.replace(/\/$/, '');
             if (!baseUrl.includes('/chat/completions')) {
                 baseUrl = baseUrl.replace(/\/v1\/?$/, '') + '/v1/chat/completions';
             }
             url = baseUrl;
+            
+            // 根据格式设置构建音频部分
+            let audioPart;
+            if (audioFormat === 'inline_data') {
+                audioPart = { inline_data: { mime_type: mimeType, data: base64Audio } };
+            } else if (audioFormat === 'input_audio') {
+                audioPart = { type: 'input_audio', input_audio: { data: base64Audio, format: mimeType.includes('wav') ? 'wav' : 'mp3' } };
+            } else {
+                audioPart = { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Audio}` } };
+            }
+            
             requestBody = {
                 model,
                 messages: [{
                     role: 'user',
-                    content: [
-                        { type: 'text', text: prompt },
-                        { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Audio}` } }
-                    ]
+                    content: [ { type: 'text', text: prompt }, audioPart ]
                 }],
                 max_tokens: 500,
                 temperature: 0
             };
         }
+        
+        console.log('🎤 STT格式: ' + audioFormat + ', provider=' + provider);
         
         const headers = { 'Content-Type': 'application/json' };
         if (provider === 'anthropic') {
@@ -3066,7 +3076,7 @@ ${archiveListText}
                 this.showCssSystemMessage('🎤 正在把语音发给AI（' + Math.round(audioAttachment.data.length / 1024) + 'KB）...');
             }
             
-            const result = await this.apiManager.callAI(messagesWithTimestamps, systemPrompt, { avatarImages, audioAttachment });
+            const result = await this.apiManager.callAI(messagesWithTimestamps, systemPrompt, { avatarImages, audioAttachment, audioFormat: this.settings.audioFormat || 'image_url' });
             
             this.hideTypingIndicator();
             
@@ -4233,6 +4243,17 @@ div.innerHTML = `
         document.getElementById('settingDebugLog')?.addEventListener('click', () => {
             this._openDebugLog();
         });
+        
+        // 语音传输格式
+        const audioFormatSelect = document.getElementById('settingAudioFormat');
+        if (audioFormatSelect) {
+            audioFormatSelect.value = this.settings.audioFormat || 'image_url';
+            audioFormatSelect.addEventListener('change', (e) => {
+                this.settings.audioFormat = e.target.value;
+                this.saveSettings();
+                this.showCssSystemMessage('🎤 语音格式已切换为: ' + e.target.value);
+            });
+        }
         
         const aiRecognizeSwitch = document.getElementById('settingAiRecognizeImage');
         if (aiRecognizeSwitch) {
