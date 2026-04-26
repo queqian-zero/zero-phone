@@ -391,6 +391,19 @@
                 </label>
             </div>
             
+            <!-- 语音API格式 -->
+            <div class="setting-item">
+                <div class="setting-info">
+                    <span class="setting-label">语音传输格式</span>
+                    <span class="setting-desc">不同API/中转站需要不同格式</span>
+                </div>
+                <select id="settingAudioFormat" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:rgba(255,255,255,0.6);padding:6px 10px;font-size:12px;outline:none;">
+                    <option value="image_url">image_url（通用）</option>
+                    <option value="inline_data">inline_data（Gemini）</option>
+                    <option value="input_audio">input_audio（OpenAI）</option>
+                </select>
+            </div>
+            
             <!-- 搜索聊天记录 -->
             <div class="setting-item">
                 <div class="setting-info">
