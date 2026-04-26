@@ -1,105 +1,254 @@
-/* Page 3 Styles - 桌面第3页样式 */
+/* Page 3 Styles - 桌面第3页 · v3 */
 
 .page-3 {
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    overflow: hidden;  /* ← 禁止滚动 */
-    height: 100%;  /* ← 限制高度 */
-    padding: var(--spacing-lg);
+    overflow: hidden;
+    height: 100%;
+    padding: var(--spacing-md);
+    padding-top: var(--spacing-xl);
+    gap: 0;
+    justify-content: flex-start;
 }
 
-/* ==================== 纪念日容器 ==================== */
-.memorial-container {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-lg);
+/* ==================== 顶部文案分割线 ==================== */
+.p3-quote-divider {
     width: 100%;
-    max-width: 100%;
-    max-height: 100%;  /* ← 限制最大高度 */
-    overflow: hidden;  /* ← 防止溢出 */
+    text-align: center;
+    padding: var(--spacing-xs) 0 var(--spacing-sm);
+    position: relative;
+    cursor: default;
+    user-select: none;
+    flex-shrink: 0;
 }
 
-/* ==================== 纪念日卡片 ==================== */
-.memorial-card {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.7) 100%);
+.p3-quote-divider::before,
+.p3-quote-divider::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 20%;
+    height: 0.5px;
+    background: linear-gradient(90deg, transparent, rgba(0,0,0,0.12), transparent);
+}
+
+.p3-quote-divider::before { left: 0; }
+.p3-quote-divider::after { right: 0; }
+
+.p3-quote-text {
+    font-size: 11px;
+    color: var(--color-text-secondary);
+    opacity: 0.6;
+    letter-spacing: 1.5px;
+    font-style: italic;
+    font-weight: 300;
+    padding: 0 var(--spacing-md);
+    line-height: 1.6;
+}
+
+/* ==================== 长条主卡片 ==================== */
+.p3-main-card {
+    width: 100%;
+    height: 120px;
+    border-radius: var(--radius-lg);
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform var(--duration-fast), box-shadow var(--duration-fast);
+    flex-shrink: 0;
+    background: linear-gradient(135deg, 
+        rgba(102, 126, 234, 0.15) 0%, 
+        rgba(118, 75, 162, 0.1) 50%,
+        rgba(102, 126, 234, 0.08) 100%
+    );
     backdrop-filter: var(--blur-medium);
     -webkit-backdrop-filter: var(--blur-medium);
-    border-radius: var(--radius-lg);
-    padding: var(--spacing-xl);
+    border: 1px solid rgba(255, 255, 255, 0.4);
     box-shadow: 
-        0 8px 32px rgba(0, 0, 0, 0.1),
-        0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+        0 4px 24px rgba(102, 126, 234, 0.08),
+        0 0 0 1px rgba(255, 255, 255, 0.3) inset;
+}
+
+.p3-main-card:active { transform: scale(0.98); }
+
+.p3-main-card-bg {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    z-index: 0;
+}
+
+.p3-main-card-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.6) 100%);
+    z-index: 1;
+}
+
+.p3-main-card-content {
+    position: relative;
+    z-index: 2;
+    height: 100%;
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-lg);
-    transition: transform var(--duration-fast), box-shadow var(--duration-fast);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    flex-shrink: 0;  /* ← 防止压缩 */
-}
-
-.memorial-card:active {
-    transform: scale(0.98);
-    box-shadow: 
-        0 4px 16px rgba(0, 0, 0, 0.1),
-        0 0 0 1px rgba(255, 255, 255, 0.5) inset;
-}
-
-/* 卡片头部 */
-.memorial-header {
-    display: flex;
+    justify-content: center;
     align-items: center;
-    gap: var(--spacing-md);
+    padding: var(--spacing-md) var(--spacing-lg);
+    text-align: center;
 }
 
-.memorial-avatar {
-    width: 56px;
-    height: 56px;
-    border-radius: var(--radius-circle);
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+.p3-main-card-quote {
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--color-text-primary);
+    line-height: 1.8;
+    letter-spacing: 0.8px;
+    max-width: 90%;
+}
+
+.p3-main-card-sub {
+    font-size: 9px;
+    color: var(--color-text-secondary);
+    opacity: 0.45;
+    margin-top: 6px;
+    letter-spacing: 2px;
+}
+
+/* ==================== 双卡片行 ==================== */
+.p3-cards-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-sm);
+    width: 100%;
+    margin-top: var(--spacing-sm);
+    flex-shrink: 0;
+}
+
+.p3-square-card {
+    aspect-ratio: 1 / 1;
+    border-radius: var(--radius-lg);
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform var(--duration-fast);
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: var(--blur-medium);
+    -webkit-backdrop-filter: var(--blur-medium);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.06), 0 0 0 1px rgba(255,255,255,0.4) inset;
+}
+
+.p3-square-card:active { transform: scale(0.96); }
+
+/* ==================== 日历卡片（左） ==================== */
+.p3-calendar-card {
+    display: flex;
+    flex-direction: column;
+    padding: var(--spacing-md);
+}
+
+.p3-cal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-xs);
+}
+
+.p3-cal-month { font-size: 12px; font-weight: 600; color: var(--color-text-primary); letter-spacing: 0.5px; }
+.p3-cal-year { font-size: 10px; color: var(--color-text-secondary); opacity: 0.6; }
+
+.p3-cal-day {
+    flex: 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 32px;
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-}
-
-.memorial-relation {
-    font-size: var(--font-size-medium);
-    color: var(--color-text-secondary);
-    font-weight: 500;
-    letter-spacing: 0.5px;
-}
-
-/* 天数显示 */
-.memorial-days {
-    text-align: center;
-    padding: var(--spacing-lg) 0;
-    background: linear-gradient(180deg, rgba(102, 126, 234, 0.05) 0%, transparent 100%);
-    border-radius: var(--radius-md);
-}
-
-.days-number {
-    font-size: 64px;
+    font-size: 44px;
     font-weight: 200;
     color: var(--color-text-primary);
-    letter-spacing: 3px;
     line-height: 1;
+    letter-spacing: 2px;
 }
 
-.days-unit {
-    font-size: var(--font-size-large);
-    color: var(--color-text-secondary);
-    margin-left: var(--spacing-xs);
-    font-weight: 300;
+.p3-cal-weekday { text-align: center; font-size: 11px; color: var(--color-text-secondary); font-weight: 400; letter-spacing: 1px; }
+.p3-cal-dot { width: 4px; height: 4px; border-radius: 50%; background: #667eea; margin: 3px auto 0; opacity: 0.6; }
+
+/* ==================== 纪念日卡片（右） ==================== */
+.p3-memorial-card {
+    display: flex;
+    flex-direction: column;
+    padding: var(--spacing-md);
 }
 
-/* 开始日期 */
-.memorial-date {
+.p3-mem-label { font-size: 10px; color: var(--color-text-secondary); letter-spacing: 1px; opacity: 0.7; }
+.p3-mem-icon { font-size: 14px; margin-right: 4px; }
+
+.p3-mem-days-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.p3-mem-days-number { font-size: 38px; font-weight: 200; color: var(--color-text-primary); line-height: 1; letter-spacing: 2px; }
+.p3-mem-days-unit { font-size: 10px; color: var(--color-text-secondary); margin-top: 3px; letter-spacing: 2px; font-weight: 300; }
+
+.p3-mem-name { text-align: center; font-size: 11px; color: var(--color-text-secondary); font-weight: 400; letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.p3-mem-date { text-align: center; font-size: 9px; color: var(--color-text-secondary); opacity: 0.5; margin-top: 2px; }
+
+/* ==================== 底部淡分割线 ==================== */
+.p3-bottom-divider {
+    width: 60%;
+    height: 0.5px;
+    background: linear-gradient(90deg, transparent, rgba(0,0,0,0.08), transparent);
+    margin: var(--spacing-sm) auto 0;
+    flex-shrink: 0;
+}
+
+/* 下面的空白区域自然留出来，不需要额外元素 */
+
+/* ==================== 弹窗 ==================== */
+.p3-popup-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.3);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+}
+
+.p3-popup-overlay.active { opacity: 1; pointer-events: auto; }
+
+.p3-popup {
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: var(--blur-heavy);
+    -webkit-backdrop-filter: var(--blur-heavy);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-xl) var(--spacing-lg);
+    width: 260px;
     text-align: center;
-    font-size: var(--font-size-small);
-    color: var(--color-text-secondary);
-    opacity: 0.7;
-    letter-spacing: 0.5px;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.15);
+    transform: scale(0.9);
+    transition: transform 0.2s ease;
 }
+
+.p3-popup-overlay.active .p3-popup { transform: scale(1); }
+.p3-popup-title { font-size: 14px; font-weight: 500; color: var(--color-text-primary); margin-bottom: var(--spacing-lg); letter-spacing: 0.5px; }
+
+.p3-popup-btn {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all var(--duration-fast);
+    letter-spacing: 0.5px;
+    margin-bottom: var(--spacing-sm);
+}
+
+.p3-popup-btn:active { transform: scale(0.97); }
+.p3-popup-btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); color: white; font-weight: 500; }
+.p3-popup-btn-secondary { background: rgba(0,0,0,0.04); color: var(--color-text-primary); font-weight: 400; }
+.p3-popup-btn-cancel { background: none; color: var(--color-text-secondary); font-size: 12px; margin-bottom: 0; }
