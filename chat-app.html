@@ -309,7 +309,7 @@
                 <span class="menu-icon">)))&thinsp;</span>
                 <span class="menu-label">假语音</span>
             </button>
-            <button class="menu-item" id="menuRealVoice" title="真语音">
+            <button class="menu-item menu-placeholder" id="menuRealVoice" title="真语音（开发中）">
                 <span class="menu-icon">&#127908;</span>
                 <span class="menu-label">真语音</span>
             </button>
@@ -323,15 +323,25 @@
                 <span class="menu-icon">&#9634;</span>
                 <span class="menu-label">发图片</span>
             </button>
-            <button class="menu-item menu-placeholder" id="menuVoiceCall" title="语音通话（开发中）">
+            <button class="menu-item menu-placeholder" id="menuFakeVideo" title="假视频（开发中）">
+                <span class="menu-icon">&#127916;</span>
+                <span class="menu-label">假视频</span>
+            </button>
+            <button class="menu-item menu-placeholder" id="menuRealVideo" title="真视频（开发中）">
+                <span class="menu-icon">&#127909;</span>
+                <span class="menu-label">真视频</span>
+            </button>
+            <button class="menu-item" id="menuVoiceCall" title="语音通话">
                 <span class="menu-icon">&#128222;</span>
                 <span class="menu-label">语音通话</span>
             </button>
-            <button class="menu-item menu-placeholder" id="menuVideoCall" title="视频通话（开发中）">
+            <button class="menu-item" id="menuVideoCall" title="视频通话">
                 <span class="menu-icon">&#128247;</span>
                 <span class="menu-label">视频通话</span>
             </button>
-            <button class="menu-item menu-placeholder" id="menuLocation" title="发送位置（开发中）">
+        </div>
+        <div class="menu-row" style="display:flex;justify-content:space-around;">
+            <button class="menu-item menu-placeholder" id="menuLocation" title="位置（开发中）">
                 <span class="menu-icon">&#128205;</span>
                 <span class="menu-label">位置</span>
             </button>
@@ -339,8 +349,6 @@
                 <span class="menu-icon">&#128199;</span>
                 <span class="menu-label">名片</span>
             </button>
-        </div>
-        <div class="menu-row" style="display:flex;justify-content:space-around;">
             <button class="menu-item menu-placeholder" id="menuFile" title="文件（开发中）">
                 <span class="menu-icon">&#9776;</span>
                 <span class="menu-label">文件</span>
@@ -353,8 +361,6 @@
                 <span class="menu-icon">&#9655;</span>
                 <span class="menu-label">一起看</span>
             </button>
-            <div class="menu-item" style="visibility:hidden;"></div>
-            <div class="menu-item" style="visibility:hidden;"></div>
         </div>
         <input type="file" id="menuRealImageInput" accept="image/*" style="display:none;">
     </div>
@@ -389,19 +395,6 @@
                     <input type="checkbox" id="settingAiRecognizeImage" checked>
                     <span class="switch-slider"></span>
                 </label>
-            </div>
-            
-            <!-- 语音API格式 -->
-            <div class="setting-item">
-                <div class="setting-info">
-                    <span class="setting-label">语音传输格式</span>
-                    <span class="setting-desc">不同API/中转站需要不同格式</span>
-                </div>
-                <select id="settingAudioFormat" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:rgba(255,255,255,0.6);padding:6px 10px;font-size:12px;outline:none;">
-                    <option value="image_url">image_url（通用）</option>
-                    <option value="inline_data">inline_data（Gemini）</option>
-                    <option value="input_audio">input_audio（OpenAI）</option>
-                </select>
             </div>
             
             <!-- 搜索聊天记录 -->
