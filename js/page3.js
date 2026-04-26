@@ -321,6 +321,7 @@
             const m = getWheelValue(overlay, 'p3WheelMonth');
             const day = getWheelValue(overlay, 'p3WheelDay');
             const dateStr = y + '-' + String(m).padStart(2,'0') + '-' + String(day).padStart(2,'0');
+            if (new Date(dateStr) > new Date()) { showToast('不能选择未来的日期哦'); return; }
             const data = { name, startDate: dateStr, icon: '💕' };
             localStorage.setItem(STORAGE_KEYS.memorial, JSON.stringify(data));
             updateMemorial();
@@ -332,7 +333,7 @@
 
     // ==================== 滚轮选择器 ====================
     function initWheelPicker(overlay, selYear, selMonth, selDay) {
-        const years = []; for (let i = 2000; i <= 2030; i++) years.push(i);
+        const years = []; var curYear = new Date().getFullYear(); for (let i = 1970; i <= curYear; i++) years.push(i);
         const months = []; for (let i = 1; i <= 12; i++) months.push(i);
         const days = []; for (let i = 1; i <= 31; i++) days.push(i);
 
