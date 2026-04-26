@@ -323,7 +323,7 @@
                 <span class="menu-icon">&#9634;</span>
                 <span class="menu-label">发图片</span>
             </button>
-            <button class="menu-item menu-placeholder" id="menuFakeVideo" title="假视频（开发中）">
+            <button class="menu-item" id="menuFakeVideo" title="假视频">
                 <span class="menu-icon">&#127916;</span>
                 <span class="menu-label">假视频</span>
             </button>
@@ -403,7 +403,7 @@
                     <span class="setting-label">搜索聊天记录</span>
                 </div>
                 <button class="setting-action-btn" id="settingSearchChat">
-                    <span>🔍</span>
+                    <span class="setting-arrow">›</span>
                 </button>
             </div>
             
@@ -622,7 +622,7 @@
                     <span class="setting-label">聊天样式</span>
                     <span class="setting-desc">头像、头像框、气泡美化</span>
                 </div>
-                <button class="setting-action-btn"><span>🎨</span></button>
+                <span class="setting-arrow">›</span>
             </div>
             
             <!-- 聊天壁纸 -->
@@ -631,9 +631,7 @@
         <span class="setting-label">聊天壁纸</span>
         <span class="setting-desc">选择预设或上传自定义背景</span>
     </div>
-    <button class="setting-action-btn">
-        <span>🖼️</span>
-    </button>
+    <span class="setting-arrow">›</span>
 </div>
         </div>
         
@@ -647,7 +645,7 @@
                     <span class="setting-label">续火花系统</span>
                     <span class="setting-desc">设置火花开始时间和熄灭时长</span>
                 </div>
-                <button class="setting-action-btn"><span>🔥</span></button>
+                <span class="setting-arrow">›</span>
             </div>
             
             <!-- 亲密关系 -->
@@ -656,8 +654,13 @@
                     <span class="setting-label">亲密关系</span>
                     <span class="setting-desc">幸运字符、关系绑定、亲密徽章</span>
                 </div>
-                <button class="setting-action-btn"><span>💎</span></button>
+                <span class="setting-arrow">›</span>
             </div>
+        </div>
+        
+        <!-- ========== 通讯设置 ========== -->
+        <div class="settings-section">
+            <h3 class="section-title">通讯设置</h3>
             
             <!-- 语音与视频 -->
             <div class="setting-item" id="settingVoiceVideo" style="cursor:pointer;">
@@ -683,35 +686,35 @@
             <h3 class="section-title">数据管理</h3>
             
             <!-- 导入数据 -->
-            <div class="setting-item">
+            <div class="setting-item" style="cursor:pointer;">
                 <div class="setting-info">
                     <span class="setting-label">导入数据</span>
                     <span class="setting-desc">导入聊天记录或完整数据</span>
                 </div>
                 <button class="setting-action-btn" id="settingImportData">
-                    <span>📥</span>
+                    <span class="setting-arrow">›</span>
                 </button>
             </div>
             
             <!-- 导出数据 -->
-            <div class="setting-item">
+            <div class="setting-item" style="cursor:pointer;">
                 <div class="setting-info">
                     <span class="setting-label">导出数据</span>
                     <span class="setting-desc">导出聊天记录或完整数据</span>
                 </div>
                 <button class="setting-action-btn" id="settingExportData">
-                    <span>📤</span>
+                    <span class="setting-arrow">›</span>
                 </button>
             </div>
             
             <!-- 运行日志 -->
-            <div class="setting-item">
+            <div class="setting-item" style="cursor:pointer;">
                 <div class="setting-info">
                     <span class="setting-label">运行日志</span>
                     <span class="setting-desc">查看报错和API调用记录</span>
                 </div>
                 <button class="setting-action-btn" id="settingDebugLog">
-                    <span>🐞</span>
+                    <span class="setting-arrow">›</span>
                 </button>
             </div>
         </div>
