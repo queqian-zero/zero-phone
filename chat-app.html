@@ -24,6 +24,7 @@
     <link rel="stylesheet" href="css/chat/chat-interface.css">
     <link rel="stylesheet" href="css/chat/chat-settings.css">
     <link rel="stylesheet" href="css/chat/data-management.css">  <!-- ← 新增这行 -->
+    <link rel="stylesheet" href="css/chat/word-cards.css">
 </head>
 <body>
     <!-- 全局样式：字体加大 -->
@@ -124,7 +125,7 @@
                     </div>
                     <!-- 更多区 -->
                     <div class="discover-group">
-                        <div class="discover-item" id="discoverCardZone" onclick="window.chatInterface?.showCssToast?.('🃏 字卡区开发中...') || alert('🃏 字卡区开发中...')">
+                        <div class="discover-item" id="discoverCardZone" onclick="window.wordCardZone?.open()">
                             <div class="discover-icon">🃏</div>
                             <div class="discover-label">字卡区</div>
                             <span class="discover-arrow">›</span>
@@ -1323,6 +1324,7 @@
 <script src="js/chat/base64-library.js"></script>
 <script src="js/chat/theater-mode.js"></script>
 <script src="js/chat/memory-library.js"></script>
+<script src="js/word-cards.js"></script>
 <script src="js/chat/moments-manager.js"></script>
     
     <!-- ==================== 聊天壁纸弹窗 ==================== -->
