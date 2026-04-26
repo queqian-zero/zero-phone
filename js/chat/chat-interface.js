@@ -773,6 +773,12 @@ class ChatInterface {
             this.showCssSystemMessage('🎙 真语音功能开发中，敬请期待');
         });
         
+        // 假视频
+        document.getElementById('menuFakeVideo')?.addEventListener('click', () => {
+            this.closeMenu();
+            this._sendFakeVideo();
+        });
+        
         // 真发图
         document.getElementById('menuRealImage')?.addEventListener('click', () => {
             this.closeMenu();
@@ -1037,6 +1043,23 @@ class ChatInterface {
         if (this._quotingMessage) { msg._quote = this._extractQuoteData(this._quotingMessage); this._clearQuoteMessage(); }
         this.addMessage(msg);
         const storeMsg = { type: 'user', text: `[用户发送了假图片：${desc}]`, timestamp: msg.timestamp, _fakeImage: desc };
+        if (msg._quote) storeMsg._quote = msg._quote;
+        this.storage.addMessage(this.currentFriendCode, storeMsg);
+        this.scrollToBottom();
+    }
+    
+    // ==================== 假视频 ====================
+    async _sendFakeVideo() {
+        const desc = window.zpPrompt ? 
+            await window.zpPrompt('发送假视频', '描述你要发的视频内容\nAI知道这是文字描述，不是真的视频', '', '例如：一段在海边散步的视频') :
+            prompt('描述你要发的视频内容：');
+        
+        if (!desc) return;
+        
+        const msg = { type: 'user', text: '', timestamp: new Date().toISOString(), _fakeVideo: desc };
+        if (this._quotingMessage) { msg._quote = this._extractQuoteData(this._quotingMessage); this._clearQuoteMessage(); }
+        this.addMessage(msg);
+        const storeMsg = { type: 'user', text: `[用户发送了假视频：${desc}]`, timestamp: msg.timestamp, _fakeVideo: desc };
         if (msg._quote) storeMsg._quote = msg._quote;
         this.storage.addMessage(this.currentFriendCode, storeMsg);
         this.scrollToBottom();
@@ -2143,6 +2166,7 @@ class ChatInterface {
                              : msg._quote._imageUrl ? '[图片]' 
                              : msg._quote._stickerUrl ? '[表情包]'
                              : msg._quote._fakeImage ? `[假图片:${msg._quote._fakeImage}]`
+                             : msg._quote._fakeVideo ? `[假视频:${msg._quote._fakeVideo}]`
                              : (msg._quote.text || '').substring(0, 40);
                     prefix += `[引用${qs}的消息：${qt}] `;
                 }
@@ -2150,7 +2174,7 @@ class ChatInterface {
                 if (msg.type === 'system' && msg._recallData) {
                     const rd = msg._recallData;
                     const who = rd.recaller === 'user' ? 'user' : '你';
-                    const origText = rd.originalMsg?.text || rd.originalMsg?._fakeImage || rd.originalMsg?._voiceText || '[多媒体消息]';
+                    const origText = rd.originalMsg?.text || rd.originalMsg?._fakeImage || rd.originalMsg?._fakeVideo || rd.originalMsg?._voiceText || '[多媒体消息]';
                     let recallText = `[${who}撤回了一条消息，原内容：「${origText.substring(0, 80)}」]`;
                     if (rd.innerThought) recallText += `[${who}撤回时心里想的：「${rd.innerThought}」]`;
                     return { type: 'user', text: prefix + recallText, timestamp: msg.timestamp };
@@ -2771,7 +2795,7 @@ ${archiveListText}
                     for (let qi = this.messages.length - 1; qi >= 0; qi--) {
                         const qm = this.messages[qi];
                         if (qm.type !== 'user' && qm.type !== 'ai') continue;
-                        const qt = qm.text || qm._fakeImage || qm._voiceText || '';
+                        const qt = qm.text || qm._fakeImage || qm._fakeVideo || qm._voiceText || '';
                         if (qt.includes(kw)) { msg._quote = this._extractQuoteData(qm); break; }
                     }
                 }
@@ -3109,7 +3133,14 @@ div.innerHTML = `
                         <div class="fake-image-desc" style="padding:14px;font-size:12px;opacity:0.5;text-align:center;line-height:1.5;">${this.escapeHtml(message._fakeImage)}</div>
                         <div class="fake-image-cover" style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(60,60,60,0.85);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;font-size:12px;color:rgba(255,255,255,0.35);letter-spacing:1px;transition:opacity 0.25s ease,visibility 0.25s ease;">[图片]</div>
                     </div>` : ''}
-                    ${message.text && !message._imageOnly && !message._voice && !message._fakeImage && !message._stickerUrl ? `<div class="message-text">${this.renderMessageContent(message.text)}</div>` : ''}
+                    ${message._fakeVideo ? `<div class="fake-video-card" style="position:relative;background:rgba(128,128,128,0.06);border:1px dashed rgba(128,128,128,0.15);border-radius:10px;min-width:160px;min-height:90px;max-width:220px;overflow:hidden;cursor:pointer;">
+                        <div class="fake-video-desc" style="padding:14px;font-size:12px;opacity:0.5;text-align:center;line-height:1.5;">${this.escapeHtml(message._fakeVideo)}</div>
+                        <div class="fake-video-cover" style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(60,60,60,0.85);backdrop-filter:blur(4px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;transition:opacity 0.25s ease,visibility 0.25s ease;">
+                            <div style="width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;font-size:14px;">▶</div>
+                            <span style="font-size:11px;color:rgba(255,255,255,0.3);">[视频]</span>
+                        </div>
+                    </div>` : ''}
+                    ${message.text && !message._imageOnly && !message._voice && !message._fakeImage && !message._fakeVideo && !message._stickerUrl ? `<div class="message-text">${this.renderMessageContent(message.text)}</div>` : ''}
                 </div>
                 <div class="message-time">${time}</div>
             </div>
@@ -3182,6 +3213,18 @@ div.innerHTML = `
         if (fakeImg) {
             fakeImg.addEventListener('click', () => {
                 const cover = fakeImg.querySelector('.fake-image-cover');
+                if (!cover) return;
+                const hidden = cover.style.opacity === '0';
+                cover.style.opacity = hidden ? '1' : '0';
+                cover.style.visibility = hidden ? 'visible' : 'hidden';
+            });
+        }
+        
+        // 假视频点击（切换覆盖层）
+        const fakeVid = div.querySelector('.fake-video-card');
+        if (fakeVid) {
+            fakeVid.addEventListener('click', () => {
+                const cover = fakeVid.querySelector('.fake-video-cover');
                 if (!cover) return;
                 const hidden = cover.style.opacity === '0';
                 cover.style.opacity = hidden ? '1' : '0';
@@ -7546,6 +7589,7 @@ getIntimacyStatusForAI() {
     // AI可发送假图片和语音条
     desc += `\n\n【发送多媒体】`;
     desc += `\n  [AI_FAKE_IMAGE:图片描述] 给user发一张假图片（user知道是文字描述）`;
+    desc += `\n  [AI_FAKE_VIDEO:视频描述] 给user发一个假视频（user知道是文字描述）`;
     desc += `\n  [AI_VOICE:语音内容] 给user发一条语音消息（显示为语音条，user点击可"转文字"）`;
     desc += `\n  [AI_SEND_LIB_IMAGE:图片名字] 从Base64图库中找到该图发给user（user能看到图片）`;
     desc += `\n  [AI_CHANGE_AVATAR:图片名字] 把Base64图库中的某张图设为你自己的头像`;
@@ -13668,6 +13712,8 @@ _renderQuoteBlock(q) {
         contentHtml = `<img src="${q._stickerUrl}" style="max-width:40px;max-height:40px;border-radius:4px;display:block;" onerror="this.outerHTML='[表情]'">`;
     } else if (q._fakeImage) {
         contentHtml = `<div style="display:inline-block;padding:4px 8px;border:1px dashed rgba(128,128,128,0.2);border-radius:6px;font-size:10px;opacity:0.5;">[图片] ${this.escapeHtml((q._fakeImage || '').substring(0, 20))}</div>`;
+    } else if (q._fakeVideo) {
+        contentHtml = `<div style="display:inline-block;padding:4px 8px;border:1px dashed rgba(128,128,128,0.2);border-radius:6px;font-size:10px;opacity:0.5;">▶ [视频] ${this.escapeHtml((q._fakeVideo || '').substring(0, 20))}</div>`;
     } else if (q.text) {
         // 检查是否有 RENDER_HTML
         let displayText = q.text;
@@ -13860,6 +13906,8 @@ _showRecalledContent(data) {
         contentHtml = `<div style="text-align:center;"><img src="${orig._stickerUrl}" style="max-width:120px;border-radius:8px;"></div>`;
     } else if (orig._fakeImage) {
         contentHtml = `<div style="padding:10px;background:rgba(255,255,255,0.03);border-radius:8px;border:1px dashed rgba(128,128,128,0.15);">[假图片] ${this.escapeHtml(orig._fakeImage)}</div>`;
+    } else if (orig._fakeVideo) {
+        contentHtml = `<div style="padding:10px;background:rgba(255,255,255,0.03);border-radius:8px;border:1px dashed rgba(128,128,128,0.15);">▶ [假视频] ${this.escapeHtml(orig._fakeVideo)}</div>`;
     } else if (orig.text) {
         let displayText = orig.text;
         if (displayText.includes('[RENDER_HTML]')) {
@@ -13919,6 +13967,7 @@ _setQuoteMessage(msg) {
     else if (msg._imageUrl) preview = '🖼 图片';
     else if (msg._stickerUrl) preview = `😊 ${msg._stickerName || '表情包'}`;
     else if (msg._fakeImage) preview = `[图片] ${(msg._fakeImage || '').substring(0, 15)}`;
+    else if (msg._fakeVideo) preview = `▶ [视频] ${(msg._fakeVideo || '').substring(0, 15)}`;
     else if (msg.text) {
         let t = msg.text.replace(/\[RENDER_HTML\][\s\S]*?\[\/RENDER_HTML\]/g, '[卡片]');
         preview = t.substring(0, 30);
@@ -13964,6 +14013,7 @@ _extractQuoteData(msg) {
     if (msg._imageUrl) q._imageUrl = msg._imageUrl;
     if (msg._stickerUrl) { q._stickerUrl = msg._stickerUrl; q._stickerName = msg._stickerName; }
     if (msg._fakeImage) q._fakeImage = msg._fakeImage;
+    if (msg._fakeVideo) q._fakeVideo = msg._fakeVideo;
     if (msg.text) q.text = msg.text;
     return q;
 }
@@ -14022,6 +14072,7 @@ _stripCommandTags(text) {
         .replace(/\[AI_TIMEZONE:[^\]]+\]/g, '')
         .replace(/\[AI_SIGNATURE:[^\]]+\]/g, '')
         .replace(/\[AI_FAKE_IMAGE:[^\]]+\]/g, '')
+        .replace(/\[AI_FAKE_VIDEO:[^\]]+\]/g, '')
         .replace(/\[AI_VOICE:[^\]]+\]/g, '')
         .replace(/\[AI_SEND_LIB_IMAGE:[^\]]+\]/g, '')
         .replace(/\[AI_CHANGE_AVATAR:[^\]]+\]/g, '')
