@@ -767,8 +767,14 @@ class ChatInterface {
             this._sendFakeVoice();
         });
         
-        // 真语音（通过语音小助手转述）
+        // 真语音（待开发 — 等能直接发音频给AI时启用）
         document.getElementById('menuRealVoice')?.addEventListener('click', () => {
+            this.closeMenu();
+            this.showCssSystemMessage('🎙 真语音功能待开发（需API支持音频输入）');
+        });
+        
+        // 小助手语音（通过语音小助手转述）
+        document.getElementById('menuAssistantVoice')?.addEventListener('click', () => {
             this.closeMenu();
             this._sendVoiceViaAssistant();
         });
@@ -1008,7 +1014,11 @@ class ChatInterface {
                                 </div>
                                 <div>
                                     <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-bottom:4px;">模型</div>
-                                    <input id="vvSttModel" type="text" placeholder="例：gemini-2.0-flash" value="${this.escapeHtml(sttSettings.model || '')}" style="width:100%;box-sizing:border-box;padding:8px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:rgba(255,255,255,0.6);font-size:13px;outline:none;">
+                                    <div style="display:flex;gap:6px;">
+                                        <input id="vvSttModel" type="text" placeholder="例：gemini-2.0-flash" value="${this.escapeHtml(sttSettings.model || '')}" style="flex:1;box-sizing:border-box;padding:8px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:rgba(255,255,255,0.6);font-size:13px;outline:none;">
+                                        <button id="vvSttFetchModels" style="padding:8px 12px;border:none;border-radius:8px;background:rgba(100,200,255,0.08);color:rgba(100,200,255,0.5);font-size:11px;cursor:pointer;white-space:nowrap;">拉取</button>
+                                    </div>
+                                    <div id="vvSttModelList" style="display:none;max-height:150px;overflow-y:auto;margin-top:6px;border:1px solid rgba(255,255,255,0.06);border-radius:8px;background:rgba(0,0,0,0.2);"></div>
                                 </div>
                                 <div>
                                     <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-bottom:4px;">音频格式（发给小助手的格式）</div>
@@ -1018,6 +1028,10 @@ class ChatInterface {
                                         <option value="input_audio" ${sttSettings.audioFormat === 'input_audio' ? 'selected' : ''}>input_audio（OpenAI原生）</option>
                                     </select>
                                 </div>
+                            </div>
+                            
+                            <div style="margin-top:10px;padding:8px 10px;background:rgba(240,147,43,0.06);border-radius:8px;border-left:2px solid rgba(240,147,43,0.3);">
+                                <div style="font-size:10px;color:rgba(240,147,43,0.5);line-height:1.5;">⚠️ 小助手请使用支持音频输入的模型（如 Gemini Flash/Pro、GPT-4o 等）。纯文本模型无法识别语音。</div>
                             </div>
                             
                             <div style="display:flex;gap:8px;margin-top:14px;">
@@ -1076,6 +1090,70 @@ class ChatInterface {
         // 录音测试
         page.querySelector('#vvSttTest').addEventListener('click', () => {
             this._testSttRecording();
+        });
+        
+        // 拉取模型列表
+        page.querySelector('#vvSttFetchModels').addEventListener('click', async () => {
+            const endpoint = document.getElementById('vvSttEndpoint').value.trim();
+            const apiKey = document.getElementById('vvSttKey').value.trim();
+            const listEl = document.getElementById('vvSttModelList');
+            
+            if (!endpoint || !apiKey) {
+                this.showCssSystemMessage('❌ 请先填写API地址和Key');
+                return;
+            }
+            
+            listEl.style.display = 'block';
+            listEl.innerHTML = '<div style="padding:10px;text-align:center;color:rgba(255,255,255,0.2);font-size:11px;">加载中...</div>';
+            
+            try {
+                let url;
+                const base = endpoint.replace(/\/$/, '');
+                if (base.includes('generativelanguage.googleapis.com')) {
+                    url = base + '/v1beta/models?key=' + apiKey;
+                } else {
+                    url = base.replace(/\/v1\/?$/, '') + '/v1/models';
+                }
+                
+                const headers = { 'Content-Type': 'application/json' };
+                if (!url.includes('key=')) headers['Authorization'] = 'Bearer ' + apiKey;
+                
+                const resp = await fetch(url, { headers });
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                const data = await resp.json();
+                
+                // 解析模型列表
+                let models = [];
+                if (data.models) {
+                    // Google格式
+                    models = data.models.map(m => ({ id: m.name?.replace('models/', '') || m.name, name: m.displayName || m.name }));
+                } else if (data.data) {
+                    // OpenAI格式
+                    models = data.data.map(m => ({ id: m.id, name: m.id }));
+                }
+                
+                if (models.length === 0) {
+                    listEl.innerHTML = '<div style="padding:10px;text-align:center;color:rgba(255,255,255,0.2);font-size:11px;">未找到模型</div>';
+                    return;
+                }
+                
+                listEl.innerHTML = models.map(m => 
+                    `<div class="vv-model-item" data-id="${this.escapeHtml(m.id)}" style="padding:8px 12px;cursor:pointer;font-size:12px;color:rgba(255,255,255,0.5);border-bottom:1px solid rgba(255,255,255,0.03);transition:background 0.15s;">${this.escapeHtml(m.name)}</div>`
+                ).join('');
+                
+                listEl.querySelectorAll('.vv-model-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        document.getElementById('vvSttModel').value = item.dataset.id;
+                        listEl.style.display = 'none';
+                        this.showCssSystemMessage('✅ 已选择模型: ' + item.dataset.id);
+                    });
+                    item.addEventListener('touchstart', () => { item.style.background = 'rgba(255,255,255,0.05)'; }, { passive: true });
+                    item.addEventListener('touchend', () => { item.style.background = ''; });
+                });
+                
+            } catch(e) {
+                listEl.innerHTML = '<div style="padding:10px;text-align:center;color:rgba(255,100,100,0.5);font-size:11px;">拉取失败: ' + this.escapeHtml(e.message) + '</div>';
+            }
         });
     }
     
