@@ -436,3 +436,134 @@
     background: rgba(255,255,255,0.92);
     backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
 }
+
+/* ==================== 第二批功能 ==================== */
+
+/* 表情面板 */
+.wc-emoji-panel {
+    position: absolute; bottom: 100%; left: 0; right: 0;
+    background: rgba(255,255,255,0.97);
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    border-top: 0.5px solid rgba(0,0,0,0.06);
+    max-height: 220px; overflow: hidden;
+    display: flex; flex-direction: column;
+    animation: wcSlideUp 0.2s ease;
+    z-index: 5;
+}
+@keyframes wcSlideUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.wc-emoji-tabs {
+    display: flex; border-bottom: 0.5px solid rgba(0,0,0,0.06);
+    flex-shrink: 0; padding: 0 8px;
+}
+.wc-emoji-tab {
+    flex: 1; padding: 8px; border: none; background: none;
+    font-size: 16px; cursor: pointer; opacity: 0.4;
+    transition: opacity 0.15s;
+    border-bottom: 2px solid transparent;
+}
+.wc-emoji-tab.active { opacity: 1; border-bottom-color: var(--color-text-primary, #1d1d1f); }
+.wc-emoji-grid {
+    flex: 1; overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 2px; padding: 8px;
+    -webkit-overflow-scrolling: touch;
+}
+.wc-emoji-item {
+    aspect-ratio: 1/1;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; cursor: pointer;
+    border-radius: 8px; transition: background 0.1s;
+}
+.wc-emoji-item:active { background: rgba(0,0,0,0.06); }
+
+/* 拍一拍 系统消息 */
+.wc-poke-msg {
+    text-align: center; padding: 6px 0;
+    animation: wcPokeIn 0.4s ease;
+}
+.wc-poke-text {
+    display: inline-block;
+    font-size: 11px; color: var(--color-text-secondary, #999);
+    background: rgba(0,0,0,0.04);
+    padding: 4px 12px; border-radius: 12px;
+}
+@keyframes wcPokeIn {
+    0% { transform: scale(0.8); opacity: 0; }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+/* 拍一拍 屏幕晃动 */
+.wc-shake {
+    animation: wcShake 0.4s ease;
+}
+@keyframes wcShake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+}
+
+/* 图片消息 */
+.wc-msg-image {
+    max-width: 200px; max-height: 200px;
+    border-radius: 12px; overflow: hidden;
+    cursor: pointer;
+}
+.wc-msg-image img {
+    width: 100%; height: 100%;
+    object-fit: cover; display: block;
+}
+
+/* 图片预览大图 */
+.wc-image-preview {
+    position: fixed; inset: 0;
+    z-index: 9999;
+    background: rgba(0,0,0,0.9);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    animation: wcFadeIn 0.2s ease;
+}
+@keyframes wcFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+.wc-image-preview img {
+    max-width: 95%; max-height: 90%;
+    object-fit: contain;
+    border-radius: 4px;
+}
+
+/* 输入区域调整 - 让表情面板有定位参考 */
+.wc-input-area {
+    position: relative;
+}
+
+/* 音效开关 */
+.wc-sound-toggle {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 0;
+}
+.wc-switch {
+    width: 44px; height: 24px;
+    border-radius: 12px;
+    background: rgba(0,0,0,0.12);
+    position: relative; cursor: pointer;
+    transition: background 0.2s;
+    border: none;
+}
+.wc-switch.on { background: #667eea; }
+.wc-switch::after {
+    content: ''; position: absolute;
+    top: 2px; left: 2px;
+    width: 20px; height: 20px;
+    border-radius: 50%; background: white;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    transition: transform 0.2s;
+}
+.wc-switch.on::after { transform: translateX(20px); }
