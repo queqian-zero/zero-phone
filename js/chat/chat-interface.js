@@ -767,10 +767,10 @@ class ChatInterface {
             this._sendFakeVoice();
         });
         
-        // 真语音（暂未开放）
+        // 真语音（通过语音小助手转述）
         document.getElementById('menuRealVoice')?.addEventListener('click', () => {
             this.closeMenu();
-            this.showCssSystemMessage('🎙 真语音功能开发中，敬请期待');
+            this._sendVoiceViaAssistant();
         });
         
         // 假视频
@@ -963,10 +963,7 @@ class ChatInterface {
         document.getElementById('voiceVideoPage')?.remove();
         
         const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
-        const friendAvatar = this.currentFriend?.avatar || '';
-        const avatarHtml = friendAvatar 
-            ? `<img src="${friendAvatar}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;">`
-            : `<div style="width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;font-size:28px;color:rgba(255,255,255,0.3);">${this.escapeHtml((friendName || '?')[0])}</div>`;
+        const sttSettings = this.settings.sttApi || {};
         
         const page = document.createElement('div');
         page.id = 'voiceVideoPage';
@@ -979,27 +976,61 @@ class ChatInterface {
                 <div style="width:32px;"></div>
             </div>
             
-            <!-- 头部信息 -->
-            <div style="text-align:center;padding:30px 20px 20px;">
-                ${avatarHtml}
-                <div style="margin-top:12px;font-size:16px;color:rgba(255,255,255,0.7);">${this.escapeHtml(friendName)}</div>
-            </div>
-            
             <!-- Tab切换 -->
             <div style="display:flex;margin:0 20px;border-bottom:1px solid rgba(255,255,255,0.06);">
-                <div class="vv-tab ${defaultTab === 'voice' ? 'vv-tab-active' : ''}" data-tab="voice" style="flex:1;text-align:center;padding:12px;font-size:14px;color:rgba(255,255,255,${defaultTab === 'voice' ? '0.7' : '0.3'});cursor:pointer;border-bottom:2px solid ${defaultTab === 'voice' ? 'rgba(240,147,43,0.6)' : 'transparent'};transition:all 0.2s;">📞 语音</div>
-                <div class="vv-tab ${defaultTab === 'video' ? 'vv-tab-active' : ''}" data-tab="video" style="flex:1;text-align:center;padding:12px;font-size:14px;color:rgba(255,255,255,${defaultTab === 'video' ? '0.7' : '0.3'});cursor:pointer;border-bottom:2px solid ${defaultTab === 'video' ? 'rgba(240,147,43,0.6)' : 'transparent'};transition:all 0.2s;">📹 视频</div>
+                <div class="vv-tab" data-tab="voice" style="flex:1;text-align:center;padding:12px;font-size:14px;color:rgba(255,255,255,${defaultTab === 'voice' ? '0.7' : '0.3'});cursor:pointer;border-bottom:2px solid ${defaultTab === 'voice' ? 'rgba(240,147,43,0.6)' : 'transparent'};transition:all 0.2s;">语音</div>
+                <div class="vv-tab" data-tab="video" style="flex:1;text-align:center;padding:12px;font-size:14px;color:rgba(255,255,255,${defaultTab === 'video' ? '0.7' : '0.3'});cursor:pointer;border-bottom:2px solid ${defaultTab === 'video' ? 'rgba(240,147,43,0.6)' : 'transparent'};transition:all 0.2s;">视频</div>
             </div>
             
             <!-- 内容区 -->
-            <div id="vvContent" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:20px;">
+            <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:20px;">
+                
+                <!-- 语音模块 -->
                 <div id="vvVoicePanel" style="display:${defaultTab === 'voice' ? 'block' : 'none'};">
-                    <div style="text-align:center;padding:40px 20px;color:rgba(255,255,255,0.15);">
-                        <div style="font-size:48px;margin-bottom:16px;">📞</div>
-                        <div style="font-size:14px;margin-bottom:8px;">语音通话模块</div>
-                        <div style="font-size:12px;opacity:0.6;">功能开发中，敬请期待</div>
+                    
+                    <!-- 语音小助手 -->
+                    <div style="margin-bottom:24px;">
+                        <div style="font-size:13px;color:rgba(255,220,170,0.5);margin-bottom:12px;">语音小助手（转文字）</div>
+                        <div style="padding:14px;background:rgba(255,255,255,0.03);border-radius:12px;border:1px solid rgba(255,255,255,0.04);">
+                            <div style="font-size:11px;color:rgba(255,255,255,0.25);line-height:1.6;margin-bottom:14px;">
+                                接入一个语音识别API作为"小助手"，帮你把语音转成文字描述发给${this.escapeHtml(friendName)}。<br>
+                                小助手会描述你说的话、语气、背景音等所有听到的内容。
+                            </div>
+                            
+                            <div style="display:flex;flex-direction:column;gap:10px;">
+                                <div>
+                                    <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-bottom:4px;">API地址</div>
+                                    <input id="vvSttEndpoint" type="text" placeholder="例：https://api.openai.com/v1" value="${this.escapeHtml(sttSettings.endpoint || '')}" style="width:100%;box-sizing:border-box;padding:8px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:rgba(255,255,255,0.6);font-size:13px;outline:none;">
+                                </div>
+                                <div>
+                                    <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-bottom:4px;">API Key</div>
+                                    <input id="vvSttKey" type="password" placeholder="sk-..." value="${this.escapeHtml(sttSettings.apiKey || '')}" style="width:100%;box-sizing:border-box;padding:8px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:rgba(255,255,255,0.6);font-size:13px;outline:none;">
+                                </div>
+                                <div>
+                                    <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-bottom:4px;">模型</div>
+                                    <input id="vvSttModel" type="text" placeholder="例：gemini-2.0-flash" value="${this.escapeHtml(sttSettings.model || '')}" style="width:100%;box-sizing:border-box;padding:8px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:rgba(255,255,255,0.6);font-size:13px;outline:none;">
+                                </div>
+                                <div>
+                                    <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-bottom:4px;">音频格式（发给小助手的格式）</div>
+                                    <select id="vvSttFormat" style="width:100%;box-sizing:border-box;padding:8px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:rgba(255,255,255,0.6);font-size:13px;outline:none;">
+                                        <option value="inline_data" ${sttSettings.audioFormat === 'inline_data' ? 'selected' : ''}>inline_data（Gemini原生）</option>
+                                        <option value="image_url" ${sttSettings.audioFormat === 'image_url' ? 'selected' : ''}>image_url（通用中转站）</option>
+                                        <option value="input_audio" ${sttSettings.audioFormat === 'input_audio' ? 'selected' : ''}>input_audio（OpenAI原生）</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div style="display:flex;gap:8px;margin-top:14px;">
+                                <button id="vvSttSave" style="flex:1;padding:10px;border:none;border-radius:8px;background:rgba(240,147,43,0.12);color:rgba(240,147,43,0.7);font-size:13px;cursor:pointer;">保存设置</button>
+                                <button id="vvSttTest" style="flex:1;padding:10px;border:none;border-radius:8px;background:rgba(100,200,255,0.08);color:rgba(100,200,255,0.6);font-size:13px;cursor:pointer;">🎤 录音测试</button>
+                            </div>
+                            <div id="vvSttTestResult" style="margin-top:10px;font-size:11px;color:rgba(255,255,255,0.3);display:none;"></div>
+                        </div>
                     </div>
+                    
                 </div>
+                
+                <!-- 视频模块 -->
                 <div id="vvVideoPanel" style="display:${defaultTab === 'video' ? 'block' : 'none'};">
                     <div style="text-align:center;padding:40px 20px;color:rgba(255,255,255,0.15);">
                         <div style="font-size:48px;margin-bottom:16px;">📹</div>
@@ -1029,6 +1060,250 @@ class ChatInterface {
                 document.getElementById('vvVideoPanel').style.display = t === 'video' ? 'block' : 'none';
             });
         });
+        
+        // 保存STT设置
+        page.querySelector('#vvSttSave').addEventListener('click', () => {
+            this.settings.sttApi = {
+                endpoint: document.getElementById('vvSttEndpoint').value.trim(),
+                apiKey: document.getElementById('vvSttKey').value.trim(),
+                model: document.getElementById('vvSttModel').value.trim(),
+                audioFormat: document.getElementById('vvSttFormat').value
+            };
+            this.saveSettings();
+            this.showCssSystemMessage('✅ 语音小助手设置已保存');
+        });
+        
+        // 录音测试
+        page.querySelector('#vvSttTest').addEventListener('click', () => {
+            this._testSttRecording();
+        });
+    }
+    
+    // 语音小助手录音测试
+    async _testSttRecording() {
+        const stt = this.settings.sttApi;
+        if (!stt?.endpoint || !stt?.apiKey || !stt?.model) {
+            this.showCssSystemMessage('❌ 请先填写并保存语音小助手设置');
+            return;
+        }
+        
+        const resultEl = document.getElementById('vvSttTestResult');
+        if (resultEl) { resultEl.style.display = 'block'; resultEl.textContent = '🎤 请求麦克风权限...'; }
+        
+        let stream;
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: true } });
+        } catch(e) {
+            if (resultEl) resultEl.textContent = '❌ 无法访问麦克风: ' + e.message;
+            return;
+        }
+        
+        if (resultEl) resultEl.textContent = '🔴 录音中...（5秒后自动停止）';
+        
+        const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/mp4';
+        const recorder = new MediaRecorder(stream, { mimeType, audioBitsPerSecond: 128000 });
+        const chunks = [];
+        recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+        recorder.start();
+        
+        // 5秒后自动停止
+        setTimeout(() => { if (recorder.state !== 'inactive') recorder.stop(); }, 5000);
+        
+        recorder.onstop = async () => {
+            stream.getTracks().forEach(t => t.stop());
+            const blob = new Blob(chunks, { type: mimeType });
+            if (resultEl) resultEl.textContent = '🔄 正在发给小助手识别（' + Math.round(blob.size/1024) + 'KB）...';
+            
+            try {
+                const result = await this._callSttAssistant(blob);
+                if (resultEl) resultEl.innerHTML = '<div style="color:rgba(100,255,100,0.6);margin-bottom:4px;">✅ 小助手听到的：</div><div style="color:rgba(255,255,255,0.5);line-height:1.6;padding:8px;background:rgba(255,255,255,0.03);border-radius:6px;">' + this.escapeHtml(result) + '</div>';
+            } catch(e) {
+                if (resultEl) resultEl.textContent = '❌ 识别失败: ' + e.message;
+            }
+        };
+    }
+    
+    // 通过语音小助手发送真语音
+    async _sendVoiceViaAssistant() {
+        const stt = this.settings.sttApi;
+        if (!stt?.endpoint || !stt?.apiKey || !stt?.model) {
+            this.showCssSystemMessage('❌ 请先在 聊天设置→语音与视频 中配置语音小助手');
+            return;
+        }
+        
+        // 录音UI
+        document.getElementById('voiceAssistantOverlay')?.remove();
+        const ov = document.createElement('div');
+        ov.id = 'voiceAssistantOverlay';
+        ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;background:rgba(0,0,0,0.7);display:flex;flex-direction:column;align-items:center;justify-content:center;';
+        ov.innerHTML = `
+            <div style="text-align:center;">
+                <div id="vaStatus" style="font-size:14px;color:rgba(255,255,255,0.6);margin-bottom:16px;">点击开始录音</div>
+                <div id="vaTimer" style="font-size:28px;color:rgba(100,200,255,0.8);font-family:monospace;margin-bottom:20px;">0:00</div>
+                <div id="vaRecBtn" style="width:72px;height:72px;border-radius:50%;background:rgba(100,200,255,0.15);border:2px solid rgba(100,200,255,0.4);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;cursor:pointer;">
+                    <div id="vaRecIcon" style="width:24px;height:24px;border-radius:50%;background:rgba(100,200,255,0.8);transition:all 0.2s;"></div>
+                </div>
+                <div style="font-size:11px;color:rgba(255,255,255,0.2);margin-bottom:12px;">语音小助手会帮你转述给${this.escapeHtml(this.currentFriend?.nickname || 'TA')}</div>
+                <button id="vaCancel" style="padding:8px 24px;border:none;border-radius:8px;background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.4);font-size:13px;cursor:pointer;">取消</button>
+            </div>
+        `;
+        document.body.appendChild(ov);
+        
+        let recording = false, mediaRecorder = null, audioChunks = [], stream = null;
+        let startTime = 0, timerInterval = null;
+        
+        const updateTimer = () => {
+            const s = Math.floor((Date.now() - startTime) / 1000);
+            document.getElementById('vaTimer').textContent = `${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`;
+        };
+        
+        const startRec = async () => {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: true } });
+            } catch(e) { this.showCssSystemMessage('❌ 无法访问麦克风'); ov.remove(); return; }
+            
+            recording = true; audioChunks = []; startTime = Date.now();
+            document.getElementById('vaStatus').textContent = '录音中...';
+            document.getElementById('vaStatus').style.color = 'rgba(100,200,255,0.8)';
+            const icon = document.getElementById('vaRecIcon');
+            if (icon) { icon.style.borderRadius = '4px'; icon.style.background = 'rgba(255,80,80,0.8)'; }
+            timerInterval = setInterval(updateTimer, 1000);
+            
+            const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/mp4';
+            mediaRecorder = new MediaRecorder(stream, { mimeType, audioBitsPerSecond: 128000 });
+            mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+            mediaRecorder.start();
+        };
+        
+        const stopRec = () => {
+            if (!recording) return;
+            recording = false;
+            clearInterval(timerInterval);
+            
+            const duration = Math.round((Date.now() - startTime) / 1000);
+            
+            mediaRecorder.onstop = async () => {
+                stream.getTracks().forEach(t => t.stop());
+                const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
+                
+                document.getElementById('vaStatus').textContent = '🔄 小助手正在听...';
+                document.getElementById('vaRecBtn').style.display = 'none';
+                
+                try {
+                    const description = await this._callSttAssistant(blob);
+                    ov.remove();
+                    
+                    // 构造消息：小助手转述
+                    const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
+                    const msg = {
+                        type: 'user',
+                        text: `[语音消息·小助手转述]\n${description}`,
+                        timestamp: new Date().toISOString(),
+                        _voice: true,
+                        _voiceText: description,
+                        _voiceDuration: duration,
+                        _voiceBarWidth: Math.min(75, 25 + duration * 1.5),
+                        _voiceAssistant: true
+                    };
+                    if (this._quotingMessage) { msg._quote = this._extractQuoteData(this._quotingMessage); this._clearQuoteMessage(); }
+                    this.addMessage(msg);
+                    this.storage.addMessage(this.currentFriendCode, {
+                        type: 'user',
+                        text: `[语音消息·小助手转述] ${description}`,
+                        timestamp: msg.timestamp,
+                        _voice: true, _voiceText: description, _voiceDuration: duration,
+                        _voiceAssistant: true, _quote: msg._quote
+                    });
+                    this.scrollToBottom();
+                    this.showCssSystemMessage('🎤 语音已由小助手转述');
+                } catch(e) {
+                    ov.remove();
+                    this.showCssSystemMessage('❌ 小助手识别失败: ' + e.message);
+                }
+            };
+            mediaRecorder.stop();
+        };
+        
+        document.getElementById('vaRecBtn').addEventListener('click', () => { if (!recording) startRec(); else stopRec(); });
+        document.getElementById('vaCancel').addEventListener('click', () => {
+            if (recording) { recording = false; clearInterval(timerInterval); if (mediaRecorder?.state !== 'inactive') mediaRecorder.stop(); if (stream) stream.getTracks().forEach(t => t.stop()); }
+            ov.remove();
+        });
+    }
+    
+    // 调用语音小助手API — 核心函数
+    async _callSttAssistant(audioBlob) {
+        const stt = this.settings.sttApi;
+        if (!stt?.endpoint || !stt?.apiKey || !stt?.model) throw new Error('未配置语音小助手');
+        
+        // 读取音频为base64
+        const base64 = await new Promise((resolve, reject) => {
+            const r = new FileReader();
+            r.onload = () => resolve(r.result.split(',')[1]);
+            r.onerror = () => reject(new Error('读取音频失败'));
+            r.readAsDataURL(audioBlob);
+        });
+        
+        const mimeType = audioBlob.type || 'audio/webm';
+        const prompt = '你是一个语音转述小助手。请仔细听这段音频，然后详细描述你听到的所有内容：\n1. 说话者说了什么（尽量逐字转写）\n2. 说话的语气和情绪（开心、难过、生气、撒娇、平静等）\n3. 背景环境音（安静、嘈杂、有音乐、有风声等）\n4. 任何其他你注意到的声音特征（声音大小、语速快慢、是否有停顿叹气等）\n\n请用自然的中文描述，不要用列表格式。';
+        
+        let url, body;
+        const fmt = stt.audioFormat || 'inline_data';
+        
+        // 构建音频部分
+        let audioPart;
+        if (fmt === 'inline_data') {
+            audioPart = { inline_data: { mime_type: mimeType, data: base64 } };
+        } else if (fmt === 'input_audio') {
+            audioPart = { type: 'input_audio', input_audio: { data: base64, format: 'wav' } };
+        } else {
+            audioPart = { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64}` } };
+        }
+        
+        // 判断是Google还是OpenAI格式
+        const endpoint = stt.endpoint.replace(/\/$/, '');
+        if (endpoint.includes('generativelanguage.googleapis.com') || endpoint.includes('generateContent')) {
+            // Google Gemini 直连
+            url = endpoint.includes('generateContent') ? endpoint : `${endpoint}/v1beta/models/${stt.model}:generateContent`;
+            if (url.includes('?')) url += '&key=' + stt.apiKey;
+            else url += '?key=' + stt.apiKey;
+            body = {
+                contents: [{ role: 'user', parts: [{ text: prompt }, { inline_data: { mime_type: mimeType, data: base64 } }] }],
+                generationConfig: { temperature: 0.3, maxOutputTokens: 1000 }
+            };
+        } else {
+            // OpenAI 兼容格式
+            let apiUrl = endpoint;
+            if (!apiUrl.includes('/chat/completions')) {
+                apiUrl = apiUrl.replace(/\/v1\/?$/, '') + '/v1/chat/completions';
+            }
+            url = apiUrl;
+            body = {
+                model: stt.model,
+                messages: [{ role: 'user', content: [{ type: 'text', text: prompt }, audioPart] }],
+                max_tokens: 1000,
+                temperature: 0.3
+            };
+        }
+        
+        const headers = { 'Content-Type': 'application/json' };
+        if (!url.includes('key=')) headers['Authorization'] = 'Bearer ' + stt.apiKey;
+        
+        console.log('🎤 调用语音小助手:', stt.model, fmt);
+        const resp = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+        
+        if (!resp.ok) {
+            const errText = await resp.text();
+            throw new Error(`API ${resp.status}: ${errText.substring(0, 200)}`);
+        }
+        
+        const data = await resp.json();
+        
+        // 解析结果
+        if (data?.candidates) {
+            return data.candidates[0]?.content?.parts?.[0]?.text?.trim() || '（无结果）';
+        }
+        return data?.choices?.[0]?.message?.content?.trim() || '（无结果）';
     }
     
     // ==================== 假发图片 ====================
@@ -7591,6 +7866,8 @@ getIntimacyStatusForAI() {
     desc += `\n  [AI_FAKE_IMAGE:图片描述] 给user发一张假图片（user知道是文字描述）`;
     desc += `\n  [AI_FAKE_VIDEO:视频描述] 给user发一个假视频（user知道是文字描述）`;
     desc += `\n  [AI_VOICE:语音内容] 给user发一条语音消息（显示为语音条，user点击可"转文字"）`;
+    desc += `\n  注意：user有时会发语音消息，由"语音小助手"转述（消息开头会标注[语音消息·小助手转述]）`;
+    desc += `\n  小助手会描述user说了什么、语气情绪、背景环境等。你要把小助手的描述当作你亲耳听到的来回应，自然地交流。`;
     desc += `\n  [AI_SEND_LIB_IMAGE:图片名字] 从Base64图库中找到该图发给user（user能看到图片）`;
     desc += `\n  [AI_CHANGE_AVATAR:图片名字] 把Base64图库中的某张图设为你自己的头像`;
     desc += `\n  [AI_CHANGE_AVATAR_FROM_CHAT] 把user最近发给你的图片设为你自己的头像`;
