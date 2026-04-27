@@ -947,18 +947,26 @@ class ChatInterface {
     _renderVoiceBubble(message) {
         const duration = message._voiceDuration || Math.ceil((message._voiceText || '').length / 3);
         const barWidth = message._voiceBarWidth || Math.min(75, 25 + duration * 1.5);
+        const isAssistant = message._voiceAssistant;
+        const waveColor = isAssistant ? 'rgba(100,200,255,0.5)' : 'currentColor';
         const waveCount = Math.min(16, Math.max(4, Math.ceil(duration / 2)));
         const waves = Array.from({length: waveCount}, () => 
-            `<div style="width:2px;height:${3+Math.floor(Math.random()*12)}px;background:currentColor;border-radius:1px;opacity:0.4;"></div>`
+            `<div style="width:2px;height:${3+Math.floor(Math.random()*12)}px;background:${waveColor};border-radius:1px;${isAssistant ? '' : 'opacity:0.4;'}"></div>`
         ).join('');
         
-        return `<div class="voice-bar-wrap" style="display:flex;flex-direction:column;cursor:pointer;min-width:${barWidth}%;padding:2px 0;">
+        const tag = isAssistant 
+            ? `<span style="font-size:8px;padding:1px 4px;border-radius:3px;background:rgba(100,200,255,0.1);color:rgba(100,200,255,0.5);margin-left:4px;flex-shrink:0;">助手</span>`
+            : '';
+        const playColor = isAssistant ? 'color:rgba(100,200,255,0.6);' : 'opacity:0.5;';
+        const durColor = isAssistant ? 'color:rgba(100,200,255,0.4);' : 'opacity:0.35;';
+        
+        return `<div class="voice-bar-wrap" data-assistant="${isAssistant ? '1' : '0'}" style="display:flex;flex-direction:column;cursor:pointer;min-width:${barWidth}%;padding:2px 0;">
             <div class="voice-bar-row" style="display:flex;align-items:center;gap:6px;">
-                <span class="voice-play-icon" style="font-size:12px;flex-shrink:0;opacity:0.5;">&#9654;</span>
+                <span class="voice-play-icon" style="font-size:12px;flex-shrink:0;${playColor}">&#9654;</span>
                 <div class="voice-waves" style="flex:1;display:flex;align-items:center;gap:1px;height:18px;">${waves}</div>
-                <span class="voice-duration" style="font-size:11px;opacity:0.35;flex-shrink:0;">${duration}''</span>
+                <span class="voice-duration" style="font-size:11px;${durColor}flex-shrink:0;">${duration}''</span>${tag}
             </div>
-            <div class="voice-text-area" style="display:none;font-size:13px;line-height:1.5;margin-top:6px;padding-top:6px;border-top:1px solid rgba(128,128,128,0.12);"></div>
+            <div class="voice-text-area" style="display:none;font-size:13px;line-height:1.5;margin-top:6px;padding-top:6px;border-top:1px solid ${isAssistant ? 'rgba(100,200,255,0.1)' : 'rgba(128,128,128,0.12)'};${isAssistant ? 'color:rgba(100,200,255,0.5);' : ''}"></div>
         </div>`;
     }
     
@@ -1267,11 +1275,18 @@ class ChatInterface {
                 document.getElementById('vaStatus').textContent = '🔄 小助手正在听...';
                 document.getElementById('vaRecBtn').style.display = 'none';
                 
+                // 先把音频转dataURL用于播放
+                const audioDataUrl = await new Promise((resolve) => {
+                    const r = new FileReader();
+                    r.onload = () => resolve(r.result);
+                    r.readAsDataURL(blob);
+                });
+                
                 try {
                     const description = await this._callSttAssistant(blob);
                     ov.remove();
                     
-                    // 构造消息：小助手转述
+                    // 构造消息：小助手转述（保留音频用于播放）
                     const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
                     const msg = {
                         type: 'user',
@@ -1281,7 +1296,8 @@ class ChatInterface {
                         _voiceText: description,
                         _voiceDuration: duration,
                         _voiceBarWidth: Math.min(75, 25 + duration * 1.5),
-                        _voiceAssistant: true
+                        _voiceAssistant: true,
+                        _voiceAudioData: audioDataUrl
                     };
                     if (this._quotingMessage) { msg._quote = this._extractQuoteData(this._quotingMessage); this._clearQuoteMessage(); }
                     this.addMessage(msg);
@@ -1290,7 +1306,7 @@ class ChatInterface {
                         text: `[语音消息·小助手转述] ${description}`,
                         timestamp: msg.timestamp,
                         _voice: true, _voiceText: description, _voiceDuration: duration,
-                        _voiceAssistant: true, _quote: msg._quote
+                        _voiceAssistant: true, _voiceAudioData: audioDataUrl, _quote: msg._quote
                     });
                     this.scrollToBottom();
                     this.showCssSystemMessage('🎤 语音已由小助手转述');
@@ -3555,10 +3571,28 @@ div.innerHTML = `
             stickerEl.addEventListener('click', () => this._enlargeImage(message._stickerUrl));
         }
         
-        // 语音条点击（切换显示/隐藏文字）
+        // 语音条点击
         const voiceBar = div.querySelector('.voice-bar-wrap');
-        if (voiceBar && message._voiceText) {
-            voiceBar.addEventListener('click', () => this._toggleVoiceText(voiceBar, message._voiceText));
+        if (voiceBar && message._voice) {
+            if (message._voiceAssistant && message._voiceAudioData) {
+                // 小助手语音条：点击播放/暂停音频
+                voiceBar.addEventListener('click', () => {
+                    const playIcon = voiceBar.querySelector('.voice-play-icon');
+                    if (this._currentAudio && !this._currentAudio.paused) {
+                        this._currentAudio.pause();
+                        this._currentAudio = null;
+                        if (playIcon) playIcon.innerHTML = '&#9654;';
+                        return;
+                    }
+                    this._currentAudio = new Audio(message._voiceAudioData);
+                    if (playIcon) playIcon.innerHTML = '&#9646;&#9646;';
+                    this._currentAudio.play().catch(() => {});
+                    this._currentAudio.onended = () => { if (playIcon) playIcon.innerHTML = '&#9654;'; };
+                });
+            } else if (message._voiceText) {
+                // 假语音条：点击展开/收起文字
+                voiceBar.addEventListener('click', () => this._toggleVoiceText(voiceBar, message._voiceText));
+            }
         }
         
         // 假图片点击（切换覆盖层，带动画）
@@ -14113,6 +14147,7 @@ _showMsgActionMenu(msg, idx, bubbleEl) {
     const menuY = Math.max(10, rect.top - 50);
     
     const isOwn = msg.type === 'user';
+    const isAssistantVoice = msg._voiceAssistant && msg._voiceText;
     
     menu.innerHTML = `
         <div style="position:fixed;top:0;left:0;right:0;bottom:0;" id="msgMenuOverlay"></div>
@@ -14120,6 +14155,9 @@ _showMsgActionMenu(msg, idx, bubbleEl) {
             <div class="msg-menu-btn" data-action="quote" style="padding:10px 18px;cursor:pointer;font-size:12px;color:rgba(255,255,255,0.7);text-align:center;transition:background 0.15s;">
                 <div style="font-size:16px;margin-bottom:2px;">💬</div>引用
             </div>
+            ${isAssistantVoice ? `<div class="msg-menu-btn" data-action="stt" style="padding:10px 18px;cursor:pointer;font-size:12px;color:rgba(100,200,255,0.7);text-align:center;border-left:1px solid rgba(255,255,255,0.06);transition:background 0.15s;">
+                <div style="font-size:16px;margin-bottom:2px;">📝</div>转文字
+            </div>` : ''}
             ${isOwn ? `<div class="msg-menu-btn" data-action="recall" style="padding:10px 18px;cursor:pointer;font-size:12px;color:rgba(255,255,255,0.7);text-align:center;border-left:1px solid rgba(255,255,255,0.06);transition:background 0.15s;">
                 <div style="font-size:16px;margin-bottom:2px;">↩️</div>撤回
             </div>` : ''}
@@ -14138,6 +14176,7 @@ _showMsgActionMenu(msg, idx, bubbleEl) {
             menu.remove();
             if (action === 'recall') this._recallMessage(idx);
             else if (action === 'quote') this._setQuoteMessage(msg);
+            else if (action === 'stt') this._showAssistantTranscript(msg, bubbleEl);
         });
         // 按下反馈
         btn.addEventListener('touchstart', () => { btn.style.background = 'rgba(255,255,255,0.08)'; }, { passive: true });
@@ -14305,6 +14344,14 @@ _showRecalledContent(data) {
     document.body.appendChild(overlay);
     overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
     overlay.querySelector('#recallViewClose').addEventListener('click', () => overlay.remove());
+}
+
+// 显示小助手转述内容（长按菜单→转文字）
+_showAssistantTranscript(msg, bubbleEl) {
+    const voiceBar = bubbleEl?.querySelector('.voice-bar-wrap');
+    if (voiceBar && msg._voiceText) {
+        this._toggleVoiceText(voiceBar, msg._voiceText);
+    }
 }
 
 // 设置引用消息（显示预览条）
