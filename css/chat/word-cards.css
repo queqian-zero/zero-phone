@@ -301,3 +301,138 @@
     cursor: pointer; margin-top: 16px;
 }
 .wc-manage-clear-btn:active { background: rgba(221,68,68,0.1); }
+
+/* ==================== 已读状态 ==================== */
+.wc-msg-meta {
+    display: flex; align-items: center; gap: 4px;
+    margin-top: 3px; padding: 0 4px;
+}
+.wc-msg-right .wc-msg-meta { justify-content: flex-end; }
+.wc-msg-time { font-size: 9px; color: var(--color-text-secondary, #bbb); }
+.wc-msg-status { font-size: 9px; color: var(--color-text-secondary, #bbb); }
+.wc-msg-status.read { color: #667eea; }
+
+/* ==================== 长按菜单 ==================== */
+.wc-context-menu {
+    position: fixed; z-index: 3500;
+    background: rgba(255,255,255,0.97);
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    border-radius: 14px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+    padding: 4px;
+    min-width: 140px;
+    animation: wcMenuIn 0.15s ease;
+}
+@keyframes wcMenuIn {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
+}
+.wc-context-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 14px;
+    border: none; background: none; width: 100%;
+    font-size: 13px; color: var(--color-text-primary, #1d1d1f);
+    cursor: pointer; border-radius: 10px;
+    transition: background 0.1s;
+}
+.wc-context-item:active { background: rgba(0,0,0,0.05); }
+.wc-context-item-icon { font-size: 15px; width: 20px; text-align: center; }
+.wc-context-item.danger { color: #d44; }
+
+/* ==================== 设置面板 ==================== */
+.wc-settings-section { margin-bottom: 20px; }
+.wc-settings-label {
+    font-size: 13px; font-weight: 600;
+    color: var(--color-text-primary, #1d1d1f);
+    margin-bottom: 10px;
+}
+.wc-settings-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 0;
+}
+.wc-settings-row-label {
+    flex: 1; font-size: 13px;
+    color: var(--color-text-primary, #1d1d1f);
+}
+.wc-settings-row-value {
+    font-size: 12px; color: var(--color-text-secondary, #999);
+    min-width: 40px; text-align: right;
+}
+.wc-range {
+    width: 100%; height: 4px;
+    -webkit-appearance: none; appearance: none;
+    background: rgba(0,0,0,0.08); border-radius: 2px;
+    outline: none;
+}
+.wc-range::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--color-text-primary, #1d1d1f);
+    cursor: pointer;
+}
+
+/* 头像上传 */
+.wc-avatar-edit {
+    display: flex; gap: 20px; justify-content: center;
+    padding: 10px 0;
+}
+.wc-avatar-edit-item {
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    cursor: pointer;
+}
+.wc-avatar-edit-preview {
+    width: 56px; height: 56px; border-radius: 50%;
+    background: rgba(0,0,0,0.06);
+    overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; border: 2px dashed rgba(0,0,0,0.12);
+}
+.wc-avatar-edit-preview img { width: 100%; height: 100%; object-fit: cover; }
+.wc-avatar-edit-label { font-size: 11px; color: var(--color-text-secondary, #999); }
+
+/* 昵称输入 */
+.wc-name-row {
+    display: flex; gap: 10px; margin-bottom: 12px;
+}
+.wc-name-input {
+    flex: 1; padding: 10px 14px;
+    background: rgba(0,0,0,0.03);
+    border: 1px solid rgba(0,0,0,0.08);
+    border-radius: 12px;
+    font-size: 13px; outline: none;
+    color: var(--color-text-primary, #1d1d1f);
+}
+.wc-name-input:focus { border-color: rgba(0,0,0,0.2); }
+
+/* 壁纸预览 */
+.wc-wallpaper-row {
+    display: flex; gap: 8px; flex-wrap: wrap;
+}
+.wc-wallpaper-btn {
+    padding: 10px 14px;
+    background: rgba(255,255,255,0.9);
+    border: 1px solid rgba(0,0,0,0.08);
+    border-radius: 12px;
+    font-size: 13px; cursor: pointer;
+    flex: 1;
+}
+.wc-wallpaper-btn:active { transform: scale(0.96); }
+.wc-wallpaper-btn.danger { color: #d44; border-color: rgba(221,68,68,0.12); }
+
+/* 收藏标记 */
+.wc-msg-bubble.favorited::after {
+    content: '♥'; position: absolute;
+    top: -4px; right: -4px;
+    font-size: 10px; color: #e55;
+}
+
+/* 背景壁纸 */
+.wc-chat-area.has-wallpaper {
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+.wc-chat-area.has-wallpaper .wc-msg-left .wc-msg-bubble {
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
