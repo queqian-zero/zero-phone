@@ -309,16 +309,20 @@
                 <span class="menu-icon">)))&thinsp;</span>
                 <span class="menu-label">假语音</span>
             </button>
-            <button class="menu-item" id="menuRealVoice" title="真语音">
+            <button class="menu-item menu-placeholder" id="menuRealVoice" title="真语音（开发中）">
                 <span class="menu-icon">&#127908;</span>
                 <span class="menu-label">真语音</span>
             </button>
+            <button class="menu-item" id="menuAssistantVoice" title="小助手语音">
+                <span class="menu-icon">&#128172;</span>
+                <span class="menu-label">小助手</span>
+            </button>
+        </div>
+        <div class="menu-row" style="display:flex;justify-content:space-around;">
             <button class="menu-item" id="menuFakeImage" title="假图片">
                 <span class="menu-icon">&#9638;</span>
                 <span class="menu-label">假图片</span>
             </button>
-        </div>
-        <div class="menu-row" style="display:flex;justify-content:space-around;">
             <button class="menu-item" id="menuRealImage" title="发图片">
                 <span class="menu-icon">&#9634;</span>
                 <span class="menu-label">发图片</span>
@@ -335,12 +339,12 @@
                 <span class="menu-icon">&#128222;</span>
                 <span class="menu-label">语音通话</span>
             </button>
+        </div>
+        <div class="menu-row" style="display:flex;justify-content:space-around;">
             <button class="menu-item menu-placeholder" id="menuVideoCall" title="视频通话（开发中）">
                 <span class="menu-icon">&#128247;</span>
                 <span class="menu-label">视频通话</span>
             </button>
-        </div>
-        <div class="menu-row" style="display:flex;justify-content:space-around;">
             <button class="menu-item menu-placeholder" id="menuLocation" title="位置（开发中）">
                 <span class="menu-icon">&#128205;</span>
                 <span class="menu-label">位置</span>
@@ -357,10 +361,16 @@
                 <span class="menu-icon">&#9835;</span>
                 <span class="menu-label">一起听</span>
             </button>
+        </div>
+        <div class="menu-row" style="display:flex;justify-content:space-around;">
             <button class="menu-item menu-placeholder" id="menuWatchTogether" title="一起看（开发中）">
                 <span class="menu-icon">&#9655;</span>
                 <span class="menu-label">一起看</span>
             </button>
+            <div class="menu-item" style="visibility:hidden;"></div>
+            <div class="menu-item" style="visibility:hidden;"></div>
+            <div class="menu-item" style="visibility:hidden;"></div>
+            <div class="menu-item" style="visibility:hidden;"></div>
         </div>
         <input type="file" id="menuRealImageInput" accept="image/*" style="display:none;">
     </div>
