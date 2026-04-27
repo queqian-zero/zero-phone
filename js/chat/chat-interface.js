@@ -3067,6 +3067,14 @@ ${archiveListText}
                 systemPrompt += `\n\n以上是你所有的记忆，你不需要每次都翻完。根据当前对话自然地使用就好。注意日期，不要把旧事当成最近的。`;
             }
             
+            // ====== MCP 工具注入 ======
+            if (window.mcpManager) {
+                const mcpToolPrompt = window.mcpManager.buildToolPrompt(this.currentFriendCode);
+                if (mcpToolPrompt) {
+                    systemPrompt += mcpToolPrompt;
+                }
+            }
+            
             // 记录本轮token分布（按字符估算）
             const personaChars = (this.currentFriend?.persona || '').length;
             const memoryChars = coreMemories.reduce((s, m) => s + (m.content?.length || 0), 0)
@@ -3081,7 +3089,92 @@ ${archiveListText}
             // 计时开始
             const apiStartTime = Date.now();
             
-            const result = await this.apiManager.callAI(messagesWithTimestamps, systemPrompt, { avatarImages });
+            // ====== MCP 工具调用循环 ======
+            let result = await this.apiManager.callAI(messagesWithTimestamps, systemPrompt, { avatarImages });
+            
+            // 工具调用循环（最多5轮防死循环）
+            let toolRound = 0;
+            const MAX_TOOL_ROUNDS = 5;
+            while (result.success && toolRound < MAX_TOOL_ROUNDS && window.mcpManager) {
+                const toolCalls = window.mcpManager.parseToolCalls(result.text);
+                if (toolCalls.length === 0) break;
+                
+                toolRound++;
+                console.log(`🔧 [MCP] 第${toolRound}轮工具调用，共${toolCalls.length}个工具`);
+                
+                // 显示工具状态面板（仅第一轮创建）
+                if (toolRound === 1) this._showMcpStatusPanel();
+                
+                // 把AI的工具调用意图加入上下文（但不展示给用户）
+                messagesWithTimestamps.push({
+                    type: 'ai',
+                    text: result.text,
+                    timestamp: new Date().toISOString()
+                });
+                
+                // 依次调用每个工具
+                const toolResults = [];
+                for (const call of toolCalls) {
+                    this._addMcpStatusLine(`🔧 正在调用 ${call.toolName}...`);
+                    
+                    const serverId = window.mcpManager.findServerForTool(this.currentFriendCode, call.toolName);
+                    if (!serverId) {
+                        const errMsg = `工具 ${call.toolName} 未找到对应的MCP服务器`;
+                        this._updateMcpStatusLine(call.toolName, `❌ ${errMsg}`);
+                        toolResults.push({ tool: call.toolName, error: errMsg });
+                        continue;
+                    }
+                    
+                    try {
+                        // 确保连接
+                        const connected = await window.mcpManager.ensureConnected(this.currentFriendCode, serverId);
+                        if (!connected) {
+                            throw new Error('MCP服务器连接失败');
+                        }
+                        
+                        const callResult = await window.mcpManager.callTool(serverId, call.toolName, call.args);
+                        this._updateMcpStatusLine(call.toolName, `✅ ${call.toolName} 完成`);
+                        
+                        // 提取文本内容
+                        let resultText = '';
+                        if (callResult && callResult.content) {
+                            resultText = callResult.content.map(c => c.text || JSON.stringify(c)).join('\n');
+                        } else {
+                            resultText = JSON.stringify(callResult);
+                        }
+                        toolResults.push({ tool: call.toolName, result: resultText });
+                    } catch (e) {
+                        console.error(`❌ [MCP] 调用 ${call.toolName} 失败:`, e);
+                        this._updateMcpStatusLine(call.toolName, `❌ ${call.toolName} 失败: ${e.message}`);
+                        toolResults.push({ tool: call.toolName, error: e.message });
+                    }
+                }
+                
+                // 把工具结果作为user消息喂回上下文
+                let toolResultMsg = '【工具调用结果】\n';
+                for (const tr of toolResults) {
+                    if (tr.error) {
+                        toolResultMsg += `[${tr.tool}] 错误：${tr.error}\n`;
+                    } else {
+                        toolResultMsg += `[${tr.tool}] 返回：${tr.result}\n`;
+                    }
+                }
+                messagesWithTimestamps.push({
+                    type: 'user',
+                    text: toolResultMsg,
+                    timestamp: new Date().toISOString()
+                });
+                
+                this._addMcpStatusLine('🤖 AI正在处理工具结果...');
+                
+                // 再次调用AI
+                result = await this.apiManager.callAI(messagesWithTimestamps, systemPrompt, { avatarImages });
+            }
+            
+            // 完成工具调用，固定面板
+            if (toolRound > 0) {
+                this._finalizeMcpStatusPanel();
+            }
             
             this.hideTypingIndicator();
             
@@ -4208,6 +4301,11 @@ div.innerHTML = `
         // 语音与视频设置
         document.getElementById('settingVoiceVideo')?.addEventListener('click', () => {
             this._openVoiceVideoPage('voice');
+        });
+        
+        // MCP 工具设置
+        document.getElementById('settingMcpTools')?.addEventListener('click', () => {
+            this._openMcpPage();
         });
         
         const aiRecognizeSwitch = document.getElementById('settingAiRecognizeImage');
@@ -14571,6 +14669,7 @@ _stripCommandTags(text) {
         .replace(/\[AI_RECALL(?::[^\]]*)?\]/g, '')
         .replace(/\[AI_QUOTE:[^\]]+\]/g, '')
         .replace(/\[AI_NO_REPLY\]/g, '')
+        .replace(/\[TOOL_CALL:[^\]]*(?:\{[^}]*\})?[^\]]*\]/g, '')
         .replace(/\[STATUS_CSS\][\s\S]*?\[\/STATUS_CSS\]/g, '')
         .replace(/\[STATUS_?\s*CSS\][\s\S]*?\[\/?\s*STATUS_?\s*CSS\]/gi, '');
 }
@@ -15619,6 +15718,442 @@ getRelationBadgeHtml() {
 // 更新聊天顶部名字旁的关系标识
 updateChatHeaderRelationBadge() {
     // 关系图标不在顶栏显示（在好友资料页显示）
+}
+
+// ==================== MCP 工具管理页面 ====================
+
+_openMcpPage() {
+    document.getElementById('mcpToolsPage')?.remove();
+    
+    const friendCode = this.currentFriendCode;
+    const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
+    const servers = window.mcpManager?.getServers(friendCode) || [];
+    
+    const page = document.createElement('div');
+    page.id = 'mcpToolsPage';
+    page.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9500;background:#0a0806;display:flex;flex-direction:column;';
+    
+    page.innerHTML = `
+        <div style="display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid rgba(255,220,150,0.06);flex-shrink:0;">
+            <button id="mcpBack" style="background:none;border:none;color:rgba(255,220,170,0.5);font-size:20px;cursor:pointer;padding:4px 8px;">←</button>
+            <div style="flex:1;text-align:center;font-size:15px;color:rgba(255,220,170,0.7);">MCP 工具</div>
+            <button id="mcpGuideBtn" style="background:none;border:none;color:rgba(100,200,255,0.5);font-size:13px;cursor:pointer;padding:4px 8px;">📖 指导</button>
+        </div>
+        
+        <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:20px;">
+            
+            <div style="font-size:11px;color:rgba(255,255,255,0.25);line-height:1.6;margin-bottom:16px;">
+                为 <span style="color:rgba(255,220,170,0.5);">${this.escapeHtml(friendName)}</span> 配置MCP服务器。启用后，AI聊天时可以调用外部工具。
+            </div>
+            
+            <!-- 添加服务器 -->
+            <div style="margin-bottom:24px;padding:14px;background:rgba(255,255,255,0.03);border-radius:12px;border:1px solid rgba(255,255,255,0.04);">
+                <div style="font-size:13px;color:rgba(255,220,170,0.5);margin-bottom:12px;">添加 MCP 服务器</div>
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                    <div>
+                        <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-bottom:4px;">名称</div>
+                        <input id="mcpAddName" type="text" placeholder="例：AI社区" style="width:100%;box-sizing:border-box;padding:8px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:rgba(255,255,255,0.6);font-size:13px;outline:none;">
+                    </div>
+                    <div>
+                        <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-bottom:4px;">SSE 地址</div>
+                        <input id="mcpAddUrl" type="text" placeholder="例：https://xxx.com/mcp?token=xxx" style="width:100%;box-sizing:border-box;padding:8px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:rgba(255,255,255,0.6);font-size:13px;outline:none;">
+                    </div>
+                    <button id="mcpAddBtn" style="padding:10px;border:none;border-radius:8px;background:rgba(240,147,43,0.15);color:rgba(240,147,43,0.8);font-size:13px;cursor:pointer;transition:all 0.2s;">🔌 连接并添加</button>
+                </div>
+            </div>
+            
+            <!-- 已添加的服务器列表 -->
+            <div id="mcpServerList" style="display:flex;flex-direction:column;gap:12px;">
+                ${servers.length === 0 ? '<div style="text-align:center;color:rgba(255,255,255,0.15);font-size:13px;padding:30px 0;">暂无 MCP 服务器</div>' : ''}
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(page);
+    
+    // 渲染已有服务器
+    if (servers.length > 0) {
+        this._renderMcpServerList(friendCode);
+    }
+    
+    // 返回按钮
+    document.getElementById('mcpBack').addEventListener('click', () => {
+        window.mcpManager?.disconnectAll();
+        page.remove();
+    });
+    
+    // 使用指导
+    document.getElementById('mcpGuideBtn').addEventListener('click', () => {
+        this._openMcpGuide();
+    });
+    
+    // 添加服务器
+    document.getElementById('mcpAddBtn').addEventListener('click', async () => {
+        const name = document.getElementById('mcpAddName').value.trim();
+        const url = document.getElementById('mcpAddUrl').value.trim();
+        if (!name || !url) {
+            alert('请填写名称和SSE地址');
+            return;
+        }
+        
+        const btn = document.getElementById('mcpAddBtn');
+        btn.textContent = '⏳ 连接中...';
+        btn.disabled = true;
+        
+        try {
+            const serverId = window.mcpManager.addServer(friendCode, name, url);
+            const tools = await window.mcpManager.connect(friendCode, serverId);
+            
+            btn.textContent = `✅ 成功！发现 ${tools.length} 个工具`;
+            document.getElementById('mcpAddName').value = '';
+            document.getElementById('mcpAddUrl').value = '';
+            
+            this._renderMcpServerList(friendCode);
+            
+            setTimeout(() => {
+                btn.textContent = '🔌 连接并添加';
+                btn.disabled = false;
+            }, 2000);
+        } catch (e) {
+            btn.textContent = '🔌 连接并添加';
+            btn.disabled = false;
+            alert('连接失败：' + e.message);
+            // 如果添加了但连接失败，删掉
+            const servers = window.mcpManager.getServers(friendCode);
+            const last = servers[servers.length - 1];
+            if (last && last.tools.length === 0) {
+                window.mcpManager.removeServer(friendCode, last.id);
+            }
+        }
+    });
+}
+
+_renderMcpServerList(friendCode) {
+    const listEl = document.getElementById('mcpServerList');
+    if (!listEl) return;
+    
+    const servers = window.mcpManager?.getServers(friendCode) || [];
+    if (servers.length === 0) {
+        listEl.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,0.15);font-size:13px;padding:30px 0;">暂无 MCP 服务器</div>';
+        return;
+    }
+    
+    listEl.innerHTML = servers.map(server => {
+        const isConnected = window.mcpManager.isConnected(server.id);
+        const statusDot = isConnected ? '🟢' : (server.enabled ? '🟡' : '⚫');
+        const statusText = isConnected ? '已连接' : (server.enabled ? '未连接' : '已禁用');
+        
+        const toolsHtml = (server.tools || []).map(t => 
+            `<div style="padding:6px 10px;background:rgba(255,255,255,0.03);border-radius:6px;font-size:11px;">
+                <span style="color:rgba(100,200,255,0.6);">🔧 ${this.escapeHtml(t.name)}</span>
+                <span style="color:rgba(255,255,255,0.25);margin-left:6px;">${this.escapeHtml(t.description || '').substring(0, 50)}</span>
+            </div>`
+        ).join('');
+        
+        return `
+        <div style="padding:14px;background:rgba(255,255,255,0.03);border-radius:12px;border:1px solid rgba(255,255,255,0.04);" data-server-id="${server.id}">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span style="font-size:12px;">${statusDot}</span>
+                    <span style="font-size:14px;color:rgba(255,220,170,0.7);">${this.escapeHtml(server.name)}</span>
+                    <span style="font-size:11px;color:rgba(255,255,255,0.2);">${statusText}</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <label style="display:flex;align-items:center;cursor:pointer;">
+                        <input type="checkbox" class="mcp-server-toggle" data-id="${server.id}" ${server.enabled ? 'checked' : ''} style="accent-color:rgba(240,147,43,0.8);">
+                    </label>
+                    <button class="mcp-reconnect-btn" data-id="${server.id}" style="background:none;border:none;color:rgba(100,200,255,0.4);font-size:11px;cursor:pointer;">重连</button>
+                    <button class="mcp-delete-btn" data-id="${server.id}" style="background:none;border:none;color:rgba(255,100,100,0.4);font-size:11px;cursor:pointer;">删除</button>
+                </div>
+            </div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.15);margin-bottom:8px;word-break:break-all;">${this.escapeHtml(server.sseUrl)}</div>
+            ${server.tools.length > 0 ? `
+                <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-bottom:6px;">工具列表（${server.tools.length}个）</div>
+                <div style="display:flex;flex-direction:column;gap:4px;">${toolsHtml}</div>
+            ` : '<div style="font-size:11px;color:rgba(255,255,255,0.2);">暂无工具（请重连获取）</div>'}
+        </div>`;
+    }).join('');
+    
+    // 绑定事件
+    listEl.querySelectorAll('.mcp-server-toggle').forEach(toggle => {
+        toggle.addEventListener('change', (e) => {
+            const id = e.target.dataset.id;
+            window.mcpManager.toggleServer(friendCode, id, e.target.checked);
+            this._renderMcpServerList(friendCode);
+        });
+    });
+    
+    listEl.querySelectorAll('.mcp-reconnect-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const id = e.target.dataset.id;
+            e.target.textContent = '⏳';
+            try {
+                await window.mcpManager.connect(friendCode, id);
+                this._renderMcpServerList(friendCode);
+            } catch (err) {
+                alert('重连失败：' + err.message);
+                e.target.textContent = '重连';
+            }
+        });
+    });
+    
+    listEl.querySelectorAll('.mcp-delete-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const id = e.target.dataset.id;
+            if (confirm('确定要删除这个MCP服务器吗？')) {
+                window.mcpManager.removeServer(friendCode, id);
+                this._renderMcpServerList(friendCode);
+            }
+        });
+    });
+}
+
+// ==================== MCP 使用指导 ====================
+
+_openMcpGuide() {
+    document.getElementById('mcpGuidePage')?.remove();
+    
+    const page = document.createElement('div');
+    page.id = 'mcpGuidePage';
+    page.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9600;background:#0a0806;display:flex;flex-direction:column;';
+    
+    page.innerHTML = `
+        <div style="display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid rgba(255,220,150,0.06);flex-shrink:0;">
+            <button id="mcpGuideBack" style="background:none;border:none;color:rgba(255,220,170,0.5);font-size:20px;cursor:pointer;padding:4px 8px;">←</button>
+            <div style="flex:1;text-align:center;font-size:15px;color:rgba(255,220,170,0.7);">📖 MCP 使用指导</div>
+            <div style="width:32px;"></div>
+        </div>
+        
+        <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:20px;">
+            
+            <!-- 什么是MCP -->
+            <div style="margin-bottom:24px;">
+                <div style="font-size:14px;color:rgba(255,220,170,0.7);margin-bottom:10px;">🌐 什么是 MCP？</div>
+                <div style="font-size:12px;color:rgba(255,255,255,0.35);line-height:1.8;">
+                    MCP（Model Context Protocol）是一个让AI模型与外部工具交互的标准协议。
+                    通过MCP，你的AI好友可以搜索网络、查天气、发邮件、访问社区等——就像人类使用App一样。
+                    <br><br>
+                    每个MCP服务器提供一组工具，AI在聊天中会自动判断什么时候该用哪个工具。
+                </div>
+            </div>
+            
+            <!-- 怎么添加 -->
+            <div style="margin-bottom:24px;">
+                <div style="font-size:14px;color:rgba(255,220,170,0.7);margin-bottom:10px;">🔧 怎么添加服务器？</div>
+                <div style="font-size:12px;color:rgba(255,255,255,0.35);line-height:1.8;">
+                    1. 在MCP工具页面点击「连接并添加」<br>
+                    2. 填写服务器名称（随便起）<br>
+                    3. 填写SSE地址（由服务提供方给你的URL）<br>
+                    4. 点击连接，系统会自动获取可用工具列表<br>
+                    5. 连接成功后即可使用，每个服务器可独立开关<br><br>
+                    💡 每个AI好友的MCP配置是独立的，你可以给不同角色配不同的工具。
+                </div>
+            </div>
+            
+            <!-- 常见MCP服务 -->
+            <div style="margin-bottom:24px;">
+                <div style="font-size:14px;color:rgba(255,220,170,0.7);margin-bottom:10px;">📋 常见 MCP 服务推荐</div>
+                
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                    <div style="padding:12px;background:rgba(255,255,255,0.03);border-radius:10px;border:1px solid rgba(255,255,255,0.04);">
+                        <div style="font-size:13px;color:rgba(100,200,255,0.6);margin-bottom:4px;">🏠 AI 社区（Rhysen Community）</div>
+                        <div style="font-size:11px;color:rgba(255,255,255,0.3);line-height:1.6;">
+                            AI角色可以在社区里发帖、浏览、互动。<br>
+                            地址格式：<span style="color:rgba(240,147,43,0.6);">https://rcommunity.rhysen.love/mcp?token=你的token</span>
+                        </div>
+                    </div>
+                    
+                    <div style="padding:12px;background:rgba(255,255,255,0.03);border-radius:10px;border:1px solid rgba(255,255,255,0.04);">
+                        <div style="font-size:13px;color:rgba(100,200,255,0.6);margin-bottom:4px;">🔍 搜索服务</div>
+                        <div style="font-size:11px;color:rgba(255,255,255,0.3);line-height:1.6;">
+                            让AI能搜索网络获取实时信息。<br>
+                            常见提供方：Tavily、SerpAPI 等
+                        </div>
+                    </div>
+                    
+                    <div style="padding:12px;background:rgba(255,255,255,0.03);border-radius:10px;border:1px solid rgba(255,255,255,0.04);">
+                        <div style="font-size:13px;color:rgba(100,200,255,0.6);margin-bottom:4px;">🌤 天气服务</div>
+                        <div style="font-size:11px;color:rgba(255,255,255,0.3);line-height:1.6;">
+                            查询实时天气，让AI能告诉你天气情况。
+                        </div>
+                    </div>
+                    
+                    <div style="padding:12px;background:rgba(255,255,255,0.03);border-radius:10px;border:1px solid rgba(255,255,255,0.04);">
+                        <div style="font-size:13px;color:rgba(100,200,255,0.6);margin-bottom:4px;">📧 邮箱服务</div>
+                        <div style="font-size:11px;color:rgba(255,255,255,0.3);line-height:1.6;">
+                            让AI能发送、查收邮件。
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- FAQ -->
+            <div style="margin-bottom:24px;">
+                <div style="font-size:14px;color:rgba(255,220,170,0.7);margin-bottom:10px;">❓ 常见问题</div>
+                <div style="display:flex;flex-direction:column;gap:12px;">
+                    <div>
+                        <div style="font-size:12px;color:rgba(255,220,170,0.5);">Q：连接失败怎么办？</div>
+                        <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:4px;line-height:1.6;">
+                            检查SSE地址是否正确、网络是否通畅。有些服务需要token认证，确保URL中包含了正确的token。
+                        </div>
+                    </div>
+                    <div>
+                        <div style="font-size:12px;color:rgba(255,220,170,0.5);">Q：会增加费用吗？</div>
+                        <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:4px;line-height:1.6;">
+                            工具调用需要额外的API调用（AI看到工具结果后需要再次回复），会多消耗一些token。但工具名和描述的注入很轻量。
+                        </div>
+                    </div>
+                    <div>
+                        <div style="font-size:12px;color:rgba(255,220,170,0.5);">Q：AI不调用工具怎么办？</div>
+                        <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:4px;line-height:1.6;">
+                            确保服务器已启用（开关打开）且工具列表已获取。你可以在聊天中提示AI使用某个工具，例如"帮我在社区发个帖子"。
+                        </div>
+                    </div>
+                    <div>
+                        <div style="font-size:12px;color:rgba(255,220,170,0.5);">Q：数据安全吗？</div>
+                        <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:4px;line-height:1.6;">
+                            MCP服务器的数据直接从你的浏览器发出，不经过zero-phone的服务器。请只使用你信任的MCP服务。
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(page);
+    
+    document.getElementById('mcpGuideBack').addEventListener('click', () => {
+        page.remove();
+    });
+}
+
+// ==================== MCP 工具调用状态面板 ====================
+
+_showMcpStatusPanel() {
+    // 移除旧面板
+    document.getElementById('mcpStatusPanel')?.remove();
+    
+    const panel = document.createElement('div');
+    panel.id = 'mcpStatusPanel';
+    panel.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: auto;
+        z-index: 8000;
+        max-width: 280px;
+        background: rgba(10, 8, 6, 0.95);
+        border: 1px solid rgba(255, 220, 150, 0.08);
+        border-top: none;
+        border-left: none;
+        border-radius: 0 0 12px 0;
+        padding: 10px 14px;
+        transform: translateY(-100%);
+        transition: transform 0.3s ease;
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    `;
+    
+    panel.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+            <span style="font-size:11px;color:rgba(255,220,170,0.5);font-weight:500;">🔧 工具调用</span>
+        </div>
+        <div id="mcpStatusLines" style="display:flex;flex-direction:column;gap:4px;"></div>
+    `;
+    
+    // 左侧标签（收起/展开用）
+    const tab = document.createElement('div');
+    tab.id = 'mcpStatusTab';
+    tab.style.cssText = `
+        position: fixed;
+        top: 8px;
+        left: 0;
+        z-index: 8001;
+        background: rgba(10, 8, 6, 0.9);
+        border: 1px solid rgba(255, 220, 150, 0.08);
+        border-left: none;
+        border-radius: 0 8px 8px 0;
+        padding: 6px 10px;
+        cursor: pointer;
+        font-size: 12px;
+        color: rgba(255,220,170,0.5);
+        display: none;
+        transition: opacity 0.2s;
+    `;
+    tab.textContent = '🔧';
+    tab.addEventListener('click', () => {
+        const p = document.getElementById('mcpStatusPanel');
+        if (p) {
+            const isHidden = p.style.transform.includes('-100%');
+            p.style.transform = isHidden ? 'translateY(0)' : 'translateY(-100%)';
+        }
+    });
+    
+    document.body.appendChild(panel);
+    document.body.appendChild(tab);
+    
+    // 滑入动画
+    requestAnimationFrame(() => {
+        panel.style.transform = 'translateY(0)';
+    });
+}
+
+_addMcpStatusLine(text) {
+    const lines = document.getElementById('mcpStatusLines');
+    if (!lines) return;
+    
+    const line = document.createElement('div');
+    line.style.cssText = 'font-size:11px;color:rgba(255,255,255,0.35);padding:3px 0;';
+    line.textContent = text;
+    line.dataset.tool = text; // 用于后续更新
+    lines.appendChild(line);
+}
+
+_updateMcpStatusLine(toolName, newText) {
+    const lines = document.getElementById('mcpStatusLines');
+    if (!lines) return;
+    
+    // 找到包含工具名的最后一行并更新
+    const allLines = lines.querySelectorAll('div');
+    for (let i = allLines.length - 1; i >= 0; i--) {
+        if (allLines[i].textContent.includes(toolName)) {
+            allLines[i].textContent = newText;
+            if (newText.includes('✅')) {
+                allLines[i].style.color = 'rgba(100,200,100,0.5)';
+            } else if (newText.includes('❌')) {
+                allLines[i].style.color = 'rgba(255,100,100,0.5)';
+            }
+            break;
+        }
+    }
+}
+
+_finalizeMcpStatusPanel() {
+    const panel = document.getElementById('mcpStatusPanel');
+    const tab = document.getElementById('mcpStatusTab');
+    if (!panel || !tab) return;
+    
+    // 添加完成提示
+    const lines = document.getElementById('mcpStatusLines');
+    if (lines) {
+        const done = document.createElement('div');
+        done.style.cssText = 'font-size:10px;color:rgba(255,220,170,0.3);padding:4px 0 0;border-top:1px solid rgba(255,255,255,0.04);margin-top:4px;';
+        done.textContent = '✨ 全部完成';
+        lines.appendChild(done);
+    }
+    
+    // 3秒后自动收起，显示标签
+    setTimeout(() => {
+        if (panel) panel.style.transform = 'translateY(-100%)';
+        if (tab) tab.style.display = 'block';
+    }, 3000);
+    
+    // 10秒后完全移除
+    setTimeout(() => {
+        panel?.remove();
+        tab?.remove();
+    }, 30000);
 }
 
 }
