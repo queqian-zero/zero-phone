@@ -73,11 +73,21 @@ class MCPManager {
         return new Promise((resolve, reject) => {
             const timeout = setTimeout(() => {
                 this.disconnect(serverId);
-                reject(new Error('连接超时（15秒）'));
+                reject(new Error('连接超时（15秒）- 服务器未响应SSE endpoint事件'));
             }, 15000);
 
             try {
                 console.log(`🔌 [MCP] 连接 SSE: ${server.sseUrl}`);
+                
+                // 先用 fetch 测试地址是否可达
+                fetch(server.sseUrl, { method: 'GET', mode: 'cors' })
+                    .then(resp => {
+                        console.log(`🔌 [MCP] fetch预检: HTTP ${resp.status}, Content-Type: ${resp.headers.get('content-type')}`);
+                    })
+                    .catch(err => {
+                        console.warn(`🔌 [MCP] fetch预检失败（可能CORS）: ${err.message}`);
+                    });
+                
                 const es = new EventSource(server.sseUrl);
 
                 this.connections[serverId] = {
@@ -85,13 +95,16 @@ class MCPManager {
                     endpoint: null,
                     status: 'connecting'
                 };
+                
+                // 监听所有消息（调试）
+                es.onmessage = (event) => {
+                    console.log(`📨 [MCP] SSE消息(无类型): ${event.data?.substring(0, 200)}`);
+                };
 
                 es.addEventListener('endpoint', (event) => {
                     console.log(`🔗 [MCP] 收到 endpoint: ${event.data}`);
-                    // endpoint可能是相对路径或绝对路径
                     let endpointUrl = event.data;
                     if (!endpointUrl.startsWith('http')) {
-                        // 相对路径：基于SSE URL构建
                         const base = new URL(server.sseUrl);
                         endpointUrl = base.origin + endpointUrl;
                     }
@@ -99,11 +112,9 @@ class MCPManager {
                     this.connections[serverId].status = 'connected';
                     clearTimeout(timeout);
 
-                    // 自动执行 initialize 握手
                     this._initialize(serverId)
                         .then(() => this._fetchTools(serverId))
                         .then(tools => {
-                            // 更新存储
                             server.tools = tools;
                             server.connectedAt = new Date().toISOString();
                             this.saveServers(friendCode, servers);
@@ -114,12 +125,24 @@ class MCPManager {
                             reject(err);
                         });
                 });
+                
+                es.onopen = () => {
+                    console.log(`✅ [MCP] SSE连接已打开，等待endpoint事件...`);
+                };
 
                 es.onerror = (err) => {
                     console.error('❌ [MCP] SSE 错误:', err);
+                    console.error('❌ [MCP] readyState:', es.readyState, '(0=CONNECTING, 1=OPEN, 2=CLOSED)');
                     clearTimeout(timeout);
                     this.disconnect(serverId);
-                    reject(new Error('SSE连接失败，请检查地址是否正确'));
+                    
+                    let errMsg = 'SSE连接失败';
+                    if (es.readyState === 2) {
+                        errMsg += '（连接被关闭，可能是CORS被拦截、地址不存在、或token无效）';
+                    } else {
+                        errMsg += '（网络错误，请检查地址和网络）';
+                    }
+                    reject(new Error(errMsg));
                 };
             } catch (err) {
                 clearTimeout(timeout);

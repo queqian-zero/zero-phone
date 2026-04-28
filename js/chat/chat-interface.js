@@ -15759,6 +15759,7 @@ _openMcpPage() {
                         <input id="mcpAddUrl" type="text" placeholder="例：https://xxx.com/mcp?token=xxx" style="width:100%;box-sizing:border-box;padding:8px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:rgba(255,255,255,0.6);font-size:13px;outline:none;">
                     </div>
                     <button id="mcpAddBtn" style="padding:10px;border:none;border-radius:8px;background:rgba(240,147,43,0.15);color:rgba(240,147,43,0.8);font-size:13px;cursor:pointer;transition:all 0.2s;">🔌 连接并添加</button>
+                    <div id="mcpAddError" style="display:none;margin-top:8px;padding:8px 10px;background:rgba(255,60,60,0.08);border-radius:8px;border-left:2px solid rgba(255,100,100,0.3);font-size:11px;color:rgba(255,100,100,0.6);line-height:1.5;word-break:break-all;"></div>
                 </div>
             </div>
             
@@ -15797,8 +15798,17 @@ _openMcpPage() {
         }
         
         const btn = document.getElementById('mcpAddBtn');
+        
+        // URL格式校验
+        if (!url.startsWith('http://') && !url.startsWith('https://')) {
+            alert('地址格式错误：必须以 http:// 或 https:// 开头');
+            return;
+        }
+        
         btn.textContent = '⏳ 连接中...';
         btn.disabled = true;
+        const errEl = document.getElementById('mcpAddError');
+        if (errEl) errEl.style.display = 'none';
         
         try {
             const serverId = window.mcpManager.addServer(friendCode, name, url);
@@ -15817,7 +15827,12 @@ _openMcpPage() {
         } catch (e) {
             btn.textContent = '🔌 连接并添加';
             btn.disabled = false;
-            alert('连接失败：' + e.message);
+            const errEl = document.getElementById('mcpAddError');
+            if (errEl) {
+                errEl.style.display = 'block';
+                errEl.textContent = '❌ ' + e.message;
+            }
+            console.error('❌ [MCP] 连接失败:', e);
             // 如果添加了但连接失败，删掉
             const servers = window.mcpManager.getServers(friendCode);
             const last = servers[servers.length - 1];
