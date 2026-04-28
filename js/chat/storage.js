@@ -387,6 +387,27 @@ class StorageManager {
         return data.timeline[0].id;
     }
     
+    // ==================== 临时会话相关 ====================
+    getTempChats() { return this.getData('zero_phone_temp_chats') || {}; }
+    getTempChat(tempId) { return this.getTempChats()[tempId] || null; }
+    saveTempChat(tempId, chatData) {
+        const all = this.getTempChats();
+        all[tempId] = chatData;
+        return this.saveData('zero_phone_temp_chats', all);
+    }
+    deleteTempChat(tempId) {
+        const all = this.getTempChats();
+        delete all[tempId];
+        return this.saveData('zero_phone_temp_chats', all);
+    }
+    addTempMessage(tempId, message) {
+        const all = this.getTempChats();
+        if (!all[tempId]) return false;
+        if (!all[tempId].messages) all[tempId].messages = [];
+        all[tempId].messages.push(message);
+        return this.saveData('zero_phone_temp_chats', all);
+    }
+    
     // ==================== 调试 ====================
     printAllData() { console.log('=== 大保险柜 ==='); console.log('缓存条目:', Object.keys(this._cache).length, 'IDB:', this._dbReady); }
     getStorageInfo() {
