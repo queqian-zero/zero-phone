@@ -14431,7 +14431,9 @@ _renderQuoteBlock(q) {
     } else if (q._fakeVideo) {
         contentHtml = `<div style="display:inline-block;padding:4px 8px;border:1px dashed rgba(128,128,128,0.2);border-radius:6px;font-size:10px;opacity:0.5;">▶ [视频] ${this.escapeHtml((q._fakeVideo || '').substring(0, 20))}</div>`;
     } else if (q._location) {
-        contentHtml = `<div style="display:inline-block;padding:4px 8px;border:1px dashed rgba(128,128,128,0.2);border-radius:6px;font-size:10px;opacity:0.5;">📍 ${this.escapeHtml((q._location.name || '').substring(0, 20))}</div>`;
+        const locName = this.escapeHtml((q._location.name || '未知位置').substring(0, 18));
+        const miniMap = `<svg viewBox="0 0 36 36" style="width:36px;height:36px;border-radius:4px;flex-shrink:0;"><rect width="36" height="36" fill="rgba(35,32,28,1)"/><line x1="0" y1="12" x2="36" y2="14" stroke="rgba(255,220,150,0.08)" stroke-width="2"/><line x1="0" y1="26" x2="36" y2="24" stroke="rgba(255,220,150,0.08)" stroke-width="2"/><line x1="14" y1="0" x2="12" y2="36" stroke="rgba(255,220,150,0.08)" stroke-width="2"/><line x1="26" y1="0" x2="28" y2="36" stroke="rgba(255,220,150,0.08)" stroke-width="2"/><circle cx="18" cy="18" r="4" fill="rgba(240,147,43,0.5)"/><circle cx="18" cy="18" r="1.5" fill="rgba(255,255,255,0.8)"/></svg>`;
+        contentHtml = `<div style="display:flex;align-items:center;gap:6px;"><div style="flex:1;font-size:10px;color:rgba(255,255,255,0.4);line-height:1.3;">${locName}</div>${miniMap}</div>`;
     } else if (q.text) {
         // 检查是否有 RENDER_HTML
         let displayText = q.text;
@@ -14632,7 +14634,7 @@ _showRecalledContent(data) {
     } else if (orig._fakeVideo) {
         contentHtml = `<div style="padding:10px;background:rgba(255,255,255,0.03);border-radius:8px;border:1px dashed rgba(128,128,128,0.15);">▶ [假视频] ${this.escapeHtml(orig._fakeVideo)}</div>`;
     } else if (orig._location) {
-        contentHtml = `<div style="padding:10px;background:rgba(255,255,255,0.03);border-radius:8px;">📍 ${this.escapeHtml(orig._location.name)}${orig._location.desc ? '<br><span style="opacity:0.5;">' + this.escapeHtml(orig._location.desc) + '</span>' : ''}</div>`;
+        contentHtml = `<div style="padding:10px;background:rgba(255,255,255,0.03);border-radius:8px;">[位置] ${this.escapeHtml(orig._location.name)}${orig._location.desc ? '<br><span style="opacity:0.5;">' + this.escapeHtml(orig._location.desc) + '</span>' : ''}</div>`;
     } else if (orig.text) {
         let displayText = orig.text;
         if (displayText.includes('[RENDER_HTML]')) {
@@ -14701,7 +14703,7 @@ _setQuoteMessage(msg) {
     else if (msg._stickerUrl) preview = `😊 ${msg._stickerName || '表情包'}`;
     else if (msg._fakeImage) preview = `[图片] ${(msg._fakeImage || '').substring(0, 15)}`;
     else if (msg._fakeVideo) preview = `▶ [视频] ${(msg._fakeVideo || '').substring(0, 15)}`;
-    else if (msg._location) preview = `📍 ${(msg._location.name || '').substring(0, 15)}`;
+    else if (msg._location) preview = `[位置] ${(msg._location.name || '').substring(0, 15)}`;
     else if (msg.text) {
         let t = msg.text.replace(/\[RENDER_HTML\][\s\S]*?\[\/RENDER_HTML\]/g, '[卡片]');
         preview = t.substring(0, 30);
