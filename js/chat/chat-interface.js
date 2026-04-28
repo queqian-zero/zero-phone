@@ -785,6 +785,12 @@ class ChatInterface {
             this._sendFakeVideo();
         });
         
+        // 位置
+        document.getElementById('menuLocation')?.addEventListener('click', () => {
+            this.closeMenu();
+            this._openLocationPanel();
+        });
+        
         // 真发图
         document.getElementById('menuRealImage')?.addEventListener('click', () => {
             this.closeMenu();
@@ -1432,6 +1438,118 @@ class ChatInterface {
         if (msg._quote) storeMsg._quote = msg._quote;
         this.storage.addMessage(this.currentFriendCode, storeMsg);
         this.scrollToBottom();
+    }
+    
+    // ==================== 位置功能 ====================
+    
+    _openLocationPanel() {
+        document.getElementById('locationPanel')?.remove();
+        const ov = document.createElement('div');
+        ov.id = 'locationPanel';
+        ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;';
+        ov.innerHTML = `
+            <div style="background:#1a1714;border-radius:14px;width:85%;max-width:320px;overflow:hidden;border:1px solid rgba(255,220,150,0.06);">
+                <div style="padding:14px 16px;text-align:center;font-size:14px;color:rgba(255,220,170,0.7);border-bottom:1px solid rgba(255,255,255,0.04);">发送位置</div>
+                <div style="padding:16px;">
+                    <div id="locFakeBtn" style="padding:14px;background:rgba(255,255,255,0.03);border-radius:10px;cursor:pointer;margin-bottom:8px;border:1px solid rgba(255,255,255,0.04);">
+                        <div style="font-size:13px;color:rgba(255,255,255,0.6);">📍 假位置</div>
+                        <div style="font-size:10px;color:rgba(255,255,255,0.2);margin-top:4px;">自己编辑地点和描述</div>
+                    </div>
+                    <div style="padding:14px;background:rgba(255,255,255,0.02);border-radius:10px;opacity:0.4;border:1px solid rgba(255,255,255,0.03);">
+                        <div style="font-size:13px;color:rgba(255,255,255,0.4);">📡 真位置</div>
+                        <div style="font-size:10px;color:rgba(255,255,255,0.15);margin-top:4px;">需要定位功能（开发中）</div>
+                    </div>
+                </div>
+                <div style="padding:0 16px 16px;">
+                    <button id="locCancelBtn" style="width:100%;padding:10px;border:none;border-radius:8px;background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.3);font-size:13px;cursor:pointer;">取消</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(ov);
+        
+        ov.querySelector('#locCancelBtn').addEventListener('click', () => ov.remove());
+        ov.querySelector('#locFakeBtn').addEventListener('click', () => {
+            ov.remove();
+            this._sendFakeLocation();
+        });
+        ov.addEventListener('click', (e) => { if (e.target === ov) ov.remove(); });
+    }
+    
+    async _sendFakeLocation() {
+        // 第一步：地点名称
+        const name = window.zpPrompt ?
+            await window.zpPrompt('假位置 — 地点名称', '你"当前所在"的位置', '', '例如：洛阳老城区·丽景门') :
+            prompt('地点名称：');
+        if (!name) return;
+        
+        // 第二步：周围描述
+        const desc = window.zpPrompt ?
+            await window.zpPrompt('假位置 — 周围描述', '描述一下这个地方的周围环境\n（可留空）', '', '例如：旁边有条小吃街，对面是洛邑古城') :
+            prompt('周围描述（可留空）：');
+        
+        const locData = { name, desc: desc || '' };
+        
+        const msg = { type: 'user', text: '', timestamp: new Date().toISOString(), _location: locData };
+        if (this._quotingMessage) { msg._quote = this._extractQuoteData(this._quotingMessage); this._clearQuoteMessage(); }
+        this.addMessage(msg);
+        this.storage.addMessage(this.currentFriendCode, {
+            type: 'user', text: `[用户发送了位置：${name}${desc ? ' — ' + desc : ''}]`,
+            timestamp: msg.timestamp, _location: locData, _quote: msg._quote
+        });
+        this.scrollToBottom();
+    }
+    
+    // 渲染位置卡片（SVG网格假地图）
+    _renderLocationBubble(message) {
+        const loc = message._location;
+        if (!loc) return '';
+        const name = this.escapeHtml(loc.name || '未知位置');
+        const desc = this.escapeHtml(loc.desc || '');
+        
+        // 根据地名生成伪随机种子（让同一个地点每次生成的地图一样）
+        let seed = 0;
+        for (let i = 0; i < (loc.name || '').length; i++) seed += loc.name.charCodeAt(i);
+        const rng = (n) => { seed = (seed * 9301 + 49297) % 233280; return seed % n; };
+        
+        // 生成SVG网格地图
+        const w = 220, h = 120;
+        let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" style="width:100%;border-radius:8px 8px 0 0;display:block;">`;
+        // 背景
+        svg += `<rect width="${w}" height="${h}" fill="rgba(35,32,28,1)"/>`;
+        // 网格线
+        for (let x = 0; x <= w; x += 22) svg += `<line x1="${x}" y1="0" x2="${x}" y2="${h}" stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>`;
+        for (let y = 0; y <= h; y += 22) svg += `<line x1="0" y1="${y}" x2="${w}" y2="${y}" stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>`;
+        // 几条"道路"
+        const roads = [
+            { x1: 0, y1: 44 + rng(20), x2: w, y2: 44 + rng(20) },
+            { x1: 0, y1: 80 + rng(15), x2: w, y2: 75 + rng(15) },
+            { x1: 60 + rng(30), y1: 0, x2: 55 + rng(30), y2: h },
+            { x1: 140 + rng(30), y1: 0, x2: 145 + rng(30), y2: h }
+        ];
+        roads.forEach(r => {
+            svg += `<line x1="${r.x1}" y1="${r.y1}" x2="${r.x2}" y2="${r.y2}" stroke="rgba(255,220,150,0.06)" stroke-width="3"/>`;
+        });
+        // 几个小方块（建筑）
+        for (let i = 0; i < 8; i++) {
+            const bx = 10 + rng(w - 30), by = 10 + rng(h - 30);
+            const bw = 8 + rng(12), bh = 6 + rng(10);
+            svg += `<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" fill="rgba(255,255,255,0.03)" rx="1"/>`;
+        }
+        // 中心定位点
+        const cx = w / 2, cy = h / 2;
+        svg += `<circle cx="${cx}" cy="${cy}" r="14" fill="rgba(240,147,43,0.12)" stroke="none"/>`;
+        svg += `<circle cx="${cx}" cy="${cy}" r="6" fill="rgba(240,147,43,0.7)" stroke="rgba(240,147,43,0.3)" stroke-width="2"/>`;
+        svg += `<circle cx="${cx}" cy="${cy}" r="2.5" fill="rgba(255,255,255,0.9)"/>`;
+        svg += `</svg>`;
+        
+        return `<div class="location-card" style="border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,0.06);min-width:200px;max-width:230px;cursor:pointer;">
+            ${svg}
+            <div style="padding:8px 10px;background:rgba(255,255,255,0.03);">
+                <div style="font-size:13px;color:rgba(255,255,255,0.6);font-weight:500;">${name}</div>
+                ${desc ? `<div class="location-desc" style="display:none;font-size:11px;color:rgba(255,255,255,0.3);margin-top:4px;line-height:1.5;">${desc}</div>` : ''}
+                <div style="font-size:9px;color:rgba(255,255,255,0.15);margin-top:4px;">点击${desc ? '查看详情' : '查看位置'}</div>
+            </div>
+        </div>`;
     }
     
     // ==================== 表情包系统 ====================
@@ -2576,6 +2694,7 @@ class ChatInterface {
                              : msg._quote._stickerUrl ? '[表情包]'
                              : msg._quote._fakeImage ? `[假图片:${msg._quote._fakeImage}]`
                              : msg._quote._fakeVideo ? `[假视频:${msg._quote._fakeVideo}]`
+                             : msg._quote._location ? `[位置:${msg._quote._location.name}]`
                              : (msg._quote.text || '').substring(0, 40);
                     prefix += `[引用${qs}的消息：${qt}] `;
                 }
@@ -2583,7 +2702,7 @@ class ChatInterface {
                 if (msg.type === 'system' && msg._recallData) {
                     const rd = msg._recallData;
                     const who = rd.recaller === 'user' ? 'user' : '你';
-                    const origText = rd.originalMsg?.text || rd.originalMsg?._fakeImage || rd.originalMsg?._fakeVideo || rd.originalMsg?._voiceText || '[多媒体消息]';
+                    const origText = rd.originalMsg?.text || rd.originalMsg?._fakeImage || rd.originalMsg?._fakeVideo || rd.originalMsg?._location?.name || rd.originalMsg?._voiceText || '[多媒体消息]';
                     let recallText = `[${who}撤回了一条消息，原内容：「${origText.substring(0, 80)}」]`;
                     if (rd.innerThought) recallText += `[${who}撤回时心里想的：「${rd.innerThought}」]`;
                     return { type: 'user', text: prefix + recallText, timestamp: msg.timestamp };
@@ -3328,6 +3447,22 @@ ${archiveListText}
                 const partTs = new Date(nowMs + offset).toISOString();
                 const msg = { type: 'ai', text: cleanText, timestamp: partTs, _sequential: i > 0, _animate: true };
                 
+                // 提取 [AI_FAKE_IMAGE:描述]
+                const aiFakeImgMatch = rawSeg.match(/\[AI_FAKE_IMAGE:([^\]]+)\]/);
+                if (aiFakeImgMatch) { msg._fakeImage = aiFakeImgMatch[1].trim(); msg.text = ''; }
+                
+                // 提取 [AI_FAKE_VIDEO:描述]
+                const aiFakeVidMatch = rawSeg.match(/\[AI_FAKE_VIDEO:([^\]]+)\]/);
+                if (aiFakeVidMatch) { msg._fakeVideo = aiFakeVidMatch[1].trim(); msg.text = ''; }
+                
+                // 提取 [AI_LOCATION:地名|描述]
+                const aiLocMatch = rawSeg.match(/\[AI_LOCATION:([^\]]+)\]/);
+                if (aiLocMatch) {
+                    const parts = aiLocMatch[1].split('|');
+                    msg._location = { name: parts[0]?.trim() || '未知位置', desc: parts.slice(1).join('|').trim() };
+                    msg.text = '';
+                }
+                
                 // 提取 [AI_QUOTE:关键词] → 找到被引用消息 → 附加 _quote
                 const aiQuoteMatch = rawSeg.match(/\[AI_QUOTE:([^\]]+)\]/);
                 if (aiQuoteMatch) {
@@ -3335,7 +3470,7 @@ ${archiveListText}
                     for (let qi = this.messages.length - 1; qi >= 0; qi--) {
                         const qm = this.messages[qi];
                         if (qm.type !== 'user' && qm.type !== 'ai') continue;
-                        const qt = qm.text || qm._fakeImage || qm._fakeVideo || qm._voiceText || '';
+                        const qt = qm.text || qm._fakeImage || qm._fakeVideo || qm._location?.name || qm._voiceText || '';
                         if (qt.includes(kw)) { msg._quote = this._extractQuoteData(qm); break; }
                     }
                 }
@@ -3348,6 +3483,9 @@ ${archiveListText}
                 // 3. 存储（thinking只存第一条）
                 const storeMsg = { type: 'ai', text: cleanText, timestamp: partTs };
                 if (msg._quote) storeMsg._quote = msg._quote;
+                if (msg._fakeImage) { storeMsg._fakeImage = msg._fakeImage; storeMsg.text = `[AI发送了假图片：${msg._fakeImage}]`; }
+                if (msg._fakeVideo) { storeMsg._fakeVideo = msg._fakeVideo; storeMsg.text = `[AI发送了假视频：${msg._fakeVideo}]`; }
+                if (msg._location) { storeMsg._location = msg._location; storeMsg.text = `[AI发送了位置：${msg._location.name}]`; }
                 if (i === 0 && thinkingText) storeMsg.thinking = thinkingText;
                 if (i > 0) storeMsg._sequential = true;
                 if (hasSplitTag) storeMsg._hasSplitTag = true;
@@ -3680,7 +3818,8 @@ div.innerHTML = `
                             <span style="font-size:11px;color:rgba(255,255,255,0.3);">[视频]</span>
                         </div>
                     </div>` : ''}
-                    ${message.text && !message._imageOnly && !message._voice && !message._fakeImage && !message._fakeVideo && !message._stickerUrl ? `<div class="message-text">${this.renderMessageContent(message.text)}</div>` : ''}
+                    ${message._location ? this._renderLocationBubble(message) : ''}
+                    ${message.text && !message._imageOnly && !message._voice && !message._fakeImage && !message._fakeVideo && !message._location && !message._stickerUrl ? `<div class="message-text">${this.renderMessageContent(message.text)}</div>` : ''}
                 </div>
                 <div class="message-time">${time}</div>
             </div>
@@ -3787,6 +3926,17 @@ div.innerHTML = `
                 const hidden = cover.style.opacity === '0';
                 cover.style.opacity = hidden ? '1' : '0';
                 cover.style.visibility = hidden ? 'visible' : 'hidden';
+            });
+        }
+        
+        // 位置卡片点击（展开/收起描述）
+        const locCard = div.querySelector('.location-card');
+        if (locCard) {
+            locCard.addEventListener('click', () => {
+                const descEl = locCard.querySelector('.location-desc');
+                if (descEl) {
+                    descEl.style.display = descEl.style.display === 'none' ? 'block' : 'none';
+                }
             });
         }
         
@@ -8153,6 +8303,7 @@ getIntimacyStatusForAI() {
     desc += `\n\n【发送多媒体】`;
     desc += `\n  [AI_FAKE_IMAGE:图片描述] 给user发一张假图片（user知道是文字描述）`;
     desc += `\n  [AI_FAKE_VIDEO:视频描述] 给user发一个假视频（user知道是文字描述）`;
+    desc += `\n  [AI_LOCATION:地点名称|周围描述] 给user发送你的位置（显示为地图卡片）`;
     desc += `\n  [AI_VOICE:语音内容] 给user发一条语音消息（显示为语音条，user点击可"转文字"）`;
     desc += `\n  注意：user有时会发语音消息，由"语音小助手"转述（消息开头会标注[语音消息·小助手转述]）`;
     desc += `\n  小助手会描述user说了什么、语气情绪、背景环境等。这些信息是小助手听到后告诉你的，不是你自己听到的。`;
@@ -14279,6 +14430,8 @@ _renderQuoteBlock(q) {
         contentHtml = `<div style="display:inline-block;padding:4px 8px;border:1px dashed rgba(128,128,128,0.2);border-radius:6px;font-size:10px;opacity:0.5;">[图片] ${this.escapeHtml((q._fakeImage || '').substring(0, 20))}</div>`;
     } else if (q._fakeVideo) {
         contentHtml = `<div style="display:inline-block;padding:4px 8px;border:1px dashed rgba(128,128,128,0.2);border-radius:6px;font-size:10px;opacity:0.5;">▶ [视频] ${this.escapeHtml((q._fakeVideo || '').substring(0, 20))}</div>`;
+    } else if (q._location) {
+        contentHtml = `<div style="display:inline-block;padding:4px 8px;border:1px dashed rgba(128,128,128,0.2);border-radius:6px;font-size:10px;opacity:0.5;">📍 ${this.escapeHtml((q._location.name || '').substring(0, 20))}</div>`;
     } else if (q.text) {
         // 检查是否有 RENDER_HTML
         let displayText = q.text;
@@ -14478,6 +14631,8 @@ _showRecalledContent(data) {
         contentHtml = `<div style="padding:10px;background:rgba(255,255,255,0.03);border-radius:8px;border:1px dashed rgba(128,128,128,0.15);">[假图片] ${this.escapeHtml(orig._fakeImage)}</div>`;
     } else if (orig._fakeVideo) {
         contentHtml = `<div style="padding:10px;background:rgba(255,255,255,0.03);border-radius:8px;border:1px dashed rgba(128,128,128,0.15);">▶ [假视频] ${this.escapeHtml(orig._fakeVideo)}</div>`;
+    } else if (orig._location) {
+        contentHtml = `<div style="padding:10px;background:rgba(255,255,255,0.03);border-radius:8px;">📍 ${this.escapeHtml(orig._location.name)}${orig._location.desc ? '<br><span style="opacity:0.5;">' + this.escapeHtml(orig._location.desc) + '</span>' : ''}</div>`;
     } else if (orig.text) {
         let displayText = orig.text;
         if (displayText.includes('[RENDER_HTML]')) {
@@ -14546,6 +14701,7 @@ _setQuoteMessage(msg) {
     else if (msg._stickerUrl) preview = `😊 ${msg._stickerName || '表情包'}`;
     else if (msg._fakeImage) preview = `[图片] ${(msg._fakeImage || '').substring(0, 15)}`;
     else if (msg._fakeVideo) preview = `▶ [视频] ${(msg._fakeVideo || '').substring(0, 15)}`;
+    else if (msg._location) preview = `📍 ${(msg._location.name || '').substring(0, 15)}`;
     else if (msg.text) {
         let t = msg.text.replace(/\[RENDER_HTML\][\s\S]*?\[\/RENDER_HTML\]/g, '[卡片]');
         preview = t.substring(0, 30);
@@ -14592,6 +14748,7 @@ _extractQuoteData(msg) {
     if (msg._stickerUrl) { q._stickerUrl = msg._stickerUrl; q._stickerName = msg._stickerName; }
     if (msg._fakeImage) q._fakeImage = msg._fakeImage;
     if (msg._fakeVideo) q._fakeVideo = msg._fakeVideo;
+    if (msg._location) q._location = msg._location;
     if (msg.text) q.text = msg.text;
     return q;
 }
@@ -14651,6 +14808,7 @@ _stripCommandTags(text) {
         .replace(/\[AI_SIGNATURE:[^\]]+\]/g, '')
         .replace(/\[AI_FAKE_IMAGE:[^\]]+\]/g, '')
         .replace(/\[AI_FAKE_VIDEO:[^\]]+\]/g, '')
+        .replace(/\[AI_LOCATION:[^\]]+\]/g, '')
         .replace(/\[AI_VOICE:[^\]]+\]/g, '')
         .replace(/\[AI_SEND_LIB_IMAGE:[^\]]+\]/g, '')
         .replace(/\[AI_CHANGE_AVATAR:[^\]]+\]/g, '')
