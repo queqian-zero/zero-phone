@@ -3081,8 +3081,11 @@ ${archiveListText}
             if (bt.weatherEnabled && bt.weatherApiKey) {
                 builtinToolsList.push('weather：查询天气（参数：{"city":"城市名英文","lang":"zh_cn"}）');
             }
-            if (bt.searchEnabled) {
-                builtinToolsList.push('search：搜索网络信息（参数：{"query":"搜索内容"}）');
+            if (bt.searchSelfEnabled) {
+                builtinToolsList.push('search：搜索网络信息（参数：{"query":"搜索内容"}）— 你自己去搜索');
+            }
+            if (bt.searchAssistantEnabled && bt.searchEndpoint) {
+                builtinToolsList.push('search_assistant：让搜索小助手帮你查信息（参数：{"query":"搜索内容"}）— 小助手会搜完后把结果告诉你，你知道这是小助手搜的不是你自己搜的');
             }
             if (builtinToolsList.length > 0) {
                 const hasToolCall = systemPrompt.includes('【MCP工具】');
@@ -8152,7 +8155,7 @@ getIntimacyStatusForAI() {
     desc += `\n  [AI_FAKE_VIDEO:视频描述] 给user发一个假视频（user知道是文字描述）`;
     desc += `\n  [AI_VOICE:语音内容] 给user发一条语音消息（显示为语音条，user点击可"转文字"）`;
     desc += `\n  注意：user有时会发语音消息，由"语音小助手"转述（消息开头会标注[语音消息·小助手转述]）`;
-    desc += `\n  小助手会描述user说了什么、语气情绪、背景环境等。你要把小助手的描述当作你亲耳听到的来回应，自然地交流。`;
+    desc += `\n  小助手会描述user说了什么、语气情绪、背景环境等。这些信息是小助手听到后告诉你的，不是你自己听到的。`;
     desc += `\n  [AI_SEND_LIB_IMAGE:图片名字] 从Base64图库中找到该图发给user（user能看到图片）`;
     desc += `\n  [AI_CHANGE_AVATAR:图片名字] 把Base64图库中的某张图设为你自己的头像`;
     desc += `\n  [AI_CHANGE_AVATAR_FROM_CHAT] 把user最近发给你的图片设为你自己的头像`;
@@ -15796,22 +15799,35 @@ _openMcpPage() {
                 
                 <!-- 搜索 -->
                 <div style="padding:12px;background:rgba(255,255,255,0.03);border-radius:10px;border:1px solid rgba(255,255,255,0.04);margin-bottom:8px;">
-                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-                        <div style="font-size:13px;color:rgba(255,255,255,0.6);">🔍 网页搜索</div>
-                        <label class="setting-switch">
-                            <input type="checkbox" id="builtinSearchToggle" ${builtinSettings.searchEnabled ? 'checked' : ''}>
-                            <span class="switch-slider"></span>
-                        </label>
+                    <div style="font-size:13px;color:rgba(255,255,255,0.6);margin-bottom:10px;">🔍 搜索功能</div>
+                    
+                    <!-- 模式A：AI自己搜 -->
+                    <div style="padding:10px;background:rgba(255,255,255,0.02);border-radius:8px;margin-bottom:8px;border:1px solid rgba(255,255,255,${builtinSettings.searchSelfEnabled ? '0.08' : '0.03'});">
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                            <div style="font-size:12px;color:rgba(255,255,255,0.5);">AI自己搜索</div>
+                            <label class="setting-switch">
+                                <input type="checkbox" id="builtinSearchSelfToggle" ${builtinSettings.searchSelfEnabled ? 'checked' : ''}>
+                                <span class="switch-slider"></span>
+                            </label>
+                        </div>
+                        <div style="font-size:9px;color:rgba(255,255,255,0.2);line-height:1.4;">AI用自己的主API去搜索，搜到什么自己知道</div>
                     </div>
-                    <div style="font-size:10px;color:rgba(255,255,255,0.2);margin-bottom:8px;">使用AI小助手帮你搜索（复用主API或单独配置）</div>
-                    <select id="builtinSearchMode" style="width:100%;box-sizing:border-box;padding:7px 10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:rgba(255,255,255,0.5);font-size:12px;outline:none;">
-                        <option value="main" ${(builtinSettings.searchMode || 'main') === 'main' ? 'selected' : ''}>使用主API搜索（消耗主API token）</option>
-                        <option value="custom" ${builtinSettings.searchMode === 'custom' ? 'selected' : ''}>使用独立API搜索</option>
-                    </select>
-                    <div id="builtinSearchCustom" style="display:${builtinSettings.searchMode === 'custom' ? 'flex' : 'none'};flex-direction:column;gap:6px;margin-top:8px;">
-                        <input id="builtinSearchEndpoint" type="text" placeholder="API地址" value="${this.escapeHtml(builtinSettings.searchEndpoint || '')}" style="width:100%;box-sizing:border-box;padding:7px 10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:rgba(255,255,255,0.5);font-size:12px;outline:none;">
-                        <input id="builtinSearchApiKey" type="password" placeholder="API Key" value="${this.escapeHtml(builtinSettings.searchApiKey || '')}" style="width:100%;box-sizing:border-box;padding:7px 10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:rgba(255,255,255,0.5);font-size:12px;outline:none;">
-                        <input id="builtinSearchModel" type="text" placeholder="模型名" value="${this.escapeHtml(builtinSettings.searchModel || '')}" style="width:100%;box-sizing:border-box;padding:7px 10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:rgba(255,255,255,0.5);font-size:12px;outline:none;">
+                    
+                    <!-- 模式B：小助手搜 -->
+                    <div style="padding:10px;background:rgba(255,255,255,0.02);border-radius:8px;border:1px solid rgba(255,255,255,${builtinSettings.searchAssistantEnabled ? '0.08' : '0.03'});">
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                            <div style="font-size:12px;color:rgba(255,255,255,0.5);">搜索小助手</div>
+                            <label class="setting-switch">
+                                <input type="checkbox" id="builtinSearchAssistantToggle" ${builtinSettings.searchAssistantEnabled ? 'checked' : ''}>
+                                <span class="switch-slider"></span>
+                            </label>
+                        </div>
+                        <div style="font-size:9px;color:rgba(255,255,255,0.2);line-height:1.4;margin-bottom:8px;">独立API搜索后转述给AI，AI知道是小助手搜的</div>
+                        <div id="builtinSearchAssistantConfig" style="display:${builtinSettings.searchAssistantEnabled ? 'flex' : 'none'};flex-direction:column;gap:6px;">
+                            <input id="builtinSearchEndpoint" type="text" placeholder="API地址" value="${this.escapeHtml(builtinSettings.searchEndpoint || '')}" style="width:100%;box-sizing:border-box;padding:7px 10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:rgba(255,255,255,0.5);font-size:12px;outline:none;">
+                            <input id="builtinSearchApiKey" type="password" placeholder="API Key" value="${this.escapeHtml(builtinSettings.searchApiKey || '')}" style="width:100%;box-sizing:border-box;padding:7px 10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:rgba(255,255,255,0.5);font-size:12px;outline:none;">
+                            <input id="builtinSearchModel" type="text" placeholder="模型名" value="${this.escapeHtml(builtinSettings.searchModel || '')}" style="width:100%;box-sizing:border-box;padding:7px 10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:rgba(255,255,255,0.5);font-size:12px;outline:none;">
+                        </div>
                     </div>
                 </div>
                 
@@ -15887,8 +15903,8 @@ _openMcpPage() {
         this.settings.builtinTools = {
             weatherEnabled: document.getElementById('builtinWeatherToggle').checked,
             weatherApiKey: document.getElementById('builtinWeatherKey').value.trim(),
-            searchEnabled: document.getElementById('builtinSearchToggle').checked,
-            searchMode: document.getElementById('builtinSearchMode').value,
+            searchSelfEnabled: document.getElementById('builtinSearchSelfToggle')?.checked || false,
+            searchAssistantEnabled: document.getElementById('builtinSearchAssistantToggle')?.checked || false,
             searchEndpoint: document.getElementById('builtinSearchEndpoint')?.value.trim() || '',
             searchApiKey: document.getElementById('builtinSearchApiKey')?.value.trim() || '',
             searchModel: document.getElementById('builtinSearchModel')?.value.trim() || ''
@@ -15897,9 +15913,23 @@ _openMcpPage() {
         this.showCssSystemMessage('✅ 内置工具设置已保存');
     });
     
-    // 搜索模式切换
-    document.getElementById('builtinSearchMode').addEventListener('change', (e) => {
-        document.getElementById('builtinSearchCustom').style.display = e.target.value === 'custom' ? 'flex' : 'none';
+    // 搜索双开关互斥
+    document.getElementById('builtinSearchSelfToggle')?.addEventListener('change', (e) => {
+        if (e.target.checked) {
+            const other = document.getElementById('builtinSearchAssistantToggle');
+            if (other) other.checked = false;
+            document.getElementById('builtinSearchAssistantConfig').style.display = 'none';
+        }
+    });
+    document.getElementById('builtinSearchAssistantToggle')?.addEventListener('change', (e) => {
+        const configEl = document.getElementById('builtinSearchAssistantConfig');
+        if (e.target.checked) {
+            const other = document.getElementById('builtinSearchSelfToggle');
+            if (other) other.checked = false;
+            if (configEl) configEl.style.display = 'flex';
+        } else {
+            if (configEl) configEl.style.display = 'none';
+        }
     });
     
     // ===== MCP 直连 =====
@@ -16175,8 +16205,11 @@ async _executeBuiltinTool(toolName, args) {
     if (toolName === 'weather' && bt.weatherEnabled && bt.weatherApiKey) {
         return await this._builtinWeather(args, bt.weatherApiKey);
     }
-    if (toolName === 'search' && bt.searchEnabled) {
-        return await this._builtinSearch(args, bt);
+    if (toolName === 'search' && bt.searchSelfEnabled) {
+        return await this._builtinSearchSelf(args);
+    }
+    if (toolName === 'search_assistant' && bt.searchAssistantEnabled) {
+        return await this._builtinSearchAssistant(args, bt);
     }
     
     return null; // 非内置工具
@@ -16211,55 +16244,62 @@ async _builtinWeather(args, apiKey) {
     return `${cityName}天气：${weather}，温度${temp}°C（体感${feelsLike}°C），湿度${humidity}%，风速${wind}m/s`;
 }
 
-// 内置搜索（通过AI小助手搜索）
-async _builtinSearch(args, bt) {
+// 搜索模式A：AI自己搜（用主API）
+async _builtinSearchSelf(args) {
     const query = args.query || args.q || '';
     if (!query) throw new Error('搜索内容不能为空');
+    console.log('🔍 [AI自己搜] 搜索:', query);
     
-    console.log('🔍 [内置] 搜索:', query);
+    const config = this.apiManager.getCurrentConfig();
+    if (!config?.endpoint || !config?.apiKey || !config?.model) throw new Error('主API未配置');
     
-    // 确定用哪个API
-    let endpoint, apiKey, model;
-    if (bt.searchMode === 'custom' && bt.searchEndpoint) {
-        endpoint = bt.searchEndpoint;
-        apiKey = bt.searchApiKey;
-        model = bt.searchModel;
-    } else {
-        // 用主API
-        const config = this.apiManager.getCurrentConfig();
-        endpoint = config.endpoint;
-        apiKey = config.apiKey;
-        model = config.model;
-    }
+    let url = config.endpoint.replace(/\/$/, '');
+    if (!url.includes('/chat/completions')) url = url.replace(/\/v1\/?$/, '') + '/v1/chat/completions';
     
-    if (!endpoint || !apiKey || !model) throw new Error('搜索API未配置');
-    
-    // 构建搜索请求（让AI帮忙搜索）
-    let url = endpoint.replace(/\/$/, '');
-    if (!url.includes('/chat/completions')) {
-        url = url.replace(/\/v1\/?$/, '') + '/v1/chat/completions';
-    }
-    
-    const headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey };
-    
-    const body = {
-        model,
-        messages: [
-            { role: 'system', content: '你是一个搜索助手。用户会给你一个搜索关键词，请根据你的知识尽可能详细地回答。用中文回答，简洁准确。' },
-            { role: 'user', content: `请搜索并回答：${query}` }
-        ],
-        max_tokens: 800,
-        temperature: 0.3
-    };
-    
-    const resp = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
-    if (!resp.ok) {
-        const err = await resp.text();
-        throw new Error(`搜索API错误 (${resp.status}): ${err.substring(0, 100)}`);
-    }
-    
+    const resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + config.apiKey },
+        body: JSON.stringify({
+            model: config.model,
+            messages: [
+                { role: 'system', content: '根据用户的搜索请求，尽可能准确详细地回答。用中文，简洁明了。' },
+                { role: 'user', content: query }
+            ],
+            max_tokens: 800, temperature: 0.3
+        })
+    });
+    if (!resp.ok) { const err = await resp.text(); throw new Error(`搜索失败 (${resp.status}): ${err.substring(0, 100)}`); }
     const data = await resp.json();
-    return data?.choices?.[0]?.message?.content?.trim() || '搜索无结果';
+    return data?.choices?.[0]?.message?.content?.trim() || '未搜到结果';
+}
+
+// 搜索模式B：小助手搜（用独立API，结果标注为小助手提供）
+async _builtinSearchAssistant(args, bt) {
+    const query = args.query || args.q || '';
+    if (!query) throw new Error('搜索内容不能为空');
+    console.log('🔍 [搜索小助手] 搜索:', query);
+    
+    if (!bt.searchEndpoint || !bt.searchApiKey || !bt.searchModel) throw new Error('搜索小助手未配置');
+    
+    let url = bt.searchEndpoint.replace(/\/$/, '');
+    if (!url.includes('/chat/completions')) url = url.replace(/\/v1\/?$/, '') + '/v1/chat/completions';
+    
+    const resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + bt.searchApiKey },
+        body: JSON.stringify({
+            model: bt.searchModel,
+            messages: [
+                { role: 'system', content: '根据用户的搜索请求，尽可能准确详细地回答。用中文，简洁明了。' },
+                { role: 'user', content: query }
+            ],
+            max_tokens: 800, temperature: 0.3
+        })
+    });
+    if (!resp.ok) { const err = await resp.text(); throw new Error(`搜索小助手错误 (${resp.status}): ${err.substring(0, 100)}`); }
+    const data = await resp.json();
+    const result = data?.choices?.[0]?.message?.content?.trim() || '未搜到结果';
+    return `[搜索小助手提供的信息]\n${result}`;
 }
 
 // ==================== MCP 工具调用状态面板 ====================
