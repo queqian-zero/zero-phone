@@ -329,8 +329,8 @@ class Base64Library {
             const file = e.target.files[0]; if (!file) return;
             const name = window.zpPrompt ? await window.zpPrompt('图片名字/描述', '给图片命名（AI搜图用，可留空）', '', '名字或描述关键词') : prompt('图片名字（可留空）：');
             const item = await this._addImageFromFile(file, name || file.name.split('.')[0], name || '', ov.querySelector('#b64UpCat')?.value);
-            this._saveItem(item);
-            this._toast('已添加');
+            const saved = await this._saveItem(item);
+            if (saved) this._toast('已添加');
             ov.remove(); this.open();
         });
 
@@ -340,12 +340,22 @@ class Base64Library {
             const files = Array.from(e.target.files); if (!files.length) return;
             const cat = ov.querySelector('#b64UpCat')?.value;
             const d = this._getData();
+            let added = 0, skipped = 0;
             for (const f of files) {
                 const item = await this._addImageFromFile(f, f.name.split('.')[0], '', cat);
-                if (item) d[this._activeTab].items.push(item);
+                if (!item) continue;
+                try {
+                    const hash = await this._computeImageHash(item.data);
+                    item._pHash = hash;
+                    const dup = this._findDuplicate(hash);
+                    if (dup) { skipped++; continue; }
+                } catch(e) {}
+                d[this._activeTab].items.push(item);
+                added++;
             }
             this._saveData(d);
-            this._toast(`已添加 ${files.length} 张`);
+            const msg = skipped > 0 ? `已添加 ${added} 张，跳过 ${skipped} 张重复` : `已添加 ${added} 张`;
+            this._toast(msg);
             ov.remove(); this.open();
         });
 
@@ -422,11 +432,90 @@ class Base64Library {
     }
     
     // 把处理好的图片项存入storage
-    _saveItem(item) {
-        if (!item) return;
+    async _saveItem(item) {
+        if (!item) return false;
+        
+        // 计算感知哈希并查重
+        if (item.data) {
+            try {
+                const hash = await this._computeImageHash(item.data);
+                item._pHash = hash;
+                
+                const dup = this._findDuplicate(hash);
+                if (dup) {
+                    const tabLabels = { avatars: '头像库', webImages: '网图库', stickers: '表情包', transparent: '透明底图' };
+                    const dupTab = tabLabels[dup.tab] || dup.tab;
+                    const dupName = dup.item.name || '未命名';
+                    
+                    const proceed = window.zpConfirm
+                        ? await window.zpConfirm('发现重复图片', `这张图已存在于「${dupTab}」分类中\n名称：${dupName}\n\n要继续上传吗？`)
+                        : confirm(`这张图已存在于「${dupTab}」中（${dupName}），继续上传？`);
+                    
+                    if (!proceed) return false;
+                }
+            } catch(e) {
+                console.warn('图片查重失败:', e);
+            }
+        }
+        
         const d = this._getData();
         d[this._activeTab].items.push(item);
         this._saveData(d);
+        return true;
+    }
+    
+    // 计算感知哈希（pHash）：图片 → 8×8灰度 → 64位指纹
+    _computeImageHash(dataUrl) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => {
+                try {
+                    const size = 8;
+                    const c = document.createElement('canvas');
+                    c.width = size; c.height = size;
+                    const ctx = c.getContext('2d');
+                    ctx.drawImage(img, 0, 0, size, size);
+                    const pixels = ctx.getImageData(0, 0, size, size).data;
+                    
+                    const gray = [];
+                    for (let i = 0; i < pixels.length; i += 4) {
+                        gray.push(pixels[i] * 0.299 + pixels[i+1] * 0.587 + pixels[i+2] * 0.114);
+                    }
+                    
+                    const avg = gray.reduce((a, b) => a + b, 0) / gray.length;
+                    let hash = '';
+                    for (let i = 0; i < gray.length; i++) hash += gray[i] >= avg ? '1' : '0';
+                    
+                    resolve(hash);
+                } catch(e) { reject(e); }
+            };
+            img.onerror = () => reject(new Error('图片加载失败'));
+            img.src = dataUrl;
+        });
+    }
+    
+    // 在所有分类中查找重复图片（汉明距离 < 5 判定为重复）
+    _findDuplicate(hash) {
+        if (!hash) return null;
+        const d = this._getData();
+        const tabs = ['avatars', 'webImages', 'stickers', 'transparent'];
+        for (const tab of tabs) {
+            const items = d[tab]?.items || [];
+            for (const item of items) {
+                if (item._pHash && this._hammingDistance(hash, item._pHash) < 5) {
+                    return { tab, item };
+                }
+            }
+        }
+        return null;
+    }
+    
+    // 汉明距离
+    _hammingDistance(a, b) {
+        if (a.length !== b.length) return 64;
+        let dist = 0;
+        for (let i = 0; i < a.length; i++) { if (a[i] !== b[i]) dist++; }
+        return dist;
     }
 
     // ==================== 字体库Tab渲染 ====================
