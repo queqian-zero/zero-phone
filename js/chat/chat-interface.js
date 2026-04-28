@@ -15826,7 +15826,11 @@ _openMcpPage() {
                         <div id="builtinSearchAssistantConfig" style="display:${builtinSettings.searchAssistantEnabled ? 'flex' : 'none'};flex-direction:column;gap:6px;">
                             <input id="builtinSearchEndpoint" type="text" placeholder="API地址" value="${this.escapeHtml(builtinSettings.searchEndpoint || '')}" style="width:100%;box-sizing:border-box;padding:7px 10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:rgba(255,255,255,0.5);font-size:12px;outline:none;">
                             <input id="builtinSearchApiKey" type="password" placeholder="API Key" value="${this.escapeHtml(builtinSettings.searchApiKey || '')}" style="width:100%;box-sizing:border-box;padding:7px 10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:rgba(255,255,255,0.5);font-size:12px;outline:none;">
-                            <input id="builtinSearchModel" type="text" placeholder="模型名" value="${this.escapeHtml(builtinSettings.searchModel || '')}" style="width:100%;box-sizing:border-box;padding:7px 10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:rgba(255,255,255,0.5);font-size:12px;outline:none;">
+                            <div style="display:flex;gap:6px;">
+                                <input id="builtinSearchModel" type="text" placeholder="模型名" value="${this.escapeHtml(builtinSettings.searchModel || '')}" style="flex:1;box-sizing:border-box;padding:7px 10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:rgba(255,255,255,0.5);font-size:12px;outline:none;">
+                                <button id="builtinSearchFetchModels" style="padding:7px 12px;border:none;border-radius:6px;background:rgba(100,200,255,0.08);color:rgba(100,200,255,0.5);font-size:11px;cursor:pointer;white-space:nowrap;">拉取</button>
+                            </div>
+                            <div id="builtinSearchModelList" style="display:none;max-height:150px;overflow-y:auto;border:1px solid rgba(255,255,255,0.06);border-radius:6px;background:rgba(0,0,0,0.2);"></div>
                         </div>
                     </div>
                 </div>
@@ -15929,6 +15933,53 @@ _openMcpPage() {
             if (configEl) configEl.style.display = 'flex';
         } else {
             if (configEl) configEl.style.display = 'none';
+        }
+    });
+    
+    // 搜索小助手拉取模型
+    document.getElementById('builtinSearchFetchModels')?.addEventListener('click', async () => {
+        const endpoint = document.getElementById('builtinSearchEndpoint').value.trim();
+        const apiKey = document.getElementById('builtinSearchApiKey').value.trim();
+        const listEl = document.getElementById('builtinSearchModelList');
+        
+        if (!endpoint || !apiKey) { this.showCssSystemMessage('❌ 请先填写API地址和Key'); return; }
+        
+        listEl.style.display = 'block';
+        listEl.innerHTML = '<div style="padding:8px;text-align:center;color:rgba(255,255,255,0.2);font-size:11px;">加载中...</div>';
+        
+        try {
+            let url;
+            const base = endpoint.replace(/\/$/, '');
+            if (base.includes('generativelanguage.googleapis.com')) {
+                url = base + '/v1beta/models?key=' + apiKey;
+            } else {
+                url = base.replace(/\/v1\/?$/, '') + '/v1/models';
+            }
+            
+            const headers = { 'Content-Type': 'application/json' };
+            if (!url.includes('key=')) headers['Authorization'] = 'Bearer ' + apiKey;
+            
+            const resp = await fetch(url, { headers });
+            if (!resp.ok) throw new Error('HTTP ' + resp.status);
+            const data = await resp.json();
+            
+            let models = [];
+            if (data.models) models = data.models.map(m => ({ id: m.name?.replace('models/', '') || m.name, name: m.displayName || m.name }));
+            else if (data.data) models = data.data.map(m => ({ id: m.id, name: m.id }));
+            
+            if (models.length === 0) { listEl.innerHTML = '<div style="padding:8px;text-align:center;color:rgba(255,255,255,0.2);font-size:11px;">未找到模型</div>'; return; }
+            
+            listEl.innerHTML = models.map(m => `<div class="search-model-item" data-id="${this.escapeHtml(m.id)}" style="padding:7px 10px;cursor:pointer;font-size:11px;color:rgba(255,255,255,0.5);border-bottom:1px solid rgba(255,255,255,0.03);">${this.escapeHtml(m.name)}</div>`).join('');
+            
+            listEl.querySelectorAll('.search-model-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    document.getElementById('builtinSearchModel').value = item.dataset.id;
+                    listEl.style.display = 'none';
+                    this.showCssSystemMessage('✅ 已选择: ' + item.dataset.id);
+                });
+            });
+        } catch(e) {
+            listEl.innerHTML = '<div style="padding:8px;text-align:center;color:rgba(255,100,100,0.5);font-size:11px;">拉取失败: ' + this.escapeHtml(e.message) + '</div>';
         }
     });
     
