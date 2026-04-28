@@ -15784,10 +15784,9 @@ _openMcpPage() {
                 <div style="padding:12px;background:rgba(255,255,255,0.03);border-radius:10px;border:1px solid rgba(255,255,255,0.04);margin-bottom:8px;">
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
                         <div style="font-size:13px;color:rgba(255,255,255,0.6);">🌤 天气查询</div>
-                        <label style="position:relative;width:40px;height:22px;cursor:pointer;">
-                            <input type="checkbox" id="builtinWeatherToggle" ${builtinSettings.weatherEnabled ? 'checked' : ''} style="opacity:0;width:0;height:0;">
-                            <span style="position:absolute;top:0;left:0;right:0;bottom:0;background:${builtinSettings.weatherEnabled ? 'rgba(240,147,43,0.5)' : 'rgba(255,255,255,0.1)'};border-radius:11px;transition:0.2s;"></span>
-                            <span style="position:absolute;top:2px;left:${builtinSettings.weatherEnabled ? '20px' : '2px'};width:18px;height:18px;background:#fff;border-radius:50%;transition:0.2s;"></span>
+                        <label class="setting-switch">
+                            <input type="checkbox" id="builtinWeatherToggle" ${builtinSettings.weatherEnabled ? 'checked' : ''}>
+                            <span class="switch-slider"></span>
                         </label>
                     </div>
                     <div style="font-size:10px;color:rgba(255,255,255,0.2);margin-bottom:8px;">使用 OpenWeatherMap API（免费注册即可）</div>
@@ -15799,10 +15798,9 @@ _openMcpPage() {
                 <div style="padding:12px;background:rgba(255,255,255,0.03);border-radius:10px;border:1px solid rgba(255,255,255,0.04);margin-bottom:8px;">
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
                         <div style="font-size:13px;color:rgba(255,255,255,0.6);">🔍 网页搜索</div>
-                        <label style="position:relative;width:40px;height:22px;cursor:pointer;">
-                            <input type="checkbox" id="builtinSearchToggle" ${builtinSettings.searchEnabled ? 'checked' : ''} style="opacity:0;width:0;height:0;">
-                            <span style="position:absolute;top:0;left:0;right:0;bottom:0;background:${builtinSettings.searchEnabled ? 'rgba(240,147,43,0.5)' : 'rgba(255,255,255,0.1)'};border-radius:11px;transition:0.2s;"></span>
-                            <span style="position:absolute;top:2px;left:${builtinSettings.searchEnabled ? '20px' : '2px'};width:18px;height:18px;background:#fff;border-radius:50%;transition:0.2s;"></span>
+                        <label class="setting-switch">
+                            <input type="checkbox" id="builtinSearchToggle" ${builtinSettings.searchEnabled ? 'checked' : ''}>
+                            <span class="switch-slider"></span>
                         </label>
                     </div>
                     <div style="font-size:10px;color:rgba(255,255,255,0.2);margin-bottom:8px;">使用AI小助手帮你搜索（复用主API或单独配置）</div>
