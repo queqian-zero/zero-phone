@@ -16143,17 +16143,8 @@ _finalizeMcpStatusPanel() {
         lines.appendChild(done);
     }
     
-    // 3秒后自动收起，显示标签
-    setTimeout(() => {
-        if (panel) panel.style.transform = 'translateY(-100%)';
-        if (tab) tab.style.display = 'block';
-    }, 3000);
-    
-    // 10秒后完全移除
-    setTimeout(() => {
-        panel?.remove();
-        tab?.remove();
-    }, 30000);
+    // 面板固定住，显示标签，用户点标签收回
+    if (tab) tab.style.display = 'block';
 }
 
 }

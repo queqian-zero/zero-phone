@@ -2,22 +2,26 @@
 
 class MCPManager {
     constructor() {
-        this.storage = new StorageManager();
         this.STORAGE_KEY_PREFIX = 'zero_phone_mcp_';
         // { serverId: { eventSource, endpoint, status, tools[] } }
         this.connections = {};
+    }
+    
+    // 获取存储实例
+    _storage() {
+        return window.chatApp?.storage || new StorageManager();
     }
 
     // ==================== 存储 ====================
 
     // 获取某个好友的MCP服务器列表
     getServers(friendCode) {
-        return this.storage.getData(this.STORAGE_KEY_PREFIX + friendCode) || [];
+        return this._storage().getData(this.STORAGE_KEY_PREFIX + friendCode) || [];
     }
 
     // 保存某个好友的MCP服务器列表
     saveServers(friendCode, servers) {
-        this.storage.saveData(this.STORAGE_KEY_PREFIX + friendCode, servers);
+        this._storage().saveData(this.STORAGE_KEY_PREFIX + friendCode, servers);
     }
 
     // 添加MCP服务器
