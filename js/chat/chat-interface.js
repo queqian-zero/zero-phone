@@ -3075,6 +3075,27 @@ ${archiveListText}
                 }
             }
             
+            // ====== 内置工具注入 ======
+            const bt = this.settings.builtinTools || {};
+            const builtinToolsList = [];
+            if (bt.weatherEnabled && bt.weatherApiKey) {
+                builtinToolsList.push('weather：查询天气（参数：{"city":"城市名英文","lang":"zh_cn"}）');
+            }
+            if (bt.searchEnabled) {
+                builtinToolsList.push('search：搜索网络信息（参数：{"query":"搜索内容"}）');
+            }
+            if (builtinToolsList.length > 0) {
+                const hasToolCall = systemPrompt.includes('【MCP工具】');
+                if (!hasToolCall) {
+                    // 没有MCP工具时，独立加工具说明
+                    systemPrompt += '\n\n【工具】你可以通过以下工具获取信息。需要使用工具时，在回复中加入 [TOOL_CALL:工具名:JSON参数] 标签。';
+                    systemPrompt += '\n⚠️ JSON参数必须是合法JSON对象。一次可调多个工具。调用工具时不要同时输出给用户看的文字。';
+                }
+                systemPrompt += '\n内置工具：';
+                builtinToolsList.forEach(t => { systemPrompt += '\n  - ' + t; });
+                systemPrompt += '\n调用示例：[TOOL_CALL:weather:{"city":"Beijing","lang":"zh_cn"}]';
+            }
+            
             // 记录本轮token分布（按字符估算）
             const personaChars = (this.currentFriend?.persona || '').length;
             const memoryChars = coreMemories.reduce((s, m) => s + (m.content?.length || 0), 0)
@@ -3117,25 +3138,27 @@ ${archiveListText}
                 for (const call of toolCalls) {
                     this._addMcpStatusLine(`🔧 正在调用 ${call.toolName}...`);
                     
-                    const serverId = window.mcpManager.findServerForTool(this.currentFriendCode, call.toolName);
-                    if (!serverId) {
-                        const errMsg = `工具 ${call.toolName} 未找到对应的MCP服务器`;
-                        this._updateMcpStatusLine(call.toolName, `❌ ${errMsg}`);
-                        toolResults.push({ tool: call.toolName, error: errMsg });
-                        continue;
-                    }
-                    
                     try {
-                        // 确保连接
-                        const connected = await window.mcpManager.ensureConnected(this.currentFriendCode, serverId);
-                        if (!connected) {
-                            throw new Error('MCP服务器连接失败');
+                        // 优先检查内置工具
+                        const builtinResult = await this._executeBuiltinTool(call.toolName, call.args);
+                        if (builtinResult !== null) {
+                            this._updateMcpStatusLine(call.toolName, `✅ ${call.toolName} 完成`);
+                            toolResults.push({ tool: call.toolName, result: builtinResult });
+                            continue;
                         }
+                        
+                        // 非内置工具 → MCP
+                        const serverId = window.mcpManager?.findServerForTool(this.currentFriendCode, call.toolName);
+                        if (!serverId) {
+                            throw new Error(`工具 ${call.toolName} 未找到（不是内置工具，也没有对应的MCP服务器）`);
+                        }
+                        
+                        const connected = await window.mcpManager.ensureConnected(this.currentFriendCode, serverId);
+                        if (!connected) throw new Error('MCP服务器连接失败');
                         
                         const callResult = await window.mcpManager.callTool(serverId, call.toolName, call.args);
                         this._updateMcpStatusLine(call.toolName, `✅ ${call.toolName} 完成`);
                         
-                        // 提取文本内容
                         let resultText = '';
                         if (callResult && callResult.content) {
                             resultText = callResult.content.map(c => c.text || JSON.stringify(c)).join('\n');
@@ -3144,8 +3167,8 @@ ${archiveListText}
                         }
                         toolResults.push({ tool: call.toolName, result: resultText });
                     } catch (e) {
-                        console.error(`❌ [MCP] 调用 ${call.toolName} 失败:`, e);
-                        this._updateMcpStatusLine(call.toolName, `❌ ${call.toolName} 失败: ${e.message}`);
+                        console.error(`❌ 调用 ${call.toolName} 失败:`, e);
+                        this._updateMcpStatusLine(call.toolName, `❌ ${call.toolName}: ${e.message}`);
                         toolResults.push({ tool: call.toolName, error: e.message });
                     }
                 }
@@ -15728,6 +15751,7 @@ _openMcpPage() {
     const friendCode = this.currentFriendCode;
     const friendName = this.currentFriend?.nickname || this.currentFriend?.name || 'TA';
     const servers = window.mcpManager?.getServers(friendCode) || [];
+    const builtinSettings = this.settings.builtinTools || {};
     
     const page = document.createElement('div');
     page.id = 'mcpToolsPage';
@@ -15736,109 +15760,210 @@ _openMcpPage() {
     page.innerHTML = `
         <div style="display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid rgba(255,220,150,0.06);flex-shrink:0;">
             <button id="mcpBack" style="background:none;border:none;color:rgba(255,220,170,0.5);font-size:20px;cursor:pointer;padding:4px 8px;">←</button>
-            <div style="flex:1;text-align:center;font-size:15px;color:rgba(255,220,170,0.7);">MCP 工具</div>
+            <div style="flex:1;text-align:center;font-size:15px;color:rgba(255,220,170,0.7);">AI 工具箱</div>
             <button id="mcpGuideBtn" style="background:none;border:none;color:rgba(100,200,255,0.5);font-size:13px;cursor:pointer;padding:4px 8px;">📖 指导</button>
         </div>
         
-        <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:20px;">
-            
-            <div style="font-size:11px;color:rgba(255,255,255,0.25);line-height:1.6;margin-bottom:16px;">
-                为 <span style="color:rgba(255,220,170,0.5);">${this.escapeHtml(friendName)}</span> 配置MCP服务器。启用后，AI聊天时可以调用外部工具。
+        <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;">
+            <div style="font-size:11px;color:rgba(255,255,255,0.2);line-height:1.6;margin-bottom:16px;">
+                为 <span style="color:rgba(255,220,170,0.5);">${this.escapeHtml(friendName)}</span> 配置工具。AI聊天时可以自主调用这些工具。
             </div>
             
-            <!-- 添加服务器 -->
-            <div style="margin-bottom:24px;padding:14px;background:rgba(255,255,255,0.03);border-radius:12px;border:1px solid rgba(255,255,255,0.04);">
-                <div style="font-size:13px;color:rgba(255,220,170,0.5);margin-bottom:12px;">添加 MCP 服务器</div>
-                <div style="display:flex;flex-direction:column;gap:10px;">
-                    <div>
-                        <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-bottom:4px;">名称</div>
-                        <input id="mcpAddName" type="text" placeholder="例：AI社区" style="width:100%;box-sizing:border-box;padding:8px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:rgba(255,255,255,0.6);font-size:13px;outline:none;">
+            <!-- ========== 模块1：内置工具（小助手） ========== -->
+            <div style="margin-bottom:20px;">
+                <div style="font-size:14px;color:rgba(255,220,170,0.6);margin-bottom:8px;">🛠 内置工具</div>
+                <div style="padding:10px;background:rgba(100,200,100,0.04);border-radius:8px;border-left:2px solid rgba(100,200,100,0.2);margin-bottom:12px;">
+                    <div style="font-size:10px;color:rgba(100,200,100,0.5);line-height:1.6;">
+                        ✅ 无需外部服务器，直接调用API<br>
+                        ✅ 无CORS限制，稳定可靠<br>
+                        ⚠️ 需要配置对应的API Key（免费额度通常够用）
                     </div>
-                    <div>
-                        <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-bottom:4px;">SSE 地址</div>
-                        <input id="mcpAddUrl" type="text" placeholder="例：https://xxx.com/mcp?token=xxx" style="width:100%;box-sizing:border-box;padding:8px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:rgba(255,255,255,0.6);font-size:13px;outline:none;">
-                    </div>
-                    <button id="mcpAddBtn" style="padding:10px;border:none;border-radius:8px;background:rgba(240,147,43,0.15);color:rgba(240,147,43,0.8);font-size:13px;cursor:pointer;transition:all 0.2s;">🔌 连接并添加</button>
-                    <div id="mcpAddError" style="display:none;margin-top:8px;padding:8px 10px;background:rgba(255,60,60,0.08);border-radius:8px;border-left:2px solid rgba(255,100,100,0.3);font-size:11px;color:rgba(255,100,100,0.6);line-height:1.5;word-break:break-all;"></div>
                 </div>
+                
+                <!-- 天气 -->
+                <div style="padding:12px;background:rgba(255,255,255,0.03);border-radius:10px;border:1px solid rgba(255,255,255,0.04);margin-bottom:8px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                        <div style="font-size:13px;color:rgba(255,255,255,0.6);">🌤 天气查询</div>
+                        <label style="position:relative;width:40px;height:22px;cursor:pointer;">
+                            <input type="checkbox" id="builtinWeatherToggle" ${builtinSettings.weatherEnabled ? 'checked' : ''} style="opacity:0;width:0;height:0;">
+                            <span style="position:absolute;top:0;left:0;right:0;bottom:0;background:${builtinSettings.weatherEnabled ? 'rgba(240,147,43,0.5)' : 'rgba(255,255,255,0.1)'};border-radius:11px;transition:0.2s;"></span>
+                            <span style="position:absolute;top:2px;left:${builtinSettings.weatherEnabled ? '20px' : '2px'};width:18px;height:18px;background:#fff;border-radius:50%;transition:0.2s;"></span>
+                        </label>
+                    </div>
+                    <div style="font-size:10px;color:rgba(255,255,255,0.2);margin-bottom:8px;">使用 OpenWeatherMap API（免费注册即可）</div>
+                    <input id="builtinWeatherKey" type="password" placeholder="OpenWeatherMap API Key" value="${this.escapeHtml(builtinSettings.weatherApiKey || '')}" style="width:100%;box-sizing:border-box;padding:7px 10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:rgba(255,255,255,0.5);font-size:12px;outline:none;">
+                    <div style="font-size:9px;color:rgba(255,255,255,0.15);margin-top:4px;">申请地址：openweathermap.org/api → 免费注册获取Key</div>
+                </div>
+                
+                <!-- 搜索 -->
+                <div style="padding:12px;background:rgba(255,255,255,0.03);border-radius:10px;border:1px solid rgba(255,255,255,0.04);margin-bottom:8px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                        <div style="font-size:13px;color:rgba(255,255,255,0.6);">🔍 网页搜索</div>
+                        <label style="position:relative;width:40px;height:22px;cursor:pointer;">
+                            <input type="checkbox" id="builtinSearchToggle" ${builtinSettings.searchEnabled ? 'checked' : ''} style="opacity:0;width:0;height:0;">
+                            <span style="position:absolute;top:0;left:0;right:0;bottom:0;background:${builtinSettings.searchEnabled ? 'rgba(240,147,43,0.5)' : 'rgba(255,255,255,0.1)'};border-radius:11px;transition:0.2s;"></span>
+                            <span style="position:absolute;top:2px;left:${builtinSettings.searchEnabled ? '20px' : '2px'};width:18px;height:18px;background:#fff;border-radius:50%;transition:0.2s;"></span>
+                        </label>
+                    </div>
+                    <div style="font-size:10px;color:rgba(255,255,255,0.2);margin-bottom:8px;">使用AI小助手帮你搜索（复用主API或单独配置）</div>
+                    <select id="builtinSearchMode" style="width:100%;box-sizing:border-box;padding:7px 10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:rgba(255,255,255,0.5);font-size:12px;outline:none;">
+                        <option value="main" ${(builtinSettings.searchMode || 'main') === 'main' ? 'selected' : ''}>使用主API搜索（消耗主API token）</option>
+                        <option value="custom" ${builtinSettings.searchMode === 'custom' ? 'selected' : ''}>使用独立API搜索</option>
+                    </select>
+                    <div id="builtinSearchCustom" style="display:${builtinSettings.searchMode === 'custom' ? 'flex' : 'none'};flex-direction:column;gap:6px;margin-top:8px;">
+                        <input id="builtinSearchEndpoint" type="text" placeholder="API地址" value="${this.escapeHtml(builtinSettings.searchEndpoint || '')}" style="width:100%;box-sizing:border-box;padding:7px 10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:rgba(255,255,255,0.5);font-size:12px;outline:none;">
+                        <input id="builtinSearchApiKey" type="password" placeholder="API Key" value="${this.escapeHtml(builtinSettings.searchApiKey || '')}" style="width:100%;box-sizing:border-box;padding:7px 10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:rgba(255,255,255,0.5);font-size:12px;outline:none;">
+                        <input id="builtinSearchModel" type="text" placeholder="模型名" value="${this.escapeHtml(builtinSettings.searchModel || '')}" style="width:100%;box-sizing:border-box;padding:7px 10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:rgba(255,255,255,0.5);font-size:12px;outline:none;">
+                    </div>
+                </div>
+                
+                <button id="builtinSaveBtn" style="width:100%;padding:10px;border:none;border-radius:8px;background:rgba(240,147,43,0.12);color:rgba(240,147,43,0.7);font-size:13px;cursor:pointer;">保存内置工具设置</button>
             </div>
             
-            <!-- 已添加的服务器列表 -->
-            <div id="mcpServerList" style="display:flex;flex-direction:column;gap:12px;">
-                ${servers.length === 0 ? '<div style="text-align:center;color:rgba(255,255,255,0.15);font-size:13px;padding:30px 0;">暂无 MCP 服务器</div>' : ''}
+            <!-- ========== 模块2：MCP 直连 ========== -->
+            <div style="margin-bottom:20px;">
+                <div style="font-size:14px;color:rgba(255,220,170,0.6);margin-bottom:8px;">🔌 MCP 直连</div>
+                <div style="padding:10px;background:rgba(100,200,255,0.04);border-radius:8px;border-left:2px solid rgba(100,200,255,0.2);margin-bottom:12px;">
+                    <div style="font-size:10px;color:rgba(100,200,255,0.5);line-height:1.6;">
+                        ✅ 标准MCP协议，支持任何SSE类型服务<br>
+                        ✅ 功能丰富（社区、邮箱等）<br>
+                        ❌ 受浏览器CORS限制，部分服务器无法连接<br>
+                        💡 适合：服务器已开启CORS、或内网环境
+                    </div>
+                </div>
+                
+                <div style="padding:12px;background:rgba(255,255,255,0.03);border-radius:10px;border:1px solid rgba(255,255,255,0.04);margin-bottom:8px;">
+                    <div style="display:flex;flex-direction:column;gap:8px;">
+                        <input id="mcpAddName" type="text" placeholder="服务器名称" style="width:100%;box-sizing:border-box;padding:7px 10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:rgba(255,255,255,0.5);font-size:12px;outline:none;">
+                        <input id="mcpAddUrl" type="text" placeholder="SSE地址（https://...）" style="width:100%;box-sizing:border-box;padding:7px 10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:rgba(255,255,255,0.5);font-size:12px;outline:none;">
+                        <button id="mcpAddBtn" style="padding:9px;border:none;border-radius:8px;background:rgba(100,200,255,0.1);color:rgba(100,200,255,0.7);font-size:12px;cursor:pointer;">🔌 连接并添加</button>
+                        <div id="mcpAddError" style="display:none;padding:6px 8px;background:rgba(255,60,60,0.08);border-radius:6px;border-left:2px solid rgba(255,100,100,0.3);font-size:10px;color:rgba(255,100,100,0.6);line-height:1.4;word-break:break-all;"></div>
+                    </div>
+                </div>
+                <div id="mcpServerList" style="display:flex;flex-direction:column;gap:8px;"></div>
+            </div>
+            
+            <!-- ========== 模块3：MCP 代理 ========== -->
+            <div style="margin-bottom:20px;">
+                <div style="font-size:14px;color:rgba(255,220,170,0.6);margin-bottom:8px;">🌐 MCP 代理模式</div>
+                <div style="padding:10px;background:rgba(255,200,50,0.04);border-radius:8px;border-left:2px solid rgba(255,200,50,0.2);margin-bottom:12px;">
+                    <div style="font-size:10px;color:rgba(255,200,50,0.5);line-height:1.6;">
+                        ✅ 通过CORS代理中转，绕过浏览器限制<br>
+                        ✅ 可连接任意MCP服务器<br>
+                        ⚠️ 公共代理可能不稳定<br>
+                        ❌ 数据经过第三方代理，有隐私风险<br>
+                        💡 适合：测试、或使用自建代理
+                    </div>
+                </div>
+                
+                <div style="padding:12px;background:rgba(255,255,255,0.03);border-radius:10px;border:1px solid rgba(255,255,255,0.04);">
+                    <div style="display:flex;flex-direction:column;gap:8px;">
+                        <div>
+                            <div style="font-size:10px;color:rgba(255,255,255,0.25);margin-bottom:4px;">代理地址前缀</div>
+                            <input id="mcpProxyUrl" type="text" placeholder="例：https://corsproxy.io/?" value="${this.escapeHtml(this.settings.mcpProxyUrl || '')}" style="width:100%;box-sizing:border-box;padding:7px 10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:rgba(255,255,255,0.5);font-size:12px;outline:none;">
+                            <div style="font-size:9px;color:rgba(255,255,255,0.15);margin-top:3px;">系统会在MCP地址前加上此前缀来转发请求</div>
+                        </div>
+                        <input id="mcpProxyName" type="text" placeholder="服务器名称" style="width:100%;box-sizing:border-box;padding:7px 10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:rgba(255,255,255,0.5);font-size:12px;outline:none;">
+                        <input id="mcpProxyTarget" type="text" placeholder="目标MCP地址（https://...）" style="width:100%;box-sizing:border-box;padding:7px 10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:rgba(255,255,255,0.5);font-size:12px;outline:none;">
+                        <button id="mcpProxyAddBtn" style="padding:9px;border:none;border-radius:8px;background:rgba(255,200,50,0.1);color:rgba(255,200,50,0.7);font-size:12px;cursor:pointer;">🌐 通过代理连接</button>
+                        <div id="mcpProxyError" style="display:none;padding:6px 8px;background:rgba(255,60,60,0.08);border-radius:6px;border-left:2px solid rgba(255,100,100,0.3);font-size:10px;color:rgba(255,100,100,0.6);line-height:1.4;word-break:break-all;"></div>
+                    </div>
+                </div>
             </div>
         </div>
     `;
     
     document.body.appendChild(page);
     
-    // 渲染已有服务器
-    if (servers.length > 0) {
-        this._renderMcpServerList(friendCode);
-    }
+    // 渲染已有MCP服务器
+    if (servers.length > 0) this._renderMcpServerList(friendCode);
     
-    // 返回按钮
-    document.getElementById('mcpBack').addEventListener('click', () => {
-        window.mcpManager?.disconnectAll();
-        page.remove();
+    // 返回
+    document.getElementById('mcpBack').addEventListener('click', () => { window.mcpManager?.disconnectAll(); page.remove(); });
+    
+    // 指导
+    document.getElementById('mcpGuideBtn').addEventListener('click', () => this._openMcpGuide());
+    
+    // ===== 内置工具保存 =====
+    document.getElementById('builtinSaveBtn').addEventListener('click', () => {
+        this.settings.builtinTools = {
+            weatherEnabled: document.getElementById('builtinWeatherToggle').checked,
+            weatherApiKey: document.getElementById('builtinWeatherKey').value.trim(),
+            searchEnabled: document.getElementById('builtinSearchToggle').checked,
+            searchMode: document.getElementById('builtinSearchMode').value,
+            searchEndpoint: document.getElementById('builtinSearchEndpoint')?.value.trim() || '',
+            searchApiKey: document.getElementById('builtinSearchApiKey')?.value.trim() || '',
+            searchModel: document.getElementById('builtinSearchModel')?.value.trim() || ''
+        };
+        this.saveSettings();
+        this.showCssSystemMessage('✅ 内置工具设置已保存');
     });
     
-    // 使用指导
-    document.getElementById('mcpGuideBtn').addEventListener('click', () => {
-        this._openMcpGuide();
+    // 搜索模式切换
+    document.getElementById('builtinSearchMode').addEventListener('change', (e) => {
+        document.getElementById('builtinSearchCustom').style.display = e.target.value === 'custom' ? 'flex' : 'none';
     });
     
-    // 添加服务器
+    // ===== MCP 直连 =====
     document.getElementById('mcpAddBtn').addEventListener('click', async () => {
         const name = document.getElementById('mcpAddName').value.trim();
         const url = document.getElementById('mcpAddUrl').value.trim();
-        if (!name || !url) {
-            alert('请填写名称和SSE地址');
-            return;
-        }
+        if (!name || !url) { alert('请填写名称和SSE地址'); return; }
+        if (!url.startsWith('http://') && !url.startsWith('https://')) { alert('地址必须以 http:// 或 https:// 开头'); return; }
         
         const btn = document.getElementById('mcpAddBtn');
-        
-        // URL格式校验
-        if (!url.startsWith('http://') && !url.startsWith('https://')) {
-            alert('地址格式错误：必须以 http:// 或 https:// 开头');
-            return;
-        }
-        
-        btn.textContent = '⏳ 连接中...';
-        btn.disabled = true;
         const errEl = document.getElementById('mcpAddError');
+        btn.textContent = '⏳ 连接中...'; btn.disabled = true;
         if (errEl) errEl.style.display = 'none';
         
         try {
             const serverId = window.mcpManager.addServer(friendCode, name, url);
             const tools = await window.mcpManager.connect(friendCode, serverId);
-            
-            btn.textContent = `✅ 成功！发现 ${tools.length} 个工具`;
+            btn.textContent = `✅ 发现 ${tools.length} 个工具`;
             document.getElementById('mcpAddName').value = '';
             document.getElementById('mcpAddUrl').value = '';
-            
             this._renderMcpServerList(friendCode);
-            
-            setTimeout(() => {
-                btn.textContent = '🔌 连接并添加';
-                btn.disabled = false;
-            }, 2000);
+            setTimeout(() => { btn.textContent = '🔌 连接并添加'; btn.disabled = false; }, 2000);
         } catch (e) {
-            btn.textContent = '🔌 连接并添加';
-            btn.disabled = false;
-            const errEl = document.getElementById('mcpAddError');
-            if (errEl) {
-                errEl.style.display = 'block';
-                errEl.textContent = '❌ ' + e.message;
-            }
-            console.error('❌ [MCP] 连接失败:', e);
-            // 如果添加了但连接失败，删掉
-            const servers = window.mcpManager.getServers(friendCode);
-            const last = servers[servers.length - 1];
-            if (last && last.tools.length === 0) {
-                window.mcpManager.removeServer(friendCode, last.id);
-            }
+            btn.textContent = '🔌 连接并添加'; btn.disabled = false;
+            if (errEl) { errEl.style.display = 'block'; errEl.textContent = '❌ ' + e.message; }
+            const srvs = window.mcpManager.getServers(friendCode);
+            const last = srvs[srvs.length - 1];
+            if (last && last.tools.length === 0) window.mcpManager.removeServer(friendCode, last.id);
+        }
+    });
+    
+    // ===== MCP 代理 =====
+    document.getElementById('mcpProxyAddBtn').addEventListener('click', async () => {
+        const proxy = document.getElementById('mcpProxyUrl').value.trim();
+        const name = document.getElementById('mcpProxyName').value.trim();
+        const target = document.getElementById('mcpProxyTarget').value.trim();
+        if (!proxy || !name || !target) { alert('请填写代理地址、名称和目标地址'); return; }
+        
+        // 保存代理地址
+        this.settings.mcpProxyUrl = proxy;
+        this.saveSettings();
+        
+        const fullUrl = proxy + encodeURIComponent(target);
+        const btn = document.getElementById('mcpProxyAddBtn');
+        const errEl = document.getElementById('mcpProxyError');
+        btn.textContent = '⏳ 连接中...'; btn.disabled = true;
+        if (errEl) errEl.style.display = 'none';
+        
+        try {
+            const serverId = window.mcpManager.addServer(friendCode, name + ' (代理)', fullUrl);
+            const tools = await window.mcpManager.connect(friendCode, serverId);
+            btn.textContent = `✅ 发现 ${tools.length} 个工具`;
+            document.getElementById('mcpProxyName').value = '';
+            document.getElementById('mcpProxyTarget').value = '';
+            this._renderMcpServerList(friendCode);
+            setTimeout(() => { btn.textContent = '🌐 通过代理连接'; btn.disabled = false; }, 2000);
+        } catch (e) {
+            btn.textContent = '🌐 通过代理连接'; btn.disabled = false;
+            if (errEl) { errEl.style.display = 'block'; errEl.textContent = '❌ ' + e.message; }
+            const srvs = window.mcpManager.getServers(friendCode);
+            const last = srvs[srvs.length - 1];
+            if (last && last.tools.length === 0) window.mcpManager.removeServer(friendCode, last.id);
         }
     });
 }
@@ -15935,70 +16060,74 @@ _openMcpGuide() {
     page.innerHTML = `
         <div style="display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid rgba(255,220,150,0.06);flex-shrink:0;">
             <button id="mcpGuideBack" style="background:none;border:none;color:rgba(255,220,170,0.5);font-size:20px;cursor:pointer;padding:4px 8px;">←</button>
-            <div style="flex:1;text-align:center;font-size:15px;color:rgba(255,220,170,0.7);">📖 MCP 使用指导</div>
+            <div style="flex:1;text-align:center;font-size:15px;color:rgba(255,220,170,0.7);">📖 工具使用指导</div>
             <div style="width:32px;"></div>
         </div>
         
         <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:20px;">
             
-            <!-- 什么是MCP -->
+            <!-- 总览 -->
             <div style="margin-bottom:24px;">
-                <div style="font-size:14px;color:rgba(255,220,170,0.7);margin-bottom:10px;">🌐 什么是 MCP？</div>
+                <div style="font-size:14px;color:rgba(255,220,170,0.7);margin-bottom:10px;">🎯 工具系统总览</div>
                 <div style="font-size:12px;color:rgba(255,255,255,0.35);line-height:1.8;">
-                    MCP（Model Context Protocol）是一个让AI模型与外部工具交互的标准协议。
-                    通过MCP，你的AI好友可以搜索网络、查天气、发邮件、访问社区等——就像人类使用App一样。
+                    AI工具箱有三种接入方式，你可以根据需求混合使用：
+                </div>
+            </div>
+            
+            <!-- 内置工具 -->
+            <div style="margin-bottom:24px;">
+                <div style="font-size:14px;color:rgba(100,200,100,0.7);margin-bottom:10px;">🛠 内置工具（推荐）</div>
+                <div style="font-size:12px;color:rgba(255,255,255,0.35);line-height:1.8;">
+                    直接在浏览器里调用外部API，不经过任何中间服务器。
                     <br><br>
-                    每个MCP服务器提供一组工具，AI在聊天中会自动判断什么时候该用哪个工具。
+                    <b style="color:rgba(255,255,255,0.5);">天气查询</b><br>
+                    1. 去 <span style="color:rgba(240,147,43,0.6);">openweathermap.org</span> 免费注册<br>
+                    2. 在 API keys 页面获取你的 Key<br>
+                    3. 填到内置工具→天气查询的 Key 栏里<br>
+                    4. AI就可以用 [TOOL_CALL:weather:{"city":"Beijing"}] 查天气了
+                    <br><br>
+                    <b style="color:rgba(255,255,255,0.5);">网页搜索</b><br>
+                    使用AI小助手帮你搜索（跟语音小助手原理一样）。可以用主API，也可以单独配一个便宜的API来搜。
+                    <br><br>
+                    <b style="color:rgba(100,200,100,0.4);">优点</b>：稳定、无CORS限制、响应快<br>
+                    <b style="color:rgba(255,200,50,0.4);">缺点</b>：功能有限（目前只有天气+搜索），需要自己配Key
                 </div>
             </div>
             
-            <!-- 怎么添加 -->
+            <!-- MCP 直连 -->
             <div style="margin-bottom:24px;">
-                <div style="font-size:14px;color:rgba(255,220,170,0.7);margin-bottom:10px;">🔧 怎么添加服务器？</div>
+                <div style="font-size:14px;color:rgba(100,200,255,0.7);margin-bottom:10px;">🔌 MCP 直连</div>
                 <div style="font-size:12px;color:rgba(255,255,255,0.35);line-height:1.8;">
-                    1. 在MCP工具页面点击「连接并添加」<br>
-                    2. 填写服务器名称（随便起）<br>
-                    3. 填写SSE地址（由服务提供方给你的URL）<br>
-                    4. 点击连接，系统会自动获取可用工具列表<br>
-                    5. 连接成功后即可使用，每个服务器可独立开关<br><br>
-                    💡 每个AI好友的MCP配置是独立的，你可以给不同角色配不同的工具。
+                    MCP（Model Context Protocol）是AI工具的标准协议。通过SSE连接到MCP服务器，AI可以使用服务器提供的任何工具。
+                    <br><br>
+                    <b style="color:rgba(255,255,255,0.5);">使用方法</b><br>
+                    1. 获取MCP服务器的SSE地址（由服务提供方给你）<br>
+                    2. 填写名称和地址，点击连接<br>
+                    3. 连接成功后会显示可用工具列表<br>
+                    4. AI聊天时自动注入工具，AI会自主决定何时使用
+                    <br><br>
+                    <b style="color:rgba(100,200,100,0.4);">优点</b>：功能丰富（社区、邮箱、日历等）、标准协议<br>
+                    <b style="color:rgba(255,100,100,0.4);">缺点</b>：受浏览器CORS限制，很多服务器连不上
                 </div>
             </div>
             
-            <!-- 常见MCP服务 -->
+            <!-- MCP 代理 -->
             <div style="margin-bottom:24px;">
-                <div style="font-size:14px;color:rgba(255,220,170,0.7);margin-bottom:10px;">📋 常见 MCP 服务推荐</div>
-                
-                <div style="display:flex;flex-direction:column;gap:10px;">
-                    <div style="padding:12px;background:rgba(255,255,255,0.03);border-radius:10px;border:1px solid rgba(255,255,255,0.04);">
-                        <div style="font-size:13px;color:rgba(100,200,255,0.6);margin-bottom:4px;">🏠 AI 社区（Rhysen Community）</div>
-                        <div style="font-size:11px;color:rgba(255,255,255,0.3);line-height:1.6;">
-                            AI角色可以在社区里发帖、浏览、互动。<br>
-                            地址格式：<span style="color:rgba(240,147,43,0.6);">https://rcommunity.rhysen.love/mcp?token=你的token</span>
-                        </div>
-                    </div>
-                    
-                    <div style="padding:12px;background:rgba(255,255,255,0.03);border-radius:10px;border:1px solid rgba(255,255,255,0.04);">
-                        <div style="font-size:13px;color:rgba(100,200,255,0.6);margin-bottom:4px;">🔍 搜索服务</div>
-                        <div style="font-size:11px;color:rgba(255,255,255,0.3);line-height:1.6;">
-                            让AI能搜索网络获取实时信息。<br>
-                            常见提供方：Tavily、SerpAPI 等
-                        </div>
-                    </div>
-                    
-                    <div style="padding:12px;background:rgba(255,255,255,0.03);border-radius:10px;border:1px solid rgba(255,255,255,0.04);">
-                        <div style="font-size:13px;color:rgba(100,200,255,0.6);margin-bottom:4px;">🌤 天气服务</div>
-                        <div style="font-size:11px;color:rgba(255,255,255,0.3);line-height:1.6;">
-                            查询实时天气，让AI能告诉你天气情况。
-                        </div>
-                    </div>
-                    
-                    <div style="padding:12px;background:rgba(255,255,255,0.03);border-radius:10px;border:1px solid rgba(255,255,255,0.04);">
-                        <div style="font-size:13px;color:rgba(100,200,255,0.6);margin-bottom:4px;">📧 邮箱服务</div>
-                        <div style="font-size:11px;color:rgba(255,255,255,0.3);line-height:1.6;">
-                            让AI能发送、查收邮件。
-                        </div>
-                    </div>
+                <div style="font-size:14px;color:rgba(255,200,50,0.7);margin-bottom:10px;">🌐 MCP 代理模式</div>
+                <div style="font-size:12px;color:rgba(255,255,255,0.35);line-height:1.8;">
+                    通过CORS代理服务器中转请求，绕过浏览器的跨域限制。
+                    <br><br>
+                    <b style="color:rgba(255,255,255,0.5);">使用方法</b><br>
+                    1. 填写代理地址前缀（例：https://corsproxy.io/?）<br>
+                    2. 填写目标MCP服务器的真实地址<br>
+                    3. 系统会自动拼接为：代理+目标地址<br><br>
+                    公共代理推荐：<br>
+                    · <span style="color:rgba(240,147,43,0.5);">https://corsproxy.io/?</span><br>
+                    · <span style="color:rgba(240,147,43,0.5);">https://api.allorigins.win/raw?url=</span>
+                    <br><br>
+                    <b style="color:rgba(100,200,100,0.4);">优点</b>：可连接任意MCP服务器<br>
+                    <b style="color:rgba(255,100,100,0.4);">缺点</b>：公共代理不稳定、数据经过第三方有隐私风险<br>
+                    <b style="color:rgba(100,200,255,0.4);">建议</b>：有条件的话自建代理最安全
                 </div>
             </div>
             
@@ -16007,27 +16136,27 @@ _openMcpGuide() {
                 <div style="font-size:14px;color:rgba(255,220,170,0.7);margin-bottom:10px;">❓ 常见问题</div>
                 <div style="display:flex;flex-direction:column;gap:12px;">
                     <div>
-                        <div style="font-size:12px;color:rgba(255,220,170,0.5);">Q：连接失败怎么办？</div>
-                        <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:4px;line-height:1.6;">
-                            检查SSE地址是否正确、网络是否通畅。有些服务需要token认证，确保URL中包含了正确的token。
-                        </div>
-                    </div>
-                    <div>
-                        <div style="font-size:12px;color:rgba(255,220,170,0.5);">Q：会增加费用吗？</div>
-                        <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:4px;line-height:1.6;">
-                            工具调用需要额外的API调用（AI看到工具结果后需要再次回复），会多消耗一些token。但工具名和描述的注入很轻量。
-                        </div>
-                    </div>
-                    <div>
                         <div style="font-size:12px;color:rgba(255,220,170,0.5);">Q：AI不调用工具怎么办？</div>
                         <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:4px;line-height:1.6;">
-                            确保服务器已启用（开关打开）且工具列表已获取。你可以在聊天中提示AI使用某个工具，例如"帮我在社区发个帖子"。
+                            确保工具已开启并配置好。可以直接跟AI说"帮我查一下北京天气"来触发。
                         </div>
                     </div>
                     <div>
-                        <div style="font-size:12px;color:rgba(255,220,170,0.5);">Q：数据安全吗？</div>
+                        <div style="font-size:12px;color:rgba(255,220,170,0.5);">Q：工具调用会消耗多少token？</div>
                         <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:4px;line-height:1.6;">
-                            MCP服务器的数据直接从你的浏览器发出，不经过zero-phone的服务器。请只使用你信任的MCP服务。
+                            每次工具调用需要额外1-2轮API调用。天气查询结果很短，几乎不消耗额外token。搜索结果较长，会多消耗一些。
+                        </div>
+                    </div>
+                    <div>
+                        <div style="font-size:12px;color:rgba(255,220,170,0.5);">Q：每个角色的工具配置是独立的吗？</div>
+                        <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:4px;line-height:1.6;">
+                            内置工具是全局共享的（所有角色都能用）。MCP服务器是每个角色独立配置的。
+                        </div>
+                    </div>
+                    <div>
+                        <div style="font-size:12px;color:rgba(255,220,170,0.5);">Q：OpenWeatherMap的Key怎么获取？</div>
+                        <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:4px;line-height:1.6;">
+                            访问 openweathermap.org → 注册账号（免费）→ 登录后进入 API keys 页面 → 复制你的Key。免费额度每天1000次查询，完全够用。
                         </div>
                     </div>
                 </div>
@@ -16036,10 +16165,103 @@ _openMcpGuide() {
     `;
     
     document.body.appendChild(page);
+    document.getElementById('mcpGuideBack').addEventListener('click', () => page.remove());
+}
+
+// ==================== 内置工具执行 ====================
+
+// 执行内置工具（返回 null 表示非内置工具）
+async _executeBuiltinTool(toolName, args) {
+    const bt = this.settings.builtinTools || {};
     
-    document.getElementById('mcpGuideBack').addEventListener('click', () => {
-        page.remove();
-    });
+    if (toolName === 'weather' && bt.weatherEnabled && bt.weatherApiKey) {
+        return await this._builtinWeather(args, bt.weatherApiKey);
+    }
+    if (toolName === 'search' && bt.searchEnabled) {
+        return await this._builtinSearch(args, bt);
+    }
+    
+    return null; // 非内置工具
+}
+
+// 内置天气查询（OpenWeatherMap）
+async _builtinWeather(args, apiKey) {
+    const city = args.city || args.q || '北京';
+    const lang = args.lang || 'zh_cn';
+    const units = args.units || 'metric';
+    
+    console.log('🌤 [内置] 查询天气:', city);
+    
+    const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&appid=${apiKey}&units=${units}&lang=${lang}`;
+    const resp = await fetch(url);
+    
+    if (!resp.ok) {
+        const err = await resp.text();
+        throw new Error(`天气API错误 (${resp.status}): ${err.substring(0, 100)}`);
+    }
+    
+    const data = await resp.json();
+    
+    // 格式化为可读文本
+    const weather = data.weather?.[0]?.description || '未知';
+    const temp = data.main?.temp;
+    const feelsLike = data.main?.feels_like;
+    const humidity = data.main?.humidity;
+    const wind = data.wind?.speed;
+    const cityName = data.name;
+    
+    return `${cityName}天气：${weather}，温度${temp}°C（体感${feelsLike}°C），湿度${humidity}%，风速${wind}m/s`;
+}
+
+// 内置搜索（通过AI小助手搜索）
+async _builtinSearch(args, bt) {
+    const query = args.query || args.q || '';
+    if (!query) throw new Error('搜索内容不能为空');
+    
+    console.log('🔍 [内置] 搜索:', query);
+    
+    // 确定用哪个API
+    let endpoint, apiKey, model;
+    if (bt.searchMode === 'custom' && bt.searchEndpoint) {
+        endpoint = bt.searchEndpoint;
+        apiKey = bt.searchApiKey;
+        model = bt.searchModel;
+    } else {
+        // 用主API
+        const config = this.apiManager.getCurrentConfig();
+        endpoint = config.endpoint;
+        apiKey = config.apiKey;
+        model = config.model;
+    }
+    
+    if (!endpoint || !apiKey || !model) throw new Error('搜索API未配置');
+    
+    // 构建搜索请求（让AI帮忙搜索）
+    let url = endpoint.replace(/\/$/, '');
+    if (!url.includes('/chat/completions')) {
+        url = url.replace(/\/v1\/?$/, '') + '/v1/chat/completions';
+    }
+    
+    const headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey };
+    
+    const body = {
+        model,
+        messages: [
+            { role: 'system', content: '你是一个搜索助手。用户会给你一个搜索关键词，请根据你的知识尽可能详细地回答。用中文回答，简洁准确。' },
+            { role: 'user', content: `请搜索并回答：${query}` }
+        ],
+        max_tokens: 800,
+        temperature: 0.3
+    };
+    
+    const resp = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+    if (!resp.ok) {
+        const err = await resp.text();
+        throw new Error(`搜索API错误 (${resp.status}): ${err.substring(0, 100)}`);
+    }
+    
+    const data = await resp.json();
+    return data?.choices?.[0]?.message?.content?.trim() || '搜索无结果';
 }
 
 // ==================== MCP 工具调用状态面板 ====================
