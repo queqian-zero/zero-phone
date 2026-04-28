@@ -16305,72 +16305,41 @@ async _builtinSearchAssistant(args, bt) {
 // ==================== MCP 工具调用状态面板 ====================
 
 _showMcpStatusPanel() {
-    // 移除旧面板
     document.getElementById('mcpStatusPanel')?.remove();
+    document.getElementById('mcpStatusTab')?.remove();
     
     const panel = document.createElement('div');
     panel.id = 'mcpStatusPanel';
     panel.style.cssText = `
         position: fixed;
-        top: 0;
-        left: 0;
-        right: auto;
-        z-index: 8000;
-        max-width: 280px;
-        background: rgba(10, 8, 6, 0.95);
-        border: 1px solid rgba(255, 220, 150, 0.08);
-        border-top: none;
-        border-left: none;
-        border-radius: 0 0 12px 0;
-        padding: 10px 14px;
-        transform: translateY(-100%);
-        transition: transform 0.3s ease;
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        top: 60px;
+        left: 8px;
+        right: 8px;
+        z-index: 800;
+        background: rgba(15, 12, 10, 0.92);
+        border: 1px solid rgba(255, 220, 150, 0.06);
+        border-radius: 10px;
+        padding: 8px 12px;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+        transition: opacity 0.3s, transform 0.3s;
     `;
     
     panel.innerHTML = `
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-            <span style="font-size:11px;color:rgba(255,220,170,0.5);font-weight:500;">🔧 工具调用</span>
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+            <span style="font-size:10px;color:rgba(255,220,170,0.4);">🔧 工具调用</span>
+            <span id="mcpStatusClose" style="font-size:14px;color:rgba(255,255,255,0.2);cursor:pointer;padding:0 4px;">✕</span>
         </div>
-        <div id="mcpStatusLines" style="display:flex;flex-direction:column;gap:4px;"></div>
+        <div id="mcpStatusLines" style="display:flex;flex-direction:column;gap:2px;margin-top:4px;"></div>
     `;
-    
-    // 左侧标签（收起/展开用）
-    const tab = document.createElement('div');
-    tab.id = 'mcpStatusTab';
-    tab.style.cssText = `
-        position: fixed;
-        top: 8px;
-        left: 0;
-        z-index: 8001;
-        background: rgba(10, 8, 6, 0.9);
-        border: 1px solid rgba(255, 220, 150, 0.08);
-        border-left: none;
-        border-radius: 0 8px 8px 0;
-        padding: 6px 10px;
-        cursor: pointer;
-        font-size: 12px;
-        color: rgba(255,220,170,0.5);
-        display: none;
-        transition: opacity 0.2s;
-    `;
-    tab.textContent = '🔧';
-    tab.addEventListener('click', () => {
-        const p = document.getElementById('mcpStatusPanel');
-        if (p) {
-            const isHidden = p.style.transform.includes('-100%');
-            p.style.transform = isHidden ? 'translateY(0)' : 'translateY(-100%)';
-        }
-    });
     
     document.body.appendChild(panel);
-    document.body.appendChild(tab);
     
-    // 滑入动画
-    requestAnimationFrame(() => {
-        panel.style.transform = 'translateY(0)';
+    panel.querySelector('#mcpStatusClose').addEventListener('click', () => {
+        panel.style.opacity = '0';
+        panel.style.transform = 'translateY(-10px)';
+        setTimeout(() => panel.remove(), 300);
     });
 }
 
@@ -16379,9 +16348,9 @@ _addMcpStatusLine(text) {
     if (!lines) return;
     
     const line = document.createElement('div');
-    line.style.cssText = 'font-size:11px;color:rgba(255,255,255,0.35);padding:3px 0;';
+    line.style.cssText = 'font-size:11px;color:rgba(255,255,255,0.35);padding:2px 0;';
     line.textContent = text;
-    line.dataset.tool = text; // 用于后续更新
+    line.dataset.tool = text;
     lines.appendChild(line);
 }
 
@@ -16389,16 +16358,12 @@ _updateMcpStatusLine(toolName, newText) {
     const lines = document.getElementById('mcpStatusLines');
     if (!lines) return;
     
-    // 找到包含工具名的最后一行并更新
     const allLines = lines.querySelectorAll('div');
     for (let i = allLines.length - 1; i >= 0; i--) {
         if (allLines[i].textContent.includes(toolName)) {
             allLines[i].textContent = newText;
-            if (newText.includes('✅')) {
-                allLines[i].style.color = 'rgba(100,200,100,0.5)';
-            } else if (newText.includes('❌')) {
-                allLines[i].style.color = 'rgba(255,100,100,0.5)';
-            }
+            if (newText.includes('✅')) allLines[i].style.color = 'rgba(100,200,100,0.5)';
+            else if (newText.includes('❌')) allLines[i].style.color = 'rgba(255,100,100,0.5)';
             break;
         }
     }
@@ -16406,20 +16371,24 @@ _updateMcpStatusLine(toolName, newText) {
 
 _finalizeMcpStatusPanel() {
     const panel = document.getElementById('mcpStatusPanel');
-    const tab = document.getElementById('mcpStatusTab');
-    if (!panel || !tab) return;
+    if (!panel) return;
     
-    // 添加完成提示
     const lines = document.getElementById('mcpStatusLines');
     if (lines) {
         const done = document.createElement('div');
-        done.style.cssText = 'font-size:10px;color:rgba(255,220,170,0.3);padding:4px 0 0;border-top:1px solid rgba(255,255,255,0.04);margin-top:4px;';
+        done.style.cssText = 'font-size:10px;color:rgba(255,220,170,0.3);padding:3px 0 0;border-top:1px solid rgba(255,255,255,0.04);margin-top:3px;';
         done.textContent = '✨ 全部完成';
         lines.appendChild(done);
     }
     
-    // 面板固定住，显示标签，用户点标签收回
-    if (tab) tab.style.display = 'block';
+    // 5秒后自动淡出
+    setTimeout(() => {
+        if (panel) {
+            panel.style.opacity = '0';
+            panel.style.transform = 'translateY(-10px)';
+            setTimeout(() => panel.remove(), 300);
+        }
+    }, 5000);
 }
 
 }
