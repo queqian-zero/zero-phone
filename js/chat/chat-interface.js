@@ -603,11 +603,6 @@ class ChatInterface {
         if (chatBackBtn) {
             chatBackBtn.addEventListener('click', () => {
                 console.log('🔙 点击返回按钮');
-                // 临时会话模式：返回原聊天而不是关闭
-                if (this._isTempChat) {
-                    this._exitTempChat();
-                    return;
-                }
                 this.closeChatInterface();
             });
         }
@@ -618,11 +613,6 @@ class ChatInterface {
             chatFriendName.style.cursor = 'pointer';
             chatFriendName.addEventListener('click', () => {
                 console.log('👤 点击好友名');
-                // 临时会话模式：弹出添加好友确认
-                if (this._isTempChat) {
-                    this._showAddFriendFromTempChat();
-                    return;
-                }
                 if (window.friendProfile) window.friendProfile.showStatusDropdown();
             });
         }
@@ -857,7 +847,7 @@ class ChatInterface {
         // 名片
         document.getElementById('menuNameCard')?.addEventListener('click', () => {
             this.closeMenu();
-            this._openNameCardSelector();
+            this._openNameCardPanel();
         });
         
         // 占位菜单项
@@ -1568,571 +1558,6 @@ class ChatInterface {
         </div>`;
     }
     
-    // ==================== 名片气泡渲染 ====================
-    
-    _renderNameCardBubble(message) {
-        const card = message._card;
-        if (!card) return '';
-        const nickname = this.escapeHtml(card.nickname || '未知');
-        const signature = this.escapeHtml(card.signature || '');
-        const bio = this.escapeHtml(card.bio || '');
-        const isFromAI = card.fromAI;
-        const avatarLetter = (card.nickname || '?').charAt(0);
-        
-        // 头像区域
-        let avatarHtml = '';
-        if (card.avatar) {
-            avatarHtml = `<img src="${card.avatar}" style="width:40px;height:40px;border-radius:6px;object-fit:cover;">`;
-        } else {
-            const colors = ['#e07070','#70a0e0','#70c070','#e0a050','#b070d0','#d0d060','#60c0c0','#e070b0'];
-            let seed = 0;
-            for (let i = 0; i < (card.nickname||'').length; i++) seed += card.nickname.charCodeAt(i);
-            const bgColor = colors[seed % colors.length];
-            avatarHtml = `<div style="width:40px;height:40px;border-radius:6px;background:${bgColor};display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;font-weight:600;">${avatarLetter}</div>`;
-        }
-        
-        return `<div class="name-card-bubble" data-card='${JSON.stringify(card).replace(/'/g, '&#39;')}' style="border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);min-width:200px;max-width:240px;cursor:pointer;background:rgba(255,255,255,0.03);">
-            <div style="padding:12px;display:flex;gap:10px;align-items:center;">
-                ${avatarHtml}
-                <div style="flex:1;min-width:0;">
-                    <div style="font-size:14px;color:rgba(255,255,255,0.7);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${nickname}</div>
-                    ${signature ? `<div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${signature}</div>` : ''}
-                </div>
-            </div>
-            <div style="padding:6px 12px 8px;border-top:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:space-between;">
-                <span style="font-size:10px;color:rgba(255,255,255,0.15);">${isFromAI ? '个人名片' : '好友推荐'}</span>
-                <span style="font-size:10px;color:rgba(240,147,43,0.5);">点击查看</span>
-            </div>
-        </div>`;
-    }
-    
-    // ==================== 名片点击处理 ====================
-    
-    _handleNameCardClick(cardData) {
-        if (!cardData) return;
-        const card = typeof cardData === 'string' ? JSON.parse(cardData) : cardData;
-        
-        if (card.fromAI) {
-            // AI发来的名片 → 显示详情弹窗，可进入临时会话
-            this._showAICardDetail(card);
-        } else {
-            // 用户发的名片 → 仅显示信息
-            this._showUserCardDetail(card);
-        }
-    }
-    
-    _showAICardDetail(card) {
-        document.getElementById('nameCardDetailOverlay')?.remove();
-        const ov = document.createElement('div');
-        ov.id = 'nameCardDetailOverlay';
-        ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;';
-        
-        const nickname = this.escapeHtml(card.nickname || '未知');
-        const signature = this.escapeHtml(card.signature || '暂无签名');
-        const bio = this.escapeHtml(card.bio || '暂无简介');
-        const avatarLetter = (card.nickname || '?').charAt(0);
-        const colors = ['#e07070','#70a0e0','#70c070','#e0a050','#b070d0','#d0d060','#60c0c0','#e070b0'];
-        let seed = 0;
-        for (let i = 0; i < (card.nickname||'').length; i++) seed += card.nickname.charCodeAt(i);
-        const bgColor = colors[seed % colors.length];
-        
-        let avatarHtml = card.avatar
-            ? `<img src="${card.avatar}" style="width:56px;height:56px;border-radius:10px;object-fit:cover;">`
-            : `<div style="width:56px;height:56px;border-radius:10px;background:${bgColor};display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;font-weight:600;">${avatarLetter}</div>`;
-        
-        ov.innerHTML = `
-            <div style="background:#1a1714;border-radius:16px;width:85%;max-width:320px;overflow:hidden;border:1px solid rgba(255,220,150,0.06);">
-                <div style="padding:20px 16px;text-align:center;">
-                    <div style="display:flex;justify-content:center;margin-bottom:12px;">${avatarHtml}</div>
-                    <div style="font-size:17px;color:rgba(255,255,255,0.8);font-weight:600;margin-bottom:6px;">${nickname}</div>
-                    <div style="font-size:12px;color:rgba(255,255,255,0.3);margin-bottom:14px;">${signature}</div>
-                    <div style="text-align:left;padding:12px;background:rgba(255,255,255,0.03);border-radius:10px;border:1px solid rgba(255,255,255,0.04);">
-                        <div style="font-size:11px;color:rgba(255,255,255,0.2);margin-bottom:6px;">人物简介</div>
-                        <div style="font-size:13px;color:rgba(255,255,255,0.5);line-height:1.6;">${bio}</div>
-                    </div>
-                </div>
-                <div style="padding:0 16px 16px;display:flex;gap:8px;">
-                    <button id="cardDetailCancel" style="flex:1;padding:11px;border:none;border-radius:10px;background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.4);font-size:13px;cursor:pointer;">关闭</button>
-                    <button id="cardDetailChat" style="flex:1;padding:11px;border:none;border-radius:10px;background:rgba(240,147,43,0.15);color:rgba(240,147,43,0.8);font-size:13px;cursor:pointer;font-weight:500;">打个招呼</button>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(ov);
-        
-        ov.querySelector('#cardDetailCancel').addEventListener('click', () => ov.remove());
-        ov.addEventListener('click', (e) => { if (e.target === ov) ov.remove(); });
-        ov.querySelector('#cardDetailChat').addEventListener('click', () => {
-            ov.remove();
-            this._openTempChat(card);
-        });
-    }
-    
-    _showUserCardDetail(card) {
-        document.getElementById('nameCardDetailOverlay')?.remove();
-        const ov = document.createElement('div');
-        ov.id = 'nameCardDetailOverlay';
-        ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;';
-        
-        const nickname = this.escapeHtml(card.nickname || '未知');
-        const signature = this.escapeHtml(card.signature || '暂无签名');
-        const persona = this.escapeHtml(card.persona || '');
-        const avatarLetter = (card.nickname || '?').charAt(0);
-        const colors = ['#e07070','#70a0e0','#70c070','#e0a050','#b070d0','#d0d060','#60c0c0','#e070b0'];
-        let seed = 0;
-        for (let i = 0; i < (card.nickname||'').length; i++) seed += card.nickname.charCodeAt(i);
-        const bgColor = colors[seed % colors.length];
-        
-        let avatarHtml = card.avatar
-            ? `<img src="${card.avatar}" style="width:56px;height:56px;border-radius:10px;object-fit:cover;">`
-            : `<div style="width:56px;height:56px;border-radius:10px;background:${bgColor};display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;font-weight:600;">${avatarLetter}</div>`;
-        
-        ov.innerHTML = `
-            <div style="background:#1a1714;border-radius:16px;width:85%;max-width:320px;overflow:hidden;border:1px solid rgba(255,220,150,0.06);">
-                <div style="padding:20px 16px;text-align:center;">
-                    <div style="display:flex;justify-content:center;margin-bottom:12px;">${avatarHtml}</div>
-                    <div style="font-size:17px;color:rgba(255,255,255,0.8);font-weight:600;margin-bottom:6px;">${nickname}</div>
-                    <div style="font-size:12px;color:rgba(255,255,255,0.3);margin-bottom:14px;">${signature}</div>
-                    ${persona ? `<div style="text-align:left;padding:12px;background:rgba(255,255,255,0.03);border-radius:10px;border:1px solid rgba(255,255,255,0.04);"><div style="font-size:11px;color:rgba(255,255,255,0.2);margin-bottom:6px;">好友简介</div><div style="font-size:13px;color:rgba(255,255,255,0.5);line-height:1.6;">${persona}</div></div>` : ''}
-                </div>
-                <div style="padding:0 16px 16px;">
-                    <button id="cardDetailCancel" style="width:100%;padding:11px;border:none;border-radius:10px;background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.4);font-size:13px;cursor:pointer;">关闭</button>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(ov);
-        
-        ov.querySelector('#cardDetailCancel').addEventListener('click', () => ov.remove());
-        ov.addEventListener('click', (e) => { if (e.target === ov) ov.remove(); });
-    }
-    
-    // ==================== 临时会话系统 ====================
-    
-    _openTempChat(card) {
-        // 生成临时会话ID
-        const tempId = 'temp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
-        
-        // 初始化临时会话数据
-        const tempChatData = {
-            id: tempId,
-            card: card,
-            nickname: card.nickname,
-            signature: card.signature,
-            bio: card.bio,
-            persona: card.persona || card.bio || '',
-            avatar: card.avatar || '',
-            messages: [],
-            createdAt: new Date().toISOString(),
-            fromFriendCode: this.currentFriendCode // 记录来源好友
-        };
-        this.storage.saveTempChat(tempId, tempChatData);
-        
-        // 保存当前聊天状态以便返回
-        this._tempChatPrevState = {
-            friendCode: this.currentFriendCode,
-            friend: this.currentFriend,
-            messages: [...this.messages]
-        };
-        
-        // 切换到临时会话界面
-        this._enterTempChatUI(tempId, tempChatData);
-    }
-    
-    _enterTempChatUI(tempId, tempChatData) {
-        this._isTempChat = true;
-        this._tempChatId = tempId;
-        this._tempChatData = tempChatData;
-        
-        // 更新头部标题
-        const nameEl = document.querySelector('#chatFriendName span');
-        if (nameEl) nameEl.textContent = tempChatData.nickname || '临时会话';
-        
-        // 隐藏状态栏相关元素（精简模式）
-        const infoPanel = document.getElementById('infoPanel');
-        if (infoPanel) infoPanel.style.display = 'none';
-        const aiStatusLine = document.getElementById('aiStatusLine');
-        if (aiStatusLine) aiStatusLine.style.display = 'none';
-        const offlineToggle = document.getElementById('offlineToggle');
-        if (offlineToggle) offlineToggle.style.display = 'none';
-        const scheduleBtn = document.getElementById('scheduleBtn');
-        if (scheduleBtn) scheduleBtn.style.display = 'none';
-        const chatSettingsBtn = document.getElementById('chatSettingsBtn');
-        if (chatSettingsBtn) chatSettingsBtn.style.display = 'none';
-        
-        // 隐藏关系标识
-        const relBadge = document.getElementById('chatHeaderRelationBadge');
-        if (relBadge) relBadge.style.display = 'none';
-        
-        // 加载临时会话消息
-        this.messages = tempChatData.messages || [];
-        const messagesList = document.getElementById('messagesList');
-        if (messagesList) messagesList.innerHTML = '';
-        
-        if (this.messages.length === 0) {
-            // 欢迎消息
-            this.addMessage({
-                type: 'system',
-                text: `这是与「${this.escapeHtml(tempChatData.nickname)}」的临时会话\n点击顶部昵称可以添加为好友`,
-                timestamp: new Date().toISOString()
-            });
-        } else {
-            this.renderMessages();
-        }
-        
-        this.scrollToBottom();
-    }
-    
-    _exitTempChat() {
-        if (!this._isTempChat) return;
-        
-        // 保存临时会话消息
-        if (this._tempChatId && this._tempChatData) {
-            this._tempChatData.messages = this.messages.filter(m => m.type !== 'system');
-            this.storage.saveTempChat(this._tempChatId, this._tempChatData);
-        }
-        
-        // 恢复UI元素
-        const infoPanel = document.getElementById('infoPanel');
-        if (infoPanel) infoPanel.style.display = '';
-        const offlineToggle = document.getElementById('offlineToggle');
-        if (offlineToggle) offlineToggle.style.display = '';
-        const scheduleBtn = document.getElementById('scheduleBtn');
-        if (scheduleBtn) scheduleBtn.style.display = '';
-        const chatSettingsBtn = document.getElementById('chatSettingsBtn');
-        if (chatSettingsBtn) chatSettingsBtn.style.display = '';
-        const relBadge = document.getElementById('chatHeaderRelationBadge');
-        if (relBadge) relBadge.style.display = '';
-        
-        // 清理标记
-        this._isTempChat = false;
-        this._tempChatId = null;
-        this._tempChatData = null;
-        
-        // 恢复原聊天
-        if (this._tempChatPrevState) {
-            this.loadChat(this._tempChatPrevState.friendCode);
-            this._tempChatPrevState = null;
-        }
-    }
-    
-    _showAddFriendFromTempChat() {
-        if (!this._tempChatData) return;
-        const nickname = this.escapeHtml(this._tempChatData.nickname);
-        
-        document.getElementById('addFriendFromTempOverlay')?.remove();
-        const ov = document.createElement('div');
-        ov.id = 'addFriendFromTempOverlay';
-        ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;';
-        
-        ov.innerHTML = `
-            <div style="background:#1a1714;border-radius:16px;width:85%;max-width:300px;overflow:hidden;border:1px solid rgba(255,220,150,0.06);">
-                <div style="padding:20px 16px;text-align:center;">
-                    <div style="font-size:15px;color:rgba(255,255,255,0.7);margin-bottom:6px;">添加「${nickname}」为好友？</div>
-                    <div style="font-size:12px;color:rgba(255,255,255,0.25);">添加后将可以查看完整资料</div>
-                </div>
-                <div style="padding:0 16px 16px;display:flex;gap:8px;">
-                    <button id="tempAddCancel" style="flex:1;padding:11px;border:none;border-radius:10px;background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.4);font-size:13px;cursor:pointer;">再想想</button>
-                    <button id="tempAddConfirm" style="flex:1;padding:11px;border:none;border-radius:10px;background:rgba(240,147,43,0.15);color:rgba(240,147,43,0.8);font-size:13px;cursor:pointer;font-weight:500;">确定添加</button>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(ov);
-        
-        ov.querySelector('#tempAddCancel').addEventListener('click', () => ov.remove());
-        ov.addEventListener('click', (e) => { if (e.target === ov) ov.remove(); });
-        ov.querySelector('#tempAddConfirm').addEventListener('click', () => {
-            ov.remove();
-            this._showApiModeSelector();
-        });
-    }
-    
-    _showApiModeSelector() {
-        if (!this._tempChatData) return;
-        const nickname = this.escapeHtml(this._tempChatData.nickname);
-        
-        document.getElementById('apiModeSelectorOverlay')?.remove();
-        const ov = document.createElement('div');
-        ov.id = 'apiModeSelectorOverlay';
-        ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;';
-        
-        ov.innerHTML = `
-            <div style="background:#1a1714;border-radius:16px;width:88%;max-width:340px;overflow:hidden;border:1px solid rgba(255,220,150,0.06);">
-                <div style="padding:16px 16px 10px;text-align:center;">
-                    <div style="font-size:15px;color:rgba(255,255,255,0.7);font-weight:500;margin-bottom:6px;">选择API模式</div>
-                    <div style="font-size:11px;color:rgba(255,255,255,0.2);">给「${nickname}」配置AI对话接口</div>
-                </div>
-                <div style="padding:0 16px;">
-                    <div id="apiModeShared" class="api-mode-option" style="padding:14px;background:rgba(255,255,255,0.03);border-radius:10px;cursor:pointer;margin-bottom:8px;border:1px solid rgba(240,147,43,0.15);">
-                        <div style="font-size:13px;color:rgba(240,147,43,0.7);font-weight:500;">🔗 共用主API</div>
-                        <div style="font-size:10px;color:rgba(255,255,255,0.25);margin-top:4px;">跟当前好友用同一个API配置（推荐）</div>
-                    </div>
-                    <div id="apiModeIndependent" class="api-mode-option" style="padding:14px;background:rgba(255,255,255,0.03);border-radius:10px;cursor:pointer;margin-bottom:8px;border:1px solid rgba(255,255,255,0.06);">
-                        <div style="font-size:13px;color:rgba(255,255,255,0.5);font-weight:500;">🔌 独立API</div>
-                        <div style="font-size:10px;color:rgba(255,255,255,0.2);margin-top:4px;">稍后在聊天设置里单独配置API</div>
-                    </div>
-                    <div id="apiModeBoth" class="api-mode-option" style="padding:14px;background:rgba(255,255,255,0.03);border-radius:10px;cursor:pointer;margin-bottom:8px;border:1px solid rgba(255,255,255,0.06);">
-                        <div style="font-size:13px;color:rgba(255,255,255,0.5);font-weight:500;">🔀 保留两者</div>
-                        <div style="font-size:10px;color:rgba(255,255,255,0.2);margin-top:4px;">先用主API，之后可切换独立API</div>
-                    </div>
-                </div>
-                <div style="padding:8px 16px 16px;">
-                    <button id="apiModeCancel" style="width:100%;padding:10px;border:none;border-radius:8px;background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.3);font-size:13px;cursor:pointer;">取消</button>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(ov);
-        
-        ov.querySelector('#apiModeCancel').addEventListener('click', () => ov.remove());
-        ov.addEventListener('click', (e) => { if (e.target === ov) ov.remove(); });
-        
-        ov.querySelector('#apiModeShared').addEventListener('click', () => { ov.remove(); this._finishAddFriendFromTemp('shared'); });
-        ov.querySelector('#apiModeIndependent').addEventListener('click', () => { ov.remove(); this._finishAddFriendFromTemp('independent'); });
-        ov.querySelector('#apiModeBoth').addEventListener('click', () => { ov.remove(); this._finishAddFriendFromTemp('both'); });
-    }
-    
-    _finishAddFriendFromTemp(apiMode) {
-        if (!this._tempChatData) return;
-        const tempData = this._tempChatData;
-        const tempId = this._tempChatId;
-        
-        // 生成好友编码
-        const prefix = (tempData.nickname || 'TMP').substring(0, 3).toUpperCase();
-        const year = new Date().getFullYear().toString().substring(2);
-        const random = Math.random().toString(36).substring(2, 5).toUpperCase();
-        const code = `${prefix}_${year}k25_${random}#`;
-        
-        // 构建好友数据
-        const newFriend = {
-            code: code,
-            name: tempData.nickname,
-            realName: '',
-            nickname: '',
-            avatar: tempData.avatar || '',
-            persona: tempData.persona || tempData.bio || '',
-            poke: '戳了戳你',
-            signature: tempData.signature || '',
-            groupId: 'default',
-            addedTime: new Date().toISOString().split('T')[0],
-            addedFrom: 'name_card',
-            canSeeMyMoments: true,
-            seeTAMoments: true,
-            currentOutfit: '',
-            currentAction: '',
-            currentMood: '',
-            currentLocation: '',
-            enableAvatarRecognition: true
-        };
-        
-        // 保存好友
-        const success = this.storage.addFriend(newFriend);
-        if (!success) {
-            this.showCssToast('❌ 添加好友失败');
-            return;
-        }
-        
-        // 将临时会话消息转为正式聊天记录
-        const tempMessages = (tempData.messages || []).filter(m => m.type !== 'system');
-        if (tempMessages.length > 0) {
-            tempMessages.forEach(msg => {
-                this.storage.addMessage(code, msg);
-            });
-        }
-        
-        // 删除临时会话
-        this.storage.deleteTempChat(tempId);
-        
-        // 退出临时会话UI
-        this._isTempChat = false;
-        this._tempChatId = null;
-        this._tempChatData = null;
-        
-        // 恢复UI元素
-        const infoPanel = document.getElementById('infoPanel');
-        if (infoPanel) infoPanel.style.display = '';
-        const offlineToggle = document.getElementById('offlineToggle');
-        if (offlineToggle) offlineToggle.style.display = '';
-        const scheduleBtn = document.getElementById('scheduleBtn');
-        if (scheduleBtn) scheduleBtn.style.display = '';
-        const chatSettingsBtn = document.getElementById('chatSettingsBtn');
-        if (chatSettingsBtn) chatSettingsBtn.style.display = '';
-        const relBadge = document.getElementById('chatHeaderRelationBadge');
-        if (relBadge) relBadge.style.display = '';
-        
-        this._tempChatPrevState = null;
-        
-        // 刷新好友列表
-        if (this.chatApp) this.chatApp.renderFriendList();
-        
-        // 切换到新好友的正式聊天
-        this.loadChat(code);
-        
-        this.showCssSystemMessage(`✅ 已添加「${newFriend.name}」为好友`);
-        this.showCssToast(`好友编码：${code}`);
-    }
-    
-    // ==================== 用户发送名片 ====================
-    
-    _openNameCardSelector() {
-        const friends = this.storage.getAllFriends();
-        if (!friends || friends.length === 0) {
-            this.showCssToast('暂无好友');
-            return;
-        }
-        
-        // 过滤掉当前聊天对象
-        const selectableFriends = friends.filter(f => f.code !== this.currentFriendCode);
-        if (selectableFriends.length === 0) {
-            this.showCssToast('没有其他好友可推荐');
-            return;
-        }
-        
-        document.getElementById('nameCardSelectorOverlay')?.remove();
-        const ov = document.createElement('div');
-        ov.id = 'nameCardSelectorOverlay';
-        ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;background:rgba(0,0,0,0.7);display:flex;flex-direction:column;';
-        
-        let listHtml = '';
-        selectableFriends.forEach(f => {
-            const displayName = this.escapeHtml(f.nickname || f.name);
-            const sig = this.escapeHtml(f.signature || '');
-            const avatarLetter = (f.nickname || f.name || '?').charAt(0);
-            const avatarHtml = f.avatar
-                ? `<img src="${f.avatar}" style="width:36px;height:36px;border-radius:6px;object-fit:cover;">`
-                : `<div style="width:36px;height:36px;border-radius:6px;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.4);font-size:14px;">${avatarLetter}</div>`;
-            
-            listHtml += `<div class="nc-select-item" data-code="${f.code}" style="display:flex;align-items:center;gap:10px;padding:12px 16px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.03);">
-                ${avatarHtml}
-                <div style="flex:1;min-width:0;">
-                    <div style="font-size:14px;color:rgba(255,255,255,0.6);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${displayName}</div>
-                    ${sig ? `<div style="font-size:11px;color:rgba(255,255,255,0.2);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${sig}</div>` : ''}
-                </div>
-            </div>`;
-        });
-        
-        ov.innerHTML = `
-            <div style="flex:1;display:flex;flex-direction:column;margin-top:80px;">
-                <div style="background:#1a1714;border-radius:16px 16px 0 0;flex:1;display:flex;flex-direction:column;overflow:hidden;border:1px solid rgba(255,220,150,0.04);border-bottom:none;">
-                    <div style="padding:14px 16px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:space-between;">
-                        <button id="ncSelectorClose" style="background:none;border:none;font-size:14px;color:rgba(255,255,255,0.3);cursor:pointer;padding:4px 8px;">取消</button>
-                        <span style="font-size:14px;color:rgba(255,255,255,0.5);font-weight:500;">选择好友名片</span>
-                        <div style="width:40px;"></div>
-                    </div>
-                    <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;">${listHtml}</div>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(ov);
-        
-        ov.querySelector('#ncSelectorClose').addEventListener('click', () => ov.remove());
-        
-        ov.querySelectorAll('.nc-select-item').forEach(item => {
-            item.addEventListener('click', () => {
-                const code = item.dataset.code;
-                const friend = this.storage.getFriendByCode(code);
-                if (friend) {
-                    ov.remove();
-                    this._sendUserNameCard(friend);
-                }
-            });
-        });
-    }
-    
-    _sendUserNameCard(friend) {
-        const cardData = {
-            nickname: friend.nickname || friend.name,
-            signature: friend.signature || '',
-            avatar: friend.avatar || '',
-            persona: (friend.persona || '').substring(0, 100),
-            friendCode: friend.code,
-            fromAI: false
-        };
-        
-        const msg = { type: 'user', text: '', timestamp: new Date().toISOString(), _card: cardData };
-        if (this._quotingMessage) { msg._quote = this._extractQuoteData(this._quotingMessage); this._clearQuoteMessage(); }
-        this.addMessage(msg);
-        
-        const storeMsg = {
-            type: 'user',
-            text: `[用户推荐了好友名片：${cardData.nickname}]`,
-            timestamp: msg.timestamp,
-            _card: cardData
-        };
-        if (msg._quote) storeMsg._quote = msg._quote;
-        this.storage.addMessage(this.currentFriendCode, storeMsg);
-        this.scrollToBottom();
-    }
-    
-    // ==================== 临时会话中的发送消息（覆盖API调用） ====================
-    
-    async _sendTempChatMessage(text) {
-        if (!this._isTempChat || !this._tempChatData) return;
-        
-        // 添加用户消息
-        const userMsg = { type: 'user', text: text, timestamp: new Date().toISOString() };
-        this.addMessage(userMsg);
-        this._tempChatData.messages.push(userMsg);
-        this.storage.saveTempChat(this._tempChatId, this._tempChatData);
-        this.scrollToBottom();
-        
-        // 调用API获取回复
-        try {
-            const config = this.apiManager?.getCurrentConfig();
-            if (!config?.endpoint || !config?.apiKey || !config?.model) {
-                this.showCssSystemMessage('❌ API未配置，请先配置主API');
-                return;
-            }
-            
-            // 构建临时角色的system prompt
-            const tempPersona = this._tempChatData.persona || this._tempChatData.bio || '';
-            const tempNickname = this._tempChatData.nickname || '未知';
-            let systemPrompt = `你是「${tempNickname}」。`;
-            if (tempPersona) systemPrompt += `\n你的人设：${tempPersona}`;
-            if (this._tempChatData.signature) systemPrompt += `\n你的签名：${this._tempChatData.signature}`;
-            systemPrompt += `\n这是一个初次认识的临时会话，请根据你的人设自然地对话。`;
-            
-            // 构建消息历史（callAI 的 messages 格式是 [{type,text}]）
-            const apiMessages = [];
-            const chatHistory = this._tempChatData.messages.filter(m => m.type === 'user' || m.type === 'ai');
-            chatHistory.forEach(m => {
-                apiMessages.push({ type: m.type, text: m.text });
-            });
-            
-            // 显示typing
-            this._showTypingIndicator();
-            
-            const result = await this.apiManager.callAI(apiMessages, systemPrompt);
-            
-            this._hideTypingIndicator();
-            
-            if (result && result.text) {
-                const aiMsg = { type: 'ai', text: result.text.trim(), timestamp: new Date().toISOString() };
-                this.addMessage(aiMsg);
-                this._tempChatData.messages.push(aiMsg);
-                this.storage.saveTempChat(this._tempChatId, this._tempChatData);
-                this.scrollToBottom();
-            }
-        } catch (e) {
-            this._hideTypingIndicator();
-            this.showCssSystemMessage(`❌ ${e.message || '发送失败'}`);
-        }
-    }
-    
-    // 显示/隐藏打字指示器
-    _showTypingIndicator() {
-        if (document.getElementById('tempTypingIndicator')) return;
-        const ml = document.getElementById('messagesList');
-        if (!ml) return;
-        const div = document.createElement('div');
-        div.id = 'tempTypingIndicator';
-        div.style.cssText = 'padding:8px 16px;';
-        div.innerHTML = `<div style="display:inline-block;padding:8px 14px;background:rgba(255,255,255,0.04);border-radius:12px;font-size:12px;color:rgba(255,255,255,0.2);">对方正在输入...</div>`;
-        ml.appendChild(div);
-        this.scrollToBottom();
-    }
-    
-    _hideTypingIndicator() {
-        document.getElementById('tempTypingIndicator')?.remove();
-    }
-    
     // ==================== 表情包系统 ====================
     
     _getStickerData() {
@@ -2719,12 +2144,6 @@ class ChatInterface {
     this.removeAvatarFrameCss();
     document.getElementById('avatarAdjustStyleTag')?.remove();
     
-    // 清理临时会话状态
-    this._isTempChat = false;
-    this._tempChatId = null;
-    this._tempChatData = null;
-    this._tempChatPrevState = null;
-    
     this.currentFriendCode = null;
     this.currentFriend = null;
     this.messages = [];
@@ -3166,14 +2585,6 @@ class ChatInterface {
             return;
         }
         
-        // === 临时会话模式：拦截并使用临时会话发送 ===
-        if (this._isTempChat) {
-            if (inputField) { inputField.value = ''; inputField.style.height = 'auto'; }
-            if (inputFieldInline) { inputFieldInline.value = ''; }
-            this._sendTempChatMessage(text);
-            return;
-        }
-        
         console.log('➕ 添加用户消息到列表');
         
         // ====== 需求3+4：处理用户发的CSS应用命令 ======
@@ -3229,12 +2640,6 @@ class ChatInterface {
     // ← 重构：完整的AI消息发送（时间戳+头像+HTML/CSS+次元壁）
     async sendAIMessage() {
         console.log('🤖 sendAIMessage() 被调用');
-        
-        // 临时会话模式不走这里
-        if (this._isTempChat) {
-            console.log('⚠️ 临时会话模式，跳过 sendAIMessage');
-            return;
-        }
         
         // 防止重复点击：如果上一轮还没完成（包括后台总结/记忆），排队等
         if (this._isSendingAI) {
@@ -3296,7 +2701,6 @@ class ChatInterface {
                              : msg._quote._fakeImage ? `[假图片:${msg._quote._fakeImage}]`
                              : msg._quote._fakeVideo ? `[假视频:${msg._quote._fakeVideo}]`
                              : msg._quote._location ? `[位置:${msg._quote._location.name}]`
-                             : msg._quote._card ? `[名片:${msg._quote._card.nickname}]`
                              : (msg._quote.text || '').substring(0, 40);
                     prefix += `[引用${qs}的消息：${qt}] `;
                 }
@@ -3304,7 +2708,7 @@ class ChatInterface {
                 if (msg.type === 'system' && msg._recallData) {
                     const rd = msg._recallData;
                     const who = rd.recaller === 'user' ? 'user' : '你';
-                    const origText = rd.originalMsg?.text || rd.originalMsg?._fakeImage || rd.originalMsg?._fakeVideo || rd.originalMsg?._location?.name || rd.originalMsg?._card?.nickname || rd.originalMsg?._voiceText || '[多媒体消息]';
+                    const origText = rd.originalMsg?.text || rd.originalMsg?._fakeImage || rd.originalMsg?._fakeVideo || rd.originalMsg?._location?.name || rd.originalMsg?._voiceText || '[多媒体消息]';
                     let recallText = `[${who}撤回了一条消息，原内容：「${origText.substring(0, 80)}」]`;
                     if (rd.innerThought) recallText += `[${who}撤回时心里想的：「${rd.innerThought}」]`;
                     return { type: 'user', text: prefix + recallText, timestamp: msg.timestamp };
@@ -4065,36 +3469,34 @@ ${archiveListText}
                     msg.text = '';
                 }
                 
-                // 提取 [AI_CARD:昵称|个性签名|人物简介]
+                // 提取 [AI_CARD:昵称|签名|简介|人设]
                 const aiCardMatch = rawSeg.match(/\[AI_CARD:([^\]]+)\]/);
                 if (aiCardMatch) {
                     const cardParts = aiCardMatch[1].split('|');
                     const cardNickname = cardParts[0]?.trim() || '';
                     const cardSignature = cardParts[1]?.trim() || '';
-                    const cardBio = cardParts.slice(2).join('|').trim() || '';
+                    const cardBio = cardParts[2]?.trim() || '';
+                    const cardPersona = cardParts[3]?.trim() || '';
                     if (cardNickname) {
-                        // 从人际关系中查找头像和额外信息
-                        let cardAvatar = '';
-                        let cardRelation = '';
-                        let cardPersona = '';
-                        if (this.currentFriendCode) {
-                            const relData = this.storage.getIntimacyData(this.currentFriendCode).relations || {};
-                            const relPerson = (relData.people || []).find(p => p.name === cardNickname);
-                            if (relPerson) {
-                                cardRelation = relPerson.relation || '';
-                                cardPersona = relPerson.persona || '';
-                            }
+                        // 验证：必须在AI的人际关系网中
+                        const _relData = this.storage.getIntimacyData(this.currentFriendCode)?.relations || {};
+                        const _relPeople = _relData.people || [];
+                        const _foundPerson = _relPeople.find(p => p.name === cardNickname);
+                        if (_foundPerson) {
+                            const tempChatId = `${this.currentFriendCode}__${cardNickname}`;
+                            msg._card = {
+                                nickname: cardNickname,
+                                signature: cardSignature,
+                                bio: cardBio,
+                                persona: cardPersona,
+                                recommenderCode: this.currentFriendCode,
+                                tempChatId: tempChatId,
+                                relationPerson: { name: _foundPerson.name, relation: _foundPerson.relation || '', persona: _foundPerson.persona || '', color: _foundPerson.color || '#70a0e0' }
+                            };
+                            msg.text = '';
+                        } else {
+                            this.showCssSystemMessage(`⚠️ 人际关系中找不到「${cardNickname}」，无法发送名片`);
                         }
-                        msg._card = {
-                            nickname: cardNickname,
-                            signature: cardSignature,
-                            bio: cardBio,
-                            avatar: cardAvatar,
-                            relation: cardRelation,
-                            persona: cardPersona,
-                            fromAI: true
-                        };
-                        msg.text = '';
                     }
                 }
                 
@@ -4105,7 +3507,7 @@ ${archiveListText}
                     for (let qi = this.messages.length - 1; qi >= 0; qi--) {
                         const qm = this.messages[qi];
                         if (qm.type !== 'user' && qm.type !== 'ai') continue;
-                        const qt = qm.text || qm._fakeImage || qm._fakeVideo || qm._location?.name || qm._card?.nickname || qm._voiceText || '';
+                        const qt = qm.text || qm._fakeImage || qm._fakeVideo || qm._location?.name || qm._voiceText || '';
                         if (qt.includes(kw)) { msg._quote = this._extractQuoteData(qm); break; }
                     }
                 }
@@ -4121,7 +3523,7 @@ ${archiveListText}
                 if (msg._fakeImage) { storeMsg._fakeImage = msg._fakeImage; storeMsg.text = `[AI发送了假图片：${msg._fakeImage}]`; }
                 if (msg._fakeVideo) { storeMsg._fakeVideo = msg._fakeVideo; storeMsg.text = `[AI发送了假视频：${msg._fakeVideo}]`; }
                 if (msg._location) { storeMsg._location = msg._location; storeMsg.text = `[AI发送了位置：${msg._location.name}]`; }
-                if (msg._card) { storeMsg._card = msg._card; storeMsg.text = `[AI推荐了名片：${msg._card.nickname}]`; }
+                if (msg._card) { storeMsg._card = msg._card; storeMsg.text = `[AI发送了名片：${msg._card.nickname}]`; }
                 if (i === 0 && thinkingText) storeMsg.thinking = thinkingText;
                 if (i > 0) storeMsg._sequential = true;
                 if (hasSplitTag) storeMsg._hasSplitTag = true;
@@ -4455,7 +3857,7 @@ div.innerHTML = `
                         </div>
                     </div>` : ''}
                     ${message._location ? this._renderLocationBubble(message) : ''}
-                    ${message._card ? this._renderNameCardBubble(message) : ''}
+                    ${message._card ? this._renderCardBubble(message) : ''}
                     ${message.text && !message._imageOnly && !message._voice && !message._fakeImage && !message._fakeVideo && !message._location && !message._card && !message._stickerUrl ? `<div class="message-text">${this.renderMessageContent(message.text)}</div>` : ''}
                 </div>
                 <div class="message-time">${time}</div>
@@ -4577,14 +3979,12 @@ div.innerHTML = `
             });
         }
         
-        // 名片卡片点击
+        // 名片卡片点击 → 弹出名片详情
         const nameCard = div.querySelector('.name-card-bubble');
-        if (nameCard) {
-            nameCard.addEventListener('click', () => {
-                const cardJson = nameCard.getAttribute('data-card');
-                if (cardJson) {
-                    try { this._handleNameCardClick(JSON.parse(cardJson)); } catch(e) { console.error('名片解析失败:', e); }
-                }
+        if (nameCard && message._card) {
+            nameCard.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this._showCardDetail(message._card);
             });
         }
         
@@ -8952,22 +8352,14 @@ getIntimacyStatusForAI() {
     desc += `\n  [AI_FAKE_IMAGE:图片描述] 给user发一张假图片（user知道是文字描述）`;
     desc += `\n  [AI_FAKE_VIDEO:视频描述] 给user发一个假视频（user知道是文字描述）`;
     desc += `\n  [AI_LOCATION:地点名称|周围描述] 给user发送你的位置（显示为地图卡片）`;
+    desc += `\n  [AI_CARD:昵称|签名|简介|人设] 向user推荐一个你认识的人（显示为名片卡片）`;
+    desc += `\n  说明：发名片时，这个人必须在你的人际关系里。user点击名片可以查看简介，还能进入临时会话跟TA聊天。`;
     desc += `\n  [AI_VOICE:语音内容] 给user发一条语音消息（显示为语音条，user点击可"转文字"）`;
     desc += `\n  注意：user有时会发语音消息，由"语音小助手"转述（消息开头会标注[语音消息·小助手转述]）`;
     desc += `\n  小助手会描述user说了什么、语气情绪、背景环境等。这些信息是小助手听到后告诉你的，不是你自己听到的。`;
     desc += `\n  [AI_SEND_LIB_IMAGE:图片名字] 从Base64图库中找到该图发给user（user能看到图片）`;
     desc += `\n  [AI_CHANGE_AVATAR:图片名字] 把Base64图库中的某张图设为你自己的头像`;
     desc += `\n  [AI_CHANGE_AVATAR_FROM_CHAT] 把user最近发给你的图片设为你自己的头像`;
-    
-    // AI发名片
-    desc += `\n\n【发送名片（推荐好友）】`;
-    desc += `\n  [AI_CARD:昵称|个性签名|人物简介] 向user推荐一个你认识的人（发送名片卡片）`;
-    desc += `\n  前提：这个人必须在你的人际关系网中（上面列出的"你认识的人"）`;
-    desc += `\n  昵称：必须跟关系网里的名字一致`;
-    desc += `\n  个性签名：简短一句话`;
-    desc += `\n  人物简介：简单介绍这个人（不要暴露太多，user添加好友后才能看到完整信息）`;
-    desc += `\n  说明：user收到名片后可以选择打招呼进入临时会话，然后决定是否添加为好友`;
-    desc += `\n  user也可能给你发名片（推荐好友给你看），你可以了解一下那个人`;
     
     // AI撤回和引用
     desc += `\n\n【撤回和引用消息】`;
@@ -15093,8 +14485,7 @@ _renderQuoteBlock(q) {
         const miniMap = `<svg viewBox="0 0 36 36" style="width:36px;height:36px;border-radius:4px;flex-shrink:0;"><rect width="36" height="36" fill="rgba(35,32,28,1)"/><line x1="0" y1="12" x2="36" y2="14" stroke="rgba(255,220,150,0.08)" stroke-width="2"/><line x1="0" y1="26" x2="36" y2="24" stroke="rgba(255,220,150,0.08)" stroke-width="2"/><line x1="14" y1="0" x2="12" y2="36" stroke="rgba(255,220,150,0.08)" stroke-width="2"/><line x1="26" y1="0" x2="28" y2="36" stroke="rgba(255,220,150,0.08)" stroke-width="2"/><circle cx="18" cy="18" r="4" fill="rgba(240,147,43,0.5)"/><circle cx="18" cy="18" r="1.5" fill="rgba(255,255,255,0.8)"/></svg>`;
         contentHtml = `<div style="display:flex;align-items:center;gap:6px;"><div style="flex:1;font-size:10px;color:rgba(255,255,255,0.4);line-height:1.3;">${locName}</div>${miniMap}</div>`;
     } else if (q._card) {
-        const cardName = this.escapeHtml((q._card.nickname || '未知').substring(0, 15));
-        contentHtml = `<div style="display:inline-block;padding:4px 8px;border:1px solid rgba(255,255,255,0.08);border-radius:6px;font-size:10px;color:rgba(255,255,255,0.4);">📇 [名片] ${cardName}</div>`;
+        contentHtml = `<div style="display:inline-block;padding:4px 8px;border:1px dashed rgba(128,128,128,0.2);border-radius:6px;font-size:10px;opacity:0.5;">📇 [名片] ${this.escapeHtml((q._card.nickname || '').substring(0, 15))}</div>`;
     } else if (q.text) {
         // 检查是否有 RENDER_HTML
         let displayText = q.text;
@@ -17263,6 +16654,600 @@ _finalizeMcpStatusPanel() {
             setTimeout(() => panel.remove(), 300);
         }
     }, 5000);
+}
+
+// ==================== 名片气泡渲染 ====================
+_renderCardBubble(message) {
+    const card = message._card;
+    if (!card) return '';
+    const nickname = this.escapeHtml(card.nickname || '?');
+    const signature = this.escapeHtml(card.signature || '');
+    const firstChar = (card.nickname || '?')[0];
+    const color = card.relationPerson?.color || '#70a0e0';
+    const isUserCard = !!card.fromUser;
+    
+    // 检查是否已添加为好友
+    const allFriends = this.storage.getAllFriends();
+    const alreadyFriend = allFriends.some(f => (f.nickname === card.nickname || f.name === card.nickname) && !f.isDeleted);
+    const friendBadge = alreadyFriend ? '<div style="position:absolute;top:6px;right:8px;font-size:9px;color:rgba(100,180,100,0.7);background:rgba(100,180,100,0.08);padding:1px 6px;border-radius:8px;">已添加</div>' : '';
+    
+    return `<div class="name-card-bubble" style="position:relative;border-radius:12px;overflow:hidden;min-width:200px;max-width:240px;cursor:pointer;border:1px solid rgba(128,128,128,0.15);background:rgba(128,128,128,0.04);">
+        ${friendBadge}
+        <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;">
+            <div style="width:40px;height:40px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:16px;color:#fff;font-weight:600;flex-shrink:0;">${this.escapeHtml(firstChar)}</div>
+            <div style="flex:1;min-width:0;">
+                <div style="font-size:14px;font-weight:600;color:rgba(0,0,0,0.75);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${nickname}</div>
+                ${signature ? `<div style="font-size:11px;color:rgba(0,0,0,0.4);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${signature}</div>` : ''}
+            </div>
+        </div>
+        <div style="padding:0 14px 10px;display:flex;align-items:center;justify-content:space-between;">
+            <span style="font-size:10px;color:rgba(0,0,0,0.25);">${isUserCard ? '个人名片' : '推荐名片'}</span>
+            <span style="font-size:10px;color:rgba(100,160,224,0.6);">查看详情 ›</span>
+        </div>
+    </div>`;
+}
+
+// ==================== 名片详情面板 ====================
+_showCardDetail(cardInfo) {
+    document.getElementById('cardDetailOverlay')?.remove();
+    
+    const nickname = this.escapeHtml(cardInfo.nickname || '');
+    const signature = this.escapeHtml(cardInfo.signature || '');
+    const bio = this.escapeHtml(cardInfo.bio || '暂无简介');
+    const firstChar = (cardInfo.nickname || '?')[0];
+    const color = cardInfo.relationPerson?.color || '#70a0e0';
+    const isUserCard = !!cardInfo.fromUser;
+    
+    // 检查是否已是好友
+    const allFriends = this.storage.getAllFriends();
+    const existingFriend = allFriends.find(f => (f.nickname === cardInfo.nickname || f.name === cardInfo.nickname) && !f.isDeleted);
+    
+    const ov = document.createElement('div');
+    ov.id = 'cardDetailOverlay';
+    ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9800;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;animation:fadeIn 0.2s ease;';
+    
+    ov.innerHTML = `
+        <div style="background:#fff;border-radius:16px;width:85%;max-width:320px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+            <div style="background:linear-gradient(135deg, ${color}dd, ${color}88);padding:24px 20px 18px;text-align:center;position:relative;">
+                <div style="width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,0.25);display:flex;align-items:center;justify-content:center;font-size:24px;color:#fff;font-weight:700;margin:0 auto 8px;border:2px solid rgba(255,255,255,0.3);">${this.escapeHtml(firstChar)}</div>
+                <div style="font-size:18px;font-weight:600;color:#fff;">${nickname}</div>
+                ${signature ? `<div style="font-size:12px;color:rgba(255,255,255,0.7);margin-top:4px;">${signature}</div>` : ''}
+            </div>
+            <div style="padding:16px 20px;">
+                <div style="font-size:12px;color:rgba(0,0,0,0.35);margin-bottom:6px;">简介</div>
+                <div style="font-size:14px;color:rgba(0,0,0,0.65);line-height:1.6;white-space:pre-wrap;">${bio}</div>
+            </div>
+            <div style="padding:0 16px 16px;display:flex;flex-direction:column;gap:8px;">
+                ${existingFriend ? `
+                    <div style="text-align:center;padding:8px;color:rgba(100,180,100,0.7);font-size:13px;">✓ 已是好友</div>
+                ` : `
+                    ${!isUserCard ? `<button id="cardTempChatBtn" style="width:100%;padding:12px;border:none;border-radius:10px;background:${color};color:#fff;font-size:14px;font-weight:500;cursor:pointer;">💬 发起临时会话</button>` : ''}
+                    <button id="cardAddFriendBtn" style="width:100%;padding:12px;border:none;border-radius:10px;background:rgba(0,0,0,0.05);color:rgba(0,0,0,0.6);font-size:14px;cursor:pointer;">＋ 添加为好友</button>
+                `}
+                <button id="cardCloseBtn" style="width:100%;padding:10px;border:none;border-radius:10px;background:transparent;color:rgba(0,0,0,0.3);font-size:13px;cursor:pointer;">关闭</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(ov);
+    
+    ov.addEventListener('click', (e) => { if (e.target === ov) ov.remove(); });
+    ov.querySelector('#cardCloseBtn')?.addEventListener('click', () => ov.remove());
+    
+    ov.querySelector('#cardTempChatBtn')?.addEventListener('click', () => {
+        ov.remove();
+        this._openTempChat(cardInfo);
+    });
+    
+    ov.querySelector('#cardAddFriendBtn')?.addEventListener('click', () => {
+        ov.remove();
+        this._addFriendFromCard(cardInfo);
+    });
+}
+
+// ==================== 用户发名片（菜单触发） ====================
+_openNameCardPanel() {
+    document.getElementById('nameCardPickerOverlay')?.remove();
+    
+    const allFriends = this.storage.getAllFriends().filter(f => !f.blacklisted && f.code !== this.currentFriendCode);
+    
+    if (allFriends.length === 0) {
+        this.showCssToast('没有可以推荐的好友');
+        return;
+    }
+    
+    const ov = document.createElement('div');
+    ov.id = 'nameCardPickerOverlay';
+    ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9800;background:rgba(0,0,0,0.6);display:flex;align-items:flex-end;justify-content:center;';
+    
+    let listHtml = allFriends.map(f => {
+        const name = this.escapeHtml(f.nickname || f.name);
+        const sig = this.escapeHtml(f.signature || '');
+        const fc = (f.nickname || f.name || '?')[0];
+        return `<div class="card-pick-item" data-code="${f.code}" style="display:flex;align-items:center;gap:10px;padding:12px 16px;cursor:pointer;border-bottom:1px solid rgba(0,0,0,0.04);">
+            <div style="width:36px;height:36px;border-radius:50%;background:rgba(100,160,224,0.15);display:flex;align-items:center;justify-content:center;font-size:14px;color:rgba(100,160,224,0.8);font-weight:600;flex-shrink:0;">${this.escapeHtml(fc)}</div>
+            <div style="flex:1;min-width:0;">
+                <div style="font-size:14px;color:rgba(0,0,0,0.7);font-weight:500;">${name}</div>
+                ${sig ? `<div style="font-size:11px;color:rgba(0,0,0,0.3);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${sig}</div>` : ''}
+            </div>
+            <span style="font-size:10px;color:rgba(0,0,0,0.2);">›</span>
+        </div>`;
+    }).join('');
+    
+    ov.innerHTML = `
+        <div style="background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:400px;max-height:70vh;display:flex;flex-direction:column;overflow:hidden;">
+            <div style="padding:16px;text-align:center;border-bottom:1px solid rgba(0,0,0,0.06);flex-shrink:0;">
+                <div style="font-size:16px;font-weight:600;color:rgba(0,0,0,0.7);">选择要推荐的好友</div>
+                <div style="font-size:11px;color:rgba(0,0,0,0.3);margin-top:4px;">选一个好友，把TA的名片发给当前聊天对象</div>
+            </div>
+            <div id="cardPickList" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;">${listHtml}</div>
+            <div style="padding:12px 16px;flex-shrink:0;">
+                <button id="cardPickCancel" style="width:100%;padding:10px;border:none;border-radius:10px;background:rgba(0,0,0,0.04);color:rgba(0,0,0,0.4);font-size:14px;cursor:pointer;">取消</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(ov);
+    
+    ov.addEventListener('click', (e) => { if (e.target === ov) ov.remove(); });
+    ov.querySelector('#cardPickCancel')?.addEventListener('click', () => ov.remove());
+    
+    ov.querySelectorAll('.card-pick-item').forEach(el => {
+        el.addEventListener('click', () => {
+            const code = el.dataset.code;
+            ov.remove();
+            this._sendUserCard(code);
+        });
+    });
+}
+
+_sendUserCard(friendCode) {
+    const friend = this.storage.getFriendByCode(friendCode);
+    if (!friend) return;
+    
+    const cardInfo = {
+        nickname: friend.nickname || friend.name,
+        signature: friend.signature || '',
+        bio: friend.persona ? friend.persona.substring(0, 200) : '暂无简介',
+        persona: friend.persona || '',
+        friendCode: friendCode,
+        fromUser: true
+    };
+    
+    const msg = { type: 'user', text: '', timestamp: new Date().toISOString(), _card: cardInfo };
+    if (this._quotingMessage) { msg._quote = this._extractQuoteData(this._quotingMessage); this._clearQuoteMessage(); }
+    this.addMessage(msg);
+    this.storage.addMessage(this.currentFriendCode, {
+        type: 'user', text: `[用户推荐了好友名片：${cardInfo.nickname}]`,
+        timestamp: msg.timestamp, _card: cardInfo, _quote: msg._quote
+    });
+    this.scrollToBottom();
+}
+
+// ==================== 临时会话系统 ====================
+
+_openTempChat(cardInfo) {
+    document.getElementById('tempChatOverlay')?.remove();
+    
+    const tempChatId = cardInfo.tempChatId || `${this.currentFriendCode || 'unknown'}__${cardInfo.nickname}`;
+    const existing = this.storage.getTempChat(tempChatId);
+    
+    // 保存临时会话状态
+    this._tempChat = {
+        id: tempChatId,
+        cardInfo: cardInfo,
+        messages: existing?.messages || [],
+        isSending: false
+    };
+    
+    const nickname = this.escapeHtml(cardInfo.nickname || '未知');
+    const color = cardInfo.relationPerson?.color || '#70a0e0';
+    
+    const ov = document.createElement('div');
+    ov.id = 'tempChatOverlay';
+    ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9600;background:#f2f2f2;display:flex;flex-direction:column;';
+    
+    ov.innerHTML = `
+        <div style="height:56px;background:#ededed;display:flex;align-items:center;padding:0 12px;gap:10px;flex-shrink:0;border-bottom:1px solid rgba(0,0,0,0.06);padding-top:env(safe-area-inset-top);">
+            <button id="tempChatBack" style="width:36px;height:36px;border:none;background:transparent;font-size:20px;cursor:pointer;color:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;">←</button>
+            <div id="tempChatNameArea" style="flex:1;text-align:center;cursor:pointer;">
+                <div style="font-size:16px;font-weight:600;color:rgba(0,0,0,0.7);">${nickname}</div>
+                <div style="font-size:10px;color:rgba(0,0,0,0.3);">临时会话</div>
+            </div>
+            <div style="width:36px;"></div>
+        </div>
+        <div id="tempChatMessages" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 16px;"></div>
+        <div id="tempChatTyping" style="display:none;padding:4px 20px;font-size:11px;color:rgba(0,0,0,0.25);">对方正在输入...</div>
+        <div style="display:flex;align-items:flex-end;gap:8px;padding:8px 12px 12px;background:#f6f6f6;flex-shrink:0;border-top:1px solid rgba(0,0,0,0.04);padding-bottom:calc(12px + env(safe-area-inset-bottom));">
+            <textarea id="tempChatInput" rows="1" placeholder="说点什么..." style="flex:1;border:1px solid rgba(0,0,0,0.08);border-radius:8px;padding:8px 12px;font-size:14px;resize:none;outline:none;background:#fff;max-height:100px;line-height:1.5;font-family:inherit;color:rgba(0,0,0,0.7);"></textarea>
+            <button id="tempChatSend" style="width:60px;height:36px;border:none;border-radius:8px;background:${color};color:#fff;font-size:13px;font-weight:500;cursor:pointer;flex-shrink:0;">发送</button>
+        </div>
+    `;
+    
+    document.body.appendChild(ov);
+    
+    // 渲染已有消息
+    this._renderAllTempMessages();
+    
+    // 绑定事件
+    ov.querySelector('#tempChatBack').addEventListener('click', () => this._closeTempChat());
+    ov.querySelector('#tempChatSend').addEventListener('click', () => this._sendTempMessage());
+    
+    const input = ov.querySelector('#tempChatInput');
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this._sendTempMessage(); }
+    });
+    input.addEventListener('input', () => {
+        input.style.height = 'auto';
+        input.style.height = Math.min(input.scrollHeight, 100) + 'px';
+    });
+    
+    // 点击昵称 → 添加好友弹窗
+    ov.querySelector('#tempChatNameArea').addEventListener('click', () => {
+        this._showTempChatAddFriendDialog(cardInfo);
+    });
+    
+    // 如果没有消息，显示欢迎
+    if (this._tempChat.messages.length === 0) {
+        this._addTempSystemMsg(`你通过名片开始了与「${cardInfo.nickname}」的临时会话`);
+    }
+    
+    // 滚到底部
+    setTimeout(() => {
+        const container = document.getElementById('tempChatMessages');
+        if (container) container.scrollTop = container.scrollHeight;
+    }, 100);
+}
+
+_closeTempChat() {
+    if (this._tempChat) {
+        // 保存聊天记录
+        this.storage.saveTempChat(this._tempChat.id, {
+            messages: this._tempChat.messages,
+            cardInfo: this._tempChat.cardInfo,
+            createdAt: this.storage.getTempChat(this._tempChat.id)?.createdAt || new Date().toISOString()
+        });
+        this._tempChat = null;
+    }
+    document.getElementById('tempChatOverlay')?.remove();
+}
+
+_addTempSystemMsg(text) {
+    if (!this._tempChat) return;
+    this._tempChat.messages.push({ type: 'system', text, timestamp: new Date().toISOString() });
+    const container = document.getElementById('tempChatMessages');
+    if (!container) return;
+    const el = document.createElement('div');
+    el.style.cssText = 'text-align:center;padding:8px 0;font-size:11px;color:rgba(0,0,0,0.25);';
+    el.textContent = text;
+    container.appendChild(el);
+}
+
+_renderAllTempMessages() {
+    const container = document.getElementById('tempChatMessages');
+    if (!container || !this._tempChat) return;
+    container.innerHTML = '';
+    
+    const color = this._tempChat.cardInfo?.relationPerson?.color || '#70a0e0';
+    const firstChar = (this._tempChat.cardInfo?.nickname || '?')[0];
+    
+    this._tempChat.messages.forEach(msg => {
+        this._renderOneTempMessage(msg, container, color, firstChar);
+    });
+}
+
+_renderOneTempMessage(msg, container, color, firstChar) {
+    if (!container) container = document.getElementById('tempChatMessages');
+    if (!container) return;
+    
+    color = color || this._tempChat?.cardInfo?.relationPerson?.color || '#70a0e0';
+    firstChar = firstChar || (this._tempChat?.cardInfo?.nickname || '?')[0];
+    
+    if (msg.type === 'system') {
+        const el = document.createElement('div');
+        el.style.cssText = 'text-align:center;padding:8px 0;font-size:11px;color:rgba(0,0,0,0.25);';
+        el.textContent = msg.text;
+        container.appendChild(el);
+        return;
+    }
+    
+    const isUser = msg.type === 'user';
+    const el = document.createElement('div');
+    el.style.cssText = `display:flex;gap:8px;margin-bottom:10px;${isUser ? 'flex-direction:row-reverse;' : ''}`;
+    
+    const avatarHtml = isUser 
+        ? `<div style="width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,0.06);display:flex;align-items:center;justify-content:center;font-size:13px;color:rgba(0,0,0,0.3);flex-shrink:0;">我</div>`
+        : `<div style="width:36px;height:36px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff;font-weight:600;flex-shrink:0;">${this.escapeHtml(firstChar)}</div>`;
+    
+    const bubbleBg = isUser ? '#95ec69' : '#fff';
+    const bubbleColor = 'rgba(0,0,0,0.75)';
+    const textHtml = this.escapeHtml(msg.text || '').replace(/\n/g, '<br>');
+    
+    const time = msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit'}) : '';
+    
+    el.innerHTML = `
+        ${avatarHtml}
+        <div style="max-width:70%;display:flex;flex-direction:column;${isUser ? 'align-items:flex-end;' : ''}">
+            <div style="padding:9px 12px;border-radius:${isUser ? '12px 4px 12px 12px' : '4px 12px 12px 12px'};background:${bubbleBg};font-size:14px;line-height:1.55;color:${bubbleColor};word-break:break-word;box-shadow:0 1px 2px rgba(0,0,0,0.04);">${textHtml}</div>
+            <div style="font-size:10px;color:rgba(0,0,0,0.2);margin-top:3px;padding:0 4px;">${time}</div>
+        </div>
+    `;
+    
+    container.appendChild(el);
+}
+
+async _sendTempMessage() {
+    if (!this._tempChat || this._tempChat.isSending) return;
+    
+    const input = document.getElementById('tempChatInput');
+    if (!input) return;
+    const text = input.value.trim();
+    if (!text) return;
+    
+    input.value = '';
+    input.style.height = 'auto';
+    
+    // 添加用户消息
+    const userMsg = { type: 'user', text, timestamp: new Date().toISOString() };
+    this._tempChat.messages.push(userMsg);
+    this._renderOneTempMessage(userMsg);
+    
+    const container = document.getElementById('tempChatMessages');
+    if (container) container.scrollTop = container.scrollHeight;
+    
+    // 调用AI
+    this._tempChat.isSending = true;
+    const typing = document.getElementById('tempChatTyping');
+    if (typing) typing.style.display = 'block';
+    
+    try {
+        const result = await this._callTempChatAI();
+        if (typing) typing.style.display = 'none';
+        
+        if (result.success && result.text) {
+            // 清理可能的指令标签（临时会话不支持指令）
+            let aiText = result.text.replace(/\[AI_[A-Z_]+(?::[^\]]+)?\]/g, '').replace(/\[MSG_SPLIT\]/g, '').trim();
+            if (!aiText) aiText = '...';
+            
+            const aiMsg = { type: 'ai', text: aiText, timestamp: new Date().toISOString() };
+            this._tempChat.messages.push(aiMsg);
+            this._renderOneTempMessage(aiMsg);
+            if (container) container.scrollTop = container.scrollHeight;
+        } else {
+            this._addTempSystemMsg('发送失败：' + (result.error || '未知错误'));
+        }
+    } catch(e) {
+        if (typing) typing.style.display = 'none';
+        this._addTempSystemMsg('发送失败：' + e.message);
+    }
+    
+    this._tempChat.isSending = false;
+    
+    // 自动保存
+    this.storage.saveTempChat(this._tempChat.id, {
+        messages: this._tempChat.messages,
+        cardInfo: this._tempChat.cardInfo,
+        createdAt: this.storage.getTempChat(this._tempChat.id)?.createdAt || new Date().toISOString()
+    });
+}
+
+async _callTempChatAI() {
+    if (!this._tempChat) return { success: false, error: '临时会话不存在' };
+    
+    const cardInfo = this._tempChat.cardInfo;
+    const persona = cardInfo.persona || `你叫${cardInfo.nickname}。${cardInfo.bio || ''}`;
+    
+    // 构建简化版系统提示
+    const now = new Date();
+    const timeStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    
+    let systemPrompt = persona;
+    systemPrompt += `\n\n【当前时间】${timeStr}`;
+    systemPrompt += `\n\n这是一个临时会话。对方通过名片找到了你，你们刚开始认识。请自然地聊天，像真人一样回复。不要使用任何方括号指令标签。`;
+    
+    // 构建消息历史
+    const maxMsgs = 20;
+    const recentMsgs = this._tempChat.messages.filter(m => m.type === 'user' || m.type === 'ai').slice(-maxMsgs);
+    const apiMessages = recentMsgs.map(m => ({
+        type: m.type,
+        text: m.text,
+        timestamp: m.timestamp
+    }));
+    
+    // 调用API（复用现有apiManager）
+    if (!this.apiManager) {
+        return { success: false, error: 'API未配置' };
+    }
+    
+    return await this.apiManager.callAI(apiMessages, systemPrompt);
+}
+
+// ==================== 临时会话→添加好友 ====================
+_showTempChatAddFriendDialog(cardInfo) {
+    document.getElementById('tempAddFriendDialog')?.remove();
+    
+    // 检查是否已是好友
+    const allFriends = this.storage.getAllFriends();
+    const existing = allFriends.find(f => (f.nickname === cardInfo.nickname || f.name === cardInfo.nickname) && !f.isDeleted);
+    if (existing) {
+        this.showCssToast('TA已经是你的好友了');
+        return;
+    }
+    
+    const nickname = this.escapeHtml(cardInfo.nickname || '');
+    
+    const ov = document.createElement('div');
+    ov.id = 'tempAddFriendDialog';
+    ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9900;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;';
+    
+    ov.innerHTML = `
+        <div style="background:#fff;border-radius:14px;width:80%;max-width:300px;overflow:hidden;">
+            <div style="padding:20px 16px 12px;text-align:center;">
+                <div style="font-size:15px;color:rgba(0,0,0,0.7);font-weight:500;">添加「${nickname}」为好友？</div>
+                <div style="font-size:12px;color:rgba(0,0,0,0.35);margin-top:6px;">添加后可以查看完整资料</div>
+            </div>
+            <div style="display:flex;border-top:1px solid rgba(0,0,0,0.06);">
+                <button id="tempAddCancel" style="flex:1;padding:14px;border:none;background:transparent;color:rgba(0,0,0,0.4);font-size:15px;cursor:pointer;border-right:1px solid rgba(0,0,0,0.06);">再想想</button>
+                <button id="tempAddConfirm" style="flex:1;padding:14px;border:none;background:transparent;color:#576b95;font-size:15px;font-weight:500;cursor:pointer;">确定添加</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(ov);
+    
+    ov.addEventListener('click', (e) => { if (e.target === ov) ov.remove(); });
+    ov.querySelector('#tempAddCancel').addEventListener('click', () => ov.remove());
+    ov.querySelector('#tempAddConfirm').addEventListener('click', () => {
+        ov.remove();
+        this._showApiModeDialog(cardInfo);
+    });
+}
+
+_showApiModeDialog(cardInfo) {
+    document.getElementById('apiModeDialog')?.remove();
+    
+    const ov = document.createElement('div');
+    ov.id = 'apiModeDialog';
+    ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9900;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;';
+    
+    ov.innerHTML = `
+        <div style="background:#fff;border-radius:14px;width:85%;max-width:320px;overflow:hidden;">
+            <div style="padding:20px 16px 8px;text-align:center;">
+                <div style="font-size:15px;color:rgba(0,0,0,0.7);font-weight:500;">选择API模式</div>
+                <div style="font-size:11px;color:rgba(0,0,0,0.3);margin-top:6px;">新好友的AI接口配置</div>
+            </div>
+            <div style="padding:8px 16px 16px;display:flex;flex-direction:column;gap:8px;">
+                <button class="api-mode-btn" data-mode="shared" style="padding:14px;border:1px solid rgba(0,0,0,0.06);border-radius:10px;background:rgba(0,0,0,0.02);cursor:pointer;text-align:left;">
+                    <div style="font-size:14px;color:rgba(0,0,0,0.7);font-weight:500;">共用主API</div>
+                    <div style="font-size:11px;color:rgba(0,0,0,0.35);margin-top:3px;">使用当前的全局API配置</div>
+                </button>
+                <button class="api-mode-btn" data-mode="independent" style="padding:14px;border:1px solid rgba(0,0,0,0.06);border-radius:10px;background:rgba(0,0,0,0.02);cursor:pointer;text-align:left;">
+                    <div style="font-size:14px;color:rgba(0,0,0,0.7);font-weight:500;">独立API</div>
+                    <div style="font-size:11px;color:rgba(0,0,0,0.35);margin-top:3px;">之后单独配置（暂时共用）</div>
+                </button>
+                <button class="api-mode-btn" data-mode="both" style="padding:14px;border:1px solid rgba(0,0,0,0.06);border-radius:10px;background:rgba(0,0,0,0.02);cursor:pointer;text-align:left;">
+                    <div style="font-size:14px;color:rgba(0,0,0,0.7);font-weight:500;">保留两者</div>
+                    <div style="font-size:11px;color:rgba(0,0,0,0.35);margin-top:3px;">同时保留临时会话记录和推荐来源</div>
+                </button>
+            </div>
+            <div style="padding:0 16px 12px;">
+                <button id="apiModeCancel" style="width:100%;padding:10px;border:none;border-radius:8px;background:transparent;color:rgba(0,0,0,0.3);font-size:13px;cursor:pointer;">取消</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(ov);
+    
+    ov.addEventListener('click', (e) => { if (e.target === ov) ov.remove(); });
+    ov.querySelector('#apiModeCancel')?.addEventListener('click', () => ov.remove());
+    
+    ov.querySelectorAll('.api-mode-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const mode = btn.dataset.mode;
+            ov.remove();
+            this._createFriendFromCard(cardInfo, mode);
+        });
+    });
+}
+
+_addFriendFromCard(cardInfo) {
+    // 检查是否已是好友
+    const allFriends = this.storage.getAllFriends();
+    const existing = allFriends.find(f => (f.nickname === cardInfo.nickname || f.name === cardInfo.nickname) && !f.isDeleted);
+    if (existing) {
+        this.showCssToast('TA已经是你的好友了');
+        return;
+    }
+    this._showApiModeDialog(cardInfo);
+}
+
+_createFriendFromCard(cardInfo, apiMode) {
+    const nickname = cardInfo.nickname || '新好友';
+    
+    // 生成好友编码
+    const prefix = nickname.substring(0, 3).toUpperCase();
+    const year = new Date().getFullYear().toString().substring(2);
+    const random = Math.random().toString(36).substring(2, 5).toUpperCase();
+    const code = `${prefix}_${year}k25_${random}#`;
+    
+    // 构建好友数据
+    const newFriend = {
+        code: code,
+        name: nickname,
+        realName: cardInfo.relationPerson?.name || '',
+        nickname: '',
+        avatar: '',
+        persona: cardInfo.persona || '',
+        poke: '戳了戳你',
+        signature: cardInfo.signature || '',
+        groupId: 'default',
+        addedTime: new Date().toISOString().split('T')[0],
+        addedFrom: 'card',
+        addedByCard: {
+            recommenderCode: cardInfo.recommenderCode || '',
+            apiMode: apiMode
+        },
+        canSeeMyMoments: true,
+        seeTAMoments: true,
+        currentOutfit: '',
+        currentAction: '',
+        currentMood: '',
+        currentLocation: '',
+        enableAvatarRecognition: true
+    };
+    
+    const success = this.storage.addFriend(newFriend);
+    
+    if (!success) {
+        this.showCssToast('添加失败');
+        return;
+    }
+    
+    // 迁移临时会话消息到正式聊天
+    const tempChatId = cardInfo.tempChatId || `${cardInfo.recommenderCode || 'unknown'}__${nickname}`;
+    const tempData = this.storage.getTempChat(tempChatId);
+    if (tempData && tempData.messages && tempData.messages.length > 0) {
+        const chatMessages = tempData.messages.filter(m => m.type === 'user' || m.type === 'ai');
+        if (chatMessages.length > 0) {
+            const chats = this.storage.getChats();
+            let chat = chats.find(c => c.friendCode === code);
+            if (!chat) {
+                chat = { friendCode: code, messages: [], coreMemories: [], memoryFragments: [] };
+                chats.push(chat);
+            }
+            chat.messages = chatMessages;
+            this.storage.saveData(this.storage.KEYS.CHATS, chats);
+        }
+    }
+    
+    // 关闭临时会话
+    this._tempChat = null;
+    document.getElementById('tempChatOverlay')?.remove();
+    
+    // 提示成功
+    if (window.zpConfirm) {
+        window.zpConfirm('添加成功 ✓', `「${nickname}」已成为你的好友！\n\n好友编码：${code}\n\n${tempData?.messages?.length > 0 ? '临时会话记录已迁移。' : ''}要现在去聊天吗？`, '去聊天', '留在这里').then(go => {
+            if (go && window.chatApp) {
+                // 刷新好友列表
+                window.chatApp.renderFriendList?.();
+                window.chatApp.renderChatList?.();
+                // 打开新好友的聊天
+                window.chatApp.openChatInterface(code);
+            } else {
+                window.chatApp?.renderFriendList?.();
+                window.chatApp?.renderChatList?.();
+            }
+        });
+    } else {
+        alert(`✅ 添加成功！好友编码：${code}`);
+        window.chatApp?.renderFriendList?.();
+        window.chatApp?.renderChatList?.();
+    }
+    
+    // 在主聊天中显示系统消息
+    if (this.currentFriendCode) {
+        this.showCssSystemMessage(`📇 你通过名片添加了「${nickname}」为好友`);
+    }
 }
 
 }

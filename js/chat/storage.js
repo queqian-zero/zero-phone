@@ -371,6 +371,20 @@ class StorageManager {
         return true;
     }
     
+    // ==================== 临时会话相关 ====================
+    getTempChat(tempChatId) {
+        return this.getData(`zero_phone_temp_chat_${tempChatId}`) || null;
+    }
+    saveTempChat(tempChatId, data) {
+        data.updatedAt = new Date().toISOString();
+        this.saveData(`zero_phone_temp_chat_${tempChatId}`, data);
+        return true;
+    }
+    deleteTempChat(tempChatId) {
+        this.deleteData(`zero_phone_temp_chat_${tempChatId}`);
+        return true;
+    }
+    
     // 添加星迹档案记录
     addTimelineEntry(friendCode, entry) {
         const data = this.getIntimacyData(friendCode);
@@ -385,27 +399,6 @@ class StorageManager {
         });
         this.saveIntimacyData(friendCode, data);
         return data.timeline[0].id;
-    }
-    
-    // ==================== 临时会话相关 ====================
-    getTempChats() { return this.getData('zero_phone_temp_chats') || {}; }
-    getTempChat(tempId) { return this.getTempChats()[tempId] || null; }
-    saveTempChat(tempId, chatData) {
-        const all = this.getTempChats();
-        all[tempId] = chatData;
-        return this.saveData('zero_phone_temp_chats', all);
-    }
-    deleteTempChat(tempId) {
-        const all = this.getTempChats();
-        delete all[tempId];
-        return this.saveData('zero_phone_temp_chats', all);
-    }
-    addTempMessage(tempId, message) {
-        const all = this.getTempChats();
-        if (!all[tempId]) return false;
-        if (!all[tempId].messages) all[tempId].messages = [];
-        all[tempId].messages.push(message);
-        return this.saveData('zero_phone_temp_chats', all);
     }
     
     // ==================== 调试 ====================
