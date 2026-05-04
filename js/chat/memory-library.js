@@ -140,6 +140,8 @@ class MemoryLibrary {
                     ${menuItem('&#9998;', '聊天总结', 'mlChatSummary', '线上聊天的记忆总结')}
                     ${menuItem('&#9829;', '核心记忆', 'mlCoreMemory', '线上聊天的核心记忆')}
                     ${menuItem('&#9998;', '记事本', 'mlNotebook', 'TA的碎碎念和日记')}
+                    ${menuItem('&#128196;', '备忘录', 'mlMemo', '每日记录')}
+                    ${menuItem('&#128187;', '项目库', 'mlProjects', 'TA的代码项目')}
                     ${menuItem('&#128101;', '人际关系', 'mlRelations', 'TA的社交圈')}
                     ${menuItem('&#9670;', '剧场归档', 'mlTheaterArchive', '次元剧场存档')}
                 </div>
@@ -161,6 +163,16 @@ class MemoryLibrary {
         // 记事本
         page.querySelector('#mlNotebook')?.addEventListener('click', () => {
             this._openNotebook(friendCode, name);
+        });
+        
+        // 备忘录
+        page.querySelector('#mlMemo')?.addEventListener('click', () => {
+            this._openMemo(friendCode, name);
+        });
+        
+        // 项目库
+        page.querySelector('#mlProjects')?.addEventListener('click', () => {
+            this._openProjects(friendCode, name);
         });
 
         // 表情包收藏（占位）
@@ -1434,6 +1446,286 @@ class MemoryLibrary {
 
     _esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
     _toast(msg) { if (window.chatInterface?.showCssToast) window.chatInterface.showCssToast(msg); else alert(msg); }
+    
+    // ==================== 项目库 ====================
+    _openProjects(friendCode, name) {
+        document.getElementById('mlProjectsPage')?.remove();
+        const data = this._store().getIntimacyData(friendCode);
+        if (!data.projects) data.projects = [];
+        
+        const page = document.createElement('div');
+        page.id = 'mlProjectsPage';
+        page.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:8200;background:#0d0d0d;display:flex;flex-direction:column;';
+        
+        const renderList = () => {
+            const projects = data.projects || [];
+            let html = '';
+            if (projects.length === 0) {
+                html = '<div style="text-align:center;padding:60px 0;color:rgba(255,255,255,0.12);font-size:13px;">还没有项目<br><span style="font-size:11px;">AI可以用指令创建代码项目</span></div>';
+            } else {
+                html = projects.slice().reverse().map(p => `<div class="proj-card" data-id="${p.id}" style="margin-bottom:10px;padding:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;cursor:pointer;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;">
+                        <div style="font-size:14px;font-weight:600;color:rgba(255,255,255,0.7);">${this._esc(p.name||'未命名')}</div>
+                        <div style="font-size:10px;color:rgba(255,255,255,0.15);padding:2px 6px;background:rgba(255,255,255,0.04);border-radius:4px;">${this._esc(p.type||'html')}</div>
+                    </div>
+                    ${p.desc ? `<div style="font-size:12px;color:rgba(255,255,255,0.3);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${this._esc(p.desc)}</div>` : ''}
+                    <div style="font-size:10px;color:rgba(255,255,255,0.1);margin-top:6px;">${p.updatedAt||p.createdAt||''}</div>
+                </div>`).join('');
+            }
+            const content = page.querySelector('#projContent');
+            if (content) content.innerHTML = html;
+            
+            page.querySelectorAll('.proj-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    const proj = data.projects.find(p => p.id === card.dataset.id);
+                    if (proj) this._viewProject(friendCode, name, proj, page, data);
+                });
+            });
+        };
+        
+        page.innerHTML = `
+            <div style="display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.04);flex-shrink:0;">
+                <button id="projBack" style="background:none;border:none;color:rgba(255,255,255,0.6);font-size:20px;cursor:pointer;">&#8592;</button>
+                <div style="flex:1;font-size:16px;font-weight:600;color:#fff;text-align:center;">${this._esc(name)} 的项目库</div>
+            </div>
+            <div id="projContent" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 16px;"></div>`;
+        
+        document.body.appendChild(page);
+        page.querySelector('#projBack')?.addEventListener('click', () => page.remove());
+        renderList();
+    }
+    
+    _viewProject(friendCode, name, proj, parentPage, data) {
+        document.getElementById('projViewOverlay')?.remove();
+        const ov = document.createElement('div');
+        ov.id = 'projViewOverlay';
+        ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:8300;background:#0d0d0d;display:flex;flex-direction:column;';
+        
+        // 合并多文件为展示
+        const files = proj.files || [{ name: 'index.' + (proj.type||'html'), content: proj.code || '' }];
+        
+        ov.innerHTML = `
+            <div style="display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.04);flex-shrink:0;gap:8px;">
+                <button id="pvBack" style="background:none;border:none;color:rgba(255,255,255,0.6);font-size:20px;cursor:pointer;">&#8592;</button>
+                <div style="flex:1;min-width:0;">
+                    <div style="font-size:15px;font-weight:600;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${this._esc(proj.name||'')}</div>
+                </div>
+                <button id="pvRun" style="padding:6px 12px;border:none;border-radius:8px;background:rgba(80,200,120,0.12);color:rgba(80,200,120,0.8);font-size:12px;font-weight:600;cursor:pointer;">▶ 运行</button>
+                <button id="pvDownload" style="padding:6px 12px;border:none;border-radius:8px;background:rgba(100,160,224,0.12);color:rgba(100,160,224,0.8);font-size:12px;cursor:pointer;">↓ 下载</button>
+                <button id="pvDelete" style="padding:6px 12px;border:none;border-radius:8px;background:rgba(255,60,60,0.08);color:rgba(255,100,100,0.5);font-size:12px;cursor:pointer;">删除</button>
+            </div>
+            ${proj.desc ? `<div style="padding:8px 16px;font-size:12px;color:rgba(255,255,255,0.25);">${this._esc(proj.desc)}</div>` : ''}
+            <div id="pvFileTabs" style="display:flex;gap:0;border-bottom:1px solid rgba(255,255,255,0.04);padding:0 16px;flex-shrink:0;overflow-x:auto;">
+                ${files.map((f,i) => `<div class="pv-tab" data-idx="${i}" style="padding:8px 14px;font-size:12px;cursor:pointer;white-space:nowrap;border-bottom:2px solid ${i===0?'rgba(240,147,43,0.6)':'transparent'};color:${i===0?'rgba(240,147,43,0.8)':'rgba(255,255,255,0.3)'};">${this._esc(f.name)}</div>`).join('')}
+            </div>
+            <pre id="pvCode" style="flex:1;overflow:auto;-webkit-overflow-scrolling:touch;padding:14px 16px;margin:0;font-size:12px;line-height:1.6;color:rgba(255,255,255,0.6);font-family:'Courier New',monospace;white-space:pre-wrap;word-break:break-all;">${this._esc(files[0]?.content||'')}</pre>
+            <div id="pvRunResult" style="display:none;flex:1;overflow:auto;"></div>`;
+        
+        document.body.appendChild(ov);
+        ov.querySelector('#pvBack')?.addEventListener('click', () => ov.remove());
+        
+        // 文件标签切换
+        let currentIdx = 0;
+        ov.querySelectorAll('.pv-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                currentIdx = parseInt(tab.dataset.idx);
+                ov.querySelectorAll('.pv-tab').forEach(t => { t.style.borderBottomColor = 'transparent'; t.style.color = 'rgba(255,255,255,0.3)'; });
+                tab.style.borderBottomColor = 'rgba(240,147,43,0.6)';
+                tab.style.color = 'rgba(240,147,43,0.8)';
+                ov.querySelector('#pvCode').textContent = files[currentIdx]?.content || '';
+                ov.querySelector('#pvCode').style.display = '';
+                ov.querySelector('#pvRunResult').style.display = 'none';
+            });
+        });
+        
+        // 运行（HTML类型用iframe）
+        ov.querySelector('#pvRun')?.addEventListener('click', () => {
+            const codeEl = ov.querySelector('#pvCode');
+            const resultEl = ov.querySelector('#pvRunResult');
+            // 合并所有文件为HTML
+            let html = '';
+            const htmlFile = files.find(f => f.name.endsWith('.html'));
+            const cssFile = files.find(f => f.name.endsWith('.css'));
+            const jsFile = files.find(f => f.name.endsWith('.js'));
+            if (htmlFile) {
+                html = htmlFile.content || '';
+                if (cssFile) html = html.replace('</head>', '<style>' + cssFile.content + '</style></head>');
+                if (jsFile) html = html.replace('</body>', '<script>' + jsFile.content + '<\/script></body>');
+            } else {
+                // 单文件
+                const code = files[0]?.content || '';
+                const type = proj.type || 'html';
+                if (type === 'html' || code.includes('<html') || code.includes('<div')) {
+                    html = code;
+                } else if (type === 'js') {
+                    html = '<html><body><pre id="out"></pre><script>try{const r=eval(`' + code.replace(/`/g,'\\`').replace(/<\/script>/g,'<\\/script>') + '`);document.getElementById("out").textContent=JSON.stringify(r,null,2);}catch(e){document.getElementById("out").textContent="Error: "+e.message;}<\/script></body></html>';
+                } else {
+                    html = '<html><head><style>' + code + '</style></head><body><div>CSS 预览</div></body></html>';
+                }
+            }
+            codeEl.style.display = 'none';
+            resultEl.style.display = '';
+            resultEl.innerHTML = '<iframe id="pvIframe" sandbox="allow-scripts" style="width:100%;height:100%;border:none;background:#fff;"></iframe>';
+            const iframe = resultEl.querySelector('#pvIframe');
+            iframe.srcdoc = html;
+        });
+        
+        // 下载
+        ov.querySelector('#pvDownload')?.addEventListener('click', () => {
+            files.forEach(f => {
+                const blob = new Blob([f.content||''], { type: 'text/plain' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = f.name;
+                a.click();
+                URL.revokeObjectURL(a.href);
+            });
+            this._toast(`已下载 ${files.length} 个文件`);
+        });
+        
+        // 删除
+        ov.querySelector('#pvDelete')?.addEventListener('click', async () => {
+            const ok = window.zpConfirm ? await window.zpConfirm('删除项目', `确定删除「${proj.name}」？`, '删除', '取消') : confirm('删除？');
+            if (!ok) return;
+            data.projects = (data.projects||[]).filter(p => p.id !== proj.id);
+            this._store().saveIntimacyData(friendCode, data);
+            ov.remove();
+            this._openProjects(friendCode, name);
+        });
+    }
+    
+    // ==================== 备忘录 ====================
+    _openMemo(friendCode, name) {
+        document.getElementById('mlMemoPage')?.remove();
+        const data = this._store().getIntimacyData(friendCode);
+        if (!data.memo) data.memo = { entries: [], assistantConfig: {} };
+        
+        const page = document.createElement('div');
+        page.id = 'mlMemoPage';
+        page.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:8200;background:#0d0d0d;display:flex;flex-direction:column;';
+        
+        const renderEntries = () => {
+            const entries = data.memo.entries || [];
+            let html = '';
+            if (entries.length === 0) {
+                html = '<div style="text-align:center;padding:60px 0;color:rgba(255,255,255,0.12);font-size:13px;">还没有备忘录<br><span style="font-size:11px;">AI可以主动记录，或小助手自动总结</span></div>';
+            } else {
+                // 按日期分组
+                const grouped = {};
+                entries.forEach(e => {
+                    const day = (e.date || '').split(' ')[0] || '未知日期';
+                    if (!grouped[day]) grouped[day] = [];
+                    grouped[day].push(e);
+                });
+                const days = Object.keys(grouped).sort().reverse();
+                days.forEach(day => {
+                    html += `<div style="font-size:12px;color:rgba(255,220,170,0.4);font-weight:600;margin:16px 0 8px;padding-left:2px;">${this._esc(day)}</div>`;
+                    grouped[day].forEach(e => {
+                        const isAssistant = e.author === 'assistant';
+                        const authorLabel = isAssistant ? '🤖 小助手总结' : `✍️ ${this._esc(name)}`;
+                        html += `<div class="memo-entry" data-id="${e.id}" style="margin-bottom:8px;padding:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,${isAssistant?'0.03':'0.06'});border-radius:10px;cursor:pointer;${isAssistant?'border-left:2px solid rgba(100,160,224,0.2);':'border-left:2px solid rgba(240,147,43,0.2);'}">
+                            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                                <span style="font-size:10px;color:rgba(255,255,255,0.25);">${authorLabel}</span>
+                                <span style="font-size:10px;color:rgba(255,255,255,0.12);">${this._esc(e.time||'')}</span>
+                            </div>
+                            <div style="font-size:13px;color:rgba(255,255,255,0.55);line-height:1.7;white-space:pre-wrap;max-height:80px;overflow:hidden;">${this._esc((e.content||'').substring(0,200))}</div>
+                        </div>`;
+                    });
+                });
+            }
+            const content = page.querySelector('#memoContent');
+            if (content) content.innerHTML = html;
+            
+            page.querySelectorAll('.memo-entry').forEach(card => {
+                card.addEventListener('click', () => {
+                    const entry = (data.memo.entries||[]).find(e => e.id === card.dataset.id);
+                    if (entry) this._viewMemoEntry(entry, name);
+                });
+            });
+        };
+        
+        page.innerHTML = `
+            <div style="display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.04);flex-shrink:0;">
+                <button id="memoBack" style="background:none;border:none;color:rgba(255,255,255,0.6);font-size:20px;cursor:pointer;">&#8592;</button>
+                <div style="flex:1;font-size:16px;font-weight:600;color:#fff;text-align:center;">${this._esc(name)} 的备忘录</div>
+                <button id="memoSettings" style="background:none;border:none;color:rgba(255,255,255,0.3);font-size:18px;cursor:pointer;">⚙</button>
+            </div>
+            <div id="memoContent" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 16px;"></div>`;
+        
+        document.body.appendChild(page);
+        page.querySelector('#memoBack')?.addEventListener('click', () => page.remove());
+        page.querySelector('#memoSettings')?.addEventListener('click', () => this._openMemoSettings(friendCode, name, data));
+        renderEntries();
+    }
+    
+    _viewMemoEntry(entry, charName) {
+        document.getElementById('memoViewOverlay')?.remove();
+        const isAssistant = entry.author === 'assistant';
+        const ov = document.createElement('div');
+        ov.id = 'memoViewOverlay';
+        ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9500;display:flex;align-items:flex-end;background:rgba(0,0,0,0.5);';
+        ov.innerHTML = `<div style="width:100%;background:#1a1a1a;border-radius:16px 16px 0 0;padding:20px 16px calc(16px + env(safe-area-inset-bottom));max-height:70vh;display:flex;flex-direction:column;">
+            <div style="font-size:15px;font-weight:600;color:#fff;text-align:center;margin-bottom:4px;">${isAssistant ? '🤖 小助手总结' : '✍️ '+this._esc(charName)+'的记录'}</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.2);text-align:center;margin-bottom:12px;">${this._esc(entry.date||'')} ${this._esc(entry.time||'')}</div>
+            <div style="flex:1;overflow-y:auto;padding:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);border-radius:10px;font-size:14px;color:rgba(255,255,255,0.6);line-height:1.8;white-space:pre-wrap;">${this._esc(entry.content||'')}</div>
+            <button id="memoViewClose" style="width:100%;margin-top:12px;padding:10px;border:none;background:transparent;color:rgba(255,255,255,0.2);font-size:13px;cursor:pointer;">关闭</button>
+        </div>`;
+        document.body.appendChild(ov);
+        ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+        ov.querySelector('#memoViewClose')?.addEventListener('click', () => ov.remove());
+    }
+    
+    _openMemoSettings(friendCode, name, data) {
+        document.getElementById('memoSettingsOverlay')?.remove();
+        const config = data.memo?.assistantConfig || {};
+        const ov = document.createElement('div');
+        ov.id = 'memoSettingsOverlay';
+        ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9500;display:flex;align-items:flex-end;background:rgba(0,0,0,0.5);';
+        ov.innerHTML = `<div style="width:100%;background:#1a1a1a;border-radius:16px 16px 0 0;padding:20px 16px calc(16px + env(safe-area-inset-bottom));max-height:80vh;overflow-y:auto;">
+            <div style="font-size:15px;font-weight:600;color:#fff;text-align:center;margin-bottom:16px;">备忘录小助手设置</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.2);text-align:center;margin-bottom:16px;">配置独立API和自动记录时间</div>
+            <div style="margin-bottom:12px;">
+                <div style="font-size:12px;color:rgba(255,255,255,0.35);margin-bottom:4px;">小助手 API 地址</div>
+                <input id="memoApiUrl" type="text" value="${this._esc(config.apiUrl||'')}" placeholder="https://api.example.com/v1" style="width:100%;box-sizing:border-box;padding:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#fff;font-size:13px;outline:none;">
+            </div>
+            <div style="margin-bottom:12px;">
+                <div style="font-size:12px;color:rgba(255,255,255,0.35);margin-bottom:4px;">小助手 API Key</div>
+                <input id="memoApiKey" type="password" value="${this._esc(config.apiKey||'')}" placeholder="sk-..." style="width:100%;box-sizing:border-box;padding:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#fff;font-size:13px;outline:none;">
+            </div>
+            <div style="margin-bottom:12px;">
+                <div style="font-size:12px;color:rgba(255,255,255,0.35);margin-bottom:4px;">小助手模型</div>
+                <input id="memoApiModel" type="text" value="${this._esc(config.model||'')}" placeholder="gpt-4o-mini / gemini-flash 等" style="width:100%;box-sizing:border-box;padding:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#fff;font-size:13px;outline:none;">
+            </div>
+            <div style="margin-bottom:16px;">
+                <div style="font-size:12px;color:rgba(255,255,255,0.35);margin-bottom:4px;">自动记录时间（每天几点总结）</div>
+                <input id="memoAutoTime" type="time" value="${this._esc(config.autoTime||'23:00')}" style="width:100%;box-sizing:border-box;padding:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#fff;font-size:13px;outline:none;">
+            </div>
+            <label style="display:flex;align-items:center;gap:8px;padding:10px 0;cursor:pointer;">
+                <input type="checkbox" id="memoAutoEnabled" ${config.autoEnabled ? 'checked' : ''} style="width:18px;height:18px;">
+                <span style="font-size:14px;color:rgba(255,255,255,0.6);">启用小助手自动记录</span>
+            </label>
+            <div style="display:flex;gap:8px;margin-top:12px;">
+                <button id="memoSettingsCancel" style="flex:1;padding:10px;border:1px solid rgba(255,255,255,0.06);border-radius:10px;background:transparent;color:rgba(255,255,255,0.3);font-size:14px;cursor:pointer;">取消</button>
+                <button id="memoSettingsSave" style="flex:1;padding:10px;border:none;border-radius:10px;background:rgba(240,147,43,0.12);color:#f0932b;font-size:14px;font-weight:600;cursor:pointer;">保存</button>
+            </div>
+        </div>`;
+        document.body.appendChild(ov);
+        ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+        ov.querySelector('#memoSettingsCancel')?.addEventListener('click', () => ov.remove());
+        ov.querySelector('#memoSettingsSave')?.addEventListener('click', () => {
+            if (!data.memo) data.memo = { entries: [], assistantConfig: {} };
+            data.memo.assistantConfig = {
+                apiUrl: ov.querySelector('#memoApiUrl')?.value?.trim() || '',
+                apiKey: ov.querySelector('#memoApiKey')?.value?.trim() || '',
+                model: ov.querySelector('#memoApiModel')?.value?.trim() || '',
+                autoTime: ov.querySelector('#memoAutoTime')?.value || '23:00',
+                autoEnabled: ov.querySelector('#memoAutoEnabled')?.checked || false
+            };
+            this._store().saveIntimacyData(friendCode, data);
+            ov.remove();
+            this._toast('备忘录设置已保存');
+        });
+    }
 }
 
 window.memoryLibrary = new MemoryLibrary();

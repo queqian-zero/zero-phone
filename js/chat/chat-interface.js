@@ -1954,6 +1954,9 @@ class ChatInterface {
         // 临时会话模式调整
         setTimeout(() => this._applyTempChatMode(), 120);
         
+        // 备忘录小助手自动记录检查
+        setTimeout(() => this._checkMemoAutoRecord(), 2000);
+        
         window.chatInterface = this;
     }
     
@@ -3011,6 +3014,20 @@ ${archiveListText}
                 }
             }
             
+            // 每天首条消息提醒AI查看昨日备忘录
+            if (!this.currentFriend?.isTempChat) {
+                const _todayKey = `memo_reminded_${this.currentFriendCode}_${new Date().toISOString().split('T')[0]}`;
+                if (!sessionStorage.getItem(_todayKey)) {
+                    const _memoData = this.storage.getIntimacyData(this.currentFriendCode);
+                    const _yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+                    const _yEntries = (_memoData?.memo?.entries || []).filter(e => (e.date||'').startsWith(_yesterday));
+                    if (_yEntries.length > 0) {
+                        systemPrompt += `\n\n【系统提醒】昨天（${_yesterday}）你的备忘录有${_yEntries.length}条记录。你可以用 [AI_VIEW_MEMO] 查看，也可以选择不看。这是系统的提醒，你可以自行决定要不要翻阅。`;
+                    }
+                    sessionStorage.setItem(_todayKey, '1');
+                }
+            }
+            
             // ====== 临时会话：简化系统提示 ======
             if (this.currentFriend?.isTempChat) {
                 const cardInfo = this.currentFriend.tempCardInfo || {};
@@ -3026,6 +3043,40 @@ ${archiveListText}
                 const userSettings = this.storage.getUserSettings();
                 if (userSettings?.userNickname) {
                     systemPrompt += `\n\n对方的网名：${userSettings.userNickname}`;
+                }
+            }
+            
+            // ====== 记忆悬浮（模拟"突然想起某件事"） ======
+            if (this.settings.memoryFloating !== false && !this.currentFriend?.isTempChat) {
+                const floatChance = this.settings.memoryFloatChance || 0.3;
+                if (Math.random() < floatChance) {
+                    try {
+                        const _intData = this.storage.getIntimacyData(this.currentFriendCode);
+                        const _pool = [];
+                        (_intData?.coreMemories || this.storage.getCoreMemories(this.currentFriendCode) || []).forEach(m => {
+                            if (m.content) _pool.push({ type: '核心记忆', text: m.content, ts: m.createdAt || m.date || '' });
+                        });
+                        const _summ = this.storage.getChatSummaries?.(this.currentFriendCode) || _intData?.chatSummary?.items || [];
+                        _summ.forEach(s => {
+                            if (s.summary || s.text) _pool.push({ type: '聊天印象', text: (s.summary || s.text || '').substring(0, 200), ts: s.createdAt || '' });
+                        });
+                        const _nb = _intData?.notebook || {};
+                        (_nb.diary || []).forEach(d => {
+                            if (d.content && !d.locked) _pool.push({ type: '日记', text: d.content.substring(0, 150), ts: d.createdAt || d.date || '' });
+                        });
+                        (_nb.notes || []).forEach(n => {
+                            if (n.content) _pool.push({ type: '碎碎念', text: n.content.substring(0, 100), ts: n.createdAt || '' });
+                        });
+                        if (_pool.length > 0) {
+                            // 随机挑1-2条
+                            const count = Math.min(_pool.length, Math.random() < 0.7 ? 1 : 2);
+                            const shuffled = _pool.sort(() => Math.random() - 0.5).slice(0, count);
+                            systemPrompt += `\n\n【记忆悬浮——突然浮上心头的片段】以下记忆片段像做白日梦一样突然闪过你的脑海。你不一定要提起它们，但它们可能微妙地影响你此刻的情绪和反应。如果聊天内容恰好关联，你可以很自然地"想起来"：`;
+                            shuffled.forEach(m => {
+                                systemPrompt += `\n  · [${m.type}] ${m.text}`;
+                            });
+                        }
+                    } catch(e) { console.warn('记忆悬浮异常:', e); }
                 }
             }
             
@@ -3410,6 +3461,25 @@ ${archiveListText}
                 } catch(e) {
                     console.error('❌ 电量查询失败:', e);
                 }
+            }
+            
+            // ====== 内置工具：备忘录查看（同轮返回） ======
+            if (result.success && result.text && result.text.includes('[AI_VIEW_MEMO]')) {
+                try {
+                    const _memoData = this.storage.getIntimacyData(this.currentFriendCode);
+                    const _entries = (_memoData?.memo?.entries || []).slice(-10);
+                    let memoText = '备忘录为空';
+                    if (_entries.length > 0) {
+                        memoText = '最近的备忘录：\n';
+                        _entries.forEach(e => {
+                            const authorTag = e.author === 'assistant' ? '🤖小助手总结' : '✍️你自己写的';
+                            memoText += `\n[${e.date} ${e.time||''} · ${authorTag}]\n${e.content}\n`;
+                        });
+                    }
+                    messagesWithTimestamps.push({ type: 'ai', text: result.text, timestamp: new Date().toISOString() });
+                    messagesWithTimestamps.push({ type: 'user', text: `【备忘录内容】\n${memoText}`, timestamp: new Date().toISOString() });
+                    result = await this.apiManager.callAI(messagesWithTimestamps, systemPrompt, apiOptions);
+                } catch(e) { console.error('❌ 备忘录查看失败:', e); }
             }
             
             this.hideTypingIndicator();
@@ -8481,6 +8551,13 @@ getIntimacyStatusForAI() {
     desc += `\n  [AI_EDIT_DIARY:日记正文的某句话]修改后的完整日记内容[/AI_EDIT_DIARY] 修改一篇已有的日记（用关键词匹配要改的那篇）`;
     desc += `\n  [AI_LOCK_DIARY:日记正文的某句话] 给某篇日记加锁（加锁后user看不到内容，除非你解锁）`;
     desc += `\n  [AI_UNLOCK_DIARY:日记正文的某句话] 给某篇日记解锁（解锁后user可以看到内容）`;
+    desc += `\n\n  【项目库】`;
+    desc += `\n  [AI_PROJECT:项目名|类型|描述]代码内容[/AI_PROJECT] 保存一个代码项目到项目库（类型：html/css/js）`;
+    desc += `\n  [AI_DELETE_PROJECT:项目名] 删除项目库中的某个项目`;
+    desc += `\n  [AI_RUN_PROJECT:项目名] 让user运行查看项目效果`;
+    desc += `\n\n  【备忘录】`;
+    desc += `\n  [AI_MEMO]备忘内容[/AI_MEMO] 记录今天的备忘（第一人称写，这是你自己的记录）`;
+    desc += `\n  [AI_VIEW_MEMO] 查看备忘录（系统会把最近的备忘录内容发给你）`;
     desc += `\n\n【手帐本（跟日记不同，更自由，可多次编辑同一页）】`;
     desc += `\n  [AI_JOURNAL]内容[/AI_JOURNAL] 创建一页新手帐`;
     desc += `\n  [AI_JOURNAL_EDIT:页面开头几个字]新内容[/AI_JOURNAL_EDIT] 编辑已有手帐页`;
@@ -14983,6 +15060,11 @@ _stripCommandTags(text) {
         .replace(/\[AI_EDIT_DIARY:[^\]]+\][\s\S]*?\[\/AI_EDIT_DIARY\]/g, '')
         .replace(/\[AI_LOCK_DIARY:[^\]]+\]/g, '')
         .replace(/\[AI_UNLOCK_DIARY:[^\]]+\]/g, '')
+        .replace(/\[AI_PROJECT:[^\]]+\][\s\S]*?\[\/AI_PROJECT\]/g, '')
+        .replace(/\[AI_DELETE_PROJECT:[^\]]+\]/g, '')
+        .replace(/\[AI_RUN_PROJECT:[^\]]+\]/g, '')
+        .replace(/\[AI_MEMO\][\s\S]*?\[\/AI_MEMO\]/g, '')
+        .replace(/\[AI_VIEW_MEMO\]/g, '')
         .replace(/\[AI_JOURNAL\][\s\S]*?\[\/AI_JOURNAL\]/g, '')
         .replace(/\[AI_JOURNAL_EDIT:[^\]]*\][\s\S]*?\[\/AI_JOURNAL_EDIT\]/g, '')
         .replace(/\[AI_STATUS:[^\]]+\]/g, '')
@@ -15129,6 +15211,76 @@ processNotebookCommands(text) {
         const kw = unlockDiaryMatch[1].trim().toLowerCase();
         const diary = data.notebook.diary.find(d => (d.content||'').toLowerCase().includes(kw) || (d.date||'').toLowerCase().includes(kw));
         if (diary) { diary.locked = false; this.showCssSystemMessage(`🔓 ${friendName} 解锁了一篇日记`); changed = true; }
+    }
+    
+    // [AI_PROJECT:名称|类型|描述]代码[/AI_PROJECT]
+    const projMatch = text.match(/\[AI_PROJECT:([^\]]+)\]([\s\S]*?)\[\/AI_PROJECT\]/);
+    if (projMatch) {
+        const pParts = projMatch[1].split('|');
+        const projName = pParts[0]?.trim() || '未命名';
+        const projType = pParts[1]?.trim() || 'html';
+        const projDesc = pParts.slice(2).join('|').trim();
+        const projCode = projMatch[2].trim();
+        if (!data.projects) data.projects = [];
+        const existing = data.projects.find(p => p.name === projName);
+        if (existing) {
+            existing.code = projCode;
+            existing.type = projType;
+            existing.desc = projDesc || existing.desc;
+            existing.updatedAt = new Date().toISOString();
+            existing.files = [{ name: 'index.' + projType, content: projCode }];
+            this.showCssSystemMessage(`💻 ${friendName} 更新了项目「${projName}」`);
+        } else {
+            data.projects.push({
+                id: 'proj_' + Date.now(),
+                name: projName, type: projType, desc: projDesc,
+                code: projCode,
+                files: [{ name: 'index.' + projType, content: projCode }],
+                createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
+            });
+            this.showCssSystemMessage(`💻 ${friendName} 创建了新项目「${projName}」`);
+        }
+        changed = true;
+    }
+    
+    // [AI_DELETE_PROJECT:名称]
+    const delProjMatch = text.match(/\[AI_DELETE_PROJECT:([^\]]+)\]/);
+    if (delProjMatch) {
+        const pName = delProjMatch[1].trim();
+        if (data.projects) {
+            const idx = data.projects.findIndex(p => p.name === pName || p.name.includes(pName));
+            if (idx >= 0) { data.projects.splice(idx, 1); this.showCssSystemMessage(`💻 ${friendName} 删除了项目「${pName}」`); changed = true; }
+        }
+    }
+    
+    // [AI_RUN_PROJECT:名称]
+    const runProjMatch = text.match(/\[AI_RUN_PROJECT:([^\]]+)\]/);
+    if (runProjMatch && data.projects) {
+        const pName = runProjMatch[1].trim();
+        const proj = data.projects.find(p => p.name === pName || p.name.includes(pName));
+        if (proj && window.memoryLibrary) {
+            setTimeout(() => window.memoryLibrary._viewProject(this.currentFriendCode, friendName, proj, null, data), 500);
+        }
+    }
+    
+    // [AI_MEMO]内容[/AI_MEMO]
+    const memoMatch = text.match(/\[AI_MEMO\]([\s\S]*?)\[\/AI_MEMO\]/);
+    if (memoMatch) {
+        const memoContent = memoMatch[1].trim();
+        if (memoContent) {
+            if (!data.memo) data.memo = { entries: [], assistantConfig: {} };
+            const now = new Date();
+            data.memo.entries.push({
+                id: 'memo_' + Date.now(),
+                content: memoContent,
+                author: 'ai',
+                date: `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`,
+                time: `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`,
+                createdAt: now.toISOString()
+            });
+            this.showCssSystemMessage(`📝 ${friendName} 记了一笔备忘录`);
+            changed = true;
+        }
     }
     
     // [AI_JOURNAL]内容[/AI_JOURNAL] — 创建手帐
@@ -17362,6 +17514,74 @@ _upgradeTempToFriend(cardInfo, apiMode) {
 }
 
 // ==================== 拍照功能 ====================
+
+// ==================== 备忘录小助手自动记录 ====================
+async _checkMemoAutoRecord() {
+    if (!this.currentFriendCode || this.currentFriend?.isTempChat) return;
+    try {
+        const data = this.storage.getIntimacyData(this.currentFriendCode);
+        const config = data?.memo?.assistantConfig;
+        if (!config?.autoEnabled || !config?.apiUrl || !config?.apiKey) return;
+        
+        const now = new Date();
+        const today = now.toISOString().split('T')[0];
+        const autoTime = config.autoTime || '23:00';
+        const [autoH, autoM] = autoTime.split(':').map(Number);
+        
+        // 是否已过自动记录时间
+        if (now.getHours() < autoH || (now.getHours() === autoH && now.getMinutes() < autoM)) return;
+        
+        // 今天已经自动记录过吗
+        const recordKey = `memo_auto_${this.currentFriendCode}_${today}`;
+        if (localStorage.getItem(recordKey)) return;
+        
+        // 获取今天的聊天记录
+        const chat = this.storage.getChatByFriendCode(this.currentFriendCode);
+        const todayMsgs = (chat?.messages || []).filter(m => (m.timestamp || '').startsWith(today));
+        if (todayMsgs.length < 3) return; // 太少不值得总结
+        
+        // 构建总结请求
+        const friendName = this.currentFriend?.nickname || this.currentFriend?.name || '角色';
+        const chatSnippet = todayMsgs.slice(-30).map(m => `${m.type === 'user' ? 'user' : friendName}: ${(m.text||'').substring(0,100)}`).join('\n');
+        
+        const apiUrl = config.apiUrl.includes('/chat/completions') ? config.apiUrl : config.apiUrl.replace(/\/v1\/?$/, '') + '/v1/chat/completions';
+        const resp = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + config.apiKey },
+            body: JSON.stringify({
+                model: config.model || 'gpt-4o-mini',
+                max_tokens: 500,
+                messages: [
+                    { role: 'system', content: `你是备忘录小助手。请用第三人称简洁总结以下聊天内容，重点记录：发生了什么事、聊了什么话题、有什么重要信息。用"${friendName}"和"user"来指代两人。不要评论，只记录事实。200字以内。` },
+                    { role: 'user', content: `今天（${today}）${friendName}和user的聊天记录：\n\n${chatSnippet}` }
+                ]
+            })
+        });
+        
+        if (resp.ok) {
+            const result = await resp.json();
+            const summary = result.choices?.[0]?.message?.content?.trim();
+            if (summary) {
+                if (!data.memo) data.memo = { entries: [], assistantConfig: config };
+                data.memo.entries.push({
+                    id: 'memo_auto_' + Date.now(),
+                    content: summary,
+                    author: 'assistant',
+                    date: today,
+                    time: `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`,
+                    createdAt: now.toISOString()
+                });
+                this.storage.saveIntimacyData(this.currentFriendCode, data);
+                localStorage.setItem(recordKey, '1');
+                console.log('📝 备忘录小助手已自动记录');
+            }
+        }
+    } catch(e) {
+        console.warn('备忘录自动记录失败:', e);
+    }
+}
+
+// ==================== 拍照功能（原有） ====================
 _openCamera() {
     document.getElementById('cameraOverlay')?.remove();
     
