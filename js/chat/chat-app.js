@@ -653,7 +653,7 @@ createChatListItem({ friend, lastMsg }) {
     const pinned = settings.chatPin ? 'pinned' : '';
 
     const avatarContent = friend.avatar
-        ? `<img src="${friend.avatar}" alt="">`
+        ? `<img src="${friend.avatar}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`
         : friend.name.charAt(0);
 
     // 最后消息预览

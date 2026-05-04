@@ -412,19 +412,21 @@ class MemoryLibrary {
         document.getElementById('nbEditOverlay')?.remove();
         const ov = document.createElement('div');
         ov.id = 'nbEditOverlay';
-        ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9500;display:flex;align-items:flex-end;background:rgba(0,0,0,0.5);';
+        ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9500;background:#111;display:flex;flex-direction:column;';
         
-        ov.innerHTML = `<div style="width:100%;background:#1a1a1a;border-radius:16px 16px 0 0;padding:20px 16px calc(16px + env(safe-area-inset-bottom));max-height:70vh;display:flex;flex-direction:column;animation:profileSlideUp 0.25s ease-out;">
-            <div style="font-size:15px;font-weight:600;color:#fff;text-align:center;margin-bottom:12px;">碎碎念</div>
-            <div style="font-size:10px;color:rgba(255,255,255,0.2);text-align:center;margin-bottom:10px;">这是TA写的碎碎念</div>
-            <div style="width:100%;padding:14px;background:rgba(255,240,200,0.04);border:1px dashed rgba(255,220,150,0.12);border-radius:10px;color:rgba(255,255,255,0.7);font-size:14px;line-height:1.7;font-family:serif;white-space:pre-wrap;max-height:40vh;overflow-y:auto;">${this._esc(existing.content || '')}</div>
-            <div style="display:flex;gap:8px;margin-top:12px;">
-                <button id="nbNoteDelete" style="flex:1;padding:10px;border:none;border-radius:10px;background:rgba(255,60,60,0.08);color:rgba(255,100,100,0.5);font-size:13px;cursor:pointer;">删除</button>
-            </div>
-            <button id="nbNoteCancel" style="width:100%;margin-top:8px;padding:10px;border:none;background:transparent;color:rgba(255,255,255,0.2);font-size:13px;cursor:pointer;">关闭</button>
+        ov.innerHTML = `<div style="display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.04);flex-shrink:0;">
+            <button id="nbNoteBack" style="background:none;border:none;color:rgba(255,255,255,0.6);font-size:20px;cursor:pointer;">&#8592;</button>
+            <div style="flex:1;font-size:15px;font-weight:600;color:#fff;text-align:center;">碎碎念</div>
+            <button id="nbNoteDelete" style="background:none;border:none;color:rgba(255,100,100,0.5);font-size:13px;cursor:pointer;padding:4px 8px;">删除</button>
+        </div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.15);text-align:center;padding:8px 0;">这是 ${this._esc(name)} 写的碎碎念</div>
+        <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;">
+            <div style="padding:20px;background:rgba(255,240,200,0.04);border:1px dashed rgba(255,220,150,0.12);border-radius:12px;font-size:15px;color:rgba(255,255,255,0.65);line-height:1.9;font-family:serif;white-space:pre-wrap;">${this._esc(existing.content || '')}</div>
         </div>`;
         
         document.body.appendChild(ov);
+        
+        ov.querySelector('#nbNoteBack')?.addEventListener('click', () => ov.remove());
         
         ov.querySelector('#nbNoteDelete')?.addEventListener('click', async () => {
             const ok = window.zpConfirm ? await window.zpConfirm('删除', '删除这条碎碎念？', '删除', '取消') : confirm('删除？');
@@ -435,8 +437,6 @@ class MemoryLibrary {
             ov.remove();
             this._refreshNotebook(parentPage, friendCode, name);
         });
-        
-        ov.querySelector('#nbNoteCancel')?.addEventListener('click', () => ov.remove());
     }
 
     // ==================== 日记编辑 ====================
@@ -1455,7 +1455,7 @@ class MemoryLibrary {
         
         const page = document.createElement('div');
         page.id = 'mlProjectsPage';
-        page.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:8200;background:#0d0d0d;display:flex;flex-direction:column;';
+        page.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9000;background:#0d0d0d;display:flex;flex-direction:column;';
         
         const renderList = () => {
             const projects = data.projects || [];
@@ -1499,7 +1499,7 @@ class MemoryLibrary {
         document.getElementById('projViewOverlay')?.remove();
         const ov = document.createElement('div');
         ov.id = 'projViewOverlay';
-        ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:8300;background:#0d0d0d;display:flex;flex-direction:column;';
+        ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9500;background:#0d0d0d;display:flex;flex-direction:column;';
         
         // 合并多文件为展示
         const files = proj.files || [{ name: 'index.' + (proj.type||'html'), content: proj.code || '' }];
@@ -1602,7 +1602,7 @@ class MemoryLibrary {
         
         const page = document.createElement('div');
         page.id = 'mlMemoPage';
-        page.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:8200;background:#0d0d0d;display:flex;flex-direction:column;';
+        page.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9000;background:#0d0d0d;display:flex;flex-direction:column;';
         
         const renderEntries = () => {
             const entries = data.memo.entries || [];
