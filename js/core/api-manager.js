@@ -260,8 +260,12 @@ class APIManager {
         try {
             console.log('🤖 开始调用AI API');
             
-            // 1. 获取配置
-            const config = this.getCurrentConfig();
+            // 1. 获取配置（支持临时会话独立API覆盖）
+            let config = this.getCurrentConfig();
+            if (options.overrideConfig) {
+                config = { ...config, ...options.overrideConfig };
+                console.log('🔧 使用覆盖配置:', options.overrideConfig);
+            }
             
             // 验证配置
             if (!config.endpoint || !config.apiKey) {
@@ -348,43 +352,39 @@ class APIManager {
         }));
 
         // ── 需求2：构建头像视觉前置消息（各provider格式不同）──
-        // 角色描述映射
-        const roleDescMap = {
-            'ai_avatar': '你自己的头像',
-            'ai_avatar_frame': '你的头像框（围绕头像的装饰边框）',
-            'user_avatar': 'user的头像',
-            'user_avatar_frame': 'user的头像框',
-            'intimacy_bg': '亲密关系页面的背景图',
-            'user_sent_image': 'user刚发给你的图片'
-        };
-        
         // Google格式的头像parts
         const buildGoogleAvatarContents = () => {
-            if (!avatarImages || !Array.isArray(avatarImages) || avatarImages.length === 0) return [];
-            const parts = [{ text: '【视觉信息】以下是附带的图片：' }];
-            avatarImages.forEach((img, i) => {
-                const desc = img.role?.startsWith('badge_') ? `自定义徽章「${img.badgeName || ''}」` : (roleDescMap[img.role] || '图片');
-                parts.push({ text: `↓ 第${i+1}张：${desc}` });
-                parts.push({ inline_data: { mime_type: img.mediaType || 'image/png', data: img.data } });
-            });
+            if (!avatarImages) return [];
+            const parts = [{ text: '【头像视觉信息】以下是对话双方的头像图片：' }];
+            if (avatarImages.ai) {
+                parts.push({ text: '↓ 这是你自己的头像：' });
+                parts.push({ inline_data: { mime_type: avatarImages.ai.mimeType, data: avatarImages.ai.data } });
+            }
+            if (avatarImages.user) {
+                parts.push({ text: '↓ 这是user的头像：' });
+                parts.push({ inline_data: { mime_type: avatarImages.user.mimeType, data: avatarImages.user.data } });
+            }
             return [
                 { role: 'user', parts },
-                { role: 'model', parts: [{ text: '好的，我已经看到了这些图片。' }] }
+                { role: 'model', parts: [{ text: '好的，我已经看到了双方的头像。' }] }
             ];
         };
 
         // OpenAI格式的头像消息
         const buildOpenAIAvatarMessages = () => {
-            if (!avatarImages || !Array.isArray(avatarImages) || avatarImages.length === 0) return [];
-            const content = [{ type: 'text', text: '【视觉信息】以下是附带的图片：' }];
-            avatarImages.forEach((img, i) => {
-                const desc = img.role?.startsWith('badge_') ? `自定义徽章「${img.badgeName || ''}」` : (roleDescMap[img.role] || '图片');
-                content.push({ type: 'image_url', image_url: { url: `data:${img.mediaType || 'image/png'};base64,${img.data}` } });
-                content.push({ type: 'text', text: `↑ 第${i+1}张：${desc}` });
-            });
+            if (!avatarImages) return [];
+            const content = [{ type: 'text', text: '【头像视觉信息】以下是对话双方的头像图片：' }];
+            if (avatarImages.ai) {
+                content.push({ type: 'image_url', image_url: { url: `data:${avatarImages.ai.mimeType};base64,${avatarImages.ai.data}` } });
+                content.push({ type: 'text', text: '↑ 这是你自己的头像' });
+            }
+            if (avatarImages.user) {
+                content.push({ type: 'image_url', image_url: { url: `data:${avatarImages.user.mimeType};base64,${avatarImages.user.data}` } });
+                content.push({ type: 'text', text: '↑ 这是user的头像' });
+            }
             return [
                 { role: 'user', content },
-                { role: 'assistant', content: '好的，我已经看到了这些图片。' }
+                { role: 'assistant', content: '好的，我已经看到了双方的头像。' }
             ];
         };
 
@@ -420,15 +420,18 @@ class APIManager {
                 }
 
                 // ── 需求2：Anthropic头像注入到第一条user消息 ──
-                if (avatarImages && Array.isArray(avatarImages) && avatarImages.length > 0) {
+                if (avatarImages) {
                     const firstUser = merged.find(m => m.role === 'user');
                     if (firstUser) {
                         const parts = [];
-                        avatarImages.forEach((img, i) => {
-                            const desc = img.role?.startsWith('badge_') ? `自定义徽章「${img.badgeName || ''}」` : (roleDescMap[img.role] || '图片');
-                            parts.push({ type: 'image', source: { type: 'base64', media_type: img.mediaType || 'image/png', data: img.data } });
-                            parts.push({ type: 'text', text: `↑ 第${i+1}张：${desc}` });
-                        });
+                        if (avatarImages.ai) {
+                            parts.push({ type: 'image', source: { type: 'base64', media_type: avatarImages.ai.mimeType, data: avatarImages.ai.data } });
+                            parts.push({ type: 'text', text: '↑ 你自己的头像' });
+                        }
+                        if (avatarImages.user) {
+                            parts.push({ type: 'image', source: { type: 'base64', media_type: avatarImages.user.mimeType, data: avatarImages.user.data } });
+                            parts.push({ type: 'text', text: '↑ user的头像' });
+                        }
                         parts.push({ type: 'text', text: firstUser.content });
                         firstUser.content = parts;
                     }
