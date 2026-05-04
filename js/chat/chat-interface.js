@@ -855,6 +855,12 @@ class ChatInterface {
             this._openNameCardPanel();
         });
         
+        // 拍照
+        document.getElementById('menuCamera')?.addEventListener('click', () => {
+            this.closeMenu();
+            this._openCamera();
+        });
+        
         // 占位菜单项
         document.querySelectorAll('.menu-placeholder').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -2995,6 +3001,16 @@ ${archiveListText}
                 systemPrompt += `\n\n【只有你知道的内心底色】你最近悄悄整理了一些记忆，把一些旧的、不再重要的事情放下了。这件事你没有主动告诉过对方。如果这次聊天的氛围自然合适，你可以轻描淡写地提一句，像是在报备，或者带着一丝想被夸奖的小心思——要完全融入对话语境，不要刻意，如果时机不对就完全不要提。`;
             }
             
+            // 朋友圈互动通知注入
+            if (this.currentFriendCode && typeof MomentsManager !== 'undefined') {
+                const momentNotifs = MomentsManager.getPendingNotifs(this.currentFriendCode);
+                if (momentNotifs.length > 0) {
+                    systemPrompt += `\n\n【朋友圈新通知】`;
+                    momentNotifs.forEach(n => { systemPrompt += `\n  · ${n.text}`; });
+                    systemPrompt += `\n  你可以在回复中自然地提到这些互动，比如感谢点赞、回复评论等。`;
+                }
+            }
+            
             // ====== 临时会话：简化系统提示 ======
             if (this.currentFriend?.isTempChat) {
                 const cardInfo = this.currentFriend.tempCardInfo || {};
@@ -3368,6 +3384,32 @@ ${archiveListText}
             // 完成工具调用，固定面板
             if (toolRound > 0) {
                 this._finalizeMcpStatusPanel();
+            }
+            
+            // ====== 内置工具：电量查询（同轮返回） ======
+            if (result.success && result.text && result.text.includes('[AI_CHECK_BATTERY]')) {
+                try {
+                    let batteryInfo = 'user的设备不支持电量查询';
+                    if (navigator.getBattery) {
+                        const battery = await navigator.getBattery();
+                        const level = Math.round(battery.level * 100);
+                        const charging = battery.charging;
+                        const timeLeft = charging ? battery.chargingTime : battery.dischargingTime;
+                        let timeStr = '';
+                        if (timeLeft && isFinite(timeLeft)) {
+                            const hrs = Math.floor(timeLeft / 3600);
+                            const mins = Math.floor((timeLeft % 3600) / 60);
+                            timeStr = hrs > 0 ? `${hrs}小时${mins}分钟` : `${mins}分钟`;
+                        }
+                        batteryInfo = `user的手机电量：${level}%${charging ? '（正在充电' + (timeStr ? '，预计' + timeStr + '充满' : '') + '）' : (timeStr ? '（预计还能用' + timeStr + '）' : '')}`;
+                    }
+                    // 把AI的请求和电量结果加入上下文，再调一次
+                    messagesWithTimestamps.push({ type: 'ai', text: result.text, timestamp: new Date().toISOString() });
+                    messagesWithTimestamps.push({ type: 'user', text: `【电量查询结果】${batteryInfo}`, timestamp: new Date().toISOString() });
+                    result = await this.apiManager.callAI(messagesWithTimestamps, systemPrompt, apiOptions);
+                } catch(e) {
+                    console.error('❌ 电量查询失败:', e);
+                }
             }
             
             this.hideTypingIndicator();
@@ -8400,6 +8442,7 @@ getIntimacyStatusForAI() {
     desc += `\n  示例：你认识"小美"，想推荐给user → [AI_CARD:小美|性格温柔的女孩|我的大学同学，很喜欢画画|温柔善良，说话轻声细语，喜欢画画和旅行]`;
     desc += `\n  注意：昵称就是关系图里的名字，签名是一句话简介，简介是详细介绍，人设是TA的性格特点和说话方式。`;
     desc += `\n  [AI_VOICE:语音内容] 给user发一条语音消息（显示为语音条，user点击可"转文字"）`;
+    desc += `\n  [AI_CHECK_BATTERY] 查看user的手机电量（立即返回电量百分比和充电状态，你可以在同一条消息中使用结果）`;
     desc += `\n  注意：user有时会发语音消息，由"语音小助手"转述（消息开头会标注[语音消息·小助手转述]）`;
     desc += `\n  小助手会描述user说了什么、语气情绪、背景环境等。这些信息是小助手听到后告诉你的，不是你自己听到的。`;
     desc += `\n  [AI_SEND_LIB_IMAGE:图片名字] 从Base64图库中找到该图发给user（user能看到图片）`;
@@ -8435,6 +8478,8 @@ getIntimacyStatusForAI() {
     desc += `\n    写日记时请发挥创意，像人类写手账一样自由！`;
     desc += `\n  [AI_DELETE_NOTE:碎碎念内容前几个字] 删除你写的某条碎碎念`;
     desc += `\n  [AI_DELETE_DIARY:日记日期] 删除你写的某篇日记`;
+    desc += `\n  [AI_LOCK_DIARY:日记正文的某句话] 给某篇日记加锁（加锁后user看不到内容，除非你解锁）`;
+    desc += `\n  [AI_UNLOCK_DIARY:日记正文的某句话] 给某篇日记解锁（解锁后user可以看到内容）`;
     desc += `\n\n【手帐本（跟日记不同，更自由，可多次编辑同一页）】`;
     desc += `\n  [AI_JOURNAL]内容[/AI_JOURNAL] 创建一页新手帐`;
     desc += `\n  [AI_JOURNAL_EDIT:页面开头几个字]新内容[/AI_JOURNAL_EDIT] 编辑已有手帐页`;
@@ -8486,6 +8531,7 @@ getIntimacyStatusForAI() {
     desc += `\n  [AI_FAV_MOMENT:好友名|关键字] 收藏某人的朋友圈`;
     desc += `\n  [AI_UNFAV_MOMENT:好友名|关键字] 取消收藏`;
     desc += `\n  [AI_COMMENT_MOMENT:好友名|关键字|评论内容] 评论某人的朋友圈`;
+    desc += `\n  [AI_REPLY_COMMENT:好友名|关键字|回复谁|评论内容] 回复某人朋友圈下的某条评论（可以盖楼）`;
     desc += `\n  [AI_DELETE_COMMENT:关键字] 删除你自己发的包含该关键字的评论`;
     desc += `\n  [AI_SET_MOMENT_BG:图片名或URL] 设置你的朋友圈背景图（从图库搜或用URL）`;
     desc += `\n  [AI_CHECK_MOMENTS] 查看朋友圈动态（你的+user的，系统会在下一轮告诉你）`;
@@ -10553,6 +10599,20 @@ updateAvatarPreview() {
         if (container) {
             container.style.borderRadius = r + '%';
             container.style.overflow = 'hidden';
+            
+            // 清除旧的头像框覆盖层
+            container.querySelectorAll('.avatar-frame-img').forEach(el => el.remove());
+            
+            // 添加自定义上传的头像框
+            const frameHTML = this.getAvatarFrameHTML(suffix === 'AI' ? 'ai' : 'user');
+            if (frameHTML) {
+                container.insertAdjacentHTML('beforeend', frameHTML);
+            }
+            
+            // 添加内置头像框class
+            container.className = container.className.replace(/\baf-frame-\S+/g, '').trim();
+            const frameClass = this.getAvatarFrameClass(suffix === 'AI' ? 'ai' : 'user');
+            if (frameClass) container.classList.add(frameClass);
         }
     });
 }
@@ -14910,6 +14970,7 @@ _stripCommandTags(text) {
         .replace(/\[AI_FAKE_VIDEO:[^\]]+\]/g, '')
         .replace(/\[AI_LOCATION:[^\]]+\]/g, '')
         .replace(/\[AI_CARD:[^\]]+\]/g, '')
+        .replace(/\[AI_CHECK_BATTERY\]/g, '')
         .replace(/\[AI_VOICE:[^\]]+\]/g, '')
         .replace(/\[AI_SEND_LIB_IMAGE:[^\]]+\]/g, '')
         .replace(/\[AI_CHANGE_AVATAR:[^\]]+\]/g, '')
@@ -14918,6 +14979,8 @@ _stripCommandTags(text) {
         .replace(/\[AI_DIARY\][\s\S]*?\[\/AI_DIARY\]/g, '')
         .replace(/\[AI_DELETE_NOTE:[^\]]+\]/g, '')
         .replace(/\[AI_DELETE_DIARY:[^\]]+\]/g, '')
+        .replace(/\[AI_LOCK_DIARY:[^\]]+\]/g, '')
+        .replace(/\[AI_UNLOCK_DIARY:[^\]]+\]/g, '')
         .replace(/\[AI_JOURNAL\][\s\S]*?\[\/AI_JOURNAL\]/g, '')
         .replace(/\[AI_JOURNAL_EDIT:[^\]]*\][\s\S]*?\[\/AI_JOURNAL_EDIT\]/g, '')
         .replace(/\[AI_STATUS:[^\]]+\]/g, '')
@@ -14944,6 +15007,7 @@ _stripCommandTags(text) {
         .replace(/\[AI_FAV_MOMENT:[^\]]+\]/g, '')
         .replace(/\[AI_UNFAV_MOMENT:[^\]]+\]/g, '')
         .replace(/\[AI_COMMENT_MOMENT:[^\]]+\]/g, '')
+        .replace(/\[AI_REPLY_COMMENT:[^\]]+\]/g, '')
         .replace(/\[AI_DELETE_COMMENT:[^\]]+\]/g, '')
         .replace(/\[AI_CHECK_MOMENTS\]/g, '')
         .replace(/\[AI_CHANGE_NICKNAME:[^\]]+\]/g, '')
@@ -15033,6 +15097,22 @@ processNotebookCommands(text) {
         const kw = delDiaryMatch[1].trim().toLowerCase();
         const idx = data.notebook.diary.findIndex(d => (d.date||'').toLowerCase().includes(kw) || (d.content||'').toLowerCase().includes(kw));
         if (idx >= 0) { data.notebook.diary.splice(idx, 1); this.showCssSystemMessage(`📖 ${friendName} 删了一篇日记`); changed = true; }
+    }
+    
+    // [AI_LOCK_DIARY:关键字]
+    const lockDiaryMatch = text.match(/\[AI_LOCK_DIARY:([^\]]+)\]/);
+    if (lockDiaryMatch) {
+        const kw = lockDiaryMatch[1].trim().toLowerCase();
+        const diary = data.notebook.diary.find(d => (d.content||'').toLowerCase().includes(kw) || (d.date||'').toLowerCase().includes(kw));
+        if (diary) { diary.locked = true; this.showCssSystemMessage(`🔒 ${friendName} 给一篇日记上了锁`); changed = true; }
+    }
+    
+    // [AI_UNLOCK_DIARY:关键字]
+    const unlockDiaryMatch = text.match(/\[AI_UNLOCK_DIARY:([^\]]+)\]/);
+    if (unlockDiaryMatch) {
+        const kw = unlockDiaryMatch[1].trim().toLowerCase();
+        const diary = data.notebook.diary.find(d => (d.content||'').toLowerCase().includes(kw) || (d.date||'').toLowerCase().includes(kw));
+        if (diary) { diary.locked = false; this.showCssSystemMessage(`🔓 ${friendName} 解锁了一篇日记`); changed = true; }
     }
     
     // [AI_JOURNAL]内容[/AI_JOURNAL] — 创建手帐
@@ -15338,6 +15418,17 @@ processMomentCommands(text) {
         if (comment) this._aiMomentAction(targetName, kw, friendName, 'comment', comment);
     }
     
+    // [AI_REPLY_COMMENT:好友名|关键字|回复谁|评论内容] — AI回复评论（盖楼）
+    const replyComMatch = text.match(/\[AI_REPLY_COMMENT:([^\]]+)\]/);
+    if (replyComMatch) {
+        const parts = replyComMatch[1].split('|');
+        const targetName = parts[0]?.trim();
+        const kw = (parts[1]||'').trim().toLowerCase();
+        const replyTo = parts[2]?.trim();
+        const comment = parts.slice(3).join('|').trim();
+        if (comment && replyTo) this._aiMomentAction(targetName, kw, friendName, 'reply', comment, replyTo);
+    }
+    
     // [AI_DELETE_COMMENT:关键字] — AI删除自己的评论
     const delComMatch = text.match(/\[AI_DELETE_COMMENT:([^\]]+)\]/);
     if (delComMatch) {
@@ -15369,7 +15460,7 @@ processMomentCommands(text) {
 }
 
 // AI操作朋友圈辅助
-_aiMomentAction(targetName, kw, aiName, action, commentText) {
+_aiMomentAction(targetName, kw, aiName, action, commentText, replyTo) {
     if (!targetName) return;
     const store = this.storage;
     // 找目标好友的朋友圈
@@ -15407,6 +15498,9 @@ _aiMomentAction(targetName, kw, aiName, action, commentText) {
     } else if (action === 'comment' && commentText) {
         if (!m.comments) m.comments = [];
         m.comments.push({ id: 'c_'+Date.now(), name: aiName, content: commentText, ts: new Date().toISOString() });
+    } else if (action === 'reply' && commentText && replyTo) {
+        if (!m.comments) m.comments = [];
+        m.comments.push({ id: 'c_'+Date.now(), name: aiName, content: commentText, replyTo: replyTo, ts: new Date().toISOString() });
     }
     saveFunc();
 }
@@ -17249,6 +17343,125 @@ _upgradeTempToFriend(cardInfo, apiMode) {
         window.chatApp?.renderFriendList?.();
         window.chatApp?.renderChatList?.();
     }
+}
+
+// ==================== 拍照功能 ====================
+_openCamera() {
+    document.getElementById('cameraOverlay')?.remove();
+    
+    const ov = document.createElement('div');
+    ov.id = 'cameraOverlay';
+    ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9800;background:#000;display:flex;flex-direction:column;';
+    
+    ov.innerHTML = `
+        <video id="cameraVideo" autoplay playsinline style="flex:1;object-fit:cover;"></video>
+        <canvas id="cameraCanvas" style="display:none;"></canvas>
+        <div id="cameraPreview" style="display:none;flex:1;position:relative;">
+            <img id="cameraPreviewImg" style="width:100%;height:100%;object-fit:contain;">
+        </div>
+        <div id="cameraControls" style="display:flex;align-items:center;justify-content:space-around;padding:20px 16px;padding-bottom:calc(20px + env(safe-area-inset-bottom));background:rgba(0,0,0,0.8);flex-shrink:0;">
+            <button id="cameraCancelBtn" style="width:50px;height:50px;border:none;background:transparent;color:#fff;font-size:14px;cursor:pointer;">取消</button>
+            <button id="cameraCaptureBtn" style="width:68px;height:68px;border:4px solid rgba(255,255,255,0.5);background:rgba(255,255,255,0.9);border-radius:50%;cursor:pointer;"></button>
+            <button id="cameraSwitchBtn" style="width:50px;height:50px;border:none;background:transparent;color:#fff;font-size:22px;cursor:pointer;">🔄</button>
+        </div>
+        <div id="cameraReviewControls" style="display:none;align-items:center;justify-content:space-around;padding:20px 16px;padding-bottom:calc(20px + env(safe-area-inset-bottom));background:rgba(0,0,0,0.8);flex-shrink:0;">
+            <button id="cameraRetakeBtn" style="border:none;background:transparent;color:#fff;font-size:14px;cursor:pointer;padding:12px 20px;">重拍</button>
+            <button id="cameraSendBtn" style="border:none;background:#07c160;color:#fff;font-size:14px;font-weight:500;cursor:pointer;padding:12px 24px;border-radius:8px;">发送</button>
+        </div>
+    `;
+    
+    document.body.appendChild(ov);
+    
+    let stream = null;
+    let facingMode = 'environment';
+    let capturedDataUrl = null;
+    
+    const startCamera = async (facing) => {
+        try {
+            if (stream) stream.getTracks().forEach(t => t.stop());
+            stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: facing, width: { ideal: 1920 }, height: { ideal: 1080 } },
+                audio: false
+            });
+            const video = document.getElementById('cameraVideo');
+            if (video) video.srcObject = stream;
+        } catch(e) {
+            this.showCssToast('无法访问摄像头：' + e.message);
+            ov.remove();
+        }
+    };
+    
+    startCamera(facingMode);
+    
+    // 拍照
+    ov.querySelector('#cameraCaptureBtn').addEventListener('click', () => {
+        const video = document.getElementById('cameraVideo');
+        const canvas = document.getElementById('cameraCanvas');
+        if (!video || !canvas) return;
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        capturedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        
+        // 切到预览模式
+        video.style.display = 'none';
+        const preview = document.getElementById('cameraPreview');
+        const previewImg = document.getElementById('cameraPreviewImg');
+        if (preview && previewImg) {
+            previewImg.src = capturedDataUrl;
+            preview.style.display = 'flex';
+        }
+        document.getElementById('cameraControls').style.display = 'none';
+        document.getElementById('cameraReviewControls').style.display = 'flex';
+    });
+    
+    // 切换前后摄像头
+    ov.querySelector('#cameraSwitchBtn').addEventListener('click', () => {
+        facingMode = facingMode === 'environment' ? 'user' : 'environment';
+        startCamera(facingMode);
+    });
+    
+    // 重拍
+    ov.querySelector('#cameraRetakeBtn').addEventListener('click', () => {
+        const video = document.getElementById('cameraVideo');
+        if (video) video.style.display = '';
+        document.getElementById('cameraPreview').style.display = 'none';
+        document.getElementById('cameraControls').style.display = 'flex';
+        document.getElementById('cameraReviewControls').style.display = 'none';
+        capturedDataUrl = null;
+    });
+    
+    // 发送
+    ov.querySelector('#cameraSendBtn').addEventListener('click', () => {
+        if (capturedDataUrl) {
+            this._sendCameraPhoto(capturedDataUrl);
+        }
+        if (stream) stream.getTracks().forEach(t => t.stop());
+        ov.remove();
+    });
+    
+    // 取消
+    ov.querySelector('#cameraCancelBtn').addEventListener('click', () => {
+        if (stream) stream.getTracks().forEach(t => t.stop());
+        ov.remove();
+    });
+}
+
+_sendCameraPhoto(dataUrl) {
+    const msg = {
+        type: 'user',
+        text: '',
+        timestamp: new Date().toISOString(),
+        _imageOnly: true,
+        _imageData: dataUrl
+    };
+    if (this._quotingMessage) { msg._quote = this._extractQuoteData(this._quotingMessage); this._clearQuoteMessage(); }
+    this.addMessage(msg);
+    this.storage.addMessage(this.currentFriendCode, {
+        type: 'user', text: '[用户发送了照片]',
+        timestamp: msg.timestamp, _imageOnly: true, _imageData: dataUrl, _quote: msg._quote
+    });
+    this.scrollToBottom();
 }
 
 }

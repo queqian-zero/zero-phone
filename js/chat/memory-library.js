@@ -140,7 +140,6 @@ class MemoryLibrary {
                     ${menuItem('&#9998;', '聊天总结', 'mlChatSummary', '线上聊天的记忆总结')}
                     ${menuItem('&#9829;', '核心记忆', 'mlCoreMemory', '线上聊天的核心记忆')}
                     ${menuItem('&#9998;', '记事本', 'mlNotebook', 'TA的碎碎念和日记')}
-                    ${menuItem('&#9998;', '手帐', 'mlJournal', 'TA的手帐本')}
                     ${menuItem('&#128101;', '人际关系', 'mlRelations', 'TA的社交圈')}
                     ${menuItem('&#9670;', '剧场归档', 'mlTheaterArchive', '次元剧场存档')}
                 </div>
@@ -340,20 +339,30 @@ class MemoryLibrary {
             // 日记 — 手账风格
             let diaryHtml = '';
             items.slice().reverse().forEach(d => {
+                const isLocked = !!d.locked;
                 diaryHtml += '<div class="nb-diary-card" data-id="' + d.id + '" style="margin-bottom:20px;border-radius:14px;overflow:hidden;cursor:pointer;position:relative;background:linear-gradient(145deg,rgba(255,248,235,0.06),rgba(255,240,220,0.03));border:1px solid rgba(255,230,180,0.08);">';
                 // 日记头部：日期条
-                diaryHtml += '<div style="padding:12px 16px;background:rgba(255,230,180,0.04);border-bottom:1px dashed rgba(255,220,150,0.08);">';
+                diaryHtml += '<div style="padding:12px 16px;background:rgba(255,230,180,0.04);border-bottom:1px dashed rgba(255,220,150,0.08);display:flex;align-items:center;justify-content:space-between;">';
+                diaryHtml += '<div>';
                 diaryHtml += '<div style="font-size:15px;font-weight:700;color:rgba(255,220,170,0.7);letter-spacing:1px;">' + this._esc(d.date || '') + '</div>';
                 if (d.time) diaryHtml += '<div style="font-size:11px;color:rgba(255,255,255,0.2);margin-top:2px;">' + this._esc(d.time) + '</div>';
-                if (d.mood) diaryHtml += '<div style="font-size:12px;color:rgba(255,180,120,0.5);margin-top:4px;">♡ ' + this._esc(d.mood) + '</div>';
+                if (d.mood && !isLocked) diaryHtml += '<div style="font-size:12px;color:rgba(255,180,120,0.5);margin-top:4px;">♡ ' + this._esc(d.mood) + '</div>';
+                diaryHtml += '</div>';
+                if (isLocked) diaryHtml += '<div style="font-size:16px;opacity:0.4;" title="已加锁">🔒</div>';
                 diaryHtml += '</div>';
                 // 正文预览
-                diaryHtml += '<div style="padding:14px 16px;min-height:60px;" ' + (d.fontId ? 'data-font="' + this._esc(d.fontId) + '"' : '') + '>';
-                const preview = (d.content || '').substring(0, 120);
-                diaryHtml += '<div style="font-size:14px;color:rgba(255,255,255,0.6);line-height:1.8;white-space:pre-wrap;">' + this._renderDiaryContent(preview + (d.content.length > 120 ? '...' : ''), d.fontId) + '</div>';
-                diaryHtml += '</div>';
-                // 署名
-                if (d.signature) diaryHtml += '<div style="padding:0 16px 12px;text-align:right;font-size:11px;color:rgba(255,255,255,0.15);font-style:italic;">—— ' + this._esc(d.signature) + '</div>';
+                if (isLocked) {
+                    diaryHtml += '<div style="padding:24px 16px;text-align:center;min-height:60px;">';
+                    diaryHtml += '<div style="font-size:13px;color:rgba(255,255,255,0.15);">🔒 这篇日记已被加锁</div>';
+                    diaryHtml += '<div style="font-size:11px;color:rgba(255,255,255,0.08);margin-top:6px;">需要TA亲自解锁才能查看</div>';
+                    diaryHtml += '</div>';
+                } else {
+                    diaryHtml += '<div style="padding:14px 16px;min-height:60px;" ' + (d.fontId ? 'data-font="' + this._esc(d.fontId) + '"' : '') + '>';
+                    const preview = (d.content || '').substring(0, 120);
+                    diaryHtml += '<div style="font-size:14px;color:rgba(255,255,255,0.6);line-height:1.8;white-space:pre-wrap;">' + this._renderDiaryContent(preview + (d.content.length > 120 ? '...' : ''), d.fontId) + '</div>';
+                    diaryHtml += '</div>';
+                    if (d.signature) diaryHtml += '<div style="padding:0 16px 12px;text-align:right;font-size:11px;color:rgba(255,255,255,0.15);font-style:italic;">—— ' + this._esc(d.signature) + '</div>';
+                }
                 diaryHtml += '</div>';
             });
             content.innerHTML = diaryHtml;
@@ -371,7 +380,13 @@ class MemoryLibrary {
             card.addEventListener('click', () => {
                 const id = card.dataset.id;
                 const item = (data.notebook.diary || []).find(d => d.id === id);
-                if (item) this._viewDiaryFull(item, name, friendCode, page);
+                if (item) {
+                    if (item.locked) {
+                        // 不能查看加锁的日记
+                        return;
+                    }
+                    this._viewDiaryFull(item, name, friendCode, page);
+                }
             });
             // 加载自定义字体
             const textEl = card.querySelector('[data-font]');

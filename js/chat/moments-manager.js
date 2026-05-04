@@ -102,7 +102,7 @@ class MomentsManager {
                     timelineHtml += '<div style="max-height:120px;overflow-y:auto;background:rgba(255,255,255,0.02);border-radius:8px;padding:8px 10px;">';
                     comments.forEach(c => {
                         const rp = c.replyTo ? '<span style="color:rgba(255,255,255,0.2);">回复 '+this._esc(c.replyTo)+'</span> ' : '';
-                        timelineHtml += '<div style="font-size:13px;color:rgba(255,255,255,0.4);padding:3px 0;line-height:1.5;"><span style="color:rgba(240,147,43,0.6);font-weight:600;">'+this._esc(c.name)+'</span> '+rp+this._esc(c.content)+'</div>';
+                        timelineHtml += '<div style="font-size:13px;color:rgba(255,255,255,0.4);padding:3px 0;line-height:1.5;"><span style="color:rgba(240,147,43,0.6);font-weight:600;">'+this._esc(c.name)+'</span> '+rp+this._renderWithMentions(this._esc(c.content))+'</div>';
                     });
                     timelineHtml += '</div>';
                 } else { timelineHtml += '<div style="font-size:12px;color:rgba(255,255,255,0.1);padding:4px 0;">暂无评论</div>'; }
@@ -232,7 +232,13 @@ class MomentsManager {
                 if (!m.likes) m.likes = [];
                 const existing = m.likes.findIndex(l => l.name === user.name);
                 if (existing >= 0) { m.likes.splice(existing, 1); this._toast('已取消点赞'); }
-                else { m.likes.push({ name: user.name, ts: new Date().toISOString() }); this._toast('已点赞'); }
+                else {
+                    m.likes.push({ name: user.name, ts: new Date().toISOString() });
+                    this._toast('已点赞');
+                    if (m.friendCode && m.friendCode !== '_self') {
+                        this._addMomentNotif(m.friendCode, `user点赞了你的朋友圈「${(m.content||'').substring(0,30)}」`);
+                    }
+                }
                 this._saveMoment(m);
                 this.open(); // 刷新
             });
@@ -245,7 +251,13 @@ class MomentsManager {
                 if (!m.favorites) m.favorites = [];
                 const existing = m.favorites.findIndex(f => f.name === user.name);
                 if (existing >= 0) { m.favorites.splice(existing, 1); this._toast('已取消收藏'); }
-                else { m.favorites.push({ name: user.name, ts: new Date().toISOString() }); this._toast('已收藏'); }
+                else {
+                    m.favorites.push({ name: user.name, ts: new Date().toISOString() });
+                    this._toast('已收藏');
+                    if (m.friendCode && m.friendCode !== '_self') {
+                        this._addMomentNotif(m.friendCode, `user收藏了你的朋友圈「${(m.content||'').substring(0,30)}」`);
+                    }
+                }
                 this._saveMoment(m);
                 this.open();
             });
@@ -422,7 +434,7 @@ class MomentsManager {
             html += '<div style="max-height:120px;overflow-y:auto;background:rgba(255,255,255,0.02);border-radius:8px;padding:8px 10px;">';
             comments.forEach(c => {
                 const rp = c.replyTo ? '<span style="color:rgba(255,255,255,0.2);">回复 '+this._esc(c.replyTo)+'</span> ' : '';
-                html += '<div style="font-size:13px;color:rgba(255,255,255,0.4);padding:3px 0;line-height:1.5;"><span style="color:rgba(240,147,43,0.6);font-weight:600;">'+this._esc(c.name)+'</span> '+rp+this._esc(c.content)+'</div>';
+                html += '<div style="font-size:13px;color:rgba(255,255,255,0.4);padding:3px 0;line-height:1.5;"><span style="color:rgba(240,147,43,0.6);font-weight:600;">'+this._esc(c.name)+'</span> '+rp+this._renderWithMentions(this._esc(c.content))+'</div>';
             });
             html += '</div>';
         } else { html += '<div style="font-size:12px;color:rgba(255,255,255,0.1);padding:4px 0;">暂无评论</div>'; }
@@ -446,10 +458,10 @@ class MomentsManager {
         });
         page.querySelectorAll('.moment-detail-btn').forEach(btn => { btn.addEventListener('click', () => { const idx = parseInt(btn.dataset.idx); if (this._moments[idx]) this._openDetail(this._moments[idx]); }); });
         page.querySelectorAll('.moment-like-btn').forEach(btn => {
-            btn.addEventListener('click', () => { const m = this._moments[parseInt(btn.dataset.idx)]; if (!m) return; const u = this._getUserInfo(); if (!m.likes) m.likes = []; const ei = m.likes.findIndex(l=>l.name===u.name); if (ei>=0) m.likes.splice(ei,1); else m.likes.push({name:u.name,ts:new Date().toISOString()}); this._saveMoment(m); this._toast(ei>=0?'已取消点赞':'已点赞'); });
+            btn.addEventListener('click', () => { const m = this._moments[parseInt(btn.dataset.idx)]; if (!m) return; const u = this._getUserInfo(); if (!m.likes) m.likes = []; const ei = m.likes.findIndex(l=>l.name===u.name); if (ei>=0) m.likes.splice(ei,1); else { m.likes.push({name:u.name,ts:new Date().toISOString()}); if (m.friendCode && m.friendCode !== '_self') this._addMomentNotif(m.friendCode, `user点赞了你的朋友圈「${(m.content||'').substring(0,30)}」`); } this._saveMoment(m); this._toast(ei>=0?'已取消点赞':'已点赞'); });
         });
         page.querySelectorAll('.moment-fav-btn').forEach(btn => {
-            btn.addEventListener('click', () => { const m = this._moments[parseInt(btn.dataset.idx)]; if (!m) return; const u = this._getUserInfo(); if (!m.favorites) m.favorites = []; const ei = m.favorites.findIndex(f=>f.name===u.name); if (ei>=0) m.favorites.splice(ei,1); else m.favorites.push({name:u.name,ts:new Date().toISOString()}); this._saveMoment(m); this._toast(ei>=0?'已取消收藏':'已收藏'); });
+            btn.addEventListener('click', () => { const m = this._moments[parseInt(btn.dataset.idx)]; if (!m) return; const u = this._getUserInfo(); if (!m.favorites) m.favorites = []; const ei = m.favorites.findIndex(f=>f.name===u.name); if (ei>=0) m.favorites.splice(ei,1); else { m.favorites.push({name:u.name,ts:new Date().toISOString()}); if (m.friendCode && m.friendCode !== '_self') this._addMomentNotif(m.friendCode, `user收藏了你的朋友圈「${(m.content||'').substring(0,30)}」`); } this._saveMoment(m); this._toast(ei>=0?'已取消收藏':'已收藏'); });
         });
     }
     
@@ -976,7 +988,7 @@ class MomentsManager {
                 const isMyComment = c.name === user.name;
                 commentsHtml += '<div class="detail-comment" data-cidx="'+ci+'" style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.02);'+(isMyComment?'cursor:pointer;':'')+'">';
                 commentsHtml += '<div style="display:flex;justify-content:space-between;"><span style="font-size:14px;font-weight:600;color:rgba(240,147,43,0.6);">'+this._esc(c.name)+'</span><span style="font-size:11px;color:rgba(255,255,255,0.12);">'+cTime+'</span></div>';
-                commentsHtml += '<div style="font-size:14px;color:rgba(255,255,255,0.5);margin-top:4px;line-height:1.6;">'+rp+this._esc(c.content)+'</div>';
+                commentsHtml += '<div style="font-size:14px;color:rgba(255,255,255,0.5);margin-top:4px;line-height:1.6;">'+rp+this._renderWithMentions(this._esc(c.content))+'</div>';
                 if (isMyComment) commentsHtml += '<div style="font-size:10px;color:rgba(255,255,255,0.08);margin-top:2px;">\u70b9\u51fb\u53ef\u5220\u9664</div>';
                 commentsHtml += '</div>';
             });
@@ -1060,6 +1072,13 @@ class MomentsManager {
             if (replyTo) newComment.replyTo = replyTo;
             moment.comments.push(newComment);
             this._saveMoment(moment);
+            // 通知AI
+            if (moment.friendCode && moment.friendCode !== '_self') {
+                const notifText = replyTo
+                    ? `user回复了${replyTo}在你朋友圈的评论：「${text.substring(0,50)}」`
+                    : `user评论了你的朋友圈「${(moment.content||'').substring(0,30)}」：「${text.substring(0,50)}」`;
+                this._addMomentNotif(moment.friendCode, notifText);
+            }
             p.remove(); this._openDetail(moment);
         });
         p.querySelector('#mdCommentInput')?.addEventListener('keydown', (e) => {
@@ -1107,6 +1126,47 @@ class MomentsManager {
     
     stopNpcBackgroundActivity() {
         if (this._npcTimer) { clearInterval(this._npcTimer); this._npcTimer = null; }
+    }
+    
+    // 处理@mention着色
+    _renderWithMentions(escapedText) {
+        const store = this._store();
+        if (!store) return escapedText;
+        const friends = store.getAllFriends();
+        const userSettings = store.getUserSettings();
+        const allNames = new Set();
+        friends.forEach(f => { if (f.nickname) allNames.add(f.nickname); if (f.name) allNames.add(f.name); });
+        if (userSettings?.userNickname) allNames.add(userSettings.userNickname);
+        allNames.add('user');
+        // 替换 @名字 为着色span
+        let result = escapedText;
+        allNames.forEach(name => {
+            const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            result = result.replace(new RegExp('@' + escaped, 'g'), `<span style="color:rgba(86,139,209,0.85);font-weight:500;">@${name}</span>`);
+        });
+        return result;
+    }
+    
+    // ==================== 朋友圈互动通知（通知AI） ====================
+    _addMomentNotif(friendCode, text) {
+        if (!friendCode || friendCode === '_self') return;
+        try {
+            const key = `zero_phone_moment_notifs_${friendCode}`;
+            const existing = JSON.parse(localStorage.getItem(key) || '[]');
+            existing.push({ text, ts: new Date().toISOString() });
+            // 最多保留10条未读
+            if (existing.length > 10) existing.splice(0, existing.length - 10);
+            localStorage.setItem(key, JSON.stringify(existing));
+        } catch(e) {}
+    }
+    
+    static getPendingNotifs(friendCode) {
+        try {
+            const key = `zero_phone_moment_notifs_${friendCode}`;
+            const data = JSON.parse(localStorage.getItem(key) || '[]');
+            localStorage.removeItem(key);
+            return data;
+        } catch(e) { return []; }
     }
 }
 document.addEventListener('DOMContentLoaded', () => { setTimeout(() => {
