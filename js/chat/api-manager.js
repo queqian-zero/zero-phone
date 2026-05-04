@@ -260,8 +260,12 @@ class APIManager {
         try {
             console.log('🤖 开始调用AI API');
             
-            // 1. 获取配置
-            const config = this.getCurrentConfig();
+            // 1. 获取配置（支持临时会话独立API覆盖）
+            let config = this.getCurrentConfig();
+            if (options.overrideConfig) {
+                config = { ...config, ...options.overrideConfig };
+                console.log('🔧 使用覆盖配置:', options.overrideConfig);
+            }
             
             // 验证配置
             if (!config.endpoint || !config.apiKey) {

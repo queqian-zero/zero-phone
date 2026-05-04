@@ -136,7 +136,7 @@ if (pageId === 'chatListPage') {
         const emptyPlaceholder = document.getElementById('friendEmptyPlaceholder');
         
         const allFriends = this.storage.getAllFriends();
-        const friends = allFriends.filter(f => !f.blacklisted);
+        const friends = allFriends.filter(f => !f.blacklisted && !f.isTempChat);
         const blacklistedCount = allFriends.filter(f => f.blacklisted).length;
         
         if (friends.length === 0 && blacklistedCount === 0) {
@@ -669,13 +669,16 @@ createChatListItem({ friend, lastMsg }) {
     
     // 火花图标
     const flameHtml = this.getChatListFlameIcon(friend.code, settings, friend);
+    
+    // 临时会话徽标
+    const tempBadge = friend.isTempChat ? '<span style="font-size:9px;color:rgba(255,152,0,0.75);background:rgba(255,152,0,0.08);padding:0 4px;border-radius:4px;margin-left:4px;vertical-align:middle;">临时</span>' : '';
 
     return `
         <div class="chat-list-item ${pinned}" data-code="${friend.code}">
             <div class="chat-list-avatar">${avatarContent}</div>
             <div class="chat-list-info">
                 <div class="chat-list-name-row">
-                    <span class="chat-list-name">${displayName}${flameHtml}</span>
+                    <span class="chat-list-name">${displayName}${tempBadge}${flameHtml}</span>
                     <span class="chat-list-time">${timeStr}</span>
                 </div>
                 <div class="chat-list-preview">${this.escapeHtml(preview)}</div>
