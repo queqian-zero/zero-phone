@@ -16921,6 +16921,12 @@ _applyTempChatMode() {
     document.getElementById('tempChatApiBtn')?.remove();
     document.querySelector('.temp-chat-badge')?.remove();
     
+    // 恢复被临时会话隐藏的按钮
+    const offlineToggle = document.getElementById('offlineToggle');
+    const scheduleBtn = document.getElementById('scheduleBtn');
+    if (offlineToggle) offlineToggle.style.display = '';
+    if (scheduleBtn) scheduleBtn.style.display = '';
+    
     if (!this.currentFriend?.isTempChat) return;
     
     // 隐藏状态栏
@@ -16937,26 +16943,32 @@ _applyTempChatMode() {
         nameEl.appendChild(badge);
     }
     
-    // 添加独立API配置按钮到标题栏
+    // 隐藏临时会话不需要的按钮：次元剧场、作息表
+    if (offlineToggle) offlineToggle.style.display = 'none';
+    if (scheduleBtn) scheduleBtn.style.display = 'none';
+    
+    // 在聊天设置按钮前面插入API配置按钮
     this._addTempChatApiButton();
 }
 
-// 临时会话的独立API配置按钮
+// 临时会话的独立API配置按钮（风格统一）
 _addTempChatApiButton() {
     if (document.getElementById('tempChatApiBtn')) return;
-    const header = document.querySelector('.chat-interface-header');
-    if (!header) return;
+    const settingsBtn = document.getElementById('chatSettingsBtn');
+    if (!settingsBtn) return;
     
     const btn = document.createElement('button');
     btn.id = 'tempChatApiBtn';
-    btn.style.cssText = 'position:absolute;right:46px;top:50%;transform:translateY(-50%);width:28px;height:28px;border:none;background:rgba(255,152,0,0.08);border-radius:50%;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:5;';
-    btn.innerHTML = '⚙';
-    btn.title = '临时会话API配置';
+    btn.title = 'API配置';
+    btn.style.cssText = 'background:none;border:none;font-size:14px;cursor:pointer;padding:4px 6px;opacity:0.5;position:relative;';
+    btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,152,0,0.85)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
     btn.addEventListener('click', (e) => {
         e.stopPropagation();
         this._showTempApiConfigDialog();
     });
-    header.appendChild(btn);
+    
+    // 插入到聊天设置按钮前面
+    settingsBtn.parentNode.insertBefore(btn, settingsBtn);
 }
 
 // 临时会话API配置弹窗
