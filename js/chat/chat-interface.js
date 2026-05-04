@@ -17272,6 +17272,8 @@ _showTempApiConfigDialog() {
                     <div style="margin-top:10px;">
                         <div style="font-size:12px;color:rgba(0,0,0,0.4);margin-bottom:4px;">模型名称</div>
                         <input id="tempApiModelInput" type="text" value="${this.escapeHtml(currentModel)}" placeholder="gpt-4o / claude-3.5-sonnet 等" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid rgba(0,0,0,0.1);border-radius:8px;font-size:13px;outline:none;">
+                        <button id="tempApiFetchModels" style="margin-top:6px;padding:6px 12px;border:1px solid rgba(0,0,0,0.1);border-radius:6px;background:rgba(0,0,0,0.02);color:rgba(0,0,0,0.5);font-size:11px;cursor:pointer;">拉取模型列表</button>
+                        <div id="tempApiModelList" style="display:none;max-height:150px;overflow-y:auto;border:1px solid rgba(0,0,0,0.08);border-radius:8px;margin-top:6px;background:#fff;"></div>
                     </div>
                 </div>
             </div>
@@ -17304,6 +17306,16 @@ _showTempApiConfigDialog() {
         this.storage.saveChatSettings(tempCode, settings);
         ov.remove();
         this.showCssToast('API配置已保存');
+    });
+    
+    ov.querySelector('#tempApiFetchModels')?.addEventListener('click', () => {
+        this._fetchModelList(
+            document.getElementById('tempApiUrlInput')?.value?.trim(),
+            document.getElementById('tempApiKeyInput')?.value?.trim(),
+            document.getElementById('tempApiModelList'),
+            document.getElementById('tempApiModelInput'),
+            false
+        );
     });
 }
 
@@ -17514,6 +17526,63 @@ _upgradeTempToFriend(cardInfo, apiMode) {
 }
 
 // ==================== 拍照功能 ====================
+
+// ==================== 通用拉取模型列表 ====================
+async _fetchModelList(endpoint, apiKey, listEl, modelInput, darkTheme = false) {
+    if (!endpoint || !apiKey) { this.showCssToast('请先填写API地址和Key'); return; }
+    if (!listEl) return;
+    
+    listEl.style.display = 'block';
+    const loadingColor = darkTheme ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.3)';
+    listEl.innerHTML = `<div style="padding:10px;text-align:center;color:${loadingColor};font-size:11px;">加载中...</div>`;
+    
+    try {
+        const base = endpoint.replace(/\/$/, '');
+        let url;
+        if (base.includes('generativelanguage.googleapis.com')) {
+            url = base + '/v1beta/models?key=' + apiKey;
+        } else {
+            url = base.replace(/\/v1\/?$/, '') + '/v1/models';
+        }
+        
+        const headers = { 'Content-Type': 'application/json' };
+        if (!url.includes('key=')) headers['Authorization'] = 'Bearer ' + apiKey;
+        
+        const resp = await fetch(url, { headers });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const data = await resp.json();
+        
+        let models = [];
+        if (data.models) {
+            models = data.models.map(m => ({ id: m.name?.replace('models/', '') || m.name, name: m.displayName || m.name }));
+        } else if (data.data) {
+            models = data.data.map(m => ({ id: m.id, name: m.id }));
+        }
+        
+        if (models.length === 0) {
+            listEl.innerHTML = `<div style="padding:10px;text-align:center;color:${loadingColor};font-size:11px;">未找到模型</div>`;
+            return;
+        }
+        
+        const itemBg = darkTheme ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)';
+        const itemColor = darkTheme ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.6)';
+        const borderColor = darkTheme ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)';
+        
+        listEl.innerHTML = models.map(m =>
+            `<div class="_ml-item" data-id="${this.escapeHtml(m.id)}" style="padding:8px 12px;cursor:pointer;font-size:12px;color:${itemColor};border-bottom:1px solid ${borderColor};transition:background 0.15s;">${this.escapeHtml(m.name)}</div>`
+        ).join('');
+        
+        listEl.querySelectorAll('._ml-item').forEach(item => {
+            item.addEventListener('click', () => {
+                if (modelInput) modelInput.value = item.dataset.id;
+                listEl.style.display = 'none';
+                this.showCssToast('✅ 已选择: ' + item.dataset.id);
+            });
+        });
+    } catch(e) {
+        listEl.innerHTML = `<div style="padding:10px;text-align:center;color:rgba(255,100,100,0.6);font-size:11px;">拉取失败: ${this.escapeHtml(e.message)}</div>`;
+    }
+}
 
 // ==================== 备忘录小助手自动记录 ====================
 async _checkMemoAutoRecord() {

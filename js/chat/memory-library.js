@@ -1695,6 +1695,8 @@ class MemoryLibrary {
             <div style="margin-bottom:12px;">
                 <div style="font-size:12px;color:rgba(255,255,255,0.35);margin-bottom:4px;">小助手模型</div>
                 <input id="memoApiModel" type="text" value="${this._esc(config.model||'')}" placeholder="gpt-4o-mini / gemini-flash 等" style="width:100%;box-sizing:border-box;padding:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#fff;font-size:13px;outline:none;">
+                <button id="memoFetchModels" style="margin-top:6px;padding:6px 12px;border:1px solid rgba(255,255,255,0.08);border-radius:6px;background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.4);font-size:11px;cursor:pointer;">拉取模型列表</button>
+                <div id="memoModelList" style="display:none;max-height:150px;overflow-y:auto;border:1px solid rgba(255,255,255,0.06);border-radius:8px;margin-top:6px;background:rgba(255,255,255,0.03);"></div>
             </div>
             <div style="margin-bottom:16px;">
                 <div style="font-size:12px;color:rgba(255,255,255,0.35);margin-bottom:4px;">自动记录时间（每天几点总结）</div>
@@ -1724,6 +1726,20 @@ class MemoryLibrary {
             this._store().saveIntimacyData(friendCode, data);
             ov.remove();
             this._toast('备忘录设置已保存');
+        });
+        
+        ov.querySelector('#memoFetchModels')?.addEventListener('click', () => {
+            if (window.chatInterface?._fetchModelList) {
+                window.chatInterface._fetchModelList(
+                    document.getElementById('memoApiUrl')?.value?.trim(),
+                    document.getElementById('memoApiKey')?.value?.trim(),
+                    document.getElementById('memoModelList'),
+                    document.getElementById('memoApiModel'),
+                    true
+                );
+            } else {
+                this._toast('拉取功能不可用');
+            }
         });
     }
 }
