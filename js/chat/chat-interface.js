@@ -1931,6 +1931,9 @@ class ChatInterface {
         if (this.messages.length > 0) {
             this.renderMessages();
         } else {
+            // 清空旧消息DOM再显示欢迎
+            const _ml = document.getElementById('messagesList');
+            if (_ml) _ml.innerHTML = '';
             this.addWelcomeMessage(friend);
         }
         
@@ -1971,11 +1974,13 @@ class ChatInterface {
 
     addWelcomeMessage(friend) {
         console.log('👋 添加欢迎消息');
-        this.addMessage({
+        const msg = {
             type: 'ai',
             text: `你好！我是 ${friend.name}。很高兴认识你！`,
             timestamp: new Date().toISOString()
-        });
+        };
+        this.addMessage(msg);
+        this.storage.addMessage(this.currentFriendCode, msg);
     }
     
     renderMessages() {
