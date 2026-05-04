@@ -16713,7 +16713,7 @@ _renderCardBubble(message) {
     
     // 检查是否已添加为好友
     const allFriends = this.storage.getAllFriends();
-    const alreadyFriend = allFriends.some(f => (f.nickname === card.nickname || f.name === card.nickname) && !f.isDeleted);
+    const alreadyFriend = allFriends.some(f => !f.isTempChat && (f.nickname === card.nickname || f.name === card.nickname) && !f.isDeleted);
     const friendBadge = alreadyFriend ? '<div style="position:absolute;top:6px;right:8px;font-size:9px;color:rgba(100,180,100,0.7);background:rgba(100,180,100,0.08);padding:1px 6px;border-radius:8px;">已添加</div>' : '';
     
     return `<div class="name-card-bubble" style="position:relative;border-radius:12px;overflow:hidden;min-width:200px;max-width:240px;cursor:pointer;border:1px solid rgba(128,128,128,0.15);background:rgba(128,128,128,0.04);">
@@ -16743,9 +16743,10 @@ _showCardDetail(cardInfo) {
     const color = cardInfo.relationPerson?.color || '#70a0e0';
     const isUserCard = !!cardInfo.fromUser;
     
-    // 检查是否已是好友
+    // 检查是否已是好友（排除临时好友）
     const allFriends = this.storage.getAllFriends();
-    const existingFriend = allFriends.find(f => (f.nickname === cardInfo.nickname || f.name === cardInfo.nickname) && !f.isDeleted);
+    const existingFriend = allFriends.find(f => !f.isTempChat && (f.nickname === cardInfo.nickname || f.name === cardInfo.nickname) && !f.isDeleted);
+    const existingTempFriend = allFriends.find(f => f.isTempChat && (f.nickname === cardInfo.nickname || f.name === cardInfo.nickname) && !f.isDeleted);
     
     const ov = document.createElement('div');
     ov.id = 'cardDetailOverlay';
@@ -16766,7 +16767,7 @@ _showCardDetail(cardInfo) {
                 ${existingFriend ? `
                     <div style="text-align:center;padding:8px;color:rgba(100,180,100,0.7);font-size:13px;">✓ 已是好友</div>
                 ` : `
-                    ${!isUserCard ? `<button id="cardTempChatBtn" style="width:100%;padding:12px;border:none;border-radius:10px;background:${color};color:#fff;font-size:14px;font-weight:500;cursor:pointer;">💬 发起临时会话</button>` : ''}
+                    ${!isUserCard ? `<button id="cardTempChatBtn" style="width:100%;padding:12px;border:none;border-radius:10px;background:${color};color:#fff;font-size:14px;font-weight:500;cursor:pointer;">💬 ${existingTempFriend ? '继续临时会话' : '发起临时会话'}</button>` : ''}
                     <button id="cardAddFriendBtn" style="width:100%;padding:12px;border:none;border-radius:10px;background:rgba(0,0,0,0.05);color:rgba(0,0,0,0.6);font-size:14px;cursor:pointer;">＋ 添加为好友</button>
                 `}
                 <button id="cardCloseBtn" style="width:100%;padding:10px;border:none;border-radius:10px;background:transparent;color:rgba(0,0,0,0.3);font-size:13px;cursor:pointer;">关闭</button>
