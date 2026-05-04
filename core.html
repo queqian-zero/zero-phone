@@ -166,6 +166,44 @@
                 </div>
             </div>
 
+            <!-- API配置指引 -->
+            <div class="core-section">
+                <h2 class="section-title">API 配置指引</h2>
+                <div style="font-size:12px;color:rgba(255,255,255,0.35);margin-bottom:12px;">所有可配置API的位置和功能说明</div>
+                <div id="apiGuideList" style="display:flex;flex-direction:column;gap:8px;">
+                    <div style="padding:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);border-radius:10px;">
+                        <div style="font-size:14px;font-weight:600;color:rgba(255,255,255,0.7);">🌐 主 API（全局）</div>
+                        <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:4px;">位置：中枢APP → 当前API配置</div>
+                        <div style="font-size:11px;color:rgba(255,255,255,0.2);margin-top:2px;">功能：所有好友共用的默认AI接口，支持OpenAI/Google/Anthropic/SiliconFlow/自定义</div>
+                    </div>
+                    <div style="padding:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);border-radius:10px;">
+                        <div style="font-size:14px;font-weight:600;color:rgba(255,255,255,0.7);">👤 好友独立 API</div>
+                        <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:4px;">位置：聊天界面 → 右上角⚙聊天设置 → API覆盖配置</div>
+                        <div style="font-size:11px;color:rgba(255,255,255,0.2);margin-top:2px;">功能：为单个好友配置专属API，覆盖全局配置。适合不同角色用不同模型</div>
+                    </div>
+                    <div style="padding:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);border-radius:10px;">
+                        <div style="font-size:14px;font-weight:600;color:rgba(255,152,0,0.7);">💬 临时会话独立 API</div>
+                        <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:4px;">位置：临时会话界面 → 右上角橙色⚙按钮</div>
+                        <div style="font-size:11px;color:rgba(255,255,255,0.2);margin-top:2px;">功能：为通过名片创建的临时会话配置独立API</div>
+                    </div>
+                    <div style="padding:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);border-radius:10px;">
+                        <div style="font-size:14px;font-weight:600;color:rgba(255,255,255,0.7);">🔊 Minimax 语音 API</div>
+                        <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:4px;">位置：中枢APP → Minimax语音</div>
+                        <div style="font-size:11px;color:rgba(255,255,255,0.2);margin-top:2px;">功能：小助手语音合成，需要Minimax的Group ID和API Key</div>
+                    </div>
+                    <div style="padding:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);border-radius:10px;">
+                        <div style="font-size:14px;font-weight:600;color:rgba(255,255,255,0.7);">📝 备忘录小助手 API</div>
+                        <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:4px;">位置：聊天APP → 发现页 → 记忆库 → 角色档案 → 备忘录 → ⚙设置</div>
+                        <div style="font-size:11px;color:rgba(255,255,255,0.2);margin-top:2px;">功能：每日自动总结聊天内容的独立小助手，可设置自动记录时间</div>
+                    </div>
+                    <div style="padding:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);border-radius:10px;">
+                        <div style="font-size:14px;font-weight:600;color:rgba(255,255,255,0.7);">🔧 MCP 工具服务</div>
+                        <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:4px;">位置：聊天界面 → 右上角⚙聊天设置 → MCP工具</div>
+                        <div style="font-size:11px;color:rgba(255,255,255,0.2);margin-top:2px;">功能：为AI接入外部工具能力（搜索/天气等），需配置MCP服务端地址</div>
+                    </div>
+                </div>
+            </div>
+
             <!-- 危险操作 -->
             <div class="core-section danger-section">
                 <h2 class="section-title">危险操作</h2>
