@@ -8478,6 +8478,7 @@ getIntimacyStatusForAI() {
     desc += `\n    写日记时请发挥创意，像人类写手账一样自由！`;
     desc += `\n  [AI_DELETE_NOTE:碎碎念内容前几个字] 删除你写的某条碎碎念`;
     desc += `\n  [AI_DELETE_DIARY:日记日期] 删除你写的某篇日记`;
+    desc += `\n  [AI_EDIT_DIARY:日记正文的某句话]修改后的完整日记内容[/AI_EDIT_DIARY] 修改一篇已有的日记（用关键词匹配要改的那篇）`;
     desc += `\n  [AI_LOCK_DIARY:日记正文的某句话] 给某篇日记加锁（加锁后user看不到内容，除非你解锁）`;
     desc += `\n  [AI_UNLOCK_DIARY:日记正文的某句话] 给某篇日记解锁（解锁后user可以看到内容）`;
     desc += `\n\n【手帐本（跟日记不同，更自由，可多次编辑同一页）】`;
@@ -14979,6 +14980,7 @@ _stripCommandTags(text) {
         .replace(/\[AI_DIARY\][\s\S]*?\[\/AI_DIARY\]/g, '')
         .replace(/\[AI_DELETE_NOTE:[^\]]+\]/g, '')
         .replace(/\[AI_DELETE_DIARY:[^\]]+\]/g, '')
+        .replace(/\[AI_EDIT_DIARY:[^\]]+\][\s\S]*?\[\/AI_EDIT_DIARY\]/g, '')
         .replace(/\[AI_LOCK_DIARY:[^\]]+\]/g, '')
         .replace(/\[AI_UNLOCK_DIARY:[^\]]+\]/g, '')
         .replace(/\[AI_JOURNAL\][\s\S]*?\[\/AI_JOURNAL\]/g, '')
@@ -15097,6 +15099,20 @@ processNotebookCommands(text) {
         const kw = delDiaryMatch[1].trim().toLowerCase();
         const idx = data.notebook.diary.findIndex(d => (d.date||'').toLowerCase().includes(kw) || (d.content||'').toLowerCase().includes(kw));
         if (idx >= 0) { data.notebook.diary.splice(idx, 1); this.showCssSystemMessage(`📖 ${friendName} 删了一篇日记`); changed = true; }
+    }
+    
+    // [AI_EDIT_DIARY:关键字]新内容[/AI_EDIT_DIARY]
+    const editDiaryMatch = text.match(/\[AI_EDIT_DIARY:([^\]]+)\]([\s\S]*?)\[\/AI_EDIT_DIARY\]/);
+    if (editDiaryMatch) {
+        const kw = editDiaryMatch[1].trim().toLowerCase();
+        const newContent = editDiaryMatch[2].trim();
+        const diary = data.notebook.diary.find(d => (d.content||'').toLowerCase().includes(kw) || (d.date||'').toLowerCase().includes(kw));
+        if (diary && newContent) {
+            diary.content = newContent;
+            diary.updatedAt = new Date().toISOString();
+            this.showCssSystemMessage(`✏️ ${friendName} 修改了一篇日记`);
+            changed = true;
+        }
     }
     
     // [AI_LOCK_DIARY:关键字]

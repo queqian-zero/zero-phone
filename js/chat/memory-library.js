@@ -65,7 +65,7 @@ class MemoryLibrary {
         document.getElementById('memoryLibPage')?.remove();
         if (!this._store()) { this._toast('存储不可用'); return; }
 
-        const friends = this._store().getAllFriends() || [];
+        const friends = (this._store().getAllFriends() || []).filter(f => !f.isTempChat);
         const page = document.createElement('div');
         page.id = 'memoryLibPage';
         page.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:8000;background:#0d0d0d;display:flex;flex-direction:column;';
@@ -394,47 +394,29 @@ class MemoryLibrary {
         });
     }
 
-    // ==================== 碎碎念编辑 ====================
+    // ==================== 碎碎念查看（只读+删除） ====================
     _editNote(friendCode, name, existing, parentPage) {
+        if (!existing) return; // 用户不能新增碎碎念
         document.getElementById('nbEditOverlay')?.remove();
         const ov = document.createElement('div');
         ov.id = 'nbEditOverlay';
         ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9500;display:flex;align-items:flex-end;background:rgba(0,0,0,0.5);';
         
         ov.innerHTML = `<div style="width:100%;background:#1a1a1a;border-radius:16px 16px 0 0;padding:20px 16px calc(16px + env(safe-area-inset-bottom));max-height:70vh;display:flex;flex-direction:column;animation:profileSlideUp 0.25s ease-out;">
-            <div style="font-size:15px;font-weight:600;color:#fff;text-align:center;margin-bottom:12px;">${existing ? '编辑碎碎念' : '新碎碎念'}</div>
-            <div style="font-size:10px;color:rgba(255,255,255,0.2);text-align:center;margin-bottom:10px;">想写什么就写什么，没有格式要求</div>
-            <textarea id="nbNoteText" rows="6" style="width:100%;padding:14px;background:rgba(255,240,200,0.04);border:1px dashed rgba(255,220,150,0.12);border-radius:10px;color:rgba(255,255,255,0.7);font-size:14px;line-height:1.7;resize:vertical;box-sizing:border-box;font-family:serif;">${this._esc(existing?.content || '')}</textarea>
+            <div style="font-size:15px;font-weight:600;color:#fff;text-align:center;margin-bottom:12px;">碎碎念</div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.2);text-align:center;margin-bottom:10px;">这是TA写的碎碎念</div>
+            <div style="width:100%;padding:14px;background:rgba(255,240,200,0.04);border:1px dashed rgba(255,220,150,0.12);border-radius:10px;color:rgba(255,255,255,0.7);font-size:14px;line-height:1.7;font-family:serif;white-space:pre-wrap;max-height:40vh;overflow-y:auto;">${this._esc(existing.content || '')}</div>
             <div style="display:flex;gap:8px;margin-top:12px;">
-                <button id="nbNoteSave" style="flex:1;padding:10px;border:none;border-radius:10px;background:rgba(240,147,43,0.12);color:#f0932b;font-size:13px;font-weight:600;cursor:pointer;">保存</button>
-                ${existing ? `<button id="nbNoteDelete" style="padding:10px 16px;border:none;border-radius:10px;background:rgba(255,60,60,0.08);color:rgba(255,100,100,0.5);font-size:13px;cursor:pointer;">删除</button>` : ''}
+                <button id="nbNoteDelete" style="flex:1;padding:10px;border:none;border-radius:10px;background:rgba(255,60,60,0.08);color:rgba(255,100,100,0.5);font-size:13px;cursor:pointer;">删除</button>
             </div>
-            <button id="nbNoteCancel" style="width:100%;margin-top:8px;padding:10px;border:none;background:transparent;color:rgba(255,255,255,0.2);font-size:13px;cursor:pointer;">取消</button>
+            <button id="nbNoteCancel" style="width:100%;margin-top:8px;padding:10px;border:none;background:transparent;color:rgba(255,255,255,0.2);font-size:13px;cursor:pointer;">关闭</button>
         </div>`;
         
         document.body.appendChild(ov);
         
-        ov.querySelector('#nbNoteSave')?.addEventListener('click', () => {
-            const text = ov.querySelector('#nbNoteText')?.value.trim();
-            if (!text) { this._toast('内容不能为空'); return; }
-            const ci = window.chatInterface;
-            const data = this._store().getIntimacyData(friendCode);
-            if (!data.notebook) data.notebook = { notes: [], diary: [] };
-            if (existing) {
-                const item = data.notebook.notes.find(n => n.id === existing.id);
-                if (item) { item.content = text; item.updatedAt = new Date().toISOString(); }
-            } else {
-                data.notebook.notes.push({ id: 'note_' + Date.now(), content: text, createdAt: new Date().toISOString() });
-            }
-            this._store().saveIntimacyData(friendCode, data);
-            ov.remove();
-            this._refreshNotebook(parentPage, friendCode, name);
-        });
-        
         ov.querySelector('#nbNoteDelete')?.addEventListener('click', async () => {
             const ok = window.zpConfirm ? await window.zpConfirm('删除', '删除这条碎碎念？', '删除', '取消') : confirm('删除？');
             if (!ok) return;
-            const ci = window.chatInterface;
             const data = this._store().getIntimacyData(friendCode);
             data.notebook.notes = (data.notebook.notes || []).filter(n => n.id !== existing.id);
             this._store().saveIntimacyData(friendCode, data);
