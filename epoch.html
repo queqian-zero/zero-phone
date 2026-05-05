@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+    <title>纪元 - Zero Phone</title>
+    <style>
+        * { margin:0;padding:0;box-sizing:border-box; }
+        body { font-family:-apple-system,sans-serif;background:#0a0a0a;color:#fff;height:100vh;display:flex;flex-direction:column;overflow:hidden; }
+        .ep-header { display:flex;align-items:center;padding:14px 16px;gap:10px;border-bottom:1px solid rgba(255,255,255,0.04);flex-shrink:0;padding-top:calc(14px + env(safe-area-inset-top)); }
+        .ep-back { background:none;border:none;color:rgba(255,255,255,0.5);font-size:20px;cursor:pointer; }
+        .ep-title { flex:1;font-size:18px;font-weight:700;color:#fff; }
+        .ep-add { background:rgba(240,147,43,0.12);border:none;color:#f0932b;padding:6px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer; }
+        .ep-tabs { display:flex;border-bottom:1px solid rgba(255,255,255,0.04);flex-shrink:0;padding:0 16px; }
+        .ep-tab { padding:10px 16px;font-size:13px;color:rgba(255,255,255,0.3);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s; }
+        .ep-tab.active { color:rgba(240,147,43,0.8);border-bottom-color:rgba(240,147,43,0.6); }
+        .ep-content { flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 16px; }
+        .ep-card { padding:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;margin-bottom:10px;cursor:pointer;position:relative; }
+        .ep-card:active { background:rgba(255,255,255,0.06); }
+        .ep-card-title { font-size:14px;font-weight:600;color:rgba(255,255,255,0.7); }
+        .ep-card-meta { font-size:11px;color:rgba(255,255,255,0.2);margin-top:4px; }
+        .ep-card-keys { font-size:11px;color:rgba(240,147,43,0.5);margin-top:6px; }
+        .ep-badge { display:inline-block;padding:1px 6px;border-radius:4px;font-size:9px;margin-left:6px; }
+        .ep-badge-on { background:rgba(80,200,120,0.1);color:rgba(80,200,120,0.7); }
+        .ep-badge-off { background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.2); }
+        .ep-empty { text-align:center;padding:60px 0;color:rgba(255,255,255,0.1);font-size:13px; }
+        .ep-overlay { position:fixed;top:0;left:0;right:0;bottom:0;z-index:100;background:#111;display:flex;flex-direction:column; }
+        input[type="text"],textarea { width:100%;box-sizing:border-box;padding:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#fff;font-size:13px;outline:none;font-family:inherit; }
+        textarea { resize:vertical;min-height:80px; }
+        .ep-field { margin-bottom:12px; }
+        .ep-label { font-size:12px;color:rgba(255,255,255,0.35);margin-bottom:4px; }
+        .ep-btn { padding:10px;border:none;border-radius:10px;font-size:14px;cursor:pointer;width:100%; }
+        .ep-btn-primary { background:rgba(240,147,43,0.12);color:#f0932b;font-weight:600; }
+        .ep-btn-danger { background:rgba(255,60,60,0.08);color:rgba(255,100,100,0.5); }
+        .ep-btn-ghost { background:transparent;color:rgba(255,255,255,0.2); }
+        .char-card { display:flex;align-items:center;gap:10px;padding:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;margin-bottom:8px;cursor:pointer; }
+        .char-avatar { width:36px;height:36px;border-radius:50%;background:rgba(240,147,43,0.15);display:flex;align-items:center;justify-content:center;font-size:14px;color:rgba(240,147,43,0.7);font-weight:600;flex-shrink:0; }
+        .char-name { font-size:14px;color:rgba(255,255,255,0.65);font-weight:500; }
+        .char-meta { font-size:11px;color:rgba(255,255,255,0.2);margin-top:2px; }
+    </style>
+</head>
+<body>
+    <div class="ep-header">
+        <button class="ep-back" onclick="window.location.href='index.html'">←</button>
+        <div class="ep-title">纪元</div>
+        <button class="ep-add" id="epAddBtn">＋ 新建</button>
+    </div>
+    <div class="ep-tabs">
+        <div class="ep-tab active" data-tab="books">世界书</div>
+        <div class="ep-tab" data-tab="characters">角色档案</div>
+    </div>
+    <div class="ep-content" id="epContent"></div>
+
+<script>
+const STORAGE_KEY = 'zero_phone_world_books';
+const FRIENDS_KEY = 'zero_phone_friends';
+
+let currentTab = 'books';
+let worldBooks = [];
+let editingBook = null;
+let editingEntry = null;
+
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function load() { try { worldBooks = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch(e) { worldBooks = []; } }
+function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(worldBooks)); }
+function getFriends() { try { return JSON.parse(localStorage.getItem(FRIENDS_KEY) || '[]').filter(f => !f.isDeleted && !f.isTempChat); } catch(e) { return []; } }
+function toast(msg) { const t=document.createElement('div'); t.style.cssText='position:fixed;top:80px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:#fff;padding:8px 20px;border-radius:20px;font-size:13px;z-index:9999;'; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2000); }
+
+// Tab切换
+document.querySelectorAll('.ep-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        document.querySelectorAll('.ep-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        currentTab = tab.dataset.tab;
+        render();
+    });
+});
+
+document.getElementById('epAddBtn').addEventListener('click', () => {
+    if (currentTab === 'books') openBookEditor(null);
+    else toast('角色由聊天APP管理');
+});
+
+function render() {
+    load();
+    const c = document.getElementById('epContent');
+    if (currentTab === 'books') renderBooks(c);
+    else renderCharacters(c);
+}
+
+function renderBooks(c) {
+    if (worldBooks.length === 0) { c.innerHTML = '<div class="ep-empty">还没有世界书<br><span style="font-size:11px;margin-top:4px;display:block;">点击右上角＋新建</span></div>'; return; }
+    c.innerHTML = worldBooks.map((b, i) => {
+        const entryCount = (b.entries || []).length;
+        const enabledCount = (b.entries || []).filter(e => e.enabled !== false).length;
+        return `<div class="ep-card" data-idx="${i}">
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+                <div class="ep-card-title">${esc(b.name)}<span class="ep-badge ${b.enabled!==false?'ep-badge-on':'ep-badge-off'}">${b.enabled!==false?'启用':'禁用'}</span></div>
+            </div>
+            ${b.desc ? `<div class="ep-card-meta" style="margin-top:4px;">${esc(b.desc).substring(0,60)}</div>` : ''}
+            <div class="ep-card-meta">${entryCount} 条目 · ${enabledCount} 启用</div>
+        </div>`;
+    }).join('');
+    c.querySelectorAll('.ep-card').forEach(card => {
+        card.addEventListener('click', () => openBookDetail(parseInt(card.dataset.idx)));
+    });
+}
+
+function renderCharacters(c) {
+    const friends = getFriends();
+    if (friends.length === 0) { c.innerHTML = '<div class="ep-empty">没有角色</div>'; return; }
+    c.innerHTML = friends.map(f => {
+        const mountedBooks = worldBooks.filter(b => (b.mountedTo || []).includes(f.code));
+        const fc = (f.nickname || f.name || '?')[0];
+        return `<div class="char-card" data-code="${f.code}">
+            <div class="char-avatar">${esc(fc)}</div>
+            <div style="flex:1;min-width:0;">
+                <div class="char-name">${esc(f.nickname || f.name)}</div>
+                <div class="char-meta">${mountedBooks.length ? '已挂载：' + mountedBooks.map(b=>esc(b.name)).join('、') : '未挂载世界书'}</div>
+            </div>
+        </div>`;
+    }).join('');
+    c.querySelectorAll('.char-card').forEach(card => {
+        card.addEventListener('click', () => openCharacterDetail(card.dataset.code));
+    });
+}
+
+// ==================== 世界书编辑器 ====================
+function openBookEditor(book) {
+    document.getElementById('epEditor')?.remove();
+    const isNew = !book;
+    const ov = document.createElement('div');
+    ov.id = 'epEditor';
+    ov.className = 'ep-overlay';
+    ov.innerHTML = `
+        <div style="display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.04);flex-shrink:0;">
+            <button id="edBack" style="background:none;border:none;color:rgba(255,255,255,0.5);font-size:20px;cursor:pointer;">←</button>
+            <div style="flex:1;font-size:16px;font-weight:600;color:#fff;text-align:center;">${isNew?'新建世界书':'编辑世界书'}</div>
+            ${!isNew?'<button id="edDelete" style="background:none;border:none;color:rgba(255,100,100,0.5);font-size:13px;cursor:pointer;">删除</button>':'<div style="width:30px;"></div>'}
+        </div>
+        <div style="flex:1;overflow-y:auto;padding:16px;">
+            <div class="ep-field"><div class="ep-label">名称</div><input id="edName" type="text" value="${esc(book?.name||'')}" placeholder="世界书名称"></div>
+            <div class="ep-field"><div class="ep-label">描述</div><textarea id="edDesc" rows="3" placeholder="描述这个世界书的内容和用途">${esc(book?.desc||'')}</textarea></div>
+            <div class="ep-field">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                    <input type="checkbox" id="edEnabled" ${book?.enabled!==false?'checked':''} style="width:18px;height:18px;">
+                    <span style="font-size:14px;color:rgba(255,255,255,0.6);">启用</span>
+                </label>
+            </div>
+            <button id="edSave" class="ep-btn ep-btn-primary" style="margin-top:8px;">保存</button>
+        </div>`;
+    document.body.appendChild(ov);
+    ov.querySelector('#edBack').addEventListener('click', () => ov.remove());
+    ov.querySelector('#edSave').addEventListener('click', () => {
+        const name = document.getElementById('edName').value.trim();
+        if (!name) { toast('请输入名称'); return; }
+        if (isNew) {
+            worldBooks.push({ id:'wb_'+Date.now(), name, desc:document.getElementById('edDesc').value.trim(), enabled:document.getElementById('edEnabled').checked, entries:[], mountedTo:[], createdAt:new Date().toISOString() });
+        } else {
+            book.name = name; book.desc = document.getElementById('edDesc').value.trim(); book.enabled = document.getElementById('edEnabled').checked;
+        }
+        save(); ov.remove(); render(); toast(isNew?'已创建':'已保存');
+    });
+    ov.querySelector('#edDelete')?.addEventListener('click', () => {
+        if (!confirm('删除「'+book.name+'」？所有条目将丢失。')) return;
+        worldBooks = worldBooks.filter(b => b.id !== book.id); save(); ov.remove(); render(); toast('已删除');
+    });
+}
+
+// ==================== 世界书详情（条目列表） ====================
+function openBookDetail(idx) {
+    load();
+    const book = worldBooks[idx];
+    if (!book) return;
+    document.getElementById('epDetail')?.remove();
+    const ov = document.createElement('div');
+    ov.id = 'epDetail';
+    ov.className = 'ep-overlay';
+    
+    const renderEntries = () => {
+        const entries = book.entries || [];
+        let html = '';
+        if (entries.length === 0) {
+            html = '<div class="ep-empty">还没有条目<br><span style="font-size:11px;">点击＋添加</span></div>';
+        } else {
+            html = entries.map((e, ei) => `<div class="ep-card" data-ei="${ei}">
+                <div style="display:flex;align-items:center;justify-content:space-between;">
+                    <div class="ep-card-title">${esc(e.title||'无标题')}<span class="ep-badge ${e.enabled!==false?'ep-badge-on':'ep-badge-off'}">${e.enabled!==false?'ON':'OFF'}</span></div>
+                </div>
+                <div class="ep-card-keys">🔑 ${esc((e.keywords||[]).join(', ')||'无关键词')}</div>
+                <div class="ep-card-meta">${esc((e.content||'').substring(0,80))}</div>
+                ${e.owner ? `<div style="font-size:10px;color:rgba(100,160,224,0.4);margin-top:4px;">创建者：${esc(e.owner)}</div>` : ''}
+            </div>`).join('');
+        }
+        ov.querySelector('#bdEntries').innerHTML = html;
+        ov.querySelectorAll('.ep-card').forEach(card => {
+            card.addEventListener('click', () => openEntryEditor(book, parseInt(card.dataset.ei), idx));
+        });
+    };
+    
+    ov.innerHTML = `
+        <div style="display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.04);flex-shrink:0;gap:8px;">
+            <button id="bdBack" style="background:none;border:none;color:rgba(255,255,255,0.5);font-size:20px;cursor:pointer;">←</button>
+            <div style="flex:1;">
+                <div style="font-size:16px;font-weight:600;color:#fff;">${esc(book.name)}</div>
+                <div style="font-size:11px;color:rgba(255,255,255,0.2);">${(book.entries||[]).length} 条目</div>
+            </div>
+            <button id="bdEdit" style="background:none;border:none;color:rgba(255,255,255,0.3);font-size:13px;cursor:pointer;">编辑</button>
+            <button id="bdAdd" style="background:rgba(240,147,43,0.12);border:none;color:#f0932b;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">＋</button>
+        </div>
+        <div id="bdEntries" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 16px;"></div>`;
+    document.body.appendChild(ov);
+    ov.querySelector('#bdBack').addEventListener('click', () => { ov.remove(); render(); });
+    ov.querySelector('#bdEdit').addEventListener('click', () => { ov.remove(); openBookEditor(book); });
+    ov.querySelector('#bdAdd').addEventListener('click', () => openEntryEditor(book, -1, idx));
+    renderEntries();
+}
+
+// ==================== 条目编辑器 ====================
+function openEntryEditor(book, entryIdx, bookIdx) {
+    const isNew = entryIdx < 0;
+    const entry = isNew ? {} : book.entries[entryIdx];
+    document.getElementById('epEntryEditor')?.remove();
+    const ov = document.createElement('div');
+    ov.id = 'epEntryEditor';
+    ov.className = 'ep-overlay';
+    ov.innerHTML = `
+        <div style="display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.04);flex-shrink:0;">
+            <button id="eeBack" style="background:none;border:none;color:rgba(255,255,255,0.5);font-size:20px;cursor:pointer;">←</button>
+            <div style="flex:1;font-size:16px;font-weight:600;color:#fff;text-align:center;">${isNew?'添加条目':'编辑条目'}</div>
+            ${!isNew?'<button id="eeDelete" style="background:none;border:none;color:rgba(255,100,100,0.5);font-size:13px;cursor:pointer;">删除</button>':'<div style="width:30px;"></div>'}
+        </div>
+        <div style="flex:1;overflow-y:auto;padding:16px;">
+            <div class="ep-field"><div class="ep-label">标题</div><input id="eeTitle" type="text" value="${esc(entry.title||'')}" placeholder="条目标题"></div>
+            <div class="ep-field"><div class="ep-label">关键词（逗号分隔，匹配到则注入）</div><input id="eeKeys" type="text" value="${esc((entry.keywords||[]).join(', '))}" placeholder="关键词1, 关键词2, ..."></div>
+            <div class="ep-field"><div class="ep-label">内容（匹配关键词后注入到系统提示）</div><textarea id="eeContent" rows="8" placeholder="条目内容">${esc(entry.content||'')}</textarea></div>
+            <div class="ep-field"><div class="ep-label">插入位置</div>
+                <select id="eePosition" style="width:100%;padding:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#fff;font-size:13px;">
+                    <option value="before" ${entry.position==='before'?'selected':''}>人设之前</option>
+                    <option value="after" ${entry.position!=='before'?'selected':''}>人设之后</option>
+                </select>
+            </div>
+            <div class="ep-field">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                    <input type="checkbox" id="eeEnabled" ${entry.enabled!==false?'checked':''} style="width:18px;height:18px;">
+                    <span style="font-size:14px;color:rgba(255,255,255,0.6);">启用</span>
+                </label>
+            </div>
+            <div class="ep-field">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                    <input type="checkbox" id="eeAlways" ${entry.alwaysActive?'checked':''} style="width:18px;height:18px;">
+                    <span style="font-size:14px;color:rgba(255,255,255,0.6);">常驻（无需关键词匹配）</span>
+                </label>
+            </div>
+            <button id="eeSave" class="ep-btn ep-btn-primary" style="margin-top:8px;">保存</button>
+        </div>`;
+    document.body.appendChild(ov);
+    ov.querySelector('#eeBack').addEventListener('click', () => { ov.remove(); openBookDetail(bookIdx); });
+    ov.querySelector('#eeSave').addEventListener('click', () => {
+        const title = document.getElementById('eeTitle').value.trim();
+        const keys = document.getElementById('eeKeys').value.split(',').map(k=>k.trim()).filter(Boolean);
+        const content = document.getElementById('eeContent').value.trim();
+        if (!content) { toast('内容不能为空'); return; }
+        const obj = { title: title||'未命名', keywords:keys, content, position:document.getElementById('eePosition').value, enabled:document.getElementById('eeEnabled').checked, alwaysActive:document.getElementById('eeAlways').checked, updatedAt:new Date().toISOString() };
+        if (isNew) { obj.id='we_'+Date.now(); obj.createdAt=new Date().toISOString(); book.entries.push(obj); }
+        else Object.assign(entry, obj);
+        save(); ov.remove(); openBookDetail(bookIdx); toast('已保存');
+    });
+    ov.querySelector('#eeDelete')?.addEventListener('click', () => {
+        if (!confirm('删除此条目？')) return;
+        book.entries.splice(entryIdx, 1); save(); ov.remove(); openBookDetail(bookIdx); toast('已删除');
+    });
+}
+
+// ==================== 角色详情（挂载管理） ====================
+function openCharacterDetail(code) {
+    load();
+    const friends = getFriends();
+    const friend = friends.find(f => f.code === code);
+    if (!friend) return;
+    document.getElementById('epCharDetail')?.remove();
+    const ov = document.createElement('div');
+    ov.id = 'epCharDetail';
+    ov.className = 'ep-overlay';
+    
+    const renderMounts = () => {
+        let html = '<div style="font-size:13px;color:rgba(255,255,255,0.4);margin-bottom:12px;font-weight:600;">世界书挂载</div>';
+        if (worldBooks.length === 0) {
+            html += '<div style="font-size:12px;color:rgba(255,255,255,0.15);padding:20px 0;text-align:center;">没有世界书</div>';
+        } else {
+            worldBooks.forEach((b, i) => {
+                const mounted = (b.mountedTo || []).includes(code);
+                html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.03);">
+                    <div>
+                        <div style="font-size:14px;color:rgba(255,255,255,0.6);">${esc(b.name)}</div>
+                        <div style="font-size:11px;color:rgba(255,255,255,0.2);">${(b.entries||[]).length} 条目</div>
+                    </div>
+                    <button class="wb-mount-toggle" data-idx="${i}" style="padding:6px 14px;border:1px solid ${mounted?'rgba(255,100,100,0.2)':'rgba(80,200,120,0.2)'};border-radius:8px;background:${mounted?'rgba(255,100,100,0.05)':'rgba(80,200,120,0.05)'};color:${mounted?'rgba(255,100,100,0.6)':'rgba(80,200,120,0.6)'};font-size:12px;cursor:pointer;">${mounted?'取消挂载':'挂载'}</button>
+                </div>`;
+            });
+        }
+        ov.querySelector('#cdMounts').innerHTML = html;
+        ov.querySelectorAll('.wb-mount-toggle').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const bi = parseInt(btn.dataset.idx);
+                const book = worldBooks[bi];
+                if (!book.mountedTo) book.mountedTo = [];
+                const mi = book.mountedTo.indexOf(code);
+                if (mi >= 0) book.mountedTo.splice(mi, 1);
+                else book.mountedTo.push(code);
+                save(); renderMounts(); toast(mi>=0?'已取消挂载':'已挂载');
+            });
+        });
+    };
+    
+    const charName = friend.nickname || friend.name;
+    ov.innerHTML = `
+        <div style="display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.04);flex-shrink:0;">
+            <button id="cdBack" style="background:none;border:none;color:rgba(255,255,255,0.5);font-size:20px;cursor:pointer;">←</button>
+            <div style="flex:1;text-align:center;">
+                <div style="font-size:16px;font-weight:600;color:#fff;">${esc(charName)}</div>
+                <div style="font-size:11px;color:rgba(255,255,255,0.2);">角色档案</div>
+            </div>
+            <div style="width:30px;"></div>
+        </div>
+        <div id="cdMounts" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;"></div>`;
+    document.body.appendChild(ov);
+    ov.querySelector('#cdBack').addEventListener('click', () => { ov.remove(); render(); });
+    renderMounts();
+}
+
+// 初始化
+render();
+</script>
+</body>
+</html>
