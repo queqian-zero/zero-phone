@@ -142,6 +142,7 @@ class MemoryLibrary {
                     ${menuItem('&#9998;', '记事本', 'mlNotebook', 'TA的碎碎念和日记')}
                     ${menuItem('&#128196;', '备忘录', 'mlMemo', '每日记录')}
                     ${menuItem('&#128187;', '项目库', 'mlProjects', 'TA的代码项目')}
+                    ${menuItem('&#128203;', '报备', 'mlReport', '报备时间轴')}
                     ${menuItem('&#128101;', '人际关系', 'mlRelations', 'TA的社交圈')}
                     ${menuItem('&#9670;', '剧场归档', 'mlTheaterArchive', '次元剧场存档')}
                 </div>
@@ -173,6 +174,11 @@ class MemoryLibrary {
         // 项目库
         page.querySelector('#mlProjects')?.addEventListener('click', () => {
             this._openProjects(friendCode, name);
+        });
+        
+        // 报备
+        page.querySelector('#mlReport')?.addEventListener('click', () => {
+            this._openReport(friendCode, name);
         });
 
         // 表情包收藏（占位）
@@ -1444,6 +1450,194 @@ class MemoryLibrary {
         render();
     }
 
+    // ==================== 报备功能 ====================
+    _openReport(friendCode, name) {
+        document.getElementById('mlReportPage')?.remove();
+        const data = this._store().getIntimacyData(friendCode);
+        if (!data.reports) data.reports = [];
+        
+        const page = document.createElement('div');
+        page.id = 'mlReportPage';
+        page.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9000;background:#0d0d0d;display:flex;flex-direction:column;';
+        
+        let selectedDate = new Date().toISOString().split('T')[0];
+        let viewMonth = new Date();
+        let showHeatmap = false;
+        
+        const renderAll = () => {
+            const reports = data.reports || [];
+            // 月视图
+            const y = viewMonth.getFullYear(), m = viewMonth.getMonth();
+            const firstDay = new Date(y, m, 1).getDay();
+            const daysInMonth = new Date(y, m+1, 0).getDate();
+            const monthStr = `${y}年${m+1}月`;
+            
+            // 统计每天有多少条报备
+            const dayCounts = {};
+            reports.forEach(r => {
+                const d = r.date;
+                if (d && d.startsWith(`${y}-${String(m+1).padStart(2,'0')}`)) {
+                    dayCounts[parseInt(d.split('-')[2])] = (dayCounts[parseInt(d.split('-')[2])]||0) + 1;
+                }
+            });
+            
+            // 标签统计
+            const tagCounts = {};
+            reports.forEach(r => { if (r.tag) tagCounts[r.tag] = (tagCounts[r.tag]||0) + 1; });
+            const topTags = Object.entries(tagCounts).sort((a,b) => b[1]-a[1]).slice(0, 8);
+            
+            let calendarHtml = '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center;">';
+            ['日','一','二','三','四','五','六'].forEach(d => {
+                calendarHtml += `<div style="font-size:10px;color:rgba(255,255,255,0.15);padding:4px 0;">${d}</div>`;
+            });
+            for (let i = 0; i < firstDay; i++) calendarHtml += '<div></div>';
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dateStr = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                const isSelected = dateStr === selectedDate;
+                const count = dayCounts[d] || 0;
+                const dotColor = count > 2 ? 'rgba(240,147,43,0.8)' : count > 0 ? 'rgba(240,147,43,0.4)' : 'transparent';
+                calendarHtml += `<div class="rep-day" data-date="${dateStr}" style="padding:6px 2px;cursor:pointer;border-radius:6px;${isSelected?'background:rgba(240,147,43,0.15);':''}position:relative;">
+                    <div style="font-size:13px;color:${isSelected?'rgba(240,147,43,0.9)':'rgba(255,255,255,0.5)'};">${d}</div>
+                    <div style="width:4px;height:4px;border-radius:50%;background:${dotColor};margin:2px auto 0;"></div>
+                </div>`;
+            }
+            calendarHtml += '</div>';
+            
+            // 标签区
+            let tagsHtml = topTags.map(([tag, cnt]) =>
+                `<span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;background:rgba(240,147,43,0.08);color:rgba(240,147,43,0.6);margin:2px 4px 2px 0;cursor:pointer;" class="rep-tag-filter" data-tag="${this._esc(tag)}">#${this._esc(tag)} <span style="opacity:0.5;">${cnt}</span></span>`
+            ).join('');
+            
+            // 时间轴（选中日期的）
+            const dayReports = reports.filter(r => r.date === selectedDate);
+            let timelineHtml = '';
+            if (dayReports.length === 0) {
+                timelineHtml = `<div style="text-align:center;padding:30px 0;color:rgba(255,255,255,0.1);font-size:12px;">${selectedDate} 没有报备记录</div>`;
+            } else {
+                dayReports.forEach(r => {
+                    const authorIcon = r.author === 'ai' ? '🤖' : '👤';
+                    timelineHtml += `<div style="display:flex;gap:10px;margin-bottom:12px;">
+                        <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;">
+                            <div style="width:8px;height:8px;border-radius:50%;background:rgba(240,147,43,0.5);margin-top:4px;"></div>
+                            <div style="width:1px;flex:1;background:rgba(255,255,255,0.04);"></div>
+                        </div>
+                        <div style="flex:1;padding-bottom:8px;">
+                            <div style="display:flex;align-items:center;gap:6px;">
+                                <span style="font-size:10px;color:rgba(255,255,255,0.2);">${this._esc(r.time||r.createdAt?.split('T')[1]?.substring(0,5)||'')}</span>
+                                ${r.tag ? `<span style="font-size:10px;padding:1px 6px;border-radius:4px;background:rgba(240,147,43,0.08);color:rgba(240,147,43,0.5);">#${this._esc(r.tag)}</span>` : ''}
+                                <span style="font-size:10px;">${authorIcon}</span>
+                            </div>
+                            <div style="font-size:13px;color:rgba(255,255,255,0.55);margin-top:4px;line-height:1.6;">${this._esc(r.content||r.comment||'')}</div>
+                            ${r.aiComment ? `<div style="font-size:12px;color:rgba(100,160,224,0.5);margin-top:4px;padding-left:8px;border-left:2px solid rgba(100,160,224,0.15);">${this._esc(r.aiComment)}</div>` : ''}
+                            ${r.chatRef ? `<div style="font-size:10px;color:rgba(240,147,43,0.3);margin-top:4px;cursor:pointer;" class="rep-chat-ref" data-ref="${this._esc(r.chatRef)}">💬 查看原文 ›</div>` : ''}
+                        </div>
+                    </div>`;
+                });
+            }
+            
+            // 热力图
+            let heatmapHtml = '';
+            if (showHeatmap) {
+                const wordCounts = {};
+                reports.forEach(r => {
+                    const text = (r.content || r.comment || '') + ' ' + (r.tag || '');
+                    text.replace(/[^\u4e00-\u9fff\w]+/g, ' ').split(/\s+/).forEach(w => {
+                        if (w.length >= 2) wordCounts[w] = (wordCounts[w]||0) + 1;
+                    });
+                });
+                const sorted = Object.entries(wordCounts).sort((a,b) => b[1]-a[1]).slice(0, 20);
+                if (sorted.length > 0) {
+                    const max = sorted[0][1];
+                    heatmapHtml = '<div style="padding:12px;background:rgba(255,255,255,0.02);border-radius:10px;margin-bottom:12px;">';
+                    heatmapHtml += '<div style="font-size:12px;color:rgba(255,255,255,0.3);margin-bottom:8px;">词频热力图</div>';
+                    heatmapHtml += '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
+                    sorted.forEach(([w, c]) => {
+                        const opacity = 0.3 + (c / max) * 0.7;
+                        const size = 12 + (c / max) * 6;
+                        heatmapHtml += `<span style="font-size:${size}px;color:rgba(240,147,43,${opacity});padding:2px 6px;">${this._esc(w)}</span>`;
+                    });
+                    heatmapHtml += '</div></div>';
+                }
+            }
+            
+            const content = page.querySelector('#repContent');
+            if (content) {
+                content.innerHTML = `
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                        <button id="repPrevMonth" style="background:none;border:none;color:rgba(255,255,255,0.3);font-size:18px;cursor:pointer;">‹</button>
+                        <div style="font-size:14px;font-weight:600;color:rgba(255,255,255,0.5);">${monthStr}</div>
+                        <button id="repNextMonth" style="background:none;border:none;color:rgba(255,255,255,0.3);font-size:18px;cursor:pointer;">›</button>
+                    </div>
+                    ${calendarHtml}
+                    ${tagsHtml ? `<div style="margin:12px 0 8px;">${tagsHtml}</div>` : ''}
+                    ${heatmapHtml}
+                    <div style="font-size:12px;color:rgba(255,255,255,0.3);font-weight:600;margin:12px 0 8px;">时间轴 · ${selectedDate}</div>
+                    ${timelineHtml}
+                `;
+                
+                // 事件绑定
+                content.querySelector('#repPrevMonth')?.addEventListener('click', () => { viewMonth.setMonth(viewMonth.getMonth()-1); renderAll(); });
+                content.querySelector('#repNextMonth')?.addEventListener('click', () => { viewMonth.setMonth(viewMonth.getMonth()+1); renderAll(); });
+                content.querySelectorAll('.rep-day').forEach(el => {
+                    el.addEventListener('click', () => { selectedDate = el.dataset.date; renderAll(); });
+                });
+            }
+        };
+        
+        page.innerHTML = `
+            <div style="display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.04);flex-shrink:0;">
+                <button id="repBack" style="background:none;border:none;color:rgba(255,255,255,0.6);font-size:20px;cursor:pointer;">&#8592;</button>
+                <div style="flex:1;font-size:16px;font-weight:600;color:#fff;text-align:center;">${this._esc(name)} 的报备</div>
+                <button id="repHeatmap" style="background:none;border:none;color:rgba(255,255,255,0.3);font-size:16px;cursor:pointer;" title="热力图">📊</button>
+                <button id="repAdd" style="background:rgba(240,147,43,0.12);border:none;color:#f0932b;padding:6px 10px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;margin-left:6px;">＋</button>
+            </div>
+            <div id="repContent" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 16px;"></div>`;
+        
+        document.body.appendChild(page);
+        page.querySelector('#repBack')?.addEventListener('click', () => page.remove());
+        page.querySelector('#repHeatmap')?.addEventListener('click', () => { showHeatmap = !showHeatmap; renderAll(); });
+        page.querySelector('#repAdd')?.addEventListener('click', () => this._addReport(friendCode, name, data, selectedDate, page, renderAll));
+        renderAll();
+    }
+    
+    _addReport(friendCode, name, data, selectedDate, parentPage, renderCallback) {
+        document.getElementById('repAddOverlay')?.remove();
+        const ov = document.createElement('div');
+        ov.id = 'repAddOverlay';
+        ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9500;display:flex;align-items:flex-end;background:rgba(0,0,0,0.5);';
+        ov.innerHTML = `<div style="width:100%;background:#1a1a1a;border-radius:16px 16px 0 0;padding:20px 16px calc(16px + env(safe-area-inset-bottom));">
+            <div style="font-size:15px;font-weight:600;color:#fff;text-align:center;margin-bottom:14px;">新增报备</div>
+            <div class="ep-field"><div class="ep-label">日期</div><input id="repDate" type="date" value="${selectedDate}" style="width:100%;box-sizing:border-box;padding:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#fff;font-size:13px;"></div>
+            <div class="ep-field" style="margin-top:10px;"><div class="ep-label" style="font-size:12px;color:rgba(255,255,255,0.35);margin-bottom:4px;">标签</div><input id="repTag" type="text" placeholder="如：出门、加班、约会" style="width:100%;box-sizing:border-box;padding:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#fff;font-size:13px;outline:none;"></div>
+            <div class="ep-field" style="margin-top:10px;"><div class="ep-label" style="font-size:12px;color:rgba(255,255,255,0.35);margin-bottom:4px;">内容</div><textarea id="repContent2" rows="3" placeholder="今天要做什么..." style="width:100%;box-sizing:border-box;padding:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#fff;font-size:13px;outline:none;resize:vertical;font-family:inherit;"></textarea></div>
+            <div style="display:flex;gap:8px;margin-top:14px;">
+                <button id="repAddCancel" style="flex:1;padding:10px;border:1px solid rgba(255,255,255,0.06);border-radius:10px;background:transparent;color:rgba(255,255,255,0.3);font-size:14px;cursor:pointer;">取消</button>
+                <button id="repAddSave" style="flex:1;padding:10px;border:none;border-radius:10px;background:rgba(240,147,43,0.12);color:#f0932b;font-size:14px;font-weight:600;cursor:pointer;">添加</button>
+            </div>
+        </div>`;
+        document.body.appendChild(ov);
+        ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+        ov.querySelector('#repAddCancel')?.addEventListener('click', () => ov.remove());
+        ov.querySelector('#repAddSave')?.addEventListener('click', () => {
+            const content = document.getElementById('repContent2')?.value?.trim();
+            if (!content) { this._toast('内容不能为空'); return; }
+            const now = new Date();
+            if (!data.reports) data.reports = [];
+            data.reports.push({
+                id: 'rep_' + Date.now(),
+                date: document.getElementById('repDate')?.value || selectedDate,
+                tag: document.getElementById('repTag')?.value?.trim() || '',
+                content: content,
+                author: 'user',
+                time: `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`,
+                createdAt: now.toISOString()
+            });
+            this._store().saveIntimacyData(friendCode, data);
+            ov.remove();
+            if (renderCallback) renderCallback();
+        });
+    }
+    
     _esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
     _toast(msg) { if (window.chatInterface?.showCssToast) window.chatInterface.showCssToast(msg); else alert(msg); }
     

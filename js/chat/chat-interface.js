@@ -3047,6 +3047,34 @@ ${archiveListText}
             }
             
             // ====== 记忆悬浮（模拟"突然想起某件事"） ======
+            // 先注入世界书
+            if (!this.currentFriend?.isTempChat) {
+                try {
+                    const _wbs = JSON.parse(localStorage.getItem('zero_phone_world_books') || '[]');
+                    const _fCode = this.currentFriendCode;
+                    let wbBefore = '', wbAfter = '';
+                    _wbs.forEach(wb => {
+                        if (wb.enabled === false) return;
+                        if (!(wb.mountedTo || []).includes(_fCode)) return;
+                        (wb.entries || []).forEach(entry => {
+                            if (entry.enabled === false) return;
+                            let shouldInject = entry.alwaysActive;
+                            if (!shouldInject && entry.keywords?.length > 0) {
+                                const recentText = messagesWithTimestamps.slice(-6).map(m => m.text || '').join(' ').toLowerCase();
+                                shouldInject = entry.keywords.some(k => recentText.includes(k.toLowerCase()));
+                            }
+                            if (shouldInject) {
+                                const block = `\n[世界书·${wb.name}·${entry.title}] ${entry.content}`;
+                                if (entry.position === 'before') wbBefore += block;
+                                else wbAfter += block;
+                            }
+                        });
+                    });
+                    if (wbBefore) systemPrompt = wbBefore + '\n\n' + systemPrompt;
+                    if (wbAfter) systemPrompt += '\n\n' + wbAfter;
+                } catch(e) { console.warn('世界书注入异常:', e); }
+            }
+            
             if (this.settings.memoryFloating !== false && !this.currentFriend?.isTempChat) {
                 const floatChance = this.settings.memoryFloatChance || 0.3;
                 if (Math.random() < floatChance) {
@@ -3480,6 +3508,27 @@ ${archiveListText}
                     messagesWithTimestamps.push({ type: 'user', text: `【备忘录内容】\n${memoText}`, timestamp: new Date().toISOString() });
                     result = await this.apiManager.callAI(messagesWithTimestamps, systemPrompt, apiOptions);
                 } catch(e) { console.error('❌ 备忘录查看失败:', e); }
+            }
+            
+            // ====== 内置工具：报备查看（同轮返回） ======
+            if (result.success && result.text && result.text.includes('[AI_VIEW_REPORT]')) {
+                try {
+                    const _repData = this.storage.getIntimacyData(this.currentFriendCode);
+                    const _entries = (_repData?.reports || []).slice(-15);
+                    let repText = '报备时间轴为空';
+                    if (_entries.length > 0) {
+                        repText = '最近的报备记录：\n';
+                        _entries.forEach(e => {
+                            repText += `\n[${e.date}] ${e.tag?'#'+e.tag+' ':''}${e.content||e.comment||''}`;
+                            if (e.author === 'ai') repText += ' （你标记的）';
+                            if (e.aiComment) repText += `\n  → 你的评语：${e.aiComment}`;
+                            if (e.chatRef) repText += ` [引用自聊天]`;
+                        });
+                    }
+                    messagesWithTimestamps.push({ type: 'ai', text: result.text, timestamp: new Date().toISOString() });
+                    messagesWithTimestamps.push({ type: 'user', text: `【报备时间轴】\n${repText}`, timestamp: new Date().toISOString() });
+                    result = await this.apiManager.callAI(messagesWithTimestamps, systemPrompt, apiOptions);
+                } catch(e) { console.error('❌ 报备查看失败:', e); }
             }
             
             this.hideTypingIndicator();
@@ -4664,6 +4713,8 @@ div.innerHTML = `
         document.getElementById('settingAvatarFrame')?.addEventListener('click', () => this.openChatStyleModal());
         document.getElementById('settingBubbleStyle')?.addEventListener('click', () => this.openChatStyleModal());
 
+        // 世界书挂载
+        document.getElementById('settingWorldBook')?.addEventListener('click', () => this._openWorldBookMount());
         
         const settingsDoneBtn = document.getElementById('settingsDoneBtn');
         if (settingsDoneBtn) {
@@ -8558,6 +8609,12 @@ getIntimacyStatusForAI() {
     desc += `\n\n  【备忘录】`;
     desc += `\n  [AI_MEMO]备忘内容[/AI_MEMO] 记录今天的备忘（第一人称写，这是你自己的记录）`;
     desc += `\n  [AI_VIEW_MEMO] 查看备忘录（系统会把最近的备忘录内容发给你）`;
+    desc += `\n\n  【世界书】（你只能操作挂载给你的世界书）`;
+    desc += `\n  [AI_WB_ADD:世界书名|标题|关键词1,关键词2|内容] 给挂载给你的世界书添加条目`;
+    desc += `\n\n  【报备】`;
+    desc += `\n  [AI_REPORT_ENTRY:日期|标签|评语] 在报备时间轴添加一条记录（如：2026-05-04|出门|注意安全哦）`;
+    desc += `\n  [AI_REPORT_COMMENT:日期|评语] 给某天的报备记录添加评语`;
+    desc += `\n  [AI_VIEW_REPORT] 查看最近的报备时间轴`;
     desc += `\n\n【手帐本（跟日记不同，更自由，可多次编辑同一页）】`;
     desc += `\n  [AI_JOURNAL]内容[/AI_JOURNAL] 创建一页新手帐`;
     desc += `\n  [AI_JOURNAL_EDIT:页面开头几个字]新内容[/AI_JOURNAL_EDIT] 编辑已有手帐页`;
@@ -15065,6 +15122,10 @@ _stripCommandTags(text) {
         .replace(/\[AI_RUN_PROJECT:[^\]]+\]/g, '')
         .replace(/\[AI_MEMO\][\s\S]*?\[\/AI_MEMO\]/g, '')
         .replace(/\[AI_VIEW_MEMO\]/g, '')
+        .replace(/\[AI_WB_ADD:[^\]]+\]/g, '')
+        .replace(/\[AI_REPORT_ENTRY:[^\]]+\]/g, '')
+        .replace(/\[AI_REPORT_COMMENT:[^\]]+\]/g, '')
+        .replace(/\[AI_VIEW_REPORT\]/g, '')
         .replace(/\[AI_JOURNAL\][\s\S]*?\[\/AI_JOURNAL\]/g, '')
         .replace(/\[AI_JOURNAL_EDIT:[^\]]*\][\s\S]*?\[\/AI_JOURNAL_EDIT\]/g, '')
         .replace(/\[AI_STATUS:[^\]]+\]/g, '')
@@ -15280,6 +15341,57 @@ processNotebookCommands(text) {
             });
             this.showCssSystemMessage(`📝 ${friendName} 记了一笔备忘录`);
             changed = true;
+        }
+    }
+    
+    // [AI_WB_ADD:世界书名|标题|关键词|内容]
+    const wbAddMatch = text.match(/\[AI_WB_ADD:([^\]]+)\]/);
+    if (wbAddMatch) {
+        try {
+            const wbParts = wbAddMatch[1].split('|');
+            const wbName = wbParts[0]?.trim();
+            const weTitle = wbParts[1]?.trim() || '未命名';
+            const weKeys = (wbParts[2]||'').split(',').map(k=>k.trim()).filter(Boolean);
+            const weContent = wbParts.slice(3).join('|').trim();
+            if (wbName && weContent) {
+                const wbs = JSON.parse(localStorage.getItem('zero_phone_world_books') || '[]');
+                const wb = wbs.find(b => b.name === wbName && (b.mountedTo||[]).includes(this.currentFriendCode));
+                if (wb) {
+                    wb.entries.push({ id:'we_'+Date.now(), title:weTitle, keywords:weKeys, content:weContent, enabled:true, owner:friendName, createdAt:new Date().toISOString() });
+                    localStorage.setItem('zero_phone_world_books', JSON.stringify(wbs));
+                    this.showCssSystemMessage(`📖 ${friendName} 给世界书「${wbName}」添加了条目`);
+                } else {
+                    this.showCssSystemMessage(`⚠️ 找不到挂载的世界书「${wbName}」`);
+                }
+            }
+        } catch(e) {}
+    }
+    
+    // [AI_REPORT_ENTRY:日期|标签|评语]
+    const repMatch = text.match(/\[AI_REPORT_ENTRY:([^\]]+)\]/);
+    if (repMatch) {
+        const rParts = repMatch[1].split('|');
+        const rDate = rParts[0]?.trim() || new Date().toISOString().split('T')[0];
+        const rTag = rParts[1]?.trim() || '';
+        const rComment = rParts.slice(2).join('|').trim();
+        if (!data.reports) data.reports = [];
+        data.reports.push({
+            id: 'rep_' + Date.now(), date: rDate, tag: rTag, comment: rComment,
+            author: 'ai', createdAt: new Date().toISOString()
+        });
+        this.showCssSystemMessage(`📋 ${friendName} 在报备时间轴添加了记录`);
+        changed = true;
+    }
+    
+    // [AI_REPORT_COMMENT:日期|评语]
+    const repCmtMatch = text.match(/\[AI_REPORT_COMMENT:([^\]]+)\]/);
+    if (repCmtMatch) {
+        const rcParts = repCmtMatch[1].split('|');
+        const rcDate = rcParts[0]?.trim();
+        const rcComment = rcParts.slice(1).join('|').trim();
+        if (rcDate && rcComment && data.reports) {
+            const rep = data.reports.find(r => r.date === rcDate);
+            if (rep) { rep.aiComment = (rep.aiComment||'') + '\n' + rcComment; changed = true; }
         }
     }
     
@@ -17526,6 +17638,70 @@ _upgradeTempToFriend(cardInfo, apiMode) {
 }
 
 // ==================== 拍照功能 ====================
+
+// ==================== 通用拉取模型列表 ====================
+
+// ==================== 世界书挂载面板（聊天设置） ====================
+_openWorldBookMount() {
+    document.getElementById('wbMountOverlay')?.remove();
+    if (!this.currentFriendCode) return;
+    const code = this.currentFriendCode;
+    
+    let wbs = [];
+    try { wbs = JSON.parse(localStorage.getItem('zero_phone_world_books') || '[]'); } catch(e) {}
+    
+    const ov = document.createElement('div');
+    ov.id = 'wbMountOverlay';
+    ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9600;background:#111;display:flex;flex-direction:column;';
+    
+    const renderList = () => {
+        try { wbs = JSON.parse(localStorage.getItem('zero_phone_world_books') || '[]'); } catch(e) {}
+        let html = '';
+        if (wbs.length === 0) {
+            html = '<div style="text-align:center;padding:40px 0;color:rgba(255,255,255,0.12);font-size:13px;">还没有世界书<br><span style="font-size:11px;">前往桌面「纪元」APP创建</span></div>';
+        } else {
+            wbs.forEach((b, i) => {
+                const mounted = (b.mountedTo || []).includes(code);
+                const entryCount = (b.entries || []).filter(e => e.enabled !== false).length;
+                html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+                    <div>
+                        <div style="font-size:14px;color:rgba(255,255,255,0.65);font-weight:500;">${this.escapeHtml(b.name)}</div>
+                        <div style="font-size:11px;color:rgba(255,255,255,0.2);margin-top:2px;">${entryCount} 启用条目${b.desc ? ' · '+this.escapeHtml(b.desc).substring(0,30) : ''}</div>
+                    </div>
+                    <button class="wb-toggle" data-idx="${i}" style="padding:6px 14px;border:1px solid ${mounted?'rgba(255,100,100,0.2)':'rgba(80,200,120,0.2)'};border-radius:8px;background:${mounted?'rgba(255,100,100,0.05)':'rgba(80,200,120,0.05)'};color:${mounted?'rgba(255,100,100,0.6)':'rgba(80,200,120,0.6)'};font-size:12px;cursor:pointer;">${mounted?'取消挂载':'挂载'}</button>
+                </div>`;
+            });
+        }
+        ov.querySelector('#wbList').innerHTML = html;
+        ov.querySelectorAll('.wb-toggle').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const bi = parseInt(btn.dataset.idx);
+                const book = wbs[bi];
+                if (!book.mountedTo) book.mountedTo = [];
+                const mi = book.mountedTo.indexOf(code);
+                if (mi >= 0) book.mountedTo.splice(mi, 1);
+                else book.mountedTo.push(code);
+                localStorage.setItem('zero_phone_world_books', JSON.stringify(wbs));
+                this.showCssToast(mi >= 0 ? '已取消挂载' : '已挂载');
+                renderList();
+            });
+        });
+    };
+    
+    ov.innerHTML = `
+        <div style="display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.04);flex-shrink:0;">
+            <button id="wbMountBack" style="background:none;border:none;color:rgba(255,255,255,0.5);font-size:20px;cursor:pointer;">←</button>
+            <div style="flex:1;font-size:16px;font-weight:600;color:#fff;text-align:center;">世界书挂载</div>
+            <div style="width:30px;"></div>
+        </div>
+        <div style="padding:8px 16px;font-size:11px;color:rgba(255,255,255,0.2);">挂载的世界书会根据关键词匹配自动注入AI的系统提示</div>
+        <div id="wbList" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 16px;"></div>
+    `;
+    
+    document.body.appendChild(ov);
+    ov.querySelector('#wbMountBack')?.addEventListener('click', () => ov.remove());
+    renderList();
+}
 
 // ==================== 通用拉取模型列表 ====================
 async _fetchModelList(endpoint, apiKey, listEl, modelInput, darkTheme = false) {
