@@ -861,6 +861,19 @@ class ChatInterface {
             this._openCamera();
         });
         
+        // 文件
+        document.getElementById('menuFile')?.addEventListener('click', () => {
+            this.closeMenu();
+            document.getElementById('menuFileInput')?.click();
+        });
+        document.getElementById('menuFileInput')?.addEventListener('change', (e) => {
+            const files = e.target.files;
+            if (files && files.length > 0) {
+                Array.from(files).forEach(f => this._sendFile(f));
+            }
+            e.target.value = '';
+        });
+        
         // 占位菜单项
         document.querySelectorAll('.menu-placeholder').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -2656,6 +2669,10 @@ class ChatInterface {
         this.checkGreetings(text, 'user'); // 早晚安检测
         this.updateBadgeProgress_NightOwl('user'); // 夜猫子徽章
         this.updateBadgeProgress_MutualChat('user'); // 如约而至徽章
+        
+        // 报备自动关联：检测报备类消息
+        this._checkAutoReport(text, userMsg.timestamp);
+        
         this.scrollToBottom();
     }
     
@@ -3058,6 +3075,31 @@ ${archiveListText}
                         if (!(wb.mountedTo || []).includes(_fCode)) return;
                         (wb.entries || []).forEach(entry => {
                             if (entry.enabled === false) return;
+                            // 条件检查
+                            let conditionMet = true;
+                            // 时间段条件
+                            if (entry.timeStart && entry.timeEnd) {
+                                const nowH = new Date().getHours();
+                                const nowM = new Date().getMinutes();
+                                const nowMin = nowH * 60 + nowM;
+                                const [sh, sm] = entry.timeStart.split(':').map(Number);
+                                const [eh, em] = entry.timeEnd.split(':').map(Number);
+                                const startMin = sh * 60 + (sm||0);
+                                const endMin = eh * 60 + (em||0);
+                                if (startMin <= endMin) {
+                                    conditionMet = nowMin >= startMin && nowMin <= endMin;
+                                } else { // 跨午夜
+                                    conditionMet = nowMin >= startMin || nowMin <= endMin;
+                                }
+                            }
+                            // 亲密度条件
+                            if (conditionMet && entry.minIntimacy) {
+                                const intData = this.storage.getIntimacyData(_fCode);
+                                const currentIntimacy = intData?.intimacyValue || 0;
+                                conditionMet = currentIntimacy >= entry.minIntimacy;
+                            }
+                            if (!conditionMet) return;
+                            
                             let shouldInject = entry.alwaysActive;
                             if (!shouldInject && entry.keywords?.length > 0) {
                                 const recentText = messagesWithTimestamps.slice(-6).map(m => m.text || '').join(' ').toLowerCase();
@@ -4062,7 +4104,8 @@ div.innerHTML = `
                     </div>` : ''}
                     ${message._location ? this._renderLocationBubble(message) : ''}
                     ${message._card ? this._renderCardBubble(message) : ''}
-                    ${message.text && !message._imageOnly && !message._voice && !message._fakeImage && !message._fakeVideo && !message._location && !message._card && !message._stickerUrl ? `<div class="message-text">${this.renderMessageContent(message.text)}</div>` : ''}
+                    ${message._file ? this._renderFileBubble(message) : ''}
+                    ${message.text && !message._imageOnly && !message._voice && !message._fakeImage && !message._fakeVideo && !message._location && !message._card && !message._file && !message._stickerUrl ? `<div class="message-text">${this.renderMessageContent(message.text)}</div>` : ''}
                 </div>
                 <div class="message-time">${time}</div>
             </div>
@@ -4715,6 +4758,14 @@ div.innerHTML = `
 
         // 世界书挂载
         document.getElementById('settingWorldBook')?.addEventListener('click', () => this._openWorldBookMount());
+        
+        // 报备时间轴快捷入口
+        document.getElementById('settingReport')?.addEventListener('click', () => {
+            if (window.memoryLibrary && this.currentFriendCode) {
+                const friend = this.storage.getFriendByCode(this.currentFriendCode);
+                window.memoryLibrary._openReport(this.currentFriendCode, friend?.nickname || friend?.name || '');
+            }
+        });
         
         const settingsDoneBtn = document.getElementById('settingsDoneBtn');
         if (settingsDoneBtn) {
@@ -8615,6 +8666,7 @@ getIntimacyStatusForAI() {
     desc += `\n  [AI_REPORT_ENTRY:日期|标签|评语] 在报备时间轴添加一条记录（如：2026-05-04|出门|注意安全哦）`;
     desc += `\n  [AI_REPORT_COMMENT:日期|评语] 给某天的报备记录添加评语`;
     desc += `\n  [AI_VIEW_REPORT] 查看最近的报备时间轴`;
+    desc += `\n  说明：当user说"我出门了""我要去上班"等报备类消息时，系统会自动记录到报备时间轴。你可以用指令添加评语或标记。`;
     desc += `\n\n【手帐本（跟日记不同，更自由，可多次编辑同一页）】`;
     desc += `\n  [AI_JOURNAL]内容[/AI_JOURNAL] 创建一页新手帐`;
     desc += `\n  [AI_JOURNAL_EDIT:页面开头几个字]新内容[/AI_JOURNAL_EDIT] 编辑已有手帐页`;
@@ -17107,6 +17159,36 @@ _renderCardBubble(message) {
 }
 
 // ==================== 名片详情面板 ====================
+
+// ==================== 文件气泡渲染 ====================
+_renderFileBubble(message) {
+    const f = message._file;
+    if (!f) return '';
+    const name = this.escapeHtml(f.name || '未知文件');
+    const size = this.escapeHtml(f.sizeStr || '');
+    
+    if (f.isImage && f.dataUrl) {
+        return `<div style="border-radius:8px;overflow:hidden;max-width:220px;cursor:pointer;">
+            <img src="${f.dataUrl}" style="width:100%;display:block;border-radius:8px;" alt="${name}">
+            <div style="font-size:10px;color:rgba(0,0,0,0.3);padding:4px 0;">${name}</div>
+        </div>`;
+    }
+    
+    // 文件图标
+    const ext = (f.name || '').split('.').pop()?.toLowerCase() || '';
+    const iconMap = { pdf:'📄', doc:'📝', docx:'📝', xls:'📊', xlsx:'📊', ppt:'📎', pptx:'📎', zip:'📦', rar:'📦', mp3:'🎵', mp4:'🎬', txt:'📃', md:'📃', json:'📃', csv:'📊', html:'🌐', css:'🎨', js:'⚡', py:'🐍' };
+    const icon = iconMap[ext] || '📎';
+    
+    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(128,128,128,0.06);border-radius:10px;border:1px solid rgba(128,128,128,0.1);min-width:180px;max-width:240px;">
+        <div style="font-size:28px;flex-shrink:0;">${icon}</div>
+        <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;color:rgba(0,0,0,0.65);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${name}</div>
+            <div style="font-size:11px;color:rgba(0,0,0,0.3);margin-top:2px;">${size}</div>
+        </div>
+    </div>`;
+}
+
+// ==================== 名片详情面板 ====================
 _showCardDetail(cardInfo) {
     document.getElementById('cardDetailOverlay')?.remove();
     
@@ -17824,6 +17906,135 @@ async _checkMemoAutoRecord() {
     } catch(e) {
         console.warn('备忘录自动记录失败:', e);
     }
+}
+
+// ==================== 拍照功能（原有） ====================
+
+// ==================== 报备自动关联 ====================
+_checkAutoReport(text, timestamp) {
+    if (!text || !this.currentFriendCode || this.currentFriend?.isTempChat) return;
+    
+    // 检测报备关键词
+    const reportPatterns = [
+        /^报备[：:]/,
+        /^【报备】/,
+        /我(要|准备|打算|正在|在|去)(出门|出去|上班|加班|上课|运动|健身|睡觉|睡了|回家|到家|吃饭|上学|出差|旅游|开会)/,
+        /我(出门|回来|到了|到家|起床|睡了|出发|下班|放学)了/,
+        /(晚点|等会|过会|待会)(回来|联系|聊|回复)/,
+        /我(大概|可能|估计).{0,10}(回来|到|结束)/
+    ];
+    
+    const isReport = reportPatterns.some(p => p.test(text));
+    if (!isReport) return;
+    
+    // 提取标签
+    const tagMap = {
+        '出门|出去|出发': '外出', '上班|加班|下班': '工作', '上课|上学|放学': '学习',
+        '运动|健身': '运动', '睡觉|睡了|起床': '作息', '回家|到家|回来': '回家',
+        '吃饭': '用餐', '出差|旅游': '出行', '开会': '会议'
+    };
+    let tag = '其他';
+    for (const [keywords, label] of Object.entries(tagMap)) {
+        if (new RegExp(keywords).test(text)) { tag = label; break; }
+    }
+    
+    // 自动添加到报备时间轴
+    const data = this.storage.getIntimacyData(this.currentFriendCode);
+    if (!data.reports) data.reports = [];
+    const now = new Date(timestamp || Date.now());
+    data.reports.push({
+        id: 'rep_auto_' + Date.now(),
+        date: now.toISOString().split('T')[0],
+        time: `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`,
+        tag: tag,
+        content: text.replace(/^报备[：:]/, '').replace(/^【报备】/, '').trim(),
+        author: 'user',
+        autoDetected: true,
+        chatRef: timestamp, // 关联到聊天消息的时间戳
+        createdAt: now.toISOString()
+    });
+    this.storage.saveIntimacyData(this.currentFriendCode, data);
+    console.log('📋 报备自动关联:', tag, text.substring(0, 30));
+}
+
+// ==================== 文件发送 ====================
+_sendFile(file) {
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) { this.showCssToast('文件过大（最大10MB）'); return; }
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const dataUrl = e.target.result;
+        const isImage = file.type.startsWith('image/');
+        
+        const fileInfo = {
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            dataUrl: isImage ? dataUrl : null, // 图片存dataUrl，其他只存元信息
+            textContent: null
+        };
+        
+        // 文本文件读内容
+        if (file.type.startsWith('text/') || /\.(txt|md|json|csv|html|css|js|py|xml|yml|yaml|log)$/i.test(file.name)) {
+            const textReader = new FileReader();
+            textReader.onload = (te) => {
+                fileInfo.textContent = te.target.result;
+                this._addFileMessage(fileInfo);
+            };
+            textReader.readAsText(file);
+        } else {
+            this._addFileMessage(fileInfo);
+        }
+    };
+    
+    if (file.type.startsWith('image/')) {
+        reader.readAsDataURL(file);
+    } else {
+        reader.readAsDataURL(file); // 先触发onload，dataUrl用于非图片也存base64
+    }
+}
+
+_addFileMessage(fileInfo) {
+    const sizeStr = fileInfo.size < 1024 ? fileInfo.size + 'B' :
+        fileInfo.size < 1048576 ? (fileInfo.size/1024).toFixed(1) + 'KB' :
+        (fileInfo.size/1048576).toFixed(1) + 'MB';
+    
+    const msg = {
+        type: 'user',
+        text: '',
+        timestamp: new Date().toISOString(),
+        _file: {
+            name: fileInfo.name,
+            size: fileInfo.size,
+            sizeStr: sizeStr,
+            mimeType: fileInfo.type,
+            isImage: fileInfo.type?.startsWith('image/'),
+            dataUrl: fileInfo.dataUrl,
+            textContent: fileInfo.textContent?.substring(0, 5000) // 限制文本长度
+        }
+    };
+    if (this._quotingMessage) { msg._quote = this._extractQuoteData(this._quotingMessage); this._clearQuoteMessage(); }
+    
+    this.addMessage(msg);
+    
+    // 存储消息（不存dataUrl避免爆存储，只存元信息）
+    const storeMsg = {
+        type: 'user',
+        text: `[用户发送了文件：${fileInfo.name} (${sizeStr})]`,
+        timestamp: msg.timestamp,
+        _file: {
+            name: fileInfo.name,
+            size: fileInfo.size,
+            sizeStr: sizeStr,
+            mimeType: fileInfo.type,
+            isImage: msg._file.isImage,
+            textContent: fileInfo.textContent?.substring(0, 2000)
+        },
+        _quote: msg._quote
+    };
+    this.storage.addMessage(this.currentFriendCode, storeMsg);
+    this.scrollToBottom();
 }
 
 // ==================== 拍照功能（原有） ====================
