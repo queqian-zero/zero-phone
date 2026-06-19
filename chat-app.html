@@ -358,10 +358,11 @@
                 <span class="menu-icon">&#128199;</span>
                 <span class="menu-label">名片</span>
             </button>
-            <button class="menu-item menu-placeholder" id="menuFile" title="文件（开发中）">
+            <button class="menu-item" id="menuFile" title="文件">
                 <span class="menu-icon">&#9776;</span>
                 <span class="menu-label">文件</span>
             </button>
+            <input type="file" id="menuFileInput" style="display:none" multiple>
         </div>
         <div class="menu-row" style="display:flex;justify-content:space-around;">
             <button class="menu-item menu-placeholder" id="menuListenTogether" title="一起听（开发中）">
@@ -619,6 +620,15 @@
                 <div class="setting-info">
                     <span class="setting-label">关联世界书</span>
                     <span class="setting-desc">为角色挂载/取消挂载世界观设定</span>
+                </div>
+                <span class="setting-arrow">›</span>
+            </div>
+            
+            <!-- 报备时间轴 -->
+            <div class="setting-item" id="settingReport" style="cursor:pointer;">
+                <div class="setting-info">
+                    <span class="setting-label">报备时间轴</span>
+                    <span class="setting-desc">查看和管理报备记录</span>
                 </div>
                 <span class="setting-arrow">›</span>
             </div>

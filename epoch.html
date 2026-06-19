@@ -190,6 +190,8 @@ function openBookDetail(idx) {
                 <div class="ep-card-keys">🔑 ${esc((e.keywords||[]).join(', ')||'无关键词')}</div>
                 <div class="ep-card-meta">${esc((e.content||'').substring(0,80))}</div>
                 ${e.owner ? `<div style="font-size:10px;color:rgba(100,160,224,0.4);margin-top:4px;">创建者：${esc(e.owner)}</div>` : ''}
+                ${e.timeStart && e.timeEnd ? `<div style="font-size:10px;color:rgba(255,255,255,0.15);margin-top:2px;">⏰ ${esc(e.timeStart)}-${esc(e.timeEnd)}</div>` : ''}
+                ${e.minIntimacy ? `<div style="font-size:10px;color:rgba(255,255,255,0.15);margin-top:2px;">💕 亲密度≥${e.minIntimacy}</div>` : ''}
             </div>`).join('');
         }
         ov.querySelector('#bdEntries').innerHTML = html;
@@ -252,6 +254,14 @@ function openEntryEditor(book, entryIdx, bookIdx) {
                     <span style="font-size:14px;color:rgba(255,255,255,0.6);">常驻（无需关键词匹配）</span>
                 </label>
             </div>
+            <div style="border-top:1px solid rgba(255,255,255,0.04);margin:12px 0;padding-top:12px;">
+                <div style="font-size:13px;color:rgba(255,255,255,0.4);margin-bottom:8px;font-weight:500;">条件触发（可选）</div>
+                <div class="ep-field" style="display:flex;gap:8px;">
+                    <div style="flex:1;"><div class="ep-label">生效时间段（开始）</div><input id="eeTimeStart" type="time" value="${esc(entry.timeStart||'')}" style="width:100%;box-sizing:border-box;padding:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#fff;font-size:13px;"></div>
+                    <div style="flex:1;"><div class="ep-label">生效时间段（结束）</div><input id="eeTimeEnd" type="time" value="${esc(entry.timeEnd||'')}" style="width:100%;box-sizing:border-box;padding:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#fff;font-size:13px;"></div>
+                </div>
+                <div class="ep-field"><div class="ep-label">最低亲密度（留空则不限）</div><input id="eeMinIntimacy" type="number" value="${entry.minIntimacy||''}" placeholder="如：50" style="width:100%;box-sizing:border-box;padding:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#fff;font-size:13px;outline:none;"></div>
+            </div>
             <button id="eeSave" class="ep-btn ep-btn-primary" style="margin-top:8px;">保存</button>
         </div>`;
     document.body.appendChild(ov);
@@ -261,7 +271,7 @@ function openEntryEditor(book, entryIdx, bookIdx) {
         const keys = document.getElementById('eeKeys').value.split(',').map(k=>k.trim()).filter(Boolean);
         const content = document.getElementById('eeContent').value.trim();
         if (!content) { toast('内容不能为空'); return; }
-        const obj = { title: title||'未命名', keywords:keys, content, position:document.getElementById('eePosition').value, enabled:document.getElementById('eeEnabled').checked, alwaysActive:document.getElementById('eeAlways').checked, updatedAt:new Date().toISOString() };
+        const obj = { title: title||'未命名', keywords:keys, content, position:document.getElementById('eePosition').value, enabled:document.getElementById('eeEnabled').checked, alwaysActive:document.getElementById('eeAlways').checked, timeStart:document.getElementById('eeTimeStart')?.value||'', timeEnd:document.getElementById('eeTimeEnd')?.value||'', minIntimacy:parseInt(document.getElementById('eeMinIntimacy')?.value)||0, updatedAt:new Date().toISOString() };
         if (isNew) { obj.id='we_'+Date.now(); obj.createdAt=new Date().toISOString(); book.entries.push(obj); }
         else Object.assign(entry, obj);
         save(); ov.remove(); openBookDetail(bookIdx); toast('已保存');
